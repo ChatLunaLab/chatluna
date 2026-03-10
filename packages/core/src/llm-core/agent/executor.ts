@@ -1,4 +1,8 @@
-import { CallbackManager } from '@langchain/core/callbacks/manager'
+import {
+    CallbackManager,
+    CallbackManagerForChainRun
+} from '@langchain/core/callbacks/manager'
+import { AIMessage } from '@langchain/core/messages'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {
     patchConfig,
@@ -11,6 +15,10 @@ import {
 } from '@langchain/core/tools'
 import type { ChainValues } from '@langchain/core/utils/types'
 import { logger } from 'koishi-plugin-chatluna'
+import {
+    BaseChain,
+    ChainInputs
+} from 'koishi-plugin-chatluna/llm-core/chain/base'
 import {
     isMessageContentComplex,
     isMessageContentText
@@ -33,7 +41,23 @@ export interface RunAgentOptions {
     signal?: AbortSignal
     maxIterations?: number
     handleParsingErrors?: boolean | string | ((e: Error) => string)
+    handleToolRuntimeErrors?: (e: Error) => string
     config?: RunnableConfig
+}
+
+export interface AgentExecutorInput extends ChainInputs {
+    agent: Runnable
+    tools: StructuredTool[]
+    returnIntermediateSteps?: boolean
+    maxIterations?: number
+    handleParsingErrors?: boolean | string | ((e: Error) => string)
+    handleToolRuntimeErrors?: (e: Error) => string
+}
+
+export interface AgentExecutorOutput extends ChainValues {
+    output: string
+    intermediateSteps?: AgentStep[]
+    message: AIMessage
 }
 
 function isAgentObservation(value: unknown): value is AgentObservation {
@@ -157,7 +181,8 @@ async function executeTools(
     toolMap: Record<string, StructuredTool>,
     config: RunnableConfig | undefined,
     signal: AbortSignal | undefined,
-    handleParsingErrors: boolean | string | ((e: Error) => string)
+    handleParsingErrors: boolean | string | ((e: Error) => string),
+    handleToolRuntimeErrors?: (e: Error) => string
 ) {
     return Promise.all(
         actions.map(async (action) => {
@@ -198,6 +223,16 @@ async function executeTools(
                         action,
                         observation: coerceToAgentObservation(
                             toToolInputErrorObservation(handleParsingErrors, e)
+                        )
+                    } as AgentStep
+                }
+
+                if (handleToolRuntimeErrors != null) {
+                    return {
+                        action,
+                        observation: coerceToAgentObservation(
+                            handleToolRuntimeErrors(e as Error),
+                            tool.name
                         )
                     } as AgentStep
                 }
@@ -295,6 +330,7 @@ async function plan(
     }
 }
 
+// eslint-disable-next-line generator-star-spacing
 export async function* runAgent(
     options: RunAgentOptions
 ): AsyncGenerator<AgentEvent> {
@@ -373,6 +409,7 @@ export async function* runAgent(
             yield {
                 type: 'done',
                 output: toOutput(output.returnValues['output']),
+                log: output.log,
                 steps
             }
 
@@ -391,7 +428,8 @@ export async function* runAgent(
             toolMap,
             config,
             signal,
-            handleParsingErrors
+            handleParsingErrors,
+            options.handleToolRuntimeErrors
         )
 
         steps.push(...newSteps)
@@ -419,6 +457,7 @@ export async function* runAgent(
             yield {
                 type: 'done',
                 output: toOutput(last.observation),
+                log: last.action.log,
                 steps
             }
 
@@ -431,6 +470,106 @@ export async function* runAgent(
     yield {
         type: 'done',
         output: 'Agent stopped due to iteration limit.',
+        log: '',
         steps
+    }
+}
+
+export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    lc_serializable = false
+
+    agent: Runnable
+
+    tools: StructuredTool[]
+
+    returnIntermediateSteps = false
+
+    maxIterations?: number
+
+    handleParsingErrors?: boolean | string | ((e: Error) => string)
+
+    handleToolRuntimeErrors?: (e: Error) => string
+
+    constructor(fields: AgentExecutorInput) {
+        super(fields)
+        this.agent = fields.agent
+        this.tools = fields.tools
+        this.returnIntermediateSteps = fields.returnIntermediateSteps ?? false
+        this.maxIterations = fields.maxIterations
+        this.handleParsingErrors = fields.handleParsingErrors
+        this.handleToolRuntimeErrors = fields.handleToolRuntimeErrors
+    }
+
+    get inputKeys() {
+        return ['input']
+    }
+
+    get outputKeys() {
+        return ['output']
+    }
+
+    static fromAgentAndTools(fields: AgentExecutorInput) {
+        return new AgentExecutor(fields)
+    }
+
+    async _call(
+        inputs: ChainValues,
+        runManager?: CallbackManagerForChainRun,
+        config?: RunnableConfig
+    ): Promise<AgentExecutorOutput> {
+        const configurable = (config?.configurable ?? {}) as {
+            messageQueue?: MessageQueue
+            onAgentEvent?: (event: AgentEvent) => Promise<void> | void
+        }
+
+        const runner = runAgent({
+            agent: this.agent,
+            tools: this.tools,
+            input: inputs,
+            messageQueue: configurable.messageQueue,
+            signal: config?.signal as AbortSignal | undefined,
+            maxIterations: this.maxIterations,
+            handleParsingErrors: this.handleParsingErrors,
+            handleToolRuntimeErrors: this.handleToolRuntimeErrors,
+            config
+        })
+
+        for await (const event of runner) {
+            if (event.type === 'tool-call') {
+                for (const action of event.actions) {
+                    await runManager?.handleAgentAction(action)
+                }
+            }
+
+            await configurable.onAgentEvent?.(event)
+
+            if (event.type !== 'done') {
+                continue
+            }
+
+            await runManager?.handleAgentEnd({
+                returnValues: {
+                    output: event.output
+                },
+                log: event.log
+            })
+
+            return {
+                output: event.output,
+                ...(this.returnIntermediateSteps
+                    ? {
+                          intermediateSteps: event.steps
+                      }
+                    : {}),
+                message: new AIMessage(event.output)
+            }
+        }
+
+        throw new Error('Agent executor did not return a final output')
+    }
+
+    _chainType() {
+        return 'agent_executor' as const
     }
 }

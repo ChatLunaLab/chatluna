@@ -61,21 +61,6 @@ export class ChatInterface {
         error: unknown,
         throwError = true
     ): Promise<never | void> {
-        const superseded =
-            error instanceof ChatLunaError &&
-            error.errorCode === ChatLunaErrorCode.ABORTED &&
-            (error as ChatLunaError & { superseded?: boolean }).superseded ===
-                true
-
-        if (superseded) {
-            await this.ctx.parallel(
-                'chatluna/request-superseded',
-                arg.conversationId,
-                arg.requestId,
-                this.chatMode
-            )
-        }
-
         await this.ctx.parallel(
             'chatluna/after-chat-error',
             error as unknown as Error,
@@ -84,8 +69,7 @@ export class ChatInterface {
             arg.variables,
             this,
             wrapper,
-            arg.requestId,
-            superseded
+            arg.requestId
         )
 
         if (!throwError) {
@@ -587,11 +571,6 @@ declare module 'koishi' {
             conversationId: string,
             chatInterface: ChatInterface
         ) => Promise<void>
-        'chatluna/request-superseded': (
-            conversationId: string,
-            requestId: string,
-            chatMode: string
-        ) => Promise<void>
         'chatluna/after-chat-error': (
             error: Error,
             conversationId: string,
@@ -599,8 +578,7 @@ declare module 'koishi' {
             promptVariables: ChainValues,
             chatInterface: ChatInterface,
             chain?: ChatLunaLLMChainWrapper,
-            requestId?: string,
-            superseded?: boolean
+            requestId?: string
         ) => Promise<void>
     }
 }

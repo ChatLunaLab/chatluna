@@ -230,17 +230,6 @@ export class ChatLunaService extends Service<Config> {
         return chatInterfaceWrapper.stopChat(requestId)
     }
 
-    supersedeChat(conversationId: string, chatMode?: string) {
-        if (this._chatInterfaceWrapper == null) {
-            return false
-        }
-
-        return this._chatInterfaceWrapper.supersedeChat(
-            conversationId,
-            chatMode
-        )
-    }
-
     appendPendingMessage(
         conversationId: string,
         message: HumanMessage,
@@ -909,18 +898,8 @@ type ActiveRequest = {
     messageQueue: MessageQueue
 }
 
-function createAbortError(superseded = false) {
-    const err = new ChatLunaError(
-        ChatLunaErrorCode.ABORTED,
-        undefined,
-        true
-    ) as ChatLunaError & { superseded?: boolean }
-
-    if (superseded) {
-        err.superseded = true
-    }
-
-    return err
+function createAbortError() {
+    return new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
 }
 
 class ChatInterfaceWrapper {
@@ -935,7 +914,6 @@ class ChatInterfaceWrapper {
 
     private _requestIdMap: Map<string, AbortController> = new Map()
     private _activeRequests: Map<string, ActiveRequest> = new Map()
-    private _pendingSupersede = new Set<string>()
     private _platformToConversations: Map<string, string[]> = new Map()
 
     constructor(private _service: ChatLunaService) {
@@ -1010,15 +988,6 @@ class ChatInterfaceWrapper {
             this._requestIdMap.set(requestId, abortController)
             this._activeRequests.set(conversationId, activeRequest)
 
-            if (
-                room.chatMode === 'plugin' &&
-                this._pendingSupersede.has(conversationId)
-            ) {
-                activeRequest.abortController.abort(createAbortError(true))
-            }
-
-            this._pendingSupersede.delete(conversationId)
-
             const humanMessage = new HumanMessage({
                 content: message.content,
                 name: message.name,
@@ -1080,10 +1049,6 @@ class ChatInterfaceWrapper {
             ) {
                 this._activeRequests.delete(conversationId)
             }
-
-            if (!this._activeRequests.has(conversationId)) {
-                this._pendingSupersede.delete(conversationId)
-            }
         }
     }
 
@@ -1094,35 +1059,6 @@ class ChatInterfaceWrapper {
         }
         abortController.abort(createAbortError())
         this._requestIdMap.delete(requestId)
-        return true
-    }
-
-    supersedeChat(conversationId: string, chatMode?: string) {
-        if (chatMode != null && chatMode !== 'plugin') {
-            return false
-        }
-
-        const activeRequest = this._activeRequests.get(conversationId)
-
-        if (activeRequest == null) {
-            if (chatMode === 'plugin') {
-                this._pendingSupersede.add(conversationId)
-            }
-
-            return false
-        }
-
-        if (activeRequest.chatMode !== 'plugin') {
-            return false
-        }
-
-        if (activeRequest.abortController.signal.aborted) {
-            return true
-        }
-
-        this._pendingSupersede.delete(conversationId)
-        activeRequest.abortController.abort(createAbortError(true))
-
         return true
     }
 
@@ -1281,7 +1217,6 @@ class ChatInterfaceWrapper {
             this._conversations.clear()
             this._requestIdMap.clear()
             this._activeRequests.clear()
-            this._pendingSupersede.clear()
             this._platformToConversations.clear()
             return
         }
@@ -1293,7 +1228,6 @@ class ChatInterfaceWrapper {
         for (const conversationId of conversationIds) {
             this._conversations.delete(conversationId)
             this._activeRequests.delete(conversationId)
-            this._pendingSupersede.delete(conversationId)
         }
 
         this._platformToConversations.delete(platform)

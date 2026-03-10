@@ -225,6 +225,7 @@ export type AgentEvent =
     | {
           type: 'done'
           output: string
+          log: string
           steps: AgentStep[]
       }
 

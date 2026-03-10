@@ -11,6 +11,7 @@ import { ChatLunaTool } from '../platform/types'
 import { BaseMessage } from '@langchain/core/messages'
 import { Session } from 'koishi'
 import type { Runnable } from '@langchain/core/runnables'
+import { AgentExecutor } from './executor'
 
 export interface CreateAgentConfigOptions {
     llm: ComputedRef<ChatLunaChatModel>
@@ -25,6 +26,16 @@ export interface AgentConfig {
     agent: Runnable
     tools: StructuredTool[]
     agentMode: 'react' | 'tool-calling'
+}
+
+export interface CreateAgentExecutorOptions {
+    llm: ComputedRef<ChatLunaChatModel>
+    tools: ComputedRef<StructuredTool[]>
+    prompt: ChatLunaChatPrompt
+    agentMode: 'react' | 'tool-calling'
+    returnIntermediateSteps?: boolean
+    handleParsingErrors?: boolean
+    instructions?: ComputedRef<string>
 }
 
 export function createAgentConfig(options: CreateAgentConfigOptions) {
@@ -61,6 +72,21 @@ export function createAgentConfig(options: CreateAgentConfigOptions) {
         tools: options.tools.value,
         agentMode: 'tool-calling'
     }))
+}
+
+export function createAgentExecutor(
+    options: CreateAgentExecutorOptions
+): ComputedRef<AgentExecutor> {
+    const cfg = createAgentConfig(options)
+
+    return computed(() =>
+        AgentExecutor.fromAgentAndTools({
+            agent: cfg.value.agent,
+            tools: cfg.value.tools,
+            returnIntermediateSteps: options.returnIntermediateSteps,
+            handleParsingErrors: options.handleParsingErrors
+        })
+    )
 }
 
 export interface CreateToolsRefOptions {
