@@ -1,7 +1,4 @@
-import {
-    CallbackManager,
-    CallbackManagerForChainRun
-} from '@langchain/core/callbacks/manager'
+import { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager'
 import { AIMessage } from '@langchain/core/messages'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {

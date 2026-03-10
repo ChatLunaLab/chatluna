@@ -546,7 +546,6 @@ export function convertMessageToMessageChunk(
                 })
             }
         }
-        console.log(toolCallChunks)
         return new AIMessageChunk({
             content,
             tool_call_chunks: toolCallChunks,
@@ -618,7 +617,6 @@ export function convertDeltaToMessageChunk(
 
                 toolCallChunks.push(toolCall)
             }
-            console.log(toolCallChunks)
         }
 
         return new AIMessageChunk({
