@@ -28,13 +28,13 @@ import {
     ChatMessagePart,
     ChatPart,
     ChatResponse,
-    GeminiUsageMetadata,
     ChatUsageMetadataPart,
     CreateEmbeddingResponse,
     GeminiModelInfo
 } from './types'
 import {
     createChatGenerationParams,
+    getUsage,
     isChatResponse,
     partAsType,
     partAsTypeCheck,
@@ -48,45 +48,6 @@ import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 import { createUsageMetadata } from '@chatluna/v1-shared-adapter'
-
-function getModalityTokens(
-    details: GeminiUsageMetadata['promptTokensDetails'],
-    modality: string
-) {
-    return details?.find((item) => item.modality === modality)?.tokenCount
-}
-
-function getCompletionTokens(data: ChatResponse) {
-    if (data.usageMetadata?.candidatesTokenCount != null) {
-        return data.usageMetadata.candidatesTokenCount
-    }
-
-    let total = 0
-    for (const candidate of data.candidates ?? []) {
-        total += candidate.tokenCount ?? 0
-    }
-    return total
-}
-
-function getUsage(data: ChatResponse) {
-    const usage = data.usageMetadata
-    if (usage == null) {
-        return
-    }
-
-    return {
-        promptTokens: usage.promptTokenCount,
-        completionTokens: getCompletionTokens(data),
-        totalTokens: usage.totalTokenCount,
-        inputAudioTokens: getModalityTokens(usage.promptTokensDetails, 'AUDIO'),
-        outputAudioTokens: getModalityTokens(
-            usage.candidatesTokensDetails,
-            'AUDIO'
-        ),
-        cacheReadTokens: usage.cachedContentTokenCount,
-        reasoningTokens: usage.thoughtsTokenCount
-    }
-}
 
 export class GeminiRequester
     extends ModelRequester<ClientConfig, Config>

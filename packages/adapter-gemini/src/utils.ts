@@ -16,7 +16,8 @@ import {
     ChatFunctionResponsePart,
     ChatMessagePart,
     ChatPart,
-    ChatResponse
+    ChatResponse,
+    GeminiUsageMetadata
 } from './types'
 import { Config, logger } from '.'
 import { ModelRequestParams } from 'koishi-plugin-chatluna/llm-core/platform/api'
@@ -924,6 +925,45 @@ export function expandModelVariants(
 }
 
 // #endregion
+
+export function getModalityTokens(
+    details: GeminiUsageMetadata['promptTokensDetails'],
+    modality: string
+) {
+    return details?.find((item) => item.modality === modality)?.tokenCount
+}
+
+function getCompletionTokens(data: ChatResponse) {
+    if (data.usageMetadata?.candidatesTokenCount != null) {
+        return data.usageMetadata.candidatesTokenCount
+    }
+
+    let total = 0
+    for (const candidate of data.candidates ?? []) {
+        total += candidate.tokenCount ?? 0
+    }
+    return total
+}
+
+export function getUsage(data: ChatResponse) {
+    const usage = data.usageMetadata
+    if (usage == null) {
+        return
+    }
+
+    return {
+        promptTokens: usage.promptTokenCount,
+        completionTokens: getCompletionTokens(data),
+        totalTokens: usage.totalTokenCount,
+        inputAudioTokens: getModalityTokens(usage.promptTokensDetails, 'AUDIO'),
+        outputAudioTokens: getModalityTokens(
+            usage.candidatesTokensDetails,
+            'AUDIO'
+        ),
+        cacheReadTokens: usage.cachedContentTokenCount,
+        reasoningTokens: usage.thoughtsTokenCount
+    }
+}
 
 function notNullFn<K, V>(_: K, v: V): v is NonNullable<V> {
     return v != null
