@@ -268,9 +268,17 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         maxRetries
                     )
                 ) {
+                    if (hasChunk) {
+                        logger.debug(
+                            'Stream failed after yielding chunks, cannot retry'
+                        )
+                    }
                     throw error
                 }
 
+                logger.debug(
+                    `Stream failed before first chunk (attempt ${attempt + 1}/${maxRetries}), retrying...`
+                )
                 await sleep(2000)
             }
         }
