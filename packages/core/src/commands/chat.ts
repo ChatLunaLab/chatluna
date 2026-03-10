@@ -84,6 +84,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
+    ctx.command('chatluna.chat.compress')
+        .option('room', '-r <room:string>')
+        .action(async ({ options, session }) => {
+            await chain.receiveCommand(
+                session,
+                'compress_room',
+                {
+                    force: true,
+                    i18n_base: 'commands.chatluna.chat.compress.messages',
+                    room_resolve: {
+                        name: options.room
+                    }
+                },
+                ctx
+            )
+        })
+
     ctx.command('chatluna.chat.voice <message:text>')
         .option('room', '-r <room:string>')
         .option('speaker', '-s <speakerId:number>', { authority: 1 })

@@ -108,7 +108,8 @@ commands:
                 arguments:
                     room: '目标房间。'
                 messages:
-                    success: '已压缩房间 {0} 的聊天记录。'
+                    success: '{0} -> {1}, {2}%'
+                    skipped: '未执行压缩。{0} -> {1}, {2}%'
                     no_room: '未找到指定的房间。'
                     failed: '压缩房间 {0} 的聊天记录失败：{1}'
             set:
@@ -246,6 +247,15 @@ commands:
                     no_active_chat: '当前未在房间中对话。'
                     stop_failed: '停止对话失败。'
                     success: '已成功停止当前对话。'
+            compress:
+                description: 手动压缩聊天记录（使用无限上下文）。
+                options:
+                    room: 指定要压缩的目标房间。
+                messages:
+                    success: '{0} -> {1}, {2}%'
+                    skipped: '未执行压缩。{0} -> {1}, {2}%'
+                    no_room: '未找到指定的房间。'
+                    failed: '压缩房间 {0} 的聊天记录失败：{1}'
             voice:
                 description: 与模型进行对话并将回复转换为语音输出。
                 options:
@@ -549,7 +559,6 @@ commands:
                     pages: '当前为第 [page] / [total] 页'
                     search_failed: '搜索记忆失败。'
                     invalid_view: '无效的记忆层级。目前可用：{0}'
-
 
             delete:
                 description: '删除记忆。'

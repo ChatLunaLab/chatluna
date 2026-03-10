@@ -1,6 +1,6 @@
 import { ChainValues } from '@langchain/core/utils/types'
 import { PromptTemplate } from '@langchain/core/prompts'
-import { BaseMessage } from '@langchain/core/messages'
+import { AIMessage, type UsageMetadata } from '@langchain/core/messages'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import {
     ChatLunaLLMCallArg,
@@ -22,6 +22,11 @@ export interface ChatLunaInfiniteContextChunkArg {
     chunk: string
     conversationId: string
     signal?: AbortSignal
+}
+
+export interface ChatLunaInfiniteContextChunkResult {
+    text: string
+    usageMetadata?: UsageMetadata
 }
 
 export class ChatLunaInfiniteContextChain
@@ -46,25 +51,22 @@ export class ChatLunaInfiniteContextChain
         { historyMemory }: ChatLunaInfiniteContextChainInput
     ) {
         const prompt =
-            PromptTemplate.fromTemplate(`You are "Infinite Context", the memory architect for a conversational AI assistant.
-Your task is to compress the provided fragment of dialogue into a compact knowledge note that keeps only information necessary to continue future conversations.
+            PromptTemplate.fromTemplate(`You are a helpful AI assistant tasked with summarizing conversations.
 
-Requirements:
-- Organise the fragment into clear topics.
-- Keep actionable commitments, unresolved questions, decisions, instructions, user preferences, emotional tone shifts, and critical facts.
-- Remove chit-chat, repeated phrasing, or expired information.
-- Use concise bullet points grouped by topic.
-- Respond in the primary language of the fragment.
+When asked to summarize, provide a detailed but concise summary of the conversation.
+Focus on information that would be helpful for continuing the conversation, including:
+- What was done
+- What is currently being worked on
+- Which files are being modified
+- What needs to be done next
+- Key user requests, constraints, or preferences that should persist
+- Important technical decisions and why they were made
 
-Format:
-<infinite_context>
-- Topic: <short title>
-  - Detail: <essential fact, instruction, or open task>
-</infinite_context>
+Your summary should be comprehensive enough to provide context but concise enough to be quickly understood.
 
-If nothing important remains, output "<infinite_context />".
+Do not respond to any questions in the conversation, only output the summary.
 
-Fragment:
+Conversation:
 {conversation_chunk}`)
 
         const chain = new ChatLunaLLMChain({ llm, prompt })
@@ -79,15 +81,11 @@ Fragment:
         chunk,
         conversationId,
         signal
-    }: ChatLunaInfiniteContextChunkArg): Promise<string | null> {
+    }: ChatLunaInfiniteContextChunkArg): Promise<ChatLunaInfiniteContextChunkResult | null> {
         const trimmedChunk = chunk?.trim()
 
         if (!trimmedChunk) {
             return null
-        }
-
-        if (this._isAlreadyCompressed(trimmedChunk)) {
-            return trimmedChunk
         }
 
         const result = await this.chain.invoke({
@@ -97,7 +95,7 @@ Fragment:
             signal
         })
 
-        const rawMessage = (result['message'] ?? null) as BaseMessage | null
+        const rawMessage = (result['message'] ?? null) as AIMessage | null
 
         const text =
             (result['text'] ?? '').toString().trim() ||
@@ -107,23 +105,10 @@ Fragment:
             return null
         }
 
-        return text
-    }
-
-    private _isAlreadyCompressed(chunk: string): boolean {
-        if (!chunk) {
-            return false
+        return {
+            text,
+            usageMetadata: rawMessage?.usage_metadata
         }
-
-        if (/<\/?infinite_context/iu.test(chunk)) {
-            return true
-        }
-
-        if (/source:\s*['"]infinite-context['"]/iu.test(chunk)) {
-            return true
-        }
-
-        return false
     }
 
     async call(
