@@ -24,12 +24,11 @@ import {
     ModelCapabilities,
     ModelInfo
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages'
+import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
 import { computed, ComputedRef } from '@vue/reactivity'
-import type { AgentStep } from '../agent'
 import { InfiniteContextManager } from './infinite_context'
 
 export class ChatInterface {
@@ -69,7 +68,8 @@ export class ChatInterface {
             arg.message,
             arg.variables,
             this,
-            wrapper
+            wrapper,
+            arg.requestId
         )
 
         if (!throwError) {
@@ -139,6 +139,17 @@ export class ChatInterface {
         arg: ChatLunaLLMCallArg,
         wrapper: ChatLunaLLMChainWrapper
     ): Promise<ChainValues> {
+        let hasSavedUser = false
+
+        const saveUser = async () => {
+            if (hasSavedUser) {
+                return
+            }
+
+            await this._chatHistory.addMessage(arg.message)
+            hasSavedUser = true
+        }
+
         try {
             if (this.ctx.chatluna.currentConfig.infiniteContext) {
                 const manager = this._ensureInfiniteContextManager()
@@ -150,7 +161,21 @@ export class ChatInterface {
 
         const response = (await wrapper.call({
             ...arg,
-            maxToken: this.preset?.value?.config?.maxOutputToken
+            maxToken: this.preset?.value?.config?.maxOutputToken,
+            messageQueue: arg.messageQueue,
+            onAgentEvent: async (event) => {
+                if (event.type === 'tool-result') {
+                    await saveUser()
+                    await this._chatHistory.addAgentToolBatch(event.steps)
+                }
+
+                if (event.type === 'human-update') {
+                    await saveUser()
+                    await this._chatHistory.addMessages(event.messages)
+                }
+
+                await arg.onAgentEvent?.(event)
+            }
         })) as {
             message: AIMessage
         } & ChainValues
@@ -181,50 +206,13 @@ export class ChatInterface {
 
         // Update chat history
         if (messageContent.trim().length > 0) {
-            await this.chatHistory.addMessage(arg.message)
+            await saveUser()
             let saveMessage = responseMessage
             if (!this.ctx.chatluna.currentConfig.rawOnCensor) {
                 saveMessage = displayResponse
             }
 
-            if (
-                Array.isArray(response.parallelIntermediateSteps) &&
-                response.parallelIntermediateSteps.length > 0
-            ) {
-                const intermediateSteps = response[
-                    'parallelIntermediateSteps'
-                ] as AgentStep[][]
-
-                // 抢先添加工具调用
-
-                for (const parallelSteps of intermediateSteps) {
-                    await this.chatHistory.addMessage(
-                        new AIMessage({
-                            content: '',
-                            tool_calls: parallelSteps.map((step) => ({
-                                id: step.action.toolCallId,
-                                name: step.action.tool,
-                                args:
-                                    typeof step.action.toolInput !== 'string'
-                                        ? step.action.toolInput
-                                        : { input: step.action.toolInput }
-                            }))
-                        })
-                    )
-
-                    for (const step of parallelSteps) {
-                        await this.chatHistory.addMessage(
-                            new ToolMessage({
-                                content: step.observation,
-                                tool_call_id: step.action.toolCallId,
-                                name: step.action.tool
-                            })
-                        )
-                    }
-                }
-            }
-
-            await this.chatHistory.addMessage(saveMessage)
+            await this._chatHistory.addMessage(saveMessage)
         }
 
         // Process response
@@ -589,7 +577,8 @@ declare module 'koishi' {
             sourceMessage: HumanMessage,
             promptVariables: ChainValues,
             chatInterface: ChatInterface,
-            chain?: ChatLunaLLMChainWrapper
+            chain?: ChatLunaLLMChainWrapper,
+            requestId?: string
         ) => Promise<void>
     }
 }

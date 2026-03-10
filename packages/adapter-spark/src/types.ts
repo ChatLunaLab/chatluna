@@ -1,4 +1,10 @@
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import type {
+    ChatCompletionParts,
+    ChatCompletionRequestMessageToolCall,
+    ChatCompletionResponse as OpenAIChatCompletionResponse,
+    ChatCompletionTool as OpenAIChatCompletionTool
+} from '@chatluna/v1-shared-adapter'
+import type { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 
 // Legacy WebSocket types (kept for backwards compatibility)
 export interface LegacyChatCompletionResponse {
@@ -97,34 +103,14 @@ export interface ChatCompletionDelta {
     tool_call_id?: string
 }
 
-export interface ChatCompletionUsage {
-    prompt_tokens: number
-    completion_tokens: number
-    total_tokens: number
-}
+export type ChatCompletionUsage = OpenAIChatCompletionResponse['usage']
 
-export interface ToolCall {
-    id: string
-    type: 'function'
-    index?: number
-    function: {
-        name: string
-        arguments: string
-    }
-}
+export type ToolCall = ChatCompletionRequestMessageToolCall
 
-export interface ChatCompletionTool {
-    type: 'function'
-    function: {
-        name: string
-        description: string
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parameters: any
-    }
-}
+export type ChatCompletionTool = OpenAIChatCompletionTool
 
 export interface ChatCompletionMessage {
-    content: string | null
+    content?: string | ChatCompletionParts[] | null
     role: ChatCompletionMessageRoleEnum
     name?: string
     reasoning_content?: string

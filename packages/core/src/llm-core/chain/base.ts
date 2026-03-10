@@ -23,6 +23,7 @@ import {
 import { ChatGeneration, RUN_KEY } from '@langchain/core/outputs'
 import { BaseMemory } from '@langchain/core/memory'
 import type { PostHandler } from '../../utils/types'
+import type { AgentEvent, MessageQueue } from '../agent/types'
 
 export type SystemPrompts = BaseMessage[]
 
@@ -39,12 +40,15 @@ export interface ChatLunaLLMCallArg {
     events: ChatEvents
     stream: boolean
     conversationId: string
+    requestId: string
     session: Session
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variables?: Record<string, any>
     signal?: AbortSignal
     postHandler?: PostHandler
     maxToken?: number
+    messageQueue?: MessageQueue
+    onAgentEvent?: (event: AgentEvent) => Promise<void> | void
 }
 
 export interface ChatLunaLLMChainInput extends ChainInputs {

@@ -1,19 +1,36 @@
 import { computed, ComputedRef, shallowRef } from '@vue/reactivity'
-import type { ChatLunaChatModel } from '../platform/model'
+import {
+    ChatLunaBaseEmbeddings,
+    type ChatLunaChatModel
+} from '../platform/model'
 import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaChatPrompt } from '../chain/prompt'
 import { createReactAgent } from './react'
-import { AgentExecutor } from './executor'
 import { createOpenAIAgent } from './openai'
 import { ChatLunaTool } from '../platform/types'
 import { BaseMessage } from '@langchain/core/messages'
 import { Session } from 'koishi'
-import { ChatLunaBaseEmbeddings } from '../platform/model'
+import type { Runnable } from '@langchain/core/runnables'
+import { AgentExecutor } from './executor'
+
+export interface CreateAgentConfigOptions {
+    llm: ComputedRef<ChatLunaChatModel>
+    tools: ComputedRef<StructuredTool[]>
+
+    prompt: ChatLunaChatPrompt
+    agentMode: 'react' | 'tool-calling'
+    instructions?: ComputedRef<string>
+}
+
+export interface AgentConfig {
+    agent: Runnable
+    tools: StructuredTool[]
+    agentMode: 'react' | 'tool-calling'
+}
 
 export interface CreateAgentExecutorOptions {
     llm: ComputedRef<ChatLunaChatModel>
     tools: ComputedRef<StructuredTool[]>
-
     prompt: ChatLunaChatPrompt
     agentMode: 'react' | 'tool-calling'
     returnIntermediateSteps?: boolean
@@ -21,7 +38,7 @@ export interface CreateAgentExecutorOptions {
     instructions?: ComputedRef<string>
 }
 
-export function createAgentExecutor(options: CreateAgentExecutorOptions) {
+export function createAgentConfig(options: CreateAgentConfigOptions) {
     if (options.agentMode === 'react') {
         const agent = computed(() => {
             const llm = options.llm.value
@@ -35,18 +52,11 @@ export function createAgentExecutor(options: CreateAgentExecutorOptions) {
             })
         })
 
-        return computed(() =>
-            AgentExecutor.fromAgentAndTools({
-                tags: ['react'],
-                agent: agent.value,
-                tools: options.tools.value,
-                memory: undefined,
-                verbose: false,
-                returnIntermediateSteps:
-                    options.returnIntermediateSteps ?? false,
-                handleParsingErrors: options.handleParsingErrors ?? true
-            })
-        )
+        return computed<AgentConfig>(() => ({
+            agent: agent.value,
+            tools: options.tools.value,
+            agentMode: 'react'
+        }))
     }
 
     const agent = computed(() =>
@@ -57,14 +67,24 @@ export function createAgentExecutor(options: CreateAgentExecutorOptions) {
         })
     )
 
+    return computed<AgentConfig>(() => ({
+        agent: agent.value,
+        tools: options.tools.value,
+        agentMode: 'tool-calling'
+    }))
+}
+
+export function createAgentExecutor(
+    options: CreateAgentExecutorOptions
+): ComputedRef<AgentExecutor> {
+    const cfg = createAgentConfig(options)
+
     return computed(() =>
         AgentExecutor.fromAgentAndTools({
-            tags: ['tool-calling'],
-            agent: agent.value,
-            tools: options.tools.value,
-            returnIntermediateSteps: options.returnIntermediateSteps ?? false,
-            memory: undefined,
-            verbose: false
+            agent: cfg.value.agent,
+            tools: cfg.value.tools,
+            returnIntermediateSteps: options.returnIntermediateSteps,
+            handleParsingErrors: options.handleParsingErrors
         })
     )
 }

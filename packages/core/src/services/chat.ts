@@ -15,6 +15,7 @@ import { LRUCache } from 'lru-cache'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { MessageQueue } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ClientConfig,
@@ -227,6 +228,22 @@ export class ChatLunaService extends Service<Config> {
         }
 
         return chatInterfaceWrapper.stopChat(requestId)
+    }
+
+    appendPendingMessage(
+        conversationId: string,
+        message: HumanMessage,
+        chatMode?: string
+    ) {
+        if (this._chatInterfaceWrapper == null) {
+            return false
+        }
+
+        return this._chatInterfaceWrapper.appendPendingMessage(
+            conversationId,
+            message,
+            chatMode
+        )
     }
 
     queryInterfaceWrapper(room: ConversationRoom, autoCreate: boolean = true) {
@@ -874,6 +891,19 @@ type ChatHubChatBridgerInfo = {
     room: ConversationRoom
 }
 
+type ActiveRequest = {
+    requestId: string
+    abortController: AbortController
+    chatMode: string
+    messageQueue: MessageQueue
+    roundDecisionResolvers: ((canContinue: boolean) => void)[]
+    lastDecision?: boolean
+}
+
+function createAbortError() {
+    return new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+}
+
 class ChatInterfaceWrapper {
     private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
         new LRUCache({
@@ -885,6 +915,7 @@ class ChatInterfaceWrapper {
     private _platformService: PlatformService
 
     private _requestIdMap: Map<string, AbortController> = new Map()
+    private _activeRequests: Map<string, ActiveRequest> = new Map()
     private _platformToConversations: Map<string, string[]> = new Map()
 
     constructor(private _service: ChatLunaService) {
@@ -949,7 +980,16 @@ class ChatInterfaceWrapper {
                 (await this._createChatInterface(room))
 
             const abortController = new AbortController()
+            const activeRequest: ActiveRequest = {
+                requestId,
+                abortController,
+                chatMode: room.chatMode,
+                messageQueue: new MessageQueue(),
+                roundDecisionResolvers: []
+            }
+
             this._requestIdMap.set(requestId, abortController)
+            this._activeRequests.set(conversationId, activeRequest)
 
             const humanMessage = new HumanMessage({
                 content: message.content,
@@ -966,10 +1006,21 @@ class ChatInterfaceWrapper {
                 events: event,
                 stream,
                 conversationId,
+                requestId,
                 session,
                 variables,
                 signal: abortController.signal,
-                postHandler
+                postHandler,
+                messageQueue: activeRequest.messageQueue,
+                onAgentEvent: async (agentEvent) => {
+                    if (agentEvent.type === 'round-decision') {
+                        activeRequest.lastDecision = agentEvent.canContinue
+                        for (const resolve of activeRequest.roundDecisionResolvers) {
+                            resolve(agentEvent.canContinue)
+                        }
+                        activeRequest.roundDecisionResolvers = []
+                    }
+                }
             })
 
             const aiMessage = chainValues.message as AIMessage
@@ -1003,6 +1054,14 @@ class ChatInterfaceWrapper {
                 this._conversationQueue.remove(conversationId, requestId)
             ])
             this._requestIdMap.delete(requestId)
+
+            const active = this._activeRequests.get(conversationId)
+            if (active?.requestId === requestId) {
+                for (const resolve of active.roundDecisionResolvers) {
+                    resolve(false)
+                }
+                this._activeRequests.delete(conversationId)
+            }
         }
     }
 
@@ -1011,11 +1070,44 @@ class ChatInterfaceWrapper {
         if (!abortController) {
             return false
         }
-        abortController.abort(
-            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
-        )
+        abortController.abort(createAbortError())
         this._requestIdMap.delete(requestId)
         return true
+    }
+
+    async appendPendingMessage(
+        conversationId: string,
+        message: HumanMessage,
+        chatMode?: string
+    ): Promise<boolean> {
+        if (chatMode != null && chatMode !== 'plugin') {
+            return false
+        }
+
+        const activeRequest = this._activeRequests.get(conversationId)
+
+        if (activeRequest == null) {
+            return false
+        }
+        if (activeRequest.chatMode !== 'plugin') {
+            return false
+        }
+
+        if (activeRequest.lastDecision != null) {
+            if (activeRequest.lastDecision) {
+                activeRequest.messageQueue.push(message)
+            }
+            return activeRequest.lastDecision
+        }
+
+        return new Promise((resolve) => {
+            activeRequest.roundDecisionResolvers.push((canContinue) => {
+                if (canContinue) {
+                    activeRequest.messageQueue.push(message)
+                }
+                resolve(canContinue)
+            })
+        })
     }
 
     async query(
@@ -1144,15 +1236,14 @@ class ChatInterfaceWrapper {
     dispose(platform?: string) {
         // Terminate all related requests
         for (const controller of this._requestIdMap.values()) {
-            controller.abort(
-                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
-            )
+            controller.abort(createAbortError())
         }
 
         if (!platform) {
             // Clean up all resources
             this._conversations.clear()
             this._requestIdMap.clear()
+            this._activeRequests.clear()
             this._platformToConversations.clear()
             return
         }
@@ -1163,6 +1254,7 @@ class ChatInterfaceWrapper {
 
         for (const conversationId of conversationIds) {
             this._conversations.delete(conversationId)
+            this._activeRequests.delete(conversationId)
         }
 
         this._platformToConversations.delete(platform)

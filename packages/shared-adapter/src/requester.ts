@@ -201,6 +201,18 @@ export async function* processStreamResponse<
                 text: messageChunk.content as string
             })
         } catch (e) {
+            if (
+                chunk.includes('tool_calls') ||
+                chunk.includes('function_call') ||
+                chunk.includes('tool_call_id')
+            ) {
+                requestContext.modelRequester.logger.error(
+                    'error with chunk',
+                    chunk
+                )
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            }
+
             if (errorCount > 5) {
                 requestContext.modelRequester.logger.error(
                     'error with chunk',

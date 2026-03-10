@@ -234,24 +234,25 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             const latestTokenUsage = this._createTokenUsageTracker()
             let stream: AsyncGenerator<ChatGenerationChunk> | null = null
             let hasChunk = false
-            let isToolCallMessage = false
+            let hasToolCallChunk = false
 
             try {
-                stream = await this._createStreamWithRetry(streamParams)
+                stream = await this._createStream(streamParams)
 
                 for await (const chunk of stream) {
-                    isToolCallMessage = this._handleStreamChunk(
-                        chunk,
-                        runManager,
-                        latestTokenUsage
-                    )
+                    hasToolCallChunk =
+                        this._handleStreamChunk(
+                            chunk,
+                            runManager,
+                            latestTokenUsage
+                        ) || hasToolCallChunk
                     hasChunk = true
                     yield chunk
                 }
 
                 this._ensureChunksReceived(hasChunk)
                 this._finalizeStream(
-                    isToolCallMessage,
+                    hasToolCallChunk,
                     latestTokenUsage,
                     runManager
                 )
@@ -267,9 +268,17 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         maxRetries
                     )
                 ) {
+                    if (hasChunk) {
+                        logger.debug(
+                            'Stream failed after yielding chunks, cannot retry'
+                        )
+                    }
                     throw error
                 }
 
+                logger.debug(
+                    `Stream failed before first chunk (attempt ${attempt + 1}/${maxRetries}), retrying...`
+                )
                 await sleep(2000)
             }
         }
@@ -296,23 +305,23 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         }
 
         const message = chunk.message as AIMessageChunk | undefined
-        const isToolCallMessage = this._isToolCallMessage(message)
+        const hasToolCallChunk = this._hasToolCallChunk(message)
 
-        if (isToolCallMessage) {
+        if (hasToolCallChunk) {
             // eslint-disable-next-line no-void
             void runManager?.handleCustomEvent('LLMNewChunk', message)
         }
 
         this._updateTokenUsageFromChunk(chunk, latestTokenUsage)
 
-        return isToolCallMessage
+        return hasToolCallChunk
     }
 
-    private _isToolCallMessage(message?: AIMessageChunk): boolean {
+    private _hasToolCallChunk(message?: AIMessageChunk): boolean {
         return (
-            (message?.tool_calls?.length ?? 0) === 0 &&
-            (message?.tool_call_chunks?.length ?? 0) === 0 &&
-            (message?.invalid_tool_calls?.length ?? 0) === 0
+            (message?.tool_calls?.length ?? 0) > 0 ||
+            (message?.tool_call_chunks?.length ?? 0) > 0 ||
+            (message?.invalid_tool_calls?.length ?? 0) > 0
         )
     }
 
@@ -340,11 +349,11 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     }
 
     private _finalizeStream(
-        isToolCallMessage: boolean,
+        hasToolCallChunk: boolean,
         latestTokenUsage: TokenUsageTracker,
         runManager?: CallbackManagerForLLMRun
     ) {
-        if (isToolCallMessage) {
+        if (hasToolCallChunk) {
             // eslint-disable-next-line no-void
             void runManager?.handleCustomEvent('LLMNewChunk', undefined)
         }
@@ -453,35 +462,53 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         options: this['ParsedCallOptions'],
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatGeneration> {
+        const maxRetries = Math.max(1, this._options.maxRetries ?? 1)
+
         const generateWithRetry = async () => {
-            let response: ChatGeneration
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    let response: ChatGeneration
 
-            if (options.stream) {
-                const stream = this._streamResponseChunks(
-                    messages,
-                    options,
-                    runManager
-                )
-                let responseChunk: ChatGenerationChunk
-                for await (const chunk of stream) {
-                    responseChunk =
-                        responseChunk != null
-                            ? responseChunk.concat(chunk)
-                            : chunk
+                    if (options.stream) {
+                        const stream = this._streamResponseChunks(
+                            messages,
+                            options,
+                            runManager
+                        )
+                        let responseChunk: ChatGenerationChunk
+                        for await (const chunk of stream) {
+                            responseChunk =
+                                responseChunk != null
+                                    ? responseChunk.concat(chunk)
+                                    : chunk
+                        }
+
+                        response = responseChunk
+                    } else {
+                        response = await this._completion({
+                            ...this.invocationParams(options),
+                            input: messages
+                        })
+                    }
+
+                    return response
+                } catch (error) {
+                    if (
+                        options.stream ||
+                        this._isAbortError(error) ||
+                        attempt === maxRetries - 1
+                    ) {
+                        throw error
+                    }
+
+                    await sleep(2000)
                 }
-
-                response = responseChunk
-            } else {
-                response = await this._completion({
-                    ...this.invocationParams(options),
-                    input: messages
-                })
             }
 
-            return response
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
         }
 
-        return this.caller.call(generateWithRetry)
+        return generateWithRetry()
     }
 
     private async _withTimeout<T>(
@@ -516,39 +543,19 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         }
     }
 
-    /**
-     ** Creates a streaming request with retry.
-     * @param request The parameters for creating a completion.
-     ** @returns A streaming request.
-     */
-    private _createStreamWithRetry(params: ModelRequestParams) {
-        const makeCompletionRequest = async () => {
-            try {
-                const result = await this._withTimeout(
-                    async () => this._requester.completionStream(params),
-                    params.timeout
-                )
-                return result
-            } catch (e) {
-                await sleep(2000)
-                throw e
-            }
-        }
-        return this.caller.call(makeCompletionRequest)
+    private _createStream(params: ModelRequestParams) {
+        return this._withTimeout(
+            async () => this._requester.completionStream(params),
+            params.timeout
+        )
     }
 
     /** @ignore */
     private async _completion(params: ModelRequestParams) {
-        try {
-            const result = await this._withTimeout(
-                () => this._requester.completion(params),
-                params.timeout
-            )
-            return result
-        } catch (e) {
-            await sleep(2000)
-            throw e
-        }
+        return this._withTimeout(
+            () => this._requester.completion(params),
+            params.timeout
+        )
     }
 
     async cropMessages(

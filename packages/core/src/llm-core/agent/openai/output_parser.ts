@@ -6,12 +6,13 @@ import {
 } from '@langchain/core/messages'
 import { ChatGeneration } from '@langchain/core/outputs'
 import { AgentStep } from '@langchain/core/agents'
-import { OutputParserException } from '@langchain/core/output_parsers'
+import {
+    BaseOutputParser,
+    OutputParserException
+} from '@langchain/core/output_parsers'
 import {
     AgentAction,
-    AgentActionOutputParser,
     AgentFinish,
-    AgentMultiActionOutputParser,
     ChatCompletionMessageFunctionCall,
     ChatCompletionMessageToolCall
 } from '../types'
@@ -24,7 +25,9 @@ export type FunctionsAgentAction = AgentAction & {
     messageLog?: BaseMessage[]
 }
 
-export class OpenAIFunctionsAgentOutputParser extends AgentActionOutputParser {
+export class OpenAIFunctionsAgentOutputParser extends BaseOutputParser<
+    AgentAction | AgentFinish
+> {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['@langchain/core/messages', 'agents', 'openai']
 
@@ -116,7 +119,9 @@ export type ToolsAgentStep = AgentStep & {
     action: ToolsAgentAction
 }
 
-export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
+export class OpenAIToolsAgentOutputParser extends BaseOutputParser<
+    AgentAction[] | AgentFinish
+> {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['@langchain/core/messages', 'agents', 'openai']
 
@@ -156,6 +161,33 @@ export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
         }
 
         const content = getMessageContent(message.content)
+        if (
+            (message instanceof AIMessageChunk ||
+                message instanceof AIMessage) &&
+            message.tool_calls?.length > 0
+        ) {
+            const toolCalls = message.tool_calls
+            try {
+                return toolCalls.map((toolCall, i) => {
+                    return {
+                        tool: toolCall.name,
+                        toolInput: toolCall.args,
+                        toolCallId: toolCall.id,
+                        log:
+                            content?.length > 0
+                                ? content
+                                : `Invoking "${toolCall.name}" with ${JSON.stringify(toolCall.args) ?? '{}'}`,
+                        messageLog: i === 0 ? [message] : [],
+                        content: message.content
+                    }
+                })
+            } catch (error) {
+                throw new OutputParserException(
+                    `Failed to parse tool arguments from chat model response. Text: "${JSON.stringify(toolCalls)}". ${error}`
+                )
+            }
+        }
+
         const { tool_calls: rawToolCalls } = message.additional_kwargs
         if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
             const toolCalls = rawToolCalls as ChatCompletionMessageToolCall[]
@@ -171,33 +203,6 @@ export class OpenAIToolsAgentOutputParser extends AgentMultiActionOutputParser {
                             content?.length > 0
                                 ? content
                                 : `Invoking "${toolCall.function.name}" with ${toolCall.function.arguments ?? '{}'}`,
-                        messageLog: i === 0 ? [message] : [],
-                        content: message.content
-                    }
-                })
-            } catch (error) {
-                throw new OutputParserException(
-                    `Failed to parse tool arguments from chat model response. Text: "${JSON.stringify(toolCalls)}". ${error}`
-                )
-            }
-        }
-
-        if (
-            (message instanceof AIMessageChunk ||
-                message instanceof AIMessage) &&
-            message.tool_calls?.length > 0
-        ) {
-            const { tool_calls: toolCalls } = message
-            try {
-                return toolCalls.map((toolCall, i) => {
-                    return {
-                        tool: toolCall.name,
-                        toolInput: toolCall.args,
-                        toolCallId: toolCall.id,
-                        log:
-                            content?.length > 0
-                                ? content
-                                : `Invoking "${toolCall.name}" with ${JSON.stringify(toolCall.args) ?? '{}'}`,
                         messageLog: i === 0 ? [message] : [],
                         content: message.content
                     }

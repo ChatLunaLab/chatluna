@@ -1,71 +1,35 @@
+import { BaseMessage } from '@langchain/core/messages'
+import type { StructuredTool } from '@langchain/core/tools'
 import {
-    AIMessage,
-    AIMessageChunk,
-    BaseMessage,
-    MessageType,
-    ToolMessage
-} from '@langchain/core/messages'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
-import { removeAdditionalProperties } from '@chatluna/v1-shared-adapter'
+    convertDeltaToMessageChunk as convertOpenAIDeltaToMessageChunk,
+    formatToolsToOpenAITools,
+    langchainMessageToOpenAIMessage
+} from '@chatluna/v1-shared-adapter'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     ChatCompletionDelta,
     ChatCompletionMessage,
     ChatCompletionMessageRoleEnum,
     ChatCompletionTool
 } from './types'
-import { isZodSchemaV3 } from '@langchain/core/utils/types'
 
-export function langchainMessageToSparkMessage(
-    messages: BaseMessage[],
-    removeSystemMessage?: boolean
+function transformSparkSystemMessages(
+    messages: ChatCompletionMessage[]
 ): ChatCompletionMessage[] {
-    const mappedMessage = messages.map((it) => {
-        const role = messageTypeSparkAIRole(it.getType())
-
-        const msg: ChatCompletionMessage = {
-            role,
-            tool_call_id: (it as ToolMessage).tool_call_id,
-            content: it.content as string,
-            name: role === 'assistant' || role === 'tool' ? it.name : undefined
-        }
-
-        if (it.getType() === 'ai') {
-            const toolCalls = (it as AIMessage).tool_calls
-
-            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-                msg.tool_calls = toolCalls.map((toolCall) => ({
-                    id: toolCall.id,
-                    type: 'function',
-                    function: {
-                        name: toolCall.name,
-                        arguments: JSON.stringify(toolCall.args)
-                    }
-                }))
-            }
-        }
-
-        return msg
-    })
-
     const result: ChatCompletionMessage[] = []
 
-    for (let i = 0; i < mappedMessage.length; i++) {
-        const message = mappedMessage[i]
+    for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i]
 
-        if (message.role !== 'system') {
-            result.push(message)
-            continue
-        }
-
-        if (removeSystemMessage) {
+        if (msg.role !== 'system') {
+            result.push(msg)
             continue
         }
 
         result.push({
             role: 'user',
-            content: message.content
+            content: msg.content
         })
 
         result.push({
@@ -73,7 +37,7 @@ export function langchainMessageToSparkMessage(
             content: 'Okay, what do I need to do?'
         })
 
-        if (mappedMessage?.[i + 1]?.role === 'assistant') {
+        if (messages[i + 1]?.role === 'assistant') {
             result.push({
                 role: 'user',
                 content:
@@ -101,85 +65,43 @@ export function langchainMessageToSparkMessage(
     return result
 }
 
-export function convertDeltaToMessageChunk(
-    delta: ChatCompletionDelta,
-    defaultRole: string
-): AIMessageChunk {
-    const content = delta.content || ''
+export async function langchainMessageToSparkMessage(
+    messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
+    model: string,
+    removeSystemMessage?: boolean
+): Promise<ChatCompletionMessage[]> {
+    const result = (
+        await langchainMessageToOpenAIMessage(messages, plugin, model, false)
+    ).map((msg) => {
+        if (msg.role !== 'function') {
+            return msg as ChatCompletionMessage
+        }
 
-    const chunk = new AIMessageChunk({
-        content,
-        additional_kwargs: {}
+        return {
+            ...msg,
+            role: 'tool'
+        } satisfies ChatCompletionMessage
     })
 
-    if (delta.tool_calls && delta.tool_calls.length > 0) {
-        chunk.additional_kwargs.tool_calls = delta.tool_calls.map(
-            (toolCall) => ({
-                id: toolCall.id,
-                type: toolCall.type,
-                function: {
-                    name: toolCall.function.name,
-                    arguments: toolCall.function.arguments
-                }
-            })
-        )
+    if (!removeSystemMessage) {
+        return result
     }
 
-    // Handle reasoning content for thinking models
-    if (delta.reasoning_content) {
-        chunk.additional_kwargs.reasoning_content = delta.reasoning_content
-    }
-
-    return chunk
+    return transformSparkSystemMessages(result)
 }
 
-export function messageTypeSparkAIRole(
-    type: MessageType
-): ChatCompletionMessageRoleEnum {
-    switch (type) {
-        case 'system':
-            return 'system'
-        case 'ai':
-            return 'assistant'
-        case 'human':
-            return 'user'
-        case 'function':
-            return 'tool'
-        case 'tool':
-            return 'tool'
-        default:
-            throw new Error(`Unknown message type: ${type}`)
-    }
+export function convertDeltaToMessageChunk(
+    delta: ChatCompletionDelta,
+    defaultRole?: ChatCompletionMessageRoleEnum
+) {
+    return convertOpenAIDeltaToMessageChunk(delta, defaultRole)
 }
 
 export function formatToolsToSparkTools(
     tools: StructuredTool[]
 ): ChatCompletionTool[] {
-    if (tools.length < 1) {
-        return undefined
-    }
-    return tools.map(formatToolToSparkTool)
-}
-
-export function formatToolToSparkTool(
-    tool: StructuredTool
-): ChatCompletionTool {
-    const parameters = removeAdditionalProperties(
-        isZodSchemaV3(tool.schema)
-            ? zodToJsonSchema(tool.schema as never, {
-                  allowedAdditionalProperties: undefined
-              })
-            : tool.schema
-    )
-
-    return {
-        type: 'function',
-        function: {
-            name: tool.name,
-            description: tool.description,
-            parameters
-        }
-    }
+    return formatToolsToOpenAITools(tools, false) as ChatCompletionTool[]
 }
 
 export interface SparkModelDefinition {

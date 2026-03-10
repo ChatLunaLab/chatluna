@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
+    AIMessage,
     AIMessageChunk,
     BaseMessage,
     ChatMessageChunk,
@@ -84,9 +85,22 @@ export async function langchainMessageToWenXinMessage(
                         ? rawMessage.name
                         : undefined,
                 role,
-                //  function_call: rawMessage.additional_kwargs.function_call,
-                tool_calls: rawMessage.additional_kwargs.tool_calls,
                 tool_call_id: (rawMessage as ToolMessage).tool_call_id
+            } as WenxinMessage
+
+            if (rawMessage.getType() === 'ai') {
+                const toolCalls = (rawMessage as AIMessage).tool_calls
+
+                if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                    msg.tool_calls = toolCalls.map((toolCall) => ({
+                        id: toolCall.id,
+                        type: 'function',
+                        function: {
+                            name: toolCall.name,
+                            arguments: JSON.stringify(toolCall.args)
+                        }
+                    }))
+                }
             }
 
             if (msg.tool_calls == null) {
@@ -286,17 +300,11 @@ export function convertDeltaToMessageChunk(
     let additionalKwargs: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         function_call?: any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-        tool_calls?: any
         reasoning_content?: string
     }
     if (delta.function_call) {
         additionalKwargs = {
             function_call: delta.function_call
-        }
-    } else if (delta.tool_calls) {
-        additionalKwargs = {
-            tool_calls: delta.tool_calls
         }
     } else {
         additionalKwargs = {}
@@ -312,12 +320,18 @@ export function convertDeltaToMessageChunk(
         const toolCallChunks = []
         if (Array.isArray(delta.tool_calls)) {
             for (const rawToolCall of delta.tool_calls) {
-                toolCallChunks.push({
+                const toolCall = {
                     name: rawToolCall.function?.name,
                     args: rawToolCall.function?.arguments,
                     id: rawToolCall.id,
                     index: rawToolCall.index
-                })
+                }
+
+                if (toolCall.name != null && toolCall.name.length < 1) {
+                    delete toolCall.name
+                }
+
+                toolCallChunks.push(toolCall)
             }
         }
         return new AIMessageChunk({

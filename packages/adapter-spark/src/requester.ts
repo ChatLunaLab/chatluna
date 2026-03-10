@@ -1,3 +1,10 @@
+import { ChatGenerationChunk } from '@langchain/core/outputs'
+import {
+    buildChatCompletionParams,
+    createRequestContext,
+    processStreamResponse
+} from '@chatluna/v1-shared-adapter'
+import { Context, Logger } from 'koishi'
 import {
     ModelRequester,
     ModelRequestParams
@@ -6,31 +13,26 @@ import {
     ClientConfigPool,
     ClientConfigWrapper
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import { ChatGenerationChunk } from '@langchain/core/outputs'
-import { Context, Logger } from 'koishi'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
+import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
+import { SSEEvent, sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import * as fetchType from 'undici/types/fetch'
 import { Config } from '.'
 import {
-    ChatCompletionMessageRoleEnum,
     ChatCompletionRequest,
     ChatCompletionResponse,
     SparkClientConfig
 } from './types'
 import {
-    convertDeltaToMessageChunk,
-    formatToolsToSparkTools,
     getSparkModelDefinition,
     getSparkModelPassword,
     langchainMessageToSparkMessage
 } from './utils'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 
 let logger: Logger
 
@@ -55,45 +57,59 @@ export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
         await this.init()
         this._requestConfig = this._selectConfigForModel(params.model)
 
-        const modelDefinition = this._getModelDefinition(params.model)
-
-        const messagesMapped = langchainMessageToSparkMessage(
-            params.input,
-            modelDefinition.removeSystemMessage
+        const def = this._getModelDefinition(params.model)
+        const requestContext = createRequestContext(
+            this.ctx,
+            this._requestConfig.value,
+            this._pluginConfig,
+            this._plugin,
+            this
         )
 
         try {
+            const baseRequest = await buildChatCompletionParams(
+                {
+                    ...params,
+                    model: def.httpModel
+                },
+                this._plugin,
+                false,
+                false
+            )
+
             const request = deepAssign(
                 {},
                 {
-                    model: modelDefinition.httpModel,
-                    messages: messagesMapped,
+                    model: def.httpModel,
+                    messages: await langchainMessageToSparkMessage(
+                        params.input,
+                        this._plugin,
+                        def.httpModel,
+                        def.removeSystemMessage
+                    ),
                     user: params.user,
                     stream: true,
                     temperature:
                         params.temperature ?? this._pluginConfig.temperature,
-                    top_p: params.topP,
-                    presence_penalty: params.presencePenalty,
-                    frequency_penalty: params.frequencyPenalty,
-                    max_tokens: params.maxTokens,
-                    tools:
-                        params.tools != null
-                            ? formatToolsToSparkTools(params.tools)
-                            : undefined
+                    top_p: baseRequest.top_p,
+                    presence_penalty: baseRequest.presence_penalty,
+                    frequency_penalty: baseRequest.frequency_penalty,
+                    max_tokens: baseRequest.max_tokens,
+                    tools: baseRequest.tools
                 } satisfies ChatCompletionRequest,
                 params.overrideRequestParams ?? {}
             )
 
             if (
                 request.tools != null &&
-                modelDefinition.apiPath === 'v1/chat/completions' &&
+                def.apiPath === 'v1/chat/completions' &&
                 request.tool_calls_switch == null
             ) {
                 request.tool_calls_switch = true
             }
 
             const response = await this._post(
-                this._getApiPath(params.model),
+                def.apiPath,
                 request,
                 {
                     signal: params.signal
@@ -101,132 +117,61 @@ export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
                 params.model
             )
 
-            const iterator = sseIterable(response)
-            let defaultRole: ChatCompletionMessageRoleEnum = 'assistant'
-            let errorCount = 0
-
-            // Support for reasoning models (like X1)
-            let reasoningContent = ''
-            let reasoningTime = 0
-            let isSetReasoningTime = false
-
-            for await (const event of iterator) {
-                const chunk = event.data
-                if (chunk === '[DONE]') {
-                    break
-                }
-
-                if (chunk == null || chunk === '' || chunk === 'undefined') {
-                    continue
-                }
-
-                try {
-                    const data = JSON.parse(chunk) as ChatCompletionResponse
-
-                    if (
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (data as any).error ||
-                        (data.code != null && data.code !== 0)
-                    ) {
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            new Error(
-                                'error when calling spark completion, Result: ' +
-                                    chunk
-                            )
-                        )
-                    }
-
-                    const choice = data.choices?.[0]
-                    if (!choice) {
-                        continue
-                    }
-
-                    const { delta } = choice
-                    if (!delta) {
-                        continue
-                    }
-
-                    // Handle reasoning content for thinking models
-                    if (delta.reasoning_content) {
-                        reasoningContent = (reasoningContent +
-                            delta.reasoning_content) as string
-
-                        if (reasoningTime === 0) {
-                            reasoningTime = Date.now()
-                        }
-                    }
-
-                    const messageChunk = convertDeltaToMessageChunk(
-                        delta,
-                        defaultRole
-                    )
-
-                    // Set reasoning time when actual content starts
-                    if (
-                        (delta.reasoning_content == null ||
-                            delta.reasoning_content === '') &&
-                        delta.content &&
-                        delta.content.length > 0 &&
-                        reasoningTime > 0 &&
-                        !isSetReasoningTime
-                    ) {
-                        reasoningTime = Date.now() - reasoningTime
-                        messageChunk.additional_kwargs.reasoning_time =
-                            reasoningTime
-                        isSetReasoningTime = true
-                    }
-
-                    defaultRole = (
-                        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
-                    ) as ChatCompletionMessageRoleEnum
-
-                    const generationChunk = new ChatGenerationChunk({
-                        message: messageChunk,
-                        text: messageChunk.content as string
-                    })
-
-                    yield generationChunk
-                } catch (e) {
-                    if (errorCount > 5) {
-                        logger.error('error with chunk', chunk)
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_FAILED,
-                            e
-                        )
-                    } else {
-                        errorCount++
-                        continue
-                    }
-                }
-            }
-
-            // Log reasoning content for debugging
-            if (reasoningContent.length > 0) {
-                logger.debug(
-                    `reasoning content: ${reasoningContent}. Use time: ${reasoningTime / 1000} s.`
-                )
-            }
+            yield* processStreamResponse(
+                requestContext,
+                this._validateSparkStream(sseIterable(response))
+            )
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e
-            } else {
-                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
+
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         } finally {
             this._requestConfig = undefined
         }
     }
 
-    private _getApiPath(model: string): string {
-        return this._getModelDefinition(model).apiPath
+    private async *_validateSparkStream(
+        iterator: AsyncGenerator<SSEEvent, string, unknown>
+    ): AsyncGenerator<SSEEvent, string, unknown> {
+        for await (const event of iterator) {
+            const chunk = event.data
+
+            if (
+                chunk === '[DONE]' ||
+                chunk == null ||
+                chunk === '' ||
+                chunk === 'undefined'
+            ) {
+                yield event
+                continue
+            }
+
+            try {
+                const data = JSON.parse(chunk) as ChatCompletionResponse
+
+                if (data.code != null && data.code !== 0) {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(
+                            'error when calling spark completion, Result: ' +
+                                chunk
+                        )
+                    )
+                }
+            } catch (err) {
+                if (err instanceof ChatLunaError) {
+                    throw err
+                }
+            }
+
+            yield event
+        }
+
+        return ''
     }
 
-    private _getBaseUrl(): string {
-        return 'https://spark-api-open.xf-yun.com'
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _post(
         url: string,
         data: ChatCompletionRequest,
@@ -235,9 +180,7 @@ export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
     ) {
         const body = JSON.stringify(data)
 
-        const fullUrl = `${this._getBaseUrl()}/${url}`
-
-        return this._plugin.fetch(fullUrl, {
+        return this._plugin.fetch(`https://spark-api-open.xf-yun.com/${url}`, {
             body,
             headers: this._buildHeaders(model ?? data.model),
             method: 'POST',
@@ -246,10 +189,6 @@ export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
     }
 
     private _buildHeaders(model: string) {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-        }
-
         const key = getSparkModelPassword(
             this._getRequestConfig().value.apiPasswords,
             model
@@ -262,9 +201,10 @@ export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
             )
         }
 
-        headers.Authorization = `Bearer ${key}`
-
-        return headers
+        return {
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json'
+        }
     }
 
     private _getModelDefinition(model: string) {
@@ -291,34 +231,29 @@ export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
     private _selectConfigForModel(
         model: string
     ): ClientConfigWrapper<SparkClientConfig> {
-        const matchedConfigs = this._configPool
-            .getConfigs()
-            .filter((config) => {
-                return (
-                    getSparkModelPassword(config.value.apiPasswords, model) !=
-                    null
-                )
-            })
+        const configs = this._configPool.getConfigs().filter((config) => {
+            return (
+                getSparkModelPassword(config.value.apiPasswords, model) != null
+            )
+        })
 
-        if (matchedConfigs.length < 1) {
+        if (configs.length < 1) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.API_KEY_UNAVAILABLE,
                 new Error(`没有找到模型 "${model}" 的 API 密钥`)
             )
         }
 
-        const availableConfigs = matchedConfigs.filter(
-            (config) => config.isAvailable
-        )
+        const available = configs.filter((config) => config.isAvailable)
 
-        if (availableConfigs.length < 1) {
+        if (available.length < 1) {
             throw new ChatLunaError(ChatLunaErrorCode.NOT_AVAILABLE_CONFIG)
         }
 
-        const cursor = this._modelConfigCursor[model] ?? 0
-        const config = availableConfigs[cursor % availableConfigs.length]
+        const idx = this._modelConfigCursor[model] ?? 0
+        const config = available[idx % available.length]
 
-        this._modelConfigCursor[model] = (cursor + 1) % availableConfigs.length
+        this._modelConfigCursor[model] = (idx + 1) % available.length
 
         return config
     }

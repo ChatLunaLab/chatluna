@@ -1,4 +1,4 @@
-import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages'
+import { BaseMessage, HumanMessage } from '@langchain/core/messages'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
 import {
@@ -13,6 +13,7 @@ import {
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     AgentAction,
+    AgentExecutor,
     createAgentExecutor,
     createToolsRef
 } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -47,7 +48,7 @@ export class ChatLunaPluginChain
     extends ChatLunaLLMChainWrapper
     implements ChatLunaPluginChainInput
 {
-    executor: ReturnType<typeof createAgentExecutor>
+    executor: ComputedRef<AgentExecutor>
 
     historyMemory: BufferMemory
 
@@ -162,7 +163,9 @@ export class ChatLunaPluginChain
         events,
         conversationId,
         variables,
-        maxToken
+        maxToken,
+        messageQueue,
+        onAgentEvent
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues & {
             chat_history?: BaseMessage[]
@@ -181,7 +184,7 @@ export class ChatLunaPluginChain
             await chatHistory.removeAllToolAndFunctionMessages()
         }
 
-        requests['chat_history'] = messages
+        requests['chat_history'] = [...messages]
         requests['id'] = conversationId
         requests['variables'] = Object.assign(variables ?? {}, {
             prompt: getMessageContent(message.content)
@@ -201,12 +204,14 @@ export class ChatLunaPluginChain
         this._toolsRef.update(session, messages.concat(message))
 
         const preset = this.preset.value
+        const executor = this.executor.value
 
         let usedToken = 0
-        let response: ChainValues
+        let response: ChainValues | undefined
+        let error
 
         const request = () => {
-            return this.executor.value.invoke(
+            return executor.invoke(
                 {
                     ...requests,
                     maxTokens: maxToken
@@ -215,41 +220,30 @@ export class ChatLunaPluginChain
                     signal,
                     callbacks: [
                         {
-                            handleLLMEnd(output) {
+                            handleLLMEnd(out) {
                                 usedToken +=
-                                    output.llmOutput?.tokenUsage?.totalTokens ??
-                                    0
+                                    out.llmOutput?.tokenUsage?.totalTokens ?? 0
                             },
-
                             handleAgentAction(action: AgentAction) {
-                                events?.['llm-call-tool'](
+                                return events?.['llm-call-tool']?.(
                                     action.tool,
                                     action.toolInput,
                                     action.content,
                                     action.log
                                 )
                             },
-
-                            handleToolEnd(output, runId, parentRunId, tags) {
+                            handleToolEnd(out) {
                                 logger.debug(
-                                    `Tool end:`,
-                                    sanitizeToolLogValue(output)
+                                    'Tool end:',
+                                    sanitizeToolLogValue(out)
                                 )
                             },
-
                             handleLLMNewToken(token) {
-                                events?.['llm-new-token']?.(token)
+                                return events?.['llm-new-token']?.(token)
                             },
-
-                            handleCustomEvent(
-                                eventName,
-                                data,
-                                runId,
-                                tags,
-                                metadata
-                            ) {
-                                if (eventName === 'LLMNewChunk') {
-                                    events?.['llm-new-chunk']?.(data)
+                            handleCustomEvent(name, data) {
+                                if (name === 'LLMNewChunk') {
+                                    return events?.['llm-new-chunk']?.(data)
                                 }
                             }
                         }
@@ -259,24 +253,37 @@ export class ChatLunaPluginChain
                         model: this.llm,
                         conversationId,
                         preset: preset.triggerKeyword[0],
-                        userId: session.userId
+                        userId: session.userId,
+                        messageQueue,
+                        onAgentEvent
                     }
                 }
             )
         }
 
-        let error
         for (let i = 0; i < 3; i++) {
-            if (signal.aborted) {
-                throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
+            if (signal?.aborted) {
+                throw (
+                    signal.reason ??
+                    new ChatLunaError(ChatLunaErrorCode.ABORTED)
+                )
             }
+
             try {
                 response = await request()
                 break
             } catch (e) {
-                if (e.message.includes('Aborted')) {
+                if (
+                    e instanceof ChatLunaError &&
+                    e.errorCode === ChatLunaErrorCode.ABORTED
+                ) {
+                    throw e
+                }
+
+                if ((e as Error)?.message?.includes('Aborted')) {
                     throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
                 }
+
                 logger.error(e)
                 error = e
             }
@@ -284,7 +291,7 @@ export class ChatLunaPluginChain
 
         await events?.['llm-used-token-count']?.(usedToken)
 
-        if (error && response == null) {
+        if (error != null && response == null) {
             if (error instanceof ChatLunaError) {
                 throw error
             } else {
@@ -295,7 +302,9 @@ export class ChatLunaPluginChain
             }
         }
 
-        response.message = new AIMessage(response.output)
+        if (response == null) {
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
+        }
 
         return response
     }

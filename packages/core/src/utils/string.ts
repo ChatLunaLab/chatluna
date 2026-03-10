@@ -206,16 +206,19 @@ export function getMessageContent(message: BaseMessage['content']) {
 }
 
 export function sanitizeToolLogString(input: string): string {
-    return input
-        .replace(/data:[^;]+;base64,[A-Za-z0-9+/=]+/g, '[BASE64_DATA_URL]')
-        .replace(
-            /("thoughtSignature"\s*:\s*")[^"]+(")/g,
-            '$1[THOUGHT_SIGNATURE]$2'
-        )
-        .replace(
-            /("data"\s*:\s*")[A-Za-z0-9+/=]{128,}(")/g,
-            '$1[BASE64_DATA]$2'
-        )
+    return (
+        input
+            .replace(/data:[^;]+;base64,[A-Za-z0-9+/=]+/g, '[BASE64_DATA_URL]')
+            .replace(
+                /("thoughtSignature"\s*:\s*")[^"]+(")/g,
+                '$1[THOUGHT_SIGNATURE]$2'
+            )
+            .replace(
+                /("data"\s*:\s*")[A-Za-z0-9+/=]{128,}(")/g,
+                '$1[BASE64_DATA]$2'
+            )
+            .substring(0, 2000) + '...'
+    )
 }
 
 export function sanitizeToolLogValue(

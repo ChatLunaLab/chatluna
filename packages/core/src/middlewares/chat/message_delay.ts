@@ -1,7 +1,7 @@
 /* eslint-disable operator-linebreak */
-import { Context, Disposable, Logger } from 'koishi'
+import { Context, Disposable, Logger, Session } from 'koishi'
 import { Config } from '../../config'
-import { Message } from '../../types'
+import { ConversationRoom, Message } from '../../types'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import {
     ChainMiddlewareContext,
@@ -9,7 +9,7 @@ import {
     ChatChain
 } from '../../chains/chain'
 import { randomUUID } from 'crypto'
-import { MessageContentComplex } from '@langchain/core/messages'
+import { HumanMessage, MessageContentComplex } from '@langchain/core/messages'
 
 let logger: Logger
 
@@ -49,6 +49,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const conversationId = room.conversationId
             const userName = inputMessage.name || 'unknown'
             const messageId = context.options.messageId
+
+            if (
+                room.chatMode === 'plugin' &&
+                (await ctx.chatluna.appendPendingMessage(
+                    conversationId,
+                    createPendingMessage(session, room, inputMessage),
+                    room.chatMode
+                ))
+            ) {
+                logger.debug(
+                    `Appending pending message for ${conversationId}, messageId: ${messageId}`
+                )
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             const conversation = queues.get(conversationId) ?? {
                 turns: [],
@@ -133,7 +147,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.on('chatluna/after-chat', completeTurn)
 
-    ctx.on('chatluna/after-chat-error', (_, conversationId) =>
+    ctx.on('chatluna/after-chat-error', (_error, conversationId) =>
         completeTurn(conversationId)
     )
 
@@ -284,6 +298,26 @@ function mergeMessages(messages: Message[]): Message {
             base.additional_kwargs || {}
         )
     }
+}
+
+function createPendingMessage(
+    session: Session,
+    room: ConversationRoom,
+    inputMessage: Message
+) {
+    return new HumanMessage({
+        content: inputMessage.content,
+        name:
+            inputMessage.name ??
+            session.author?.name ??
+            session.author?.id ??
+            session.username,
+        id: session.userId,
+        additional_kwargs: {
+            ...inputMessage.additional_kwargs,
+            preset: room.preset
+        }
+    })
 }
 
 declare module '../../chains/chain' {
