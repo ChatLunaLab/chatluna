@@ -534,13 +534,19 @@ export function convertMessageToMessageChunk(
         const toolCallChunks: ToolCallChunk[] = []
         if (Array.isArray(message.tool_calls)) {
             for (const rawToolCall of message.tool_calls) {
+                let name = rawToolCall.function?.name
+
+                if (name != null && name.length < 1) {
+                    name = undefined
+                }
                 toolCallChunks.push({
-                    name: rawToolCall.function?.name,
+                    name,
                     args: rawToolCall.function?.arguments,
                     id: rawToolCall.id
                 })
             }
         }
+        console.log(toolCallChunks)
         return new AIMessageChunk({
             content,
             tool_call_chunks: toolCallChunks,
@@ -579,17 +585,11 @@ export function convertDeltaToMessageChunk(
     let additionalKwargs: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         function_call?: any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-        tool_calls?: any
         reasoning_content?: string
     }
     if (delta.function_call) {
         additionalKwargs = {
             function_call: delta.function_call
-        }
-    } else if (delta.tool_calls) {
-        additionalKwargs = {
-            tool_calls: delta.tool_calls
         }
     } else {
         additionalKwargs = {}
@@ -605,14 +605,22 @@ export function convertDeltaToMessageChunk(
         const toolCallChunks = []
         if (Array.isArray(delta.tool_calls)) {
             for (const rawToolCall of delta.tool_calls) {
-                toolCallChunks.push({
+                const toolCall = {
                     name: rawToolCall.function?.name,
                     args: rawToolCall.function?.arguments,
                     id: rawToolCall.id,
                     index: rawToolCall.index
-                })
+                }
+
+                if (toolCall.name != null && toolCall.name.length < 1) {
+                    delete toolCall.name
+                }
+
+                toolCallChunks.push(toolCall)
             }
+            console.log(toolCallChunks)
         }
+
         return new AIMessageChunk({
             content,
             tool_call_chunks: toolCallChunks,

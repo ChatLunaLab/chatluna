@@ -175,23 +175,6 @@ export function createOpenAIAgent({
         prompt,
         llmWithTools,
         RunnableLambda.from((input: BaseMessage) => {
-            if (
-                ((input?.additional_kwargs?.tool_calls &&
-                    input?.additional_kwargs?.tool_calls.length > 0) ||
-                    ((input instanceof AIMessageChunk ||
-                        input instanceof AIMessage) &&
-                        input.tool_calls &&
-                        input.tool_calls.length > 0)) &&
-                outputParser instanceof OpenAIFunctionsAgentOutputParser
-            ) {
-                outputParser = new OpenAIToolsAgentOutputParser()
-            } else if (
-                input?.additional_kwargs?.function_call &&
-                outputParser instanceof OpenAIToolsAgentOutputParser
-            ) {
-                outputParser = new OpenAIFunctionsAgentOutputParser()
-            }
-
             if (input == null) {
                 return [
                     {
@@ -200,6 +183,25 @@ export function createOpenAIAgent({
                         log: 'Input is null'
                     }
                 ]
+            }
+
+            const hasTools =
+                input.additional_kwargs?.tool_calls?.length > 0 ||
+                ((input instanceof AIMessageChunk ||
+                    input instanceof AIMessage) &&
+                    input.tool_calls?.length > 0)
+            const hasFunction = input.additional_kwargs?.function_call != null
+
+            if (
+                hasTools &&
+                outputParser instanceof OpenAIFunctionsAgentOutputParser
+            ) {
+                outputParser = new OpenAIToolsAgentOutputParser()
+            } else if (
+                hasFunction &&
+                outputParser instanceof OpenAIToolsAgentOutputParser
+            ) {
+                outputParser = new OpenAIFunctionsAgentOutputParser()
             }
 
             return outputParser.parseResult([

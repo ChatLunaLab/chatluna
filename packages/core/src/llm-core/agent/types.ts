@@ -216,11 +216,12 @@ export type AgentEvent =
           steps: AgentStep[]
       }
     | {
-          type: 'final-answer-start'
-      }
-    | {
           type: 'human-update'
           messages: HumanMessage[]
+      }
+    | {
+          type: 'round-decision'
+          canContinue: boolean
       }
     | {
           type: 'done'
@@ -231,13 +232,8 @@ export type AgentEvent =
 
 export class MessageQueue {
     private _queue: HumanMessage[] = []
-    private _closed = false
 
     push(...messages: HumanMessage[]): boolean {
-        if (this._closed) {
-            return false
-        }
-
         this._queue.push(...messages)
         return true
     }
@@ -246,15 +242,7 @@ export class MessageQueue {
         return this._queue.splice(0)
     }
 
-    close(): void {
-        this._closed = true
-    }
-
     get pending(): boolean {
         return this._queue.length > 0
-    }
-
-    get closed(): boolean {
-        return this._closed
     }
 }

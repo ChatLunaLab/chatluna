@@ -749,14 +749,17 @@ class DefaultChatChainSender {
     ): Promise<void> {
         const { user } = session.event
         // only support private
-        await (session.bot as QQBot<Context>).internal.sendPrivateMessage(user.id, {
-            msg_type: 2,
-            msg_seq: 1,
-            msg_id: session.messageId,
-            markdown: {
-                content: message.attrs['content']
+        await (session.bot as QQBot<Context>).internal.sendPrivateMessage(
+            user.id,
+            {
+                msg_type: 2,
+                msg_seq: 1,
+                msg_id: session.messageId,
+                markdown: {
+                    content: message.attrs['content']
+                }
             }
-        })
+        )
     }
 
     private async sendAsForward(

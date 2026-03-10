@@ -254,53 +254,15 @@ async function plan(
     input: ChainValues,
     steps: AgentStep[],
     scratchpad: ScratchpadEntry[],
-    config: RunnableConfig | undefined,
-    messageQueue?: MessageQueue
+    config: RunnableConfig | undefined
 ) {
-    let hasToolCallChunk = false
-    let finalAnswerStarted = false
-
-    const callbacks = CallbackManager.configure(
-        config?.callbacks,
-        [
-            {
-                handleLLMNewToken() {
-                    if (hasToolCallChunk || finalAnswerStarted) {
-                        return
-                    }
-
-                    finalAnswerStarted = true
-                    messageQueue?.close()
-                },
-                handleCustomEvent(name, data) {
-                    if (name !== 'LLMNewChunk' || data == null) {
-                        return
-                    }
-
-                    hasToolCallChunk = true
-                }
-            }
-        ],
-        config?.tags,
-        undefined,
-        config?.metadata,
-        undefined,
-        {
-            verbose: false
-        }
-    )
-
-    const patched = patchConfig(config, {
-        callbacks
-    })
-
     const stream = await agent.stream(
         {
             ...input,
             steps,
             scratchpadEntries: scratchpad
         },
-        patched
+        config
     )
 
     let result: AgentAction[] | AgentAction | AgentFinish | undefined
@@ -318,16 +280,10 @@ async function plan(
     }
 
     if (isAgentFinish(result)) {
-        return {
-            output: result,
-            finalAnswerStarted
-        }
+        return result
     }
 
-    return {
-        output: Array.isArray(result) ? result : [result],
-        finalAnswerStarted
-    }
+    return Array.isArray(result) ? result : [result]
 }
 
 // eslint-disable-next-line generator-star-spacing
@@ -367,20 +323,15 @@ export async function* runAgent(
         }
 
         let output: AgentAction[] | AgentFinish
-        let finalAnswerStarted = false
 
         try {
-            const result = await plan(
+            output = await plan(
                 options.agent,
                 options.input,
                 steps,
                 scratchpad,
-                config,
-                options.messageQueue
+                config
             )
-
-            output = result.output
-            finalAnswerStarted = result.finalAnswerStarted
         } catch (e) {
             if (!(e instanceof OutputParserException)) {
                 throw e
@@ -390,12 +341,6 @@ export async function* runAgent(
         }
 
         checkAborted(signal)
-
-        if (finalAnswerStarted) {
-            yield {
-                type: 'final-answer-start'
-            }
-        }
 
         if (isAgentFinish(output)) {
             const pending = options.messageQueue?.drain() ?? []
@@ -540,29 +485,35 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                 for (const action of event.actions) {
                     await runManager?.handleAgentAction(action)
                 }
+                await configurable.onAgentEvent?.({
+                    type: 'round-decision',
+                    canContinue: true
+                })
             }
 
             await configurable.onAgentEvent?.(event)
 
-            if (event.type !== 'done') {
-                continue
-            }
+            if (event.type === 'done') {
+                await configurable.onAgentEvent?.({
+                    type: 'round-decision',
+                    canContinue: false
+                })
+                await runManager?.handleAgentEnd({
+                    returnValues: {
+                        output: event.output
+                    },
+                    log: event.log
+                })
 
-            await runManager?.handleAgentEnd({
-                returnValues: {
-                    output: event.output
-                },
-                log: event.log
-            })
-
-            return {
-                output: event.output,
-                ...(this.returnIntermediateSteps
-                    ? {
-                          intermediateSteps: event.steps
-                      }
-                    : {}),
-                message: new AIMessage(event.output)
+                return {
+                    output: event.output,
+                    ...(this.returnIntermediateSteps
+                        ? {
+                              intermediateSteps: event.steps
+                          }
+                        : {}),
+                    message: new AIMessage(event.output)
+                }
             }
         }
 

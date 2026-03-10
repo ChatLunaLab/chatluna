@@ -896,6 +896,8 @@ type ActiveRequest = {
     abortController: AbortController
     chatMode: string
     messageQueue: MessageQueue
+    roundDecisionResolvers: ((canContinue: boolean) => void)[]
+    lastDecision?: boolean
 }
 
 function createAbortError() {
@@ -982,7 +984,8 @@ class ChatInterfaceWrapper {
                 requestId,
                 abortController,
                 chatMode: room.chatMode,
-                messageQueue: new MessageQueue()
+                messageQueue: new MessageQueue(),
+                roundDecisionResolvers: []
             }
 
             this._requestIdMap.set(requestId, abortController)
@@ -1008,7 +1011,16 @@ class ChatInterfaceWrapper {
                 variables,
                 signal: abortController.signal,
                 postHandler,
-                messageQueue: activeRequest.messageQueue
+                messageQueue: activeRequest.messageQueue,
+                onAgentEvent: async (agentEvent) => {
+                    if (agentEvent.type === 'round-decision') {
+                        activeRequest.lastDecision = agentEvent.canContinue
+                        for (const resolve of activeRequest.roundDecisionResolvers) {
+                            resolve(agentEvent.canContinue)
+                        }
+                        activeRequest.roundDecisionResolvers = []
+                    }
+                }
             })
 
             const aiMessage = chainValues.message as AIMessage
@@ -1043,10 +1055,11 @@ class ChatInterfaceWrapper {
             ])
             this._requestIdMap.delete(requestId)
 
-            if (
-                this._activeRequests.get(conversationId)?.requestId ===
-                requestId
-            ) {
+            const active = this._activeRequests.get(conversationId)
+            if (active?.requestId === requestId) {
+                for (const resolve of active.roundDecisionResolvers) {
+                    resolve(false)
+                }
                 this._activeRequests.delete(conversationId)
             }
         }
@@ -1062,11 +1075,11 @@ class ChatInterfaceWrapper {
         return true
     }
 
-    appendPendingMessage(
+    async appendPendingMessage(
         conversationId: string,
         message: HumanMessage,
         chatMode?: string
-    ) {
+    ): Promise<boolean> {
         if (chatMode != null && chatMode !== 'plugin') {
             return false
         }
@@ -1080,7 +1093,21 @@ class ChatInterfaceWrapper {
             return false
         }
 
-        return activeRequest.messageQueue.push(message)
+        if (activeRequest.lastDecision != null) {
+            if (activeRequest.lastDecision) {
+                activeRequest.messageQueue.push(message)
+            }
+            return activeRequest.lastDecision
+        }
+
+        return new Promise((resolve) => {
+            activeRequest.roundDecisionResolvers.push((canContinue) => {
+                if (canContinue) {
+                    activeRequest.messageQueue.push(message)
+                }
+                resolve(canContinue)
+            })
+        })
     }
 
     async query(

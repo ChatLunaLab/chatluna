@@ -52,11 +52,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (
                 room.chatMode === 'plugin' &&
-                ctx.chatluna.appendPendingMessage(
+                (await ctx.chatluna.appendPendingMessage(
                     conversationId,
                     createPendingMessage(session, room, inputMessage),
                     room.chatMode
-                )
+                ))
             ) {
                 logger.debug(
                     `Appending pending message for ${conversationId}, messageId: ${messageId}`

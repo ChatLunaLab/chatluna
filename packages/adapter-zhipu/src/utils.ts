@@ -219,14 +219,10 @@ export function convertDeltaToMessageChunk(
     const role = delta.role ?? defaultRole
     const content = delta.content ?? ''
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-    let additional_kwargs: { function_call?: any; tool_calls?: any }
+    let additional_kwargs: { function_call?: any }
     if (delta.function_call) {
         additional_kwargs = {
             function_call: delta.function_call
-        }
-    } else if (delta.tool_calls) {
-        additional_kwargs = {
-            tool_calls: delta.tool_calls
         }
     } else {
         additional_kwargs = {}
@@ -237,12 +233,18 @@ export function convertDeltaToMessageChunk(
         const toolCallChunks = []
         if (Array.isArray(delta.tool_calls)) {
             for (const rawToolCall of delta.tool_calls) {
-                toolCallChunks.push({
+                const toolCall = {
                     name: rawToolCall.function?.name,
                     args: rawToolCall.function?.arguments,
                     id: rawToolCall.id,
                     index: rawToolCall.index
-                })
+                }
+
+                if (toolCall.name != null && toolCall.name.length < 1) {
+                    delete toolCall.name
+                }
+
+                toolCallChunks.push(toolCall)
             }
         }
         return new AIMessageChunk({
