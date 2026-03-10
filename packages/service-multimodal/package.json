@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-multimodal-service",
   "description": "multimodal service for chatluna",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "main": "lib/index.cjs",
   "module": "lib/index.mjs",
   "typings": "lib/index.d.ts",
@@ -61,7 +61,7 @@
   },
   "peerDependencies": {
     "koishi": "^4.18.9",
-    "koishi-plugin-chatluna": "^1.3.32",
+    "koishi-plugin-chatluna": "^1.3.33",
     "koishi-plugin-ffmpeg-path": "^2.0.0"
   },
   "peerDependenciesMeta": {
