@@ -108,7 +108,8 @@ commands:
                 arguments:
                     room: 'Target room'
                 messages:
-                    success: 'Chat history for room {0} has been compressed.'
+                    success: '{0} -> {1}, {2}%'
+                    skipped: 'Compression skipped. {0} -> {1}, {2}%'
                     no_room: 'Room not found.'
                     failed: 'Failed to compress chat history for room {0}: {1}'
             set:
@@ -236,7 +237,7 @@ commands:
                     conversation_not_exist: 'Room does not exist.'
                     no_chat_history: 'Chat history not found.'
                     invalid_chat_history: 'Invalid chat history. Clear history and retry.'
-                    rollback_success_1: "Successfully rolled back to {0} rounds ago."
+                    rollback_success_1: 'Successfully rolled back to {0} rounds ago.'
             stop:
                 description: Immediately terminate ongoing conversation.
                 options:
@@ -246,6 +247,15 @@ commands:
                     no_active_chat: 'No active conversation in current room.'
                     stop_failed: 'Failed to stop conversation.'
                     success: 'Conversation stopped successfully.'
+            compress:
+                description: Manually compress chat history using Infinite Context.
+                options:
+                    room: Target room for compression.
+                messages:
+                    success: '{0} -> {1}, {2}%'
+                    skipped: 'Compression skipped. {0} -> {1}, {2}%'
+                    no_room: 'Room not found.'
+                    failed: 'Failed to compress chat history for room {0}: {1}'
             voice:
                 description: Converse with AI model and receive voice output.
                 options:

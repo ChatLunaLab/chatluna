@@ -32,18 +32,39 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             if (targetRoom == null) {
-                context.message = session.text('.no_room')
+                const key =
+                    context.options.i18n_base ??
+                    'commands.chatluna.room.compress.messages'
+
+                context.message = session.text(`${key}.no_room`)
                 return ChainMiddlewareRunStatus.STOP
             }
 
             try {
-                await ctx.chatluna.compressContext(targetRoom)
-                context.message = session.text('.success', [
-                    targetRoom.roomName
-                ])
+                const key =
+                    context.options.i18n_base ??
+                    'commands.chatluna.room.compress.messages'
+                const result = await ctx.chatluna.compressContext(
+                    targetRoom,
+                    context.options.force === true
+                )
+                const args = [
+                    result.inputTokens,
+                    result.outputTokens,
+                    result.reducedPercent.toFixed(2)
+                ]
+
+                context.message = session.text(
+                    result.compressed ? `${key}.success` : `${key}.skipped`,
+                    args
+                )
             } catch (error) {
                 ctx.logger.error(error)
-                context.message = session.text('.failed', [
+                const key =
+                    context.options.i18n_base ??
+                    'commands.chatluna.room.compress.messages'
+
+                context.message = session.text(`${key}.failed`, [
                     targetRoom.roomName,
                     error.message
                 ])

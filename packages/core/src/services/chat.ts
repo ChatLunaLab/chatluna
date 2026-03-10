@@ -264,11 +264,11 @@ export class ChatLunaService extends Service<Config> {
         return chatBridger.clearChatHistory(room)
     }
 
-    async compressContext(room: ConversationRoom) {
+    async compressContext(room: ConversationRoom, force = false) {
         const chatBridger =
             this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
 
-        return chatBridger.compressContext(room)
+        return chatBridger.compressContext(room, force)
     }
 
     getCachedInterfaceWrapper() {
@@ -1163,7 +1163,7 @@ class ChatInterfaceWrapper {
         }
     }
 
-    async compressContext(room: ConversationRoom) {
+    async compressContext(room: ConversationRoom, force = false) {
         const { conversationId, model: fullModelName } = room
         const requestId = randomUUID()
         const modelRequestId = randomUUID()
@@ -1200,7 +1200,7 @@ class ChatInterfaceWrapper {
             ])
 
             const chatInterface = await this.query(room, true)
-            return await chatInterface.compressContext()
+            return await chatInterface.compressContext(force)
         } finally {
             await Promise.all([
                 this._conversationQueue.remove(conversationId, requestId),

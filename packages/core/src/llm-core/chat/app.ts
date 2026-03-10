@@ -29,6 +29,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { HandlerResult } from '../../utils/types'
 import { computed, ComputedRef } from '@vue/reactivity'
+import type { CompressContextResult } from './infinite_context'
 import { InfiniteContextManager } from './infinite_context'
 
 export class ChatInterface {
@@ -394,19 +395,17 @@ export class ChatInterface {
         await this._chain?.value?.model.clearContext(this._input.conversationId)
     }
 
-    async compressContext(): Promise<boolean> {
+    async compressContext(force = false): Promise<CompressContextResult> {
         const wrapper = await this.getChatLunaLLMChainWrapper()
-        if (!wrapper) {
-            return false
-        }
-
         const manager = this._ensureInfiniteContextManager()
         if (!manager) {
-            return false
+            throw new ChatLunaError(
+                ChatLunaErrorCode.CHAT_HISTORY_INIT_ERROR,
+                new Error('Chat history is not initialized')
+            )
         }
 
-        await manager.compressIfNeeded(wrapper)
-        return true
+        return manager.compressIfNeeded(wrapper, force)
     }
 
     private async _initEmbeddings(service: PlatformService) {
