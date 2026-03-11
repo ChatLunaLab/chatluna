@@ -1,5 +1,5 @@
 import { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager'
-import { AIMessage } from '@langchain/core/messages'
+import { AIMessage, AIMessageChunk } from '@langchain/core/messages'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {
     patchConfig,
@@ -29,149 +29,6 @@ import {
     MessageQueue,
     ScratchpadEntry
 } from './types'
-
-export interface RunAgentOptions {
-    agent: Runnable
-    tools: StructuredTool[]
-    input: ChainValues
-    messageQueue?: MessageQueue
-    signal?: AbortSignal
-    maxIterations?: number
-    handleParsingErrors?: boolean | string | ((e: Error) => string)
-    handleToolRuntimeErrors?: (e: Error) => string
-    config?: RunnableConfig
-}
-
-export interface AgentExecutorInput extends ChainInputs {
-    agent: Runnable
-    tools: StructuredTool[]
-    returnIntermediateSteps?: boolean
-    maxIterations?: number
-    handleParsingErrors?: boolean | string | ((e: Error) => string)
-    handleToolRuntimeErrors?: (e: Error) => string
-}
-
-export interface AgentExecutorOutput extends ChainValues {
-    output: string
-    intermediateSteps?: AgentStep[]
-    message: AIMessage
-}
-
-function isAgentObservation(value: unknown): value is AgentObservation {
-    if (typeof value === 'string') {
-        return true
-    }
-
-    if (!Array.isArray(value)) {
-        return false
-    }
-
-    return value.every((item) => isMessageContentComplex(item))
-}
-
-export function coerceToAgentObservation(
-    observation: unknown,
-    toolName?: string
-): AgentObservation {
-    if (isAgentObservation(observation)) {
-        if (
-            Array.isArray(observation) &&
-            observation.every(isMessageContentText)
-        ) {
-            return observation.map((item) => item.text).join('')
-        }
-
-        return observation
-    }
-
-    logger.warn(
-        `Tool ${toolName ?? 'unknown'} returned unsupported observation type`,
-        observation
-    )
-
-    try {
-        return JSON.stringify(observation) ?? String(observation)
-    } catch {
-        return String(observation)
-    }
-}
-
-export function toToolInputErrorObservation(
-    handleParsingErrors: boolean | string | ((e: Error) => string),
-    error: ToolInputParsingException
-): AgentObservation {
-    if (handleParsingErrors === true || handleParsingErrors === false) {
-        return 'Invalid or incomplete tool input. Please try again.'
-    }
-
-    if (typeof handleParsingErrors === 'string') {
-        return handleParsingErrors
-    }
-
-    return handleParsingErrors(error)
-}
-
-function toOutput(value: unknown): string {
-    if (typeof value === 'string') {
-        return value
-    }
-
-    if (Array.isArray(value) && value.every(isMessageContentText)) {
-        return value.map((item) => item.text).join('')
-    }
-
-    try {
-        return JSON.stringify(value) ?? String(value)
-    } catch {
-        return String(value)
-    }
-}
-
-function isAgentFinish(
-    output: AgentAction[] | AgentAction | AgentFinish
-): output is AgentFinish {
-    return !Array.isArray(output) && 'returnValues' in output
-}
-
-function checkAborted(signal?: AbortSignal) {
-    if (!signal?.aborted) {
-        return
-    }
-
-    throw signal.reason ?? new Error('Aborted')
-}
-
-function toParsingErrorAction(
-    handleParsingErrors: boolean | string | ((e: Error) => string),
-    error: OutputParserException
-): AgentAction {
-    let observation: AgentObservation
-    let text = error.message
-
-    if (handleParsingErrors === true) {
-        if (error.sendToLLM) {
-            observation = coerceToAgentObservation(error.observation)
-            text = error.llmOutput ?? ''
-        } else {
-            observation = 'Invalid or incomplete response'
-        }
-    } else if (typeof handleParsingErrors === 'string') {
-        observation = handleParsingErrors
-    } else if (typeof handleParsingErrors === 'function') {
-        observation = handleParsingErrors(error)
-    } else {
-        throw error
-    }
-
-    return {
-        tool: '_Exception',
-        toolInput:
-            typeof observation === 'string'
-                ? observation
-                : (JSON.stringify(observation) ?? ''),
-        log: text
-    }
-}
 
 async function executeTools(
     actions: AgentAction[],
@@ -299,7 +156,7 @@ export async function* runAgent(
         options.tools.map((tool) => [tool.name.toLowerCase(), tool])
     )
     const maxIterations = options.maxIterations ?? 105
-    const handleParsingErrors = options.handleParsingErrors ?? false
+    const handleParsingErrors = options.handleParsingErrors ?? true
 
     let iterations = 0
 
@@ -344,6 +201,8 @@ export async function* runAgent(
         checkAborted(signal)
 
         if (isAgentFinish(output)) {
+            const message = output.returnValues['message'] as AIMessageChunk
+
             yield {
                 type: 'round-decision',
                 canContinue: false
@@ -361,7 +220,8 @@ export async function* runAgent(
                 type: 'done',
                 output: toOutput(output.returnValues['output']),
                 log: output.log,
-                steps
+                steps,
+                message
             }
 
             return
@@ -509,10 +369,17 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
             await configurable.onAgentEvent?.(event)
 
             if (event.type === 'done') {
+                const returnValues = event.message
+                    ? {
+                          output: event.output,
+                          message: event.message
+                      }
+                    : {
+                          output: event.output
+                      }
+
                 await runManager?.handleAgentEnd({
-                    returnValues: {
-                        output: event.output
-                    },
+                    returnValues,
                     log: event.log
                 })
 
@@ -523,7 +390,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
                               intermediateSteps: event.steps
                           }
                         : {}),
-                    message: new AIMessage(event.output)
+                    message: event.message ?? new AIMessage(event.output)
                 }
             }
         }
@@ -533,5 +400,150 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
     _chainType() {
         return 'agent_executor' as const
+    }
+}
+
+export interface RunAgentOptions {
+    agent: Runnable
+    tools: StructuredTool[]
+    input: ChainValues
+    messageQueue?: MessageQueue
+    signal?: AbortSignal
+    maxIterations?: number
+    handleParsingErrors?: boolean | string | ((e: Error) => string)
+    handleToolRuntimeErrors?: (e: Error) => string
+    config?: RunnableConfig
+}
+
+export interface AgentExecutorInput extends ChainInputs {
+    agent: Runnable
+    tools: StructuredTool[]
+    returnIntermediateSteps?: boolean
+    maxIterations?: number
+    handleParsingErrors?: boolean | string | ((e: Error) => string)
+    handleToolRuntimeErrors?: (e: Error) => string
+}
+
+export interface AgentExecutorOutput extends ChainValues {
+    output: string
+    intermediateSteps?: AgentStep[]
+    message: AIMessage
+}
+
+function isAgentObservation(value: unknown): value is AgentObservation {
+    if (typeof value === 'string') {
+        return true
+    }
+
+    if (!Array.isArray(value)) {
+        return false
+    }
+
+    return value.every((item) => isMessageContentComplex(item))
+}
+
+export function coerceToAgentObservation(
+    observation: unknown,
+    toolName?: string
+): AgentObservation {
+    if (isAgentObservation(observation)) {
+        if (
+            Array.isArray(observation) &&
+            observation.every(isMessageContentText)
+        ) {
+            return observation.map((item) => item.text).join('')
+        }
+
+        return observation
+    }
+
+    logger.warn(
+        `Tool ${toolName ?? 'unknown'} returned unsupported observation type`,
+        observation
+    )
+
+    try {
+        return JSON.stringify(observation) ?? String(observation)
+    } catch {
+        return String(observation)
+    }
+}
+
+export function toToolInputErrorObservation(
+    handleParsingErrors: boolean | string | ((e: Error) => string),
+    error: ToolInputParsingException
+): AgentObservation {
+    if (handleParsingErrors === true || handleParsingErrors === false) {
+        return (
+            'Invalid or incomplete tool input.' +
+            error.message +
+            ' ' +
+            error.output +
+            'Please try again.'
+        )
+    }
+
+    if (typeof handleParsingErrors === 'string') {
+        return handleParsingErrors
+    }
+
+    return handleParsingErrors(error)
+}
+
+function toOutput(value: unknown): string {
+    if (typeof value === 'string') {
+        return value
+    }
+
+    if (Array.isArray(value) && value.every(isMessageContentText)) {
+        return value.map((item) => item.text).join('')
+    }
+
+    try {
+        return JSON.stringify(value) ?? String(value)
+    } catch {
+        return String(value)
+    }
+}
+
+function isAgentFinish(
+    output: AgentAction[] | AgentAction | AgentFinish
+): output is AgentFinish {
+    return !Array.isArray(output) && 'returnValues' in output
+}
+
+function checkAborted(signal?: AbortSignal) {
+    if (!signal?.aborted) {
+        return
+    }
+
+    throw signal.reason ?? new Error('Aborted')
+}
+
+function toParsingErrorAction(
+    handleParsingErrors: boolean | string | ((e: Error) => string),
+    error: OutputParserException
+): AgentAction {
+    let observation: AgentObservation
+    let text = error.message
+
+    if (handleParsingErrors === true) {
+        observation = coerceToAgentObservation(error.observation)
+        text = error.llmOutput ?? ''
+    } else if (typeof handleParsingErrors === 'string') {
+        observation = handleParsingErrors
+    } else if (typeof handleParsingErrors === 'function') {
+        observation = handleParsingErrors(error)
+    } else {
+        throw error
+    }
+
+    return {
+        tool: '_Exception',
+        toolInput:
+            typeof observation === 'string'
+                ? observation
+                : (JSON.stringify(observation) ?? ''),
+        log: text
     }
 }

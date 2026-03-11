@@ -1,4 +1,5 @@
 import type {
+    AIMessage,
     HumanMessage,
     MessageContent,
     MessageContentImageUrl,
@@ -228,6 +229,7 @@ export type AgentEvent =
           output: string
           log: string
           steps: AgentStep[]
+          message?: AIMessage
       }
 
 export class MessageQueue {
