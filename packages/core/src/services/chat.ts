@@ -1049,7 +1049,10 @@ class ChatInterfaceWrapper {
                 this._service.currentConfig.showThoughtMessage
             ) {
                 additionalReplyMessages.push({
-                    content: `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
+                    content:
+                        reasoningTime != null
+                            ? `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
+                            : `Thought: \n\n${reasoningContent}`
                 })
             }
 

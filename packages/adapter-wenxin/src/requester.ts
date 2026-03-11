@@ -28,6 +28,7 @@ import {
 import { Config, logger } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
+import { AIMessageChunk } from '@langchain/core/messages'
 
 export class WenxinRequester
     extends ModelRequester
@@ -82,10 +83,11 @@ export class WenxinRequester
 
             let errorCount = 0
 
-            let reasoningContent = ''
-
-            let reasoningTime = 0
-            let isSetReasoingTime = false
+            const reasoningState = {
+                content: '',
+                startedAt: Date.now(),
+                endedAt: undefined as number | undefined
+            }
 
             for await (const event of iterator) {
                 const chunk = event.data
@@ -113,32 +115,47 @@ export class WenxinRequester
                     }
 
                     const { delta } = choice
-                    const messageChunk = convertDeltaToMessageChunk(
-                        delta,
-                        defaultRole
-                    )
+                    const hasResult =
+                        (delta.content?.length ?? 0) > 0 ||
+                        (delta.tool_calls?.length ?? 0) > 0 ||
+                        delta.function_call != null
 
-                    if (delta.reasoning_content) {
-                        reasoningContent = (reasoningContent +
-                            delta.reasoning_content) as string
-
-                        if (reasoningTime === 0) {
-                            reasoningTime = Date.now()
-                        }
+                    if (reasoningState.endedAt == null && hasResult) {
+                        reasoningState.endedAt = Date.now()
                     }
 
                     if (
-                        (delta.reasoning_content == null ||
-                            delta.reasoning_content === '') &&
-                        delta.content &&
-                        delta.content.length > 0 &&
-                        reasoningTime > 0 &&
-                        !isSetReasoingTime
+                        reasoningState.endedAt == null &&
+                        !hasResult &&
+                        delta.reasoning_content
                     ) {
-                        reasoningTime = Date.now() - reasoningTime
-                        messageChunk.additional_kwargs.reasoning_time =
-                            reasoningTime
-                        isSetReasoingTime = true
+                        reasoningState.content += delta.reasoning_content
+                    }
+
+                    const messageChunk = convertDeltaToMessageChunk(
+                        {
+                            ...delta,
+                            reasoning_content: undefined
+                        },
+                        defaultRole
+                    )
+
+                    const hasMessageChunk =
+                        (typeof messageChunk.content === 'string'
+                            ? messageChunk.content.length > 0
+                            : Array.isArray(messageChunk.content) &&
+                              messageChunk.content.length > 0) ||
+                        (messageChunk instanceof AIMessageChunk &&
+                            (messageChunk.tool_call_chunks?.length ?? 0) > 0) ||
+                        messageChunk.additional_kwargs.function_call != null
+
+                    if (!hasMessageChunk) {
+                        defaultRole = (
+                            (delta.role?.length ?? 0) > 0
+                                ? delta.role
+                                : defaultRole
+                        ) as WenxinMessageRole
+                        continue
                     }
 
                     defaultRole = (
@@ -165,9 +182,26 @@ export class WenxinRequester
                 }
             }
 
-            if (reasoningContent.length > 0) {
+            if (reasoningState.content.length > 0) {
+                const reasoningTime =
+                    (reasoningState.endedAt ?? Date.now()) -
+                    reasoningState.startedAt
+
+                yield new ChatGenerationChunk({
+                    message: new AIMessageChunk({
+                        content: '',
+                        additional_kwargs: {
+                            reasoning_content: reasoningState.content,
+                            ...(reasoningTime != null
+                                ? { reasoning_time: reasoningTime }
+                                : {})
+                        }
+                    }),
+                    text: ''
+                })
+
                 logger.debug(
-                    `reasoning content: ${reasoningContent}. Use time: ${reasoningTime / 1000} s.`
+                    `reasoning content: ${reasoningState.content}. Use time: ${(reasoningTime ?? 0) / 1000} s.`
                 )
             }
         } catch (e) {

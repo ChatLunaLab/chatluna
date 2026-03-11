@@ -124,9 +124,8 @@ export async function* processStreamResponse<
     let errorCount = 0
     const reasoningState = {
         content: '',
-        startedAt: 0,
-        duration: 0,
-        done: false
+        startedAt: Date.now(),
+        endedAt: undefined as number | undefined
     }
 
     for await (const event of iterator) {
@@ -164,26 +163,45 @@ export async function* processStreamResponse<
             if (!choice) continue
 
             const { delta } = choice
-            const messageChunk = convertDeltaToMessageChunk(delta, defaultRole)
+            const hasResult =
+                (delta.content?.length ?? 0) > 0 ||
+                (delta.tool_calls?.length ?? 0) > 0 ||
+                delta.function_call != null
 
-            if (delta.reasoning_content) {
-                reasoningState.content += delta.reasoning_content
-                if (reasoningState.startedAt === 0) {
-                    reasoningState.startedAt = Date.now()
-                }
+            if (reasoningState.endedAt == null && hasResult) {
+                reasoningState.endedAt = Date.now()
             }
 
             if (
-                !reasoningState.done &&
-                reasoningState.startedAt > 0 &&
-                ((delta.content?.length ?? 0) > 0 ||
-                    (delta.tool_calls?.length ?? 0) > 0 ||
-                    delta.function_call != null)
+                reasoningState.endedAt == null &&
+                !hasResult &&
+                delta.reasoning_content
             ) {
-                reasoningState.duration = Date.now() - reasoningState.startedAt
-                reasoningState.done = true
-                messageChunk.additional_kwargs.reasoning_time =
-                    reasoningState.duration
+                reasoningState.content += delta.reasoning_content
+            }
+
+            const messageChunk = convertDeltaToMessageChunk(
+                {
+                    ...delta,
+                    reasoning_content: undefined
+                },
+                defaultRole
+            )
+
+            const hasMessageChunk =
+                (typeof messageChunk.content === 'string'
+                    ? messageChunk.content.length > 0
+                    : Array.isArray(messageChunk.content) &&
+                      messageChunk.content.length > 0) ||
+                (messageChunk instanceof AIMessageChunk &&
+                    (messageChunk.tool_call_chunks?.length ?? 0) > 0) ||
+                messageChunk.additional_kwargs.function_call != null
+
+            if (!hasMessageChunk) {
+                defaultRole = (
+                    (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
+                ) as ChatCompletionResponseMessageRoleEnum
+                continue
             }
 
             defaultRole = (
@@ -219,23 +237,24 @@ export async function* processStreamResponse<
     }
 
     if (reasoningState.content.length > 0) {
-        if (!reasoningState.done && reasoningState.startedAt > 0) {
-            reasoningState.duration = Date.now() - reasoningState.startedAt
-            reasoningState.done = true
+        const reasoningTime =
+            (reasoningState.endedAt ?? Date.now()) - reasoningState.startedAt
 
-            yield new ChatGenerationChunk({
-                message: new AIMessageChunk({
-                    content: '',
-                    additional_kwargs: {
-                        reasoning_time: reasoningState.duration
-                    }
-                }),
-                text: ''
-            })
-        }
+        yield new ChatGenerationChunk({
+            message: new AIMessageChunk({
+                content: '',
+                additional_kwargs: {
+                    reasoning_content: reasoningState.content,
+                    ...(reasoningTime != null
+                        ? { reasoning_time: reasoningTime }
+                        : {})
+                }
+            }),
+            text: ''
+        })
 
         requestContext.modelRequester.logger.debug(
-            `reasoning content: ${reasoningState.content}. Use time: ${reasoningState.duration / 1000}s`
+            `Reasoning Content: ${reasoningState.content}. Thought for: ${(reasoningTime ?? 0) / 1000}s`
         )
     }
 }

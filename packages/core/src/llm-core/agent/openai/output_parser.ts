@@ -67,6 +67,8 @@ export class OpenAIFunctionsAgentOutputParser extends BaseOutputParser<
             )
         }
 
+        const content = getMessageContent(message.content) ?? ''
+
         // eslint-disable-next-line prefer-destructuring, @typescript-eslint/naming-convention
         const function_call: ChatCompletionMessageFunctionCall =
             message.additional_kwargs.function_call
@@ -74,7 +76,7 @@ export class OpenAIFunctionsAgentOutputParser extends BaseOutputParser<
         if (!function_call) {
             return {
                 returnValues: { output: message.content, message },
-                log: message.content as string
+                log: content
             }
         }
 
@@ -82,7 +84,6 @@ export class OpenAIFunctionsAgentOutputParser extends BaseOutputParser<
             const toolInput = function_call.arguments
                 ? JSON.parse(function_call.arguments)
                 : {}
-            const content = getMessageContent(message.content)
             return {
                 tool: function_call.name,
                 toolInput,
@@ -155,12 +156,12 @@ export class OpenAIToolsAgentOutputParser extends BaseOutputParser<
      * @returns A ToolsAgentAction[] or AgentFinish object.
      */
     parseAIMessage(message: BaseMessage): ToolsAgentAction[] | AgentFinish {
+        const content = getMessageContent(message.content)
         const agentFinish: AgentFinish = {
-            returnValues: { output: message.content },
-            log: message.content as string
+            returnValues: { output: message.content, message },
+            log: content ?? ''
         }
 
-        const content = getMessageContent(message.content)
         if (
             (message instanceof AIMessageChunk ||
                 message instanceof AIMessage) &&
@@ -178,7 +179,7 @@ export class OpenAIToolsAgentOutputParser extends BaseOutputParser<
                                 ? content
                                 : `Invoking "${toolCall.name}" with ${JSON.stringify(toolCall.args) ?? '{}'}`,
                         messageLog: i === 0 ? [message] : [],
-                        content: message.content
+                        content: i === 0 ? message.content : undefined
                     }
                 })
             } catch (error) {
@@ -204,7 +205,7 @@ export class OpenAIToolsAgentOutputParser extends BaseOutputParser<
                                 ? content
                                 : `Invoking "${toolCall.function.name}" with ${toolCall.function.arguments ?? '{}'}`,
                         messageLog: i === 0 ? [message] : [],
-                        content: message.content
+                        content: i === 0 ? message.content : undefined
                     }
                 })
             } catch (error) {

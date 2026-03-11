@@ -2,6 +2,7 @@ import {
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
+import { AIMessageChunk } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     ClientConfig,
@@ -39,9 +40,11 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
     async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        let reasoningContent = ''
-        let isSetReasoningTime = false
-        let reasoningTime = 0
+        const reasoningState = {
+            content: '',
+            startedAt: Date.now(),
+            endedAt: undefined as number | undefined
+        }
 
         const response = await this.post('messages', {
             model: params.model.replace('thinking', ''),
@@ -81,47 +84,45 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
                 )
             }
 
-            if (event.event === 'message_delta') return
+            if (event.event === 'message_delta') continue
 
             const chunk = event.data
 
             if (chunk === '[DONE]') {
-                return
+                break
             }
 
             const parsedRawChunk = JSON.parse(chunk) as ClaudeDeltaResponse
 
             const parsedChunk = convertDeltaToMessageChunk(parsedRawChunk)
+            const isThinkingChunk =
+                parsedRawChunk.type === 'content_block_delta' &&
+                parsedRawChunk.delta.type === 'thinking_delta'
 
             // console.log(findTools, parsedRawChunk, parsedChunk)
 
             if (parsedChunk == null) continue
 
-            if (
-                parsedRawChunk.type === 'content_block_delta' &&
-                parsedRawChunk.delta.type === 'thinking_delta'
-            ) {
-                reasoningContent = (reasoningContent +
-                    parsedRawChunk.delta.thinking) as string
+            if (isThinkingChunk) {
+                reasoningState.content += parsedRawChunk.delta.thinking
 
-                parsedChunk.additional_kwargs.reasoning_content =
-                    reasoningContent
-
-                if (reasoningTime === 0) {
-                    reasoningTime = Date.now()
-                }
+                continue
             }
 
-            if (
-                parsedChunk.additional_kwargs['reasoning_content'] == null &&
-                parsedChunk.content &&
-                parsedChunk.content.length > 0 &&
-                reasoningTime > 0 &&
-                !isSetReasoningTime
-            ) {
-                reasoningTime = Date.now() - reasoningTime
-                parsedChunk.additional_kwargs.reasoning_time = reasoningTime
-                isSetReasoningTime = true
+            const hasMessageChunk =
+                (typeof parsedChunk.content === 'string'
+                    ? parsedChunk.content.length > 0
+                    : Array.isArray(parsedChunk.content) &&
+                      parsedChunk.content.length > 0) ||
+                (parsedChunk instanceof AIMessageChunk &&
+                    (parsedChunk.tool_call_chunks?.length ?? 0) > 0)
+
+            if (reasoningState.endedAt == null && hasMessageChunk) {
+                reasoningState.endedAt = Date.now()
+            }
+
+            if (!hasMessageChunk) {
+                continue
             }
 
             yield new ChatGenerationChunk({
@@ -130,9 +131,26 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
             })
         }
 
-        if (reasoningContent.length > 0) {
+        if (reasoningState.content.length > 0) {
+            const reasoningTime =
+                (reasoningState.endedAt ?? Date.now()) -
+                reasoningState.startedAt
+
+            yield new ChatGenerationChunk({
+                message: new AIMessageChunk({
+                    content: '',
+                    additional_kwargs: {
+                        reasoning_content: reasoningState.content,
+                        ...(reasoningTime != null
+                            ? { reasoning_time: reasoningTime }
+                            : {})
+                    }
+                }),
+                text: ''
+            })
+
             logger.debug(
-                `reasoning content: ${reasoningContent}. Use time: ${reasoningTime / 1000}s`
+                `reasoning content: ${reasoningState.content}. Use time: ${(reasoningTime ?? 0) / 1000}s`
             )
         }
     }

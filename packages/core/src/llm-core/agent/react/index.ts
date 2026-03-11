@@ -1,6 +1,8 @@
 import type { StructuredTool } from '@langchain/core/tools'
 import { PromptTemplate } from '@langchain/core/prompts'
+import { BaseMessage } from '@langchain/core/messages'
 import {
+    RunnableLambda,
     RunnablePassthrough,
     RunnableSequence
 } from '@langchain/core/runnables'
@@ -10,6 +12,7 @@ import { renderTextDescriptionAndArgs } from '../render'
 import { FORMAT_INSTRUCTIONS } from './prompt'
 import type { ChatLunaChatModel } from '../../platform/model'
 import type { ChatLunaChatPrompt } from '../../chain/prompt'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 /**
  * Params used by the createXmlAgent function.
@@ -91,6 +94,9 @@ export function createReactAgent({
 
     // Choose the appropriate renderer based on format preference
     const toolDescriptions = renderTextDescriptionAndArgs(tools)
+    const outputParser = new ReActMultiInputOutputParser({
+        toolNames
+    })
 
     const instructionsFormat = PromptTemplate.fromTemplate(
         instructions ?? FORMAT_INSTRUCTIONS
@@ -112,8 +118,22 @@ export function createReactAgent({
             }),
             prompt,
             llm,
-            new ReActMultiInputOutputParser({
-                toolNames
+            RunnableLambda.from(async (input: BaseMessage) => {
+                const result = await outputParser.parse(
+                    getMessageContent(input.content) ?? ''
+                )
+
+                if (!Array.isArray(result) && 'returnValues' in result) {
+                    return {
+                        ...result,
+                        returnValues: {
+                            ...result.returnValues,
+                            message: input
+                        }
+                    }
+                }
+
+                return result
             })
         ],
         'ReactAgent'
