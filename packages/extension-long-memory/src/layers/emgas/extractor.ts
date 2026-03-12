@@ -1,16 +1,8 @@
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import YAML from 'js-yaml'
 import { ComputedRef } from 'koishi-plugin-chatluna'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/utils/error'
-
-export interface ExtractedGraphElements {
-    concepts: string[]
-    topics: string[]
-}
+import { ExtractedGraphElements } from './types'
 
 const GRAPH_ELEMENTS_EXTRACTION_PROMPT = (text: string) => `
 You are an expert in knowledge extraction. Your task is to analyze the following text to identify key concepts and overarching topics.
@@ -45,66 +37,147 @@ topics:
 YAML Output:
 `
 
+const STOP_WORDS = new Set([
+    'a',
+    'an',
+    'and',
+    'are',
+    'as',
+    'at',
+    'be',
+    'by',
+    'for',
+    'from',
+    'how',
+    'in',
+    'is',
+    'it',
+    'of',
+    'on',
+    'or',
+    'that',
+    'the',
+    'their',
+    'they',
+    'this',
+    'to',
+    'with',
+    '用户',
+    '我们',
+    '你们',
+    '他们',
+    '以及',
+    '但是',
+    '如果',
+    '因为',
+    '所以'
+])
+
+function format(items: unknown[]): string[] {
+    return items
+        .map((item) => String(item).trim().replace(/\s+/g, ' '))
+        .filter(Boolean)
+        .map((item) =>
+            /^[\x00-\x7F]+$/.test(item) ? item.toLowerCase() : item
+        )
+}
+
+function extractLocal(text: string): ExtractedGraphElements {
+    const counts = new Map<string, number>()
+    const groups: string[] = []
+
+    for (const item of text.match(
+        /[A-Za-z][A-Za-z0-9+#./-]{1,}|[\u3400-\u9fff]{2,}/g
+    ) ?? []) {
+        if (/^[A-Za-z]/.test(item)) {
+            const word = item.toLowerCase()
+            if (STOP_WORDS.has(word)) {
+                continue
+            }
+            counts.set(word, (counts.get(word) ?? 0) + 1)
+            if (word.length >= 4) {
+                groups.push(word)
+            }
+            continue
+        }
+
+        if (item.length >= 2) {
+            groups.push(item.length > 12 ? item.slice(0, 12) : item)
+        }
+
+        if (item.length <= 8) {
+            counts.set(item, (counts.get(item) ?? 0) + 1)
+            continue
+        }
+
+        for (let i = 0; i < item.length - 1; i++) {
+            const word = item.slice(i, i + 2)
+            counts.set(word, (counts.get(word) ?? 0) + 1)
+        }
+    }
+
+    const concepts = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
+        .map(([item]) => item)
+        .slice(0, 12)
+
+    const topics = Array.from(new Set(format(groups)))
+        .filter((item) => !STOP_WORDS.has(item))
+        .slice(0, 3)
+
+    return {
+        concepts,
+        topics: topics.length > 0 ? topics : concepts.slice(0, 3)
+    }
+}
+
 /**
- * Extracts key concepts and topics from a text chunk using an LLM.
- * @param ctx The Koishi context.
- * @param config The plugin configuration.
+ * Extracts key concepts and topics from a text chunk.
+ * It prefers the configured LLM and falls back to local extraction.
+ * @param modelRef The configured extractor model.
  * @param text The text to analyze.
  * @returns A promise that resolves to an object containing concepts and topics.
  */
 export async function extractGraphElements(
-    modelRef: ComputedRef<ChatLunaChatModel>,
+    modelRef: ComputedRef<ChatLunaChatModel | undefined> | undefined,
     text: string
 ): Promise<ExtractedGraphElements> {
-    if (!modelRef.value) {
-        throw new ChatLunaError(
-            ChatLunaErrorCode.MODEL_NOT_FOUND,
-            new Error(
-                'LLM-based extractor is disabled. Cannot extract graph elements.'
-            )
-        )
+    const model = modelRef?.value
+    if (model == null) {
+        return extractLocal(text)
     }
-
-    const model = modelRef.value
 
     try {
         const prompt = GRAPH_ELEMENTS_EXTRACTION_PROMPT(text)
         const res = await model.invoke(prompt)
-        const content = getMessageContent(res.content)
+        const content = getMessageContent(res.content).trim()
 
         const yamlMatch = content.match(
             /```(?:ya?ml)?\s*\r?\n([\s\S]*?)\r?\n```/i
         )
-        if (yamlMatch && yamlMatch[1]) {
-            const parsed = YAML.load(yamlMatch[1]) as {
-                concepts: string[]
-                topics: string[]
-            }
-            return {
-                concepts: []
-                    .concat(parsed.concepts || [])
-                    .map((item) => String(item).trim())
-                    .filter(Boolean),
-                topics: []
-                    .concat(parsed.topics || [])
-                    .map((item) => String(item).trim())
-                    .filter(Boolean)
+        const parsed = YAML.load(yamlMatch?.[1] ?? content) as {
+            concepts?: unknown[]
+            topics?: unknown[]
+        } | null
+
+        if (parsed && typeof parsed === 'object') {
+            const concepts = format(
+                Array.isArray(parsed.concepts) ? parsed.concepts : []
+            )
+            const topics = format(
+                Array.isArray(parsed.topics) ? parsed.topics : []
+            )
+
+            if (concepts.length > 0 || topics.length > 0) {
+                return {
+                    concepts,
+                    topics: topics.length > 0 ? topics : concepts.slice(0, 3)
+                }
             }
         }
 
-        throw new ChatLunaError(
-            ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY,
-            new Error(
-                'LLM did not return a valid YAML for graph element extraction.'
-            )
-        )
-    } catch (error) {
-        if (error instanceof ChatLunaError) {
-            throw error
-        }
-        throw new ChatLunaError(
-            ChatLunaErrorCode.API_REQUEST_FAILED,
-            error as Error
-        )
+        return extractLocal(text)
+    } catch {
+        return extractLocal(text)
     }
 }

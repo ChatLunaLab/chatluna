@@ -3,6 +3,11 @@
  * Based on the TypeScript blueprint provided in the design document.
  */
 
+export interface ExtractedGraphElements {
+    concepts: string[]
+    topics: string[]
+}
+
 /**
  * Options for the Spreading Activation retrieval algorithm.
  */
@@ -73,6 +78,15 @@ export interface MemoryNode {
     sourcePassageIds?: Set<string>
 }
 
+export interface SerializedMemoryNode extends Omit<
+    MemoryNode,
+    'createdAt' | 'lastAccessed' | 'sourcePassageIds'
+> {
+    createdAt: string
+    lastAccessed: string
+    sourcePassageIds: string[]
+}
+
 /**
  * Represents a weighted edge in the memory graph, connecting two nodes.
  */
@@ -105,7 +119,7 @@ export interface MemoryEdge {
  * Represents the entire memory graph, including nodes, edges, and persistence data.
  */
 export interface SerializedMemoryGraph {
-    nodes: MemoryNode[]
+    nodes: SerializedMemoryNode[]
     edges: MemoryEdge[]
     conceptCounts: [string, number][]
     pairCounts: [string, number][]
