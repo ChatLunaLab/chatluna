@@ -476,12 +476,6 @@ export async function callTool({
 
         const result = await client.callTool(...callToolArgs)
 
-        // Log MCP server response
-        logger.debug(
-            `MCP tool '${toolName}' on server '${serverName}' returned:`,
-            result
-        )
-
         return _convertCallToolResult({
             serverName,
             toolName,

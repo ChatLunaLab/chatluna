@@ -3,7 +3,7 @@ import { ChatChain } from '../chains/chain'
 import { Config } from '../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.inject(['chatluna_mcp'], (ctx) => {
+    ctx.inject(['chatluna_agent'], (ctx) => {
         ctx.command('chatluna.mcp', { authority: 1 })
 
         // List command
