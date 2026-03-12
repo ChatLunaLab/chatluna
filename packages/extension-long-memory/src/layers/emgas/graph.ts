@@ -1,8 +1,9 @@
-import { ExtractedGraphElements } from './extractor'
 import {
+    ExtractedGraphElements,
     MemoryEdge,
     MemoryNode,
     SerializedMemoryGraph,
+    SerializedMemoryNode,
     SpreadingActivationOptions
 } from './types'
 
@@ -289,15 +290,18 @@ export class MemoryGraph {
     }
 
     public toJSON(): SerializedMemoryGraph {
-        const nodes: MemoryNode[] = Array.from(this.nodes.values()).map(
-            (node) =>
-                ({
-                    ...node,
-                    sourcePassageIds: node.sourcePassageIds
-                        ? Array.from(node.sourcePassageIds)
-                        : []
-                }) as unknown as MemoryNode
-        )
+        const nodes: SerializedMemoryNode[] = Array.from(
+            this.nodes.values()
+        ).map((node) => ({
+            id: node.id,
+            type: node.type,
+            baseActivation: node.baseActivation,
+            createdAt: node.createdAt.toISOString(),
+            lastAccessed: node.lastAccessed.toISOString(),
+            sourcePassageIds: node.sourcePassageIds
+                ? Array.from(node.sourcePassageIds)
+                : []
+        }))
 
         const edges: MemoryEdge[] = []
         const seenEdges = new Set<string>()
@@ -329,9 +333,11 @@ export class MemoryGraph {
 
         for (const nodeData of serializedGraph.nodes || []) {
             graph.nodes.set(nodeData.id, {
-                ...nodeData,
                 createdAt: new Date(nodeData.createdAt),
                 lastAccessed: new Date(nodeData.lastAccessed),
+                id: nodeData.id,
+                type: nodeData.type,
+                baseActivation: nodeData.baseActivation,
                 sourcePassageIds: new Set(nodeData.sourcePassageIds || [])
             })
         }

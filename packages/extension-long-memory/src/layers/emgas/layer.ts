@@ -1,5 +1,10 @@
-import { Context } from 'koishi'
 import { randomUUID } from 'crypto'
+import { promises as fs } from 'fs'
+import * as path from 'path'
+import { Context } from 'koishi'
+import { ComputedRef } from 'koishi-plugin-chatluna'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { Config, logger } from '../../index'
 import {
     EnhancedMemory,
@@ -10,21 +15,20 @@ import {
     BaseMemoryRetrievalLayer,
     resolveLongMemoryId
 } from '../../utils/layer'
-import { MemoryGraph } from './graph'
-import { SpreadingActivationOptions } from './types'
 import {
     documentToEnhancedMemory,
     enhancedMemoryToDocument
 } from '../../utils/memory'
-import { promises as fs } from 'fs'
-import * as path from 'path'
-import { DataBaseDocstore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { extractGraphElements } from './extractor'
-import { ComputedRef } from 'koishi-plugin-chatluna'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { MemoryGraph } from './graph'
+import { SpreadingActivationOptions } from './types'
 
 // Helper function to get the persistence path for a memory graph
-function getGraphFilePath(baseDir: string, memoryId: string): string {
+function getGraphFilePath(
+    baseDir: string,
+    memoryId: string,
+    dir: string = 'emgas'
+): string {
     if (!memoryId || typeof memoryId !== 'string') {
         throw new Error('Invalid memoryId: must be a non-empty string.')
     }
@@ -37,7 +41,10 @@ function getGraphFilePath(baseDir: string, memoryId: string): string {
 
     return path.join(
         baseDir,
-        'data/chatluna/long-memory/emgasa',
+        'data',
+        'chatluna',
+        'long-memory',
+        dir,
         `${sanitizedId}.json`
     )
 }
@@ -52,7 +59,7 @@ export class EmgasMemoryLayer<
 
     private docstore: DataBaseDocstore
 
-    private extractModel: ComputedRef<ChatLunaChatModel>
+    private extractModel: ComputedRef<ChatLunaChatModel | undefined> | undefined
 
     constructor(
         protected ctx: Context,
@@ -68,30 +75,61 @@ export class EmgasMemoryLayer<
             `Initializing EMGAS layer for memory ID: ${this.info.memoryId}`
         )
         const baseDir = this.ctx.baseDir || process.cwd()
-        const filePath = getGraphFilePath(baseDir, this.info.memoryId)
+        let loaded = false
 
-        try {
-            const data = await fs.readFile(filePath, 'utf-8')
-            const serialized = JSON.parse(data)
-            this.memoryGraph = MemoryGraph.fromJSON(serialized)
-            logger.debug(`EMGAS graph loaded from ${filePath}`)
-        } catch (error) {
-            const err = error as NodeJS.ErrnoException
-            if (err && err.code === 'ENOENT') {
-                logger.debug(
-                    `No existing EMGAS graph found for ${this.info.memoryId}. A new one will be created.`
-                )
-            } else {
+        for (const filePath of [
+            getGraphFilePath(baseDir, this.info.memoryId),
+            getGraphFilePath(baseDir, this.info.memoryId, 'emgasa')
+        ]) {
+            try {
+                const data = await fs.readFile(filePath, 'utf-8')
+                const serialized = JSON.parse(data)
+                this.memoryGraph = MemoryGraph.fromJSON(serialized)
+                logger.debug(`EMGAS graph loaded from ${filePath}`)
+                loaded = true
+                break
+            } catch (error) {
+                const err = error as NodeJS.ErrnoException
+                if (err && err.code === 'ENOENT') {
+                    continue
+                }
+
                 logger.error(
-                    `Failed to load EMGAS graph from ${filePath}:`,
+                    `Failed to load EMGAS graph for ${this.info.memoryId}:`,
                     error
                 )
+                break
             }
         }
 
-        this.extractModel = await this.ctx.chatluna.createChatModel(
-            this.config.emgasExtractModel
-        )
+        if (!loaded) {
+            logger.debug(
+                `No existing EMGAS graph found for ${this.info.memoryId}. A new one will be created.`
+            )
+        }
+
+        const modelName =
+            this.config.emgasExtractModel !== '无'
+                ? this.config.emgasExtractModel
+                : this.config.longMemoryExtractModel !== '无'
+                  ? this.config.longMemoryExtractModel
+                  : this.config.hippoExtractModel !== '无'
+                    ? this.config.hippoExtractModel
+                    : undefined
+
+        this.extractModel = undefined
+        if (modelName?.includes('/')) {
+            this.extractModel =
+                await this.ctx.chatluna.createChatModel(modelName)
+        } else if (modelName != null) {
+            logger.warn(
+                `Invalid EMGAS extractor model: ${modelName}. Falling back to local concept extraction.`
+            )
+        } else {
+            logger.debug(
+                'No EMGAS extractor model configured. Falling back to local concept extraction.'
+            )
+        }
 
         // Initialize the doc store for passage storage
         this.docstore = new DataBaseDocstore(
