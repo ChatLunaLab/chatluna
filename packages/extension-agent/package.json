@@ -58,7 +58,9 @@
         "@langchain/core": "^0.3.80",
         "@modelcontextprotocol/sdk": "^1.23.0",
         "codemirror": "^6.0.2",
+        "fflate": "^0.8.2",
         "highlight.js": "^11.11.1",
+        "js-yaml": "^4.1.0",
         "mime-types": "^3.0.1",
         "vue-i18n": "^11.1.12",
         "zod": "3.25.76"

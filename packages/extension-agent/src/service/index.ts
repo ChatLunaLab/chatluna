@@ -3,12 +3,19 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { migrateFromOldConfig } from '../config/migrate'
 import { readConfig } from '../config/read'
 import { writeConfig } from '../config/write'
-import { AgentConfig, McpToolConfig, SaveMcpServerInput } from '../types'
+import {
+    AgentConfig,
+    McpToolConfig,
+    SaveMcpServerInput,
+    SkillExportResult
+} from '../types'
 import { ChatLunaAgentMcpService } from './mcp'
+import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 
 export class ChatLunaAgentService extends Service {
     public mcp: ChatLunaAgentMcpService
+    public skills: ChatLunaAgentSkillsService
     public subAgent: ChatLunaAgentSubAgentService
 
     constructor(
@@ -19,20 +26,24 @@ export class ChatLunaAgentService extends Service {
         const { config, plugin } = args
 
         this.mcp = new ChatLunaAgentMcpService(ctx, config, plugin)
+        this.skills = new ChatLunaAgentSkillsService(ctx, config)
         this.subAgent = new ChatLunaAgentSubAgentService(ctx, config)
     }
 
     async start() {
+        await this.skills.start()
         await this.mcp.start()
     }
 
     async stop() {
+        await this.skills.stop()
         await this.mcp.stop()
     }
 
     async reload(cfg?: AgentConfig) {
         const next = cfg ?? (await readConfig(this.ctx))
         this._setConfig(next)
+        await this.skills.reload()
         await this.mcp.reload()
         await this.subAgent.reload()
         await this.refreshConsoleData()
@@ -55,6 +66,7 @@ export class ChatLunaAgentService extends Service {
     getStatus() {
         return {
             mcp: this.mcp.getStatus(),
+            skills: this.skills.getStatus(),
             subAgent: this.subAgent.getStatus()
         }
     }
@@ -82,6 +94,16 @@ export class ChatLunaAgentService extends Service {
         const next = structuredClone(this.args.config)
         next.mcp = migrateFromOldConfig({ mcp }).mcp
         await this._saveMcp(next)
+    }
+
+    async saveSkillsConfig(skills: AgentConfig['skills']) {
+        const next = structuredClone(this.args.config)
+        next.skills = migrateFromOldConfig({ skills }).skills
+        await this._saveSkills(next)
+    }
+
+    async exportSkill(id: string): Promise<SkillExportResult | undefined> {
+        return await this.skills.exportSkill(id)
     }
 
     async saveMcpServer(input: SaveMcpServerInput) {
@@ -113,9 +135,24 @@ export class ChatLunaAgentService extends Service {
         await this._saveMcp(next)
     }
 
+    async setSkillEnabled(id: string, enabled: boolean) {
+        const next = structuredClone(this.args.config)
+        next.skills.items[id] = { enabled }
+        await this._saveSkills(next)
+    }
+
+    async removeSkill(id: string) {
+        await this.skills.removeSkill(id)
+
+        const next = structuredClone(this.args.config)
+        delete next.skills.items[id]
+        await this._saveSkills(next)
+    }
+
     private _setConfig(cfg: AgentConfig) {
         this.args.config = cfg
         this.mcp.config = cfg
+        this.skills.config = cfg
         this.subAgent.config = cfg
     }
 
@@ -126,6 +163,14 @@ export class ChatLunaAgentService extends Service {
         await writeConfig(this.ctx, cfg)
         this._setConfig(cfg)
         await this.mcp.sync(prev.mcp, cfg.mcp)
+        await this.refreshConsoleData()
+    }
+
+    private async _saveSkills(next: AgentConfig) {
+        const cfg = migrateFromOldConfig(structuredClone(next))
+        await writeConfig(this.ctx, cfg)
+        this._setConfig(cfg)
+        await this.skills.reload()
         await this.refreshConsoleData()
     }
 }

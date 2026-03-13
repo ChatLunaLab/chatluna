@@ -3,10 +3,87 @@ import type { DataService } from '@koishijs/plugin-console'
 export interface AgentConfig {
     version: number
     mcp: McpConfig
-    skills: Record<string, unknown>
+    skills: SkillsConfig
     scheduler: Record<string, unknown>
     tool: Record<string, unknown>
     subAgent: Record<string, unknown>
+}
+
+export interface SkillsConfig {
+    allowComputerUsePrompt: boolean
+    items: Record<string, SkillConfig>
+}
+
+export interface SkillConfig {
+    enabled: boolean
+}
+
+export type SkillSource = 'chatluna' | 'codex' | 'claude' | 'opencode'
+
+export type SkillScope = 'data' | 'project' | 'user'
+
+export type SkillState = 'ready' | 'invalid' | 'missing'
+
+export interface SkillInfo {
+    id: string
+    name: string
+    description: string
+    path: string
+    dir: string
+    source: SkillSource
+    scope: SkillScope
+    state: SkillState
+    enabled: boolean
+    visible: boolean
+    modelEnabled: boolean
+    userInvocable: boolean
+    implicitInvocation: boolean
+    shadowedBy?: string
+    compatibility?: string
+    license?: string
+    metadata?: Record<string, string>
+    allowedTools?: string[]
+    diagnostics: string[]
+}
+
+export interface SkillContentResult {
+    id: string
+    content: string
+}
+
+export interface SkillImportFile {
+    path: string
+    data: string
+}
+
+export type SkillImportInput =
+    | {
+          type: 'github'
+          url: string
+      }
+    | {
+          type: 'zip'
+          name: string
+          data: string
+      }
+    | {
+          type: 'folder'
+          name: string
+          files: SkillImportFile[]
+      }
+
+export interface SkillImportResult {
+    source: SkillImportInput['type']
+    imported: string[]
+    replaced: string[]
+    diagnostics: string[]
+}
+
+export interface SkillExportResult {
+    id: string
+    name: string
+    fileName: string
+    data: string
 }
 
 export interface McpConfig {
@@ -87,8 +164,19 @@ export interface SubAgentStatus {
     agents: Record<string, unknown>
 }
 
+export interface SkillsStatus {
+    enabled: boolean
+    root: string
+    total: number
+    visible: number
+    modelEnabled: number
+    activeConversations: number
+    catalog: Record<string, SkillInfo>
+}
+
 export interface AgentStatus {
     mcp: McpStatus
+    skills: SkillsStatus
     subAgent: SubAgentStatus
 }
 
@@ -122,8 +210,21 @@ declare module '@koishijs/plugin-console' {
         ) => Promise<ActionResult>
         'chatluna-agent/getStatus': () => Promise<AgentStatus>
         'chatluna-agent/getMcpStatus': () => Promise<McpStatus>
+        'chatluna-agent/getSkills': () => Promise<SkillInfo[]>
+        'chatluna-agent/getSkillContent': (
+            id: string
+        ) => Promise<SkillContentResult | undefined>
+        'chatluna-agent/exportSkill': (
+            id: string
+        ) => Promise<SkillExportResult | undefined>
+        'chatluna-agent/importSkills': (
+            input: SkillImportInput
+        ) => Promise<SkillImportResult>
         'chatluna-agent/saveMcp': (
             config: AgentConfig['mcp']
+        ) => Promise<ActionResult>
+        'chatluna-agent/saveSkills': (
+            config: AgentConfig['skills']
         ) => Promise<ActionResult>
         'chatluna-agent/upsertMcpServer': (
             name: string,
@@ -143,6 +244,12 @@ declare module '@koishijs/plugin-console' {
             config: McpToolConfig
         ) => Promise<ActionResult>
         'chatluna-agent/reloadMcp': () => Promise<ActionResult>
+        'chatluna-agent/reloadSkills': () => Promise<ActionResult>
+        'chatluna-agent/removeSkill': (id: string) => Promise<ActionResult>
+        'chatluna-agent/setSkillEnabled': (
+            id: string,
+            enabled: boolean
+        ) => Promise<ActionResult>
         'chatluna-agent/reconnectMcpServer': (
             name: string
         ) => Promise<ActionResult>

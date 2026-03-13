@@ -25,9 +25,9 @@
                         >
                             <skills-page
                                 :config="config?.skills"
+                                :status="status?.skills"
                                 :loading="loading"
                                 @refresh="refreshData"
-                                @save="(value) => saveSection('skills', value)"
                             />
                         </div>
 
@@ -85,7 +85,7 @@ import { send, store } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
 import AgentSidebar from './agent-sidebar.vue'
 import McpPage from '../mcp/mcp-page.vue'
-import SkillsPage from '../placeholder/skills-page.vue'
+import SkillsPage from '../skills/skills-page.vue'
 import SchedulerPage from '../placeholder/scheduler-page.vue'
 import ToolPage from '../placeholder/tool-page.vue'
 import SubAgentPage from '../placeholder/sub-agent-page.vue'
@@ -126,7 +126,7 @@ const saveMcp = async (value: AgentConfig['mcp']) => {
 }
 
 const saveSection = async (
-    key: 'skills' | 'tool' | 'subAgent' | 'scheduler',
+    key: 'tool' | 'subAgent' | 'scheduler',
     value: Record<string, unknown>
 ) => {
     if (!config.value) {

@@ -7,7 +7,10 @@ export function getDefaultConfig(): AgentConfig {
             mcpServers: {},
             tools: {}
         },
-        skills: {},
+        skills: {
+            allowComputerUsePrompt: false,
+            items: {}
+        },
         scheduler: {},
         tool: {},
         subAgent: {}

@@ -1,6 +1,7 @@
 import { DataService } from '@koishijs/plugin-console'
 import { Context } from 'koishi'
 import { resolve } from 'path'
+import { getSkillsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import { AgentConsoleData, McpServerConfig } from '../types'
 
@@ -18,6 +19,15 @@ class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
             config: await readConfig(this.ctx),
             status: {
                 mcp: { connected: false, servers: {}, tools: {} },
+                skills: {
+                    enabled: true,
+                    root: getSkillsRootPath(this.ctx),
+                    total: 0,
+                    visible: 0,
+                    modelEnabled: 0,
+                    activeConversations: 0,
+                    catalog: {}
+                },
                 subAgent: { enabled: false, agents: {} }
             }
         }
@@ -61,9 +71,52 @@ export function apply(ctx: Context) {
         agent().mcp.getStatus()
     )
 
+    ctx.console.addListener('chatluna-agent/getSkills', async () =>
+        agent().skills.listSkills()
+    )
+
+    ctx.console.addListener('chatluna-agent/getSkillContent', async (id) =>
+        agent().skills.getSkillContent(id)
+    )
+
+    ctx.console.addListener('chatluna-agent/exportSkill', async (id) =>
+        agent().exportSkill(id)
+    )
+
+    ctx.console.addListener('chatluna-agent/importSkills', async (input) => {
+        const result = await agent().skills.importSkills(input)
+        await agent().refreshConsoleData()
+        return result
+    })
+
     ctx.console.addListener(
         'chatluna-agent/saveMcp',
         ok((cfg) => agent().saveMcpConfig(cfg))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/saveSkills',
+        ok((cfg) => agent().saveSkillsConfig(cfg))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/reloadSkills',
+        ok(async () => {
+            await agent().skills.reload()
+            await agent().refreshConsoleData()
+        })
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/removeSkill',
+        ok((id: string) => agent().removeSkill(id))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/setSkillEnabled',
+        ok((id: string, enabled: boolean) =>
+            agent().setSkillEnabled(id, enabled)
+        )
     )
 
     ctx.console.addListener(
