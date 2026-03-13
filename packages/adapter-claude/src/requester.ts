@@ -78,6 +78,7 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
             } satisfies ClaudeRequest,
             params.overrideRequestParams ?? {}
         ) as ClaudeRequest
+        request.stream = true
 
         const betas = new Set<string>()
         const rawBetas = request.anthropicBeta ?? request['anthropic-beta']

@@ -24,6 +24,7 @@ import {
     ClaudeMessage,
     ClaudeMessageContentBlockParam,
     ClaudeReasoningBlockParam,
+    ClaudeToolResultContentBlockParam,
     ClaudeTool
 } from './types'
 
@@ -92,13 +93,10 @@ export async function langchainMessageToClaudeMessage(
                 result.content = [
                     {
                         type: 'tool_result',
-                        content:
-                            typeof rawMessage.content === 'string'
-                                ? rawMessage.content
-                                : await processMessageContent(
-                                      plugin,
-                                      rawMessage.content
-                                  ),
+                        content: result.content as
+                            | string
+                            | ClaudeToolResultContentBlockParam[]
+                            | undefined,
                         tool_use_id: rawMessage.tool_call_id
                     }
                 ]
@@ -335,7 +333,7 @@ export function formatToolsToClaudeTools(
     tools: StructuredTool[]
 ): ClaudeTool[] {
     if (tools.length < 1) {
-        return undefined
+        return []
     }
 
     return tools.map(formatToolToClaudeTool)
