@@ -9,17 +9,17 @@ import {
     MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
-    type UsageMetadata,
     ToolMessage,
-    ToolMessageChunk
+    ToolMessageChunk,
+    type UsageMetadata
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { JsonSchema7Type, zodToJsonSchema } from 'zod-to-json-schema'
 import {
-    ChatCompletionUsage,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
-    ChatCompletionTool
+    ChatCompletionTool,
+    ChatCompletionUsage
 } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
@@ -98,7 +98,6 @@ export async function langchainMessageToOpenAIMessage(
     const result: ChatCompletionResponseMessage[] = []
 
     const normalizedModel = model ? normalizeOpenAIModelName(model) : model
-    const isDeepseekThinkModel = normalizedModel?.includes('deepseek-reasoner')
     for (const rawMessage of messages) {
         const role = messageTypeToOpenAIRole(rawMessage.getType())
 
@@ -247,14 +246,10 @@ export async function langchainMessageToOpenAIMessage(
         return transformSystemMessages(result)
     }
 
-    if (isDeepseekThinkModel) {
-        return processDeepSeekThinkMessages(result, messages)
-    }
-
-    return result
+    return processInterleavedThinkMessages(result, messages)
 }
 
-export function processDeepSeekThinkMessages(
+export function processInterleavedThinkMessages(
     convertedMessages: ChatCompletionResponseMessage[],
     originalMessages: BaseMessage[]
 ): ChatCompletionResponseMessage[] {

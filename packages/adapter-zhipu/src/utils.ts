@@ -1,214 +1,107 @@
+import { BaseMessage } from '@langchain/core/messages'
+import type { StructuredTool } from '@langchain/core/tools'
 import {
-    AIMessage,
-    AIMessageChunk,
-    BaseMessage,
-    ChatMessageChunk,
-    FunctionMessageChunk,
-    HumanMessageChunk,
-    MessageContentImageUrl,
-    MessageType,
-    SystemMessageChunk,
-    ToolMessage,
-    ToolMessageChunk
-} from '@langchain/core/messages'
+    convertDeltaToMessageChunk as convertOpenAIDeltaToMessageChunk,
+    formatToolToOpenAITool,
+    langchainMessageToOpenAIMessage
+} from '@chatluna/v1-shared-adapter'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool,
     ZhipuClientConfig
 } from './types'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
-import {
-    fetchImageUrl,
-    removeAdditionalProperties,
-    supportImageInput
-} from '@chatluna/v1-shared-adapter'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
-import { isZodSchemaV3 } from '@langchain/core/utils/types'
+
+const CONTINUE_PROMPT =
+    'Continue what I said to you last time. Follow these instructions.'
+const SYSTEM_REPLY = 'Okay, what do I need to do?'
 
 export async function langchainMessageToZhipuMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin,
-    model?: string
+    model = ''
 ): Promise<ChatCompletionResponseMessage[]> {
-    const result: ChatCompletionResponseMessage[] = []
-    const mappedMessage: ChatCompletionResponseMessage[] = []
+    const mapped = (await langchainMessageToOpenAIMessage(
+        messages,
+        plugin,
+        model
+    )) as ChatCompletionResponseMessage[]
 
-    for (const rawMessage of messages) {
-        const role = messageTypeToZhipuRole(rawMessage.getType())
-
-        const msg = {
-            content: (rawMessage.content as string) || null,
-            name: role === 'assistant' ? rawMessage.name : undefined,
-            role,
-            tool_call_id: (rawMessage as ToolMessage).tool_call_id
-        } as ChatCompletionResponseMessage
-
-        if (rawMessage.getType() === 'ai') {
-            const toolCalls = (rawMessage as AIMessage).tool_calls
-
-            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-                msg.tool_calls = toolCalls.map((toolCall) => ({
-                    id: toolCall.id,
-                    type: 'function',
-                    function: {
-                        name: toolCall.name,
-                        arguments: JSON.stringify(toolCall.args)
-                    }
-                }))
+    if (model.includes('tools')) {
+        for (const msg of mapped) {
+            if (Array.isArray(msg.content)) {
+                continue
             }
-        }
 
-        const images = rawMessage.additional_kwargs.images as string[] | null
-
-        if (supportImageInput(model) && images != null) {
             msg.content = [
                 {
                     type: 'text',
-                    text: rawMessage.content as string
-                }
-            ]
-
-            // base 64??
-            const imageContents = await Promise.all(
-                images.map(async (image) => {
-                    try {
-                        const url = await fetchImageUrl(plugin, {
-                            type: 'image_url',
-                            image_url: { url: image }
-                        } as MessageContentImageUrl)
-                        return {
-                            type: 'image_url',
-                            image_url: {
-                                url
-                                // detail: 'low'
-                            }
-                        } as const
-                    } catch {
-                        return null
-                    }
-                })
-            )
-
-            msg.content.push(
-                ...imageContents.filter((content) => content != null)
-            )
-        } else if (Array.isArray(msg.content) && msg.content.length > 0) {
-            const mappedContent = await Promise.all(
-                msg.content.map(async (content) => {
-                    if (!isMessageContentImageUrl(content)) return content
-
-                    try {
-                        const url = await fetchImageUrl(plugin, content)
-                        return {
-                            type: 'image_url',
-                            image_url: {
-                                url,
-                                detail: 'low'
-                            }
-                        } as const
-                    } catch {
-                        return null
-                    }
-                })
-            )
-
-            msg.content = mappedContent.filter((content) => content != null)
-        } else if (model.includes('tools')) {
-            msg.content = [
-                {
-                    type: 'text',
-                    text: rawMessage.content as string
+                    text: msg.content as string
                 }
             ]
         }
-
-        mappedMessage.push(msg)
     }
 
     if (model === 'glm-4v-flash') {
-        // The 4v-flash only supports one image
-        let lastImageMessageIndex = mappedMessage
+        let idx = mapped
             .slice()
             .reverse()
-            .findIndex((message) => Array.isArray(message.content))
+            .findIndex((msg) => Array.isArray(msg.content))
 
-        if (lastImageMessageIndex !== -1) {
-            lastImageMessageIndex =
-                mappedMessage.length - 1 - lastImageMessageIndex
+        if (idx !== -1) {
+            idx = mapped.length - 1 - idx
 
-            for (let index = lastImageMessageIndex - 1; index >= 0; index--) {
-                const message = mappedMessage[index]
-                const content = message.content
+            for (let i = idx - 1; i >= 0; i--) {
+                const msg = mapped[i]
 
-                if (!Array.isArray(content)) {
+                if (!Array.isArray(msg.content)) {
                     continue
                 }
 
-                message.content = content.find(
-                    (value) => value.type === 'text'
+                msg.content = msg.content.find(
+                    (item) => item.type === 'text'
                 ).text
             }
         }
     }
 
-    for (let i = 0; i < mappedMessage.length; i++) {
-        const message = mappedMessage[i]
+    const result: ChatCompletionResponseMessage[] = []
 
-        if (message.role !== 'system') {
-            result.push(message)
+    for (let i = 0; i < mapped.length; i++) {
+        const msg = mapped[i]
+
+        if (msg.role !== 'system') {
+            result.push(msg)
             continue
         }
 
         result.push({
             role: 'user',
-            content: message.content
+            content: msg.content
         })
 
         result.push({
             role: 'assistant',
-            content: 'Okay, what do I need to do?'
+            content: SYSTEM_REPLY
         })
 
-        if (mappedMessage?.[i + 1]?.role === 'assistant') {
+        if (mapped[i + 1]?.role === 'assistant') {
             result.push({
                 role: 'user',
-                content:
-                    'Continue what I said to you last time. Follow these instructions.'
+                content: CONTINUE_PROMPT
             })
         }
     }
 
-    if (result[result.length - 1].role === 'assistant') {
+    if (result[result.length - 1]?.role === 'assistant') {
         result.push({
             role: 'user',
-            content:
-                'Continue what I said to you last time. Follow these instructions.'
+            content: CONTINUE_PROMPT
         })
     }
 
     return result
-}
-
-export function messageTypeToZhipuRole(
-    type: MessageType
-): ChatCompletionResponseMessageRoleEnum {
-    switch (type) {
-        case 'system':
-            return 'system'
-        case 'ai':
-            return 'assistant'
-        case 'human':
-            return 'user'
-        case 'function':
-            return 'function'
-        case 'tool':
-            return 'tool'
-        default:
-            throw new Error(`Unknown message type: ${type}`)
-    }
 }
 
 export function convertDeltaToMessageChunk(
@@ -216,59 +109,7 @@ export function convertDeltaToMessageChunk(
     delta: Record<string, any>,
     defaultRole?: ChatCompletionResponseMessageRoleEnum
 ) {
-    const role = delta.role ?? defaultRole
-    const content = delta.content ?? ''
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-    let additional_kwargs: { function_call?: any }
-    if (delta.function_call) {
-        additional_kwargs = {
-            function_call: delta.function_call
-        }
-    } else {
-        additional_kwargs = {}
-    }
-    if (role === 'user') {
-        return new HumanMessageChunk({ content })
-    } else if (role === 'assistant') {
-        const toolCallChunks = []
-        if (Array.isArray(delta.tool_calls)) {
-            for (const rawToolCall of delta.tool_calls) {
-                const toolCall = {
-                    name: rawToolCall.function?.name,
-                    args: rawToolCall.function?.arguments,
-                    id: rawToolCall.id,
-                    index: rawToolCall.index
-                }
-
-                if (toolCall.name != null && toolCall.name.length < 1) {
-                    delete toolCall.name
-                }
-
-                toolCallChunks.push(toolCall)
-            }
-        }
-        return new AIMessageChunk({
-            content,
-            tool_call_chunks: toolCallChunks,
-            additional_kwargs
-        })
-    } else if (role === 'system') {
-        return new SystemMessageChunk({ content })
-    } else if (role === 'function') {
-        return new FunctionMessageChunk({
-            content,
-            additional_kwargs,
-            name: delta.name
-        })
-    } else if (role === 'tool') {
-        return new ToolMessageChunk({
-            content,
-            additional_kwargs,
-            tool_call_id: delta.tool_call_id
-        })
-    } else {
-        return new ChatMessageChunk({ content, role })
-    }
+    return convertOpenAIDeltaToMessageChunk(delta, defaultRole)
 }
 
 export function formatToolsToZhipuTools(
@@ -279,20 +120,20 @@ export function formatToolsToZhipuTools(
     let result: ChatCompletionTool[] = []
 
     if (clientConfig.retrieval?.length > 0) {
-        const mappedTools = clientConfig.retrieval.map((item) => {
-            return {
-                type: 'retrieval',
-                retrieval: {
-                    knowledge_id: item,
-                    prompt_template:
-                        clientConfig.knowledgePromptTemplate?.length > 0
-                            ? clientConfig.knowledgePromptTemplate
-                            : undefined
-                }
-            } satisfies ChatCompletionTool
-        })
-
-        result.push(...mappedTools)
+        result.push(
+            ...clientConfig.retrieval.map((item) => {
+                return {
+                    type: 'retrieval',
+                    retrieval: {
+                        knowledge_id: item,
+                        prompt_template:
+                            clientConfig.knowledgePromptTemplate?.length > 0
+                                ? clientConfig.knowledgePromptTemplate
+                                : undefined
+                    }
+                } satisfies ChatCompletionTool
+            })
+        )
     }
 
     if (clientConfig.webSearch && model.includes('tools')) {
@@ -304,7 +145,6 @@ export function formatToolsToZhipuTools(
             }
         } satisfies ChatCompletionTool)
 
-        // remove web_search
         result = result.filter((tool) => tool.type !== 'web_search')
     }
 
@@ -322,22 +162,5 @@ export function formatToolsToZhipuTools(
 export function formatToolToZhipuTool(
     tool: StructuredTool
 ): ChatCompletionTool {
-    const parameters = removeAdditionalProperties(
-        isZodSchemaV3(tool.schema)
-            ? zodToJsonSchema(tool.schema as never, {
-                  allowedAdditionalProperties: undefined
-              })
-            : tool.schema
-    )
-
-    return {
-        type: 'function',
-        function: {
-            name: tool.name,
-            description: tool.description,
-            // any?
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parameters
-        }
-    }
+    return formatToolToOpenAITool(tool) as ChatCompletionTool
 }
