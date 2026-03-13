@@ -30,6 +30,15 @@ import {
     langchainMessageToClaudeMessage
 } from './utils'
 
+const INTERLEAVED_THINKING_SUPPORTED_MODELS = [
+    'claude-3-7-',
+    'claude-sonnet-4',
+    'claude-opus-4-',
+    'claude-haiku-4'
+]
+
+const INTERLEAVED_THINKING_EXCLUDED_MODELS = ['claude-opus-4-6']
+
 export class ClaudeRequester extends ModelRequester<ClientConfig> {
     constructor(
         ctx: Context,
@@ -105,11 +114,12 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
         if (
             request.thinking != null &&
             request.thinking.type !== 'disabled' &&
-            !request.model.startsWith('claude-opus-4-6') &&
-            (request.model.includes('claude-3-7-') ||
-                request.model.includes('claude-sonnet-4') ||
-                request.model.includes('claude-opus-4-') ||
-                request.model.includes('claude-haiku-4'))
+            !INTERLEAVED_THINKING_EXCLUDED_MODELS.some((m) =>
+                request.model.startsWith(m)
+            ) &&
+            INTERLEAVED_THINKING_SUPPORTED_MODELS.some((m) =>
+                request.model.includes(m)
+            )
         ) {
             betas.add('interleaved-thinking-2025-05-14')
         }
