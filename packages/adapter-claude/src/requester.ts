@@ -1,23 +1,27 @@
-import {
-    ModelRequester,
-    ModelRequestParams
-} from 'koishi-plugin-chatluna/llm-core/platform/api'
 import { AIMessageChunk } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
+import { Context } from 'koishi'
 import {
     ClientConfig,
     ClientConfigPool
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
+    ModelRequester,
+    ModelRequestParams
+} from 'koishi-plugin-chatluna/llm-core/platform/api'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
+import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Context } from 'koishi'
-import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
+import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
+import { createUsageMetadata } from '@chatluna/v1-shared-adapter'
 import { Config, logger } from '.'
 import {
     ClaudeDeltaResponse,
     ClaudeListModelsResponse,
+    ClaudeReasoningBlockParam,
     ClaudeRequest
 } from './types'
 import {
@@ -25,7 +29,6 @@ import {
     formatToolsToClaudeTools,
     langchainMessageToClaudeMessage
 } from './utils'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class ClaudeRequester extends ModelRequester<ClientConfig> {
     constructor(
@@ -40,39 +43,93 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
     async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
+        const model = (params.model ?? '').replace('-thinking-', '-')
+        const maxTokens = params.maxTokens ?? 4096
+        const request = deepAssign(
+            {},
+            {
+                model,
+                max_tokens: maxTokens,
+                temperature: params.temperature,
+                top_p: params.topP,
+                stop_sequences:
+                    typeof params.stop === 'string'
+                        ? [params.stop]
+                        : params.stop,
+                stream: true,
+                messages: await langchainMessageToClaudeMessage(
+                    params.input,
+                    this._plugin,
+                    model
+                ),
+                thinking: params.model?.includes('thinking')
+                    ? {
+                          type: 'enabled',
+                          budget_tokens: Math.max(
+                              1,
+                              Math.min(16000, maxTokens - 1)
+                          )
+                      }
+                    : undefined,
+                tools:
+                    params.tools != null
+                        ? formatToolsToClaudeTools(params.tools)
+                        : undefined
+            } satisfies ClaudeRequest,
+            params.overrideRequestParams ?? {}
+        ) as ClaudeRequest
+
+        const betas = new Set<string>()
+        const rawBetas = request.anthropicBeta ?? request['anthropic-beta']
+
+        if (typeof rawBetas === 'string' && rawBetas.length > 0) {
+            for (const beta of rawBetas.split(',')) {
+                const trimmed = beta.trim()
+                if (trimmed.length > 0) {
+                    betas.add(trimmed)
+                }
+            }
+        } else if (Array.isArray(rawBetas)) {
+            for (const beta of rawBetas) {
+                const trimmed = typeof beta === 'string' ? beta.trim() : ''
+                if (trimmed.length > 0) {
+                    betas.add(trimmed)
+                }
+            }
+        }
+
+        delete request.anthropicBeta
+        delete request['anthropic-beta']
+
+        if (
+            request.thinking != null &&
+            request.thinking.type !== 'disabled' &&
+            !request.model.startsWith('claude-opus-4-6') &&
+            (request.model.includes('claude-3-7-') ||
+                request.model.includes('claude-sonnet-4') ||
+                request.model.includes('claude-opus-4-') ||
+                request.model.includes('claude-haiku-4'))
+        ) {
+            betas.add('interleaved-thinking-2025-05-14')
+        }
+
+        const response = await this.post('messages', request, {
+            signal: params.signal,
+            headers:
+                betas.size > 0
+                    ? {
+                          'anthropic-beta': Array.from(betas).join(',')
+                      }
+                    : undefined
+        })
+
+        const iterator = sseIterable(response)
         const reasoningState = {
             content: '',
             startedAt: Date.now(),
-            endedAt: undefined as number | undefined
+            endedAt: undefined as number | undefined,
+            blocks: [] as ClaudeReasoningBlockParam[]
         }
-
-        const response = await this.post('messages', {
-            model: params.model.replace('thinking', ''),
-            max_tokens: params.maxTokens ?? 4096,
-            temperature: params.temperature,
-            top_p: params.topP,
-            stop_sequences:
-                typeof params.stop === 'string' ? [params.stop] : params.stop,
-            stream: true,
-            messages: await langchainMessageToClaudeMessage(
-                params.input,
-                this._plugin,
-                params.model
-            ),
-            thinking: params.model.includes('thinking')
-                ? {
-                      type: 'enabled',
-                      // TODO: customize
-                      budget_tokens: 16000
-                  }
-                : undefined,
-            tools:
-                params.tools != null
-                    ? formatToolsToClaudeTools(params.tools)
-                    : undefined
-        } satisfies ClaudeRequest)
-
-        const iterator = sseIterable(response)
 
         for await (const event of iterator) {
             if (event.event === 'ping') continue
@@ -84,30 +141,106 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
                 )
             }
 
-            if (event.event === 'message_delta') continue
-
             const chunk = event.data
 
             if (chunk === '[DONE]') {
                 break
             }
 
-            const parsedRawChunk = JSON.parse(chunk) as ClaudeDeltaResponse
-
-            const parsedChunk = convertDeltaToMessageChunk(parsedRawChunk)
-            const isThinkingChunk =
-                parsedRawChunk.type === 'content_block_delta' &&
-                parsedRawChunk.delta.type === 'thinking_delta'
-
-            // console.log(findTools, parsedRawChunk, parsedChunk)
-
-            if (parsedChunk == null) continue
-
-            if (isThinkingChunk) {
-                reasoningState.content += parsedRawChunk.delta.thinking
-
+            if (chunk === '' || chunk == null || chunk === 'undefined') {
                 continue
             }
+
+            const parsedRawChunk = JSON.parse(chunk) as ClaudeDeltaResponse
+            const usage =
+                parsedRawChunk.type === 'message_start'
+                    ? parsedRawChunk.message.usage
+                    : parsedRawChunk.type === 'message_delta'
+                      ? parsedRawChunk.usage
+                      : undefined
+
+            if (usage != null) {
+                const usageMetadata = createUsageMetadata({
+                    inputTokens: usage.input_tokens,
+                    outputTokens: usage.output_tokens,
+                    totalTokens: usage.input_tokens + usage.output_tokens,
+                    cacheReadTokens: usage.cache_read_input_tokens,
+                    cacheCreationTokens: usage.cache_creation_input_tokens
+                })
+
+                yield new ChatGenerationChunk({
+                    generationInfo: {
+                        usage_metadata: usageMetadata
+                    },
+                    message: new AIMessageChunk({
+                        content: '',
+                        usage_metadata: usageMetadata
+                    }),
+                    text: ''
+                })
+            }
+
+            if (
+                parsedRawChunk.type === 'message_delta' ||
+                parsedRawChunk.type === 'message_stop' ||
+                parsedRawChunk.type === 'content_block_stop'
+            ) {
+                continue
+            }
+
+            if (
+                parsedRawChunk.type === 'content_block_start' &&
+                parsedRawChunk.content_block.type === 'thinking'
+            ) {
+                const content = parsedRawChunk.content_block.thinking ?? ''
+
+                reasoningState.content += content
+                reasoningState.blocks[parsedRawChunk.index] = {
+                    type: 'thinking',
+                    thinking: content,
+                    signature: parsedRawChunk.content_block.signature ?? ''
+                }
+                continue
+            }
+
+            if (
+                parsedRawChunk.type === 'content_block_start' &&
+                parsedRawChunk.content_block.type === 'redacted_thinking'
+            ) {
+                reasoningState.blocks[parsedRawChunk.index] = {
+                    type: 'redacted_thinking',
+                    data: parsedRawChunk.content_block.data ?? ''
+                }
+                continue
+            }
+
+            if (
+                parsedRawChunk.type === 'content_block_delta' &&
+                parsedRawChunk.delta.type === 'thinking_delta'
+            ) {
+                reasoningState.content += parsedRawChunk.delta.thinking
+
+                const block = reasoningState.blocks[parsedRawChunk.index]
+                if (block?.type === 'thinking') {
+                    block.thinking += parsedRawChunk.delta.thinking
+                }
+                continue
+            }
+
+            if (
+                parsedRawChunk.type === 'content_block_delta' &&
+                parsedRawChunk.delta.type === 'signature_delta'
+            ) {
+                const block = reasoningState.blocks[parsedRawChunk.index]
+                if (block?.type === 'thinking') {
+                    block.signature = parsedRawChunk.delta.signature
+                }
+                continue
+            }
+
+            const parsedChunk = convertDeltaToMessageChunk(parsedRawChunk)
+
+            if (parsedChunk == null) continue
 
             const hasMessageChunk =
                 (typeof parsedChunk.content === 'string'
@@ -131,16 +264,34 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
             })
         }
 
-        if (reasoningState.content.length > 0) {
+        const reasoningBlocks = reasoningState.blocks.filter(
+            (block): block is ClaudeReasoningBlockParam =>
+                block != null &&
+                (block.type === 'redacted_thinking' ||
+                    block.signature.length > 0)
+        )
+
+        if (reasoningState.content.length > 0 || reasoningBlocks.length > 0) {
             const reasoningTime =
                 (reasoningState.endedAt ?? Date.now()) -
                 reasoningState.startedAt
+            const reasoningSignature =
+                reasoningBlocks.length === 1 &&
+                reasoningBlocks[0].type === 'thinking'
+                    ? reasoningBlocks[0].signature
+                    : undefined
 
             yield new ChatGenerationChunk({
                 message: new AIMessageChunk({
                     content: '',
                     additional_kwargs: {
                         reasoning_content: reasoningState.content,
+                        ...(reasoningSignature != null
+                            ? { reasoning_signature: reasoningSignature }
+                            : {}),
+                        ...(reasoningBlocks.length > 0
+                            ? { reasoning_blocks: reasoningBlocks }
+                            : {}),
                         ...(reasoningTime != null
                             ? { reasoning_time: reasoningTime }
                             : {})
@@ -171,7 +322,6 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
 
         const url = query.size > 0 ? `models?${query.toString()}` : 'models'
 
-        // "anthropic-beta" is an optional header supported by the Models API.
         const headers =
             Array.isArray(options?.anthropicBeta) &&
             options.anthropicBeta.length > 0
@@ -205,6 +355,7 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
 
     public buildHeaders() {
         return {
+            Authorization: `Bearer ${this._config.value.apiKey}`,
             'x-api-key': this._config.value.apiKey,
             'anthropic-version': '2023-06-01',
             'Content-Type': 'application/json'

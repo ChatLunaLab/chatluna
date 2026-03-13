@@ -1,3 +1,19 @@
+export type ClaudeThinkingConfig =
+    | {
+          type: 'enabled'
+          budget_tokens: number
+      }
+    | {
+          type: 'disabled'
+      }
+    | ({ type: 'adaptive' } & Record<string, unknown>)
+
+export type ClaudeToolChoice =
+    | { type: 'auto' }
+    | { type: 'none' }
+    | { type: 'any' }
+    | { type: 'tool'; name: string }
+
 export interface ClaudeRequest {
     model: string
     max_tokens: number
@@ -6,26 +22,28 @@ export interface ClaudeRequest {
     top_k?: number
     stream?: boolean
     stop_sequences?: string[]
+    system?: string | ClaudeTextBlockParam[]
     messages: ClaudeMessage[]
-    tools?: CluadeTool[]
-    thinking?: {
-        type: 'enabled' | 'disabled'
-        budget_tokens: number
-    }
+    tools?: ClaudeTool[]
+    tool_choice?: ClaudeToolChoice
+    thinking?: ClaudeThinkingConfig
+    metadata?: Record<string, string | number | boolean>
+    service_tier?: string
+    [key: string]: unknown
 }
 
-export interface CluadeTool {
+export interface ClaudeTool {
     name: string
     description: string
     input_schema: object
 }
 
-type ClaudeCacheControlEphemeral = {
+export type ClaudeCacheControlEphemeral = {
     type: 'ephemeral'
     ttl?: '5m' | '1h'
 }
 
-type ClaudeTextCitationParam =
+export type ClaudeTextCitationParam =
     | {
           type: 'char_location'
           cited_text: string
@@ -67,14 +85,14 @@ type ClaudeTextCitationParam =
           end_block_index: number
       }
 
-type ClaudeTextBlockParam = {
+export type ClaudeTextBlockParam = {
     type: 'text'
     text: string
     cache_control?: ClaudeCacheControlEphemeral
     citations?: ClaudeTextCitationParam[]
 }
 
-type ClaudeImageSourceParam =
+export type ClaudeImageSourceParam =
     | {
           type: 'base64'
           media_type: string
@@ -85,17 +103,17 @@ type ClaudeImageSourceParam =
           url: string
       }
 
-type ClaudeImageBlockParam = {
+export type ClaudeImageBlockParam = {
     type: 'image'
     source: ClaudeImageSourceParam
     cache_control?: ClaudeCacheControlEphemeral
 }
 
-type ClaudeContentBlockSourceContent =
+export type ClaudeContentBlockSourceContent =
     | ClaudeTextBlockParam
     | ClaudeImageBlockParam
 
-type ClaudeDocumentSourceParam =
+export type ClaudeDocumentSourceParam =
     | {
           type: 'base64'
           media_type: 'application/pdf'
@@ -115,7 +133,7 @@ type ClaudeDocumentSourceParam =
           url: string
       }
 
-type ClaudeDocumentBlockParam = {
+export type ClaudeDocumentBlockParam = {
     type: 'document'
     source: ClaudeDocumentSourceParam
     cache_control?: ClaudeCacheControlEphemeral
@@ -124,7 +142,7 @@ type ClaudeDocumentBlockParam = {
     title?: string
 }
 
-type ClaudeSearchResultBlockParam = {
+export type ClaudeSearchResultBlockParam = {
     type: 'search_result'
     title: string
     source: string
@@ -133,7 +151,7 @@ type ClaudeSearchResultBlockParam = {
     citations?: { enabled?: boolean }
 }
 
-type ClaudeToolUseBlockParam = {
+export type ClaudeToolUseBlockParam = {
     type: 'tool_use'
     id: string
     name: string
@@ -141,7 +159,7 @@ type ClaudeToolUseBlockParam = {
     cache_control?: ClaudeCacheControlEphemeral
 }
 
-type ClaudeToolResultContentBlockParam =
+export type ClaudeToolResultContentBlockParam =
     | ClaudeTextBlockParam
     | ClaudeImageBlockParam
     | ClaudeSearchResultBlockParam
@@ -152,7 +170,7 @@ type ClaudeToolResultContentBlockParam =
           cache_control?: ClaudeCacheControlEphemeral
       }
 
-type ClaudeToolResultBlockParam = {
+export type ClaudeToolResultBlockParam = {
     type: 'tool_result'
     tool_use_id: string
     content?: string | ClaudeToolResultContentBlockParam[]
@@ -160,36 +178,39 @@ type ClaudeToolResultBlockParam = {
     is_error?: boolean
 }
 
-type ClaudeMessageContentBlockParam =
-    | ClaudeTextBlockParam
-    | ClaudeImageBlockParam
-    | ClaudeDocumentBlockParam
-    | ClaudeSearchResultBlockParam
-    | ClaudeToolUseBlockParam
-    | ClaudeToolResultBlockParam
-    | {
-          type: 'thinking'
-          thinking: string
-          signature: string
-      }
-    | {
-          type: 'redacted_thinking'
-          data: string
-      }
-    | {
-          type: 'server_tool_use'
-          id: string
-          name:
-              | 'web_search'
-              | 'web_fetch'
-              | 'code_execution'
-              | 'bash_code_execution'
-              | 'text_editor_code_execution'
-              | 'tool_search_tool_regex'
-              | 'tool_search_tool_bm25'
-          input: Record<string, unknown>
-          cache_control?: ClaudeCacheControlEphemeral
-      }
+export type ClaudeThinkingBlockParam = {
+    type: 'thinking'
+    thinking: string
+    signature: string
+    cache_control?: ClaudeCacheControlEphemeral
+}
+
+export type ClaudeRedactedThinkingBlockParam = {
+    type: 'redacted_thinking'
+    data: string
+    cache_control?: ClaudeCacheControlEphemeral
+}
+
+export type ClaudeReasoningBlockParam =
+    | ClaudeThinkingBlockParam
+    | ClaudeRedactedThinkingBlockParam
+
+export type ClaudeServerToolUseBlockParam = {
+    type: 'server_tool_use'
+    id: string
+    name:
+        | 'web_search'
+        | 'web_fetch'
+        | 'code_execution'
+        | 'bash_code_execution'
+        | 'text_editor_code_execution'
+        | 'tool_search_tool_regex'
+        | 'tool_search_tool_bm25'
+    input: Record<string, unknown>
+    cache_control?: ClaudeCacheControlEphemeral
+}
+
+export type ClaudeServerToolResultBlockParam =
     | {
           type: 'web_search_tool_result'
           tool_use_id: string
@@ -209,53 +230,110 @@ type ClaudeMessageContentBlockParam =
           cache_control?: ClaudeCacheControlEphemeral
       }
 
+export type ClaudeMessageContentBlockParam =
+    | ClaudeTextBlockParam
+    | ClaudeImageBlockParam
+    | ClaudeDocumentBlockParam
+    | ClaudeSearchResultBlockParam
+    | ClaudeToolUseBlockParam
+    | ClaudeToolResultBlockParam
+    | ClaudeReasoningBlockParam
+    | ClaudeServerToolUseBlockParam
+    | ClaudeServerToolResultBlockParam
+
+export type ClaudeStreamContentBlockParam =
+    | {
+          type: 'text'
+          text?: string
+      }
+    | {
+          type: 'thinking'
+          thinking?: string
+          signature?: string
+      }
+    | {
+          type: 'redacted_thinking'
+          data?: string
+      }
+    | ClaudeToolUseBlockParam
+    | ClaudeServerToolUseBlockParam
+
 export interface ClaudeMessage {
     role: ChatCompletionResponseMessageRoleEnum
     content?: string | ClaudeMessageContentBlockParam[]
 }
 
-type ClaudeDeltaResponseType =
-    | 'content_block_delta'
-    | 'content_block_start'
-    | 'message_start'
-
-type ResponsePayload<T extends ClaudeDeltaResponseType> = {
-    content_block_delta: {
-        type: string
-        text: string
-        partial_json?: string
-        thinking?: string
-    }
-    content_block_start: {
-        type: string
-        id: string
-        name: string
-        input: object
-        text?: string
-    }
-    message_start: {
-        id: string
-        type: string
-        role: string
-        model: string
-        stop_sequence?: string
-    }
-}[T]
-
-type PayloadMapping = {
-    content_block_delta: { delta: ResponsePayload<'content_block_delta'> }
-    content_block_start: {
-        content_block: ResponsePayload<'content_block_start'>
-    }
-    message_start: { message: ResponsePayload<'message_start'> }
+export interface ClaudeUsage {
+    input_tokens: number
+    output_tokens: number
+    cache_creation_input_tokens?: number
+    cache_read_input_tokens?: number
+    [key: string]: unknown
 }
 
-export type ClaudeDeltaResponse = {
-    [T in ClaudeDeltaResponseType]: {
-        type: T
-        index: number
-    } & PayloadMapping[T]
-}[ClaudeDeltaResponseType]
+export interface ClaudeResponseMessage {
+    id: string
+    type: string
+    role: string
+    content?: ClaudeMessageContentBlockParam[]
+    model: string
+    stop_reason?: string | null
+    stop_sequence?: string | null
+    usage?: ClaudeUsage
+}
+
+export type ClaudeContentBlockDelta =
+    | {
+          type: 'text_delta'
+          text: string
+      }
+    | {
+          type: 'input_json_delta'
+          partial_json: string
+      }
+    | {
+          type: 'thinking_delta'
+          thinking: string
+      }
+    | {
+          type: 'signature_delta'
+          signature: string
+      }
+    | {
+          type: 'citations_delta'
+          citation: ClaudeTextCitationParam
+      }
+
+export type ClaudeDeltaResponse =
+    | {
+          type: 'content_block_delta'
+          index: number
+          delta: ClaudeContentBlockDelta
+      }
+    | {
+          type: 'content_block_start'
+          index: number
+          content_block: ClaudeStreamContentBlockParam
+      }
+    | {
+          type: 'content_block_stop'
+          index: number
+      }
+    | {
+          type: 'message_start'
+          message: ClaudeResponseMessage
+      }
+    | {
+          type: 'message_delta'
+          delta: {
+              stop_reason?: string | null
+              stop_sequence?: string | null
+          }
+          usage?: ClaudeUsage
+      }
+    | {
+          type: 'message_stop'
+      }
 
 export type ChatCompletionResponseMessageRoleEnum =
     | 'system'
