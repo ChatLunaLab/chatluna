@@ -9,14 +9,17 @@ $inner:
       allowPrivate: Enable private chat conversations.
       allowAtReply: Enable @mention triggering.
       allowQuoteReply: Enable quote triggering.
-      isReplyWithAt: Quote original message in bot replies.
-      isForwardMsg: Send bot replies as forwarded messages.
       privateChatWithoutCommand: Enable direct conversation in private chats without commands.
       allowChatWithRoomName: 'Enable room name prefix triggering. Note: May impact performance significantly. Recommended for use with filters in specific groups only.'
       randomReplyFrequency: Set random reply frequency (0-100, where 0 means never and 100 means always).
-      forwardMsgMinLength: Set minimum length of forwarded messages (characters).
-      includeQuoteReply: Include quoted message content in replies.
+      includeQuoteReply: Include quoted message content in requests sent to the model.
       attachForwardMsgIdToContext: Attach forward message record IDs to context. When enabled, a "[聊天记录]" marker message will be appended if forward records are detected.
+
+    - isForwardMsg: Send bot replies as forwarded messages.
+      forwardMsgMinLength: Set minimum length of forwarded messages (characters).
+
+    - isReplyWithAt: Quote the original message when the bot replies.
+      replyQuoteThreshold: Minimum response time required to quote the original message. Set to 0 to always apply. When greater than 0, the original message will only be quoted if the response time exceeds this threshold.
 
     - $desc: Response Options
       sendThinkingMessage: Send waiting message during processing.

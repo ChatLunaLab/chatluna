@@ -27,8 +27,8 @@ export class ChatChain {
 
         const defaultChatChainSender = new DefaultChatChainSender(config)
 
-        this._senders.push((session, messages) =>
-            defaultChatChainSender.send(session, messages)
+        this._senders.push((session, messages, context) =>
+            defaultChatChainSender.send(session, messages, context)
         )
     }
 
@@ -58,8 +58,10 @@ export class ChatChain {
             message: session.content,
             ctx: ctx ?? this.ctx,
             session,
-            options: {},
-            send: (message) => this.sendMessage(session, message),
+            options: {
+                requestStartedAt: Date.now()
+            },
+            send: (message) => this.sendMessage(session, message, context),
             recallThinkingMessage: this._createRecallThinkingMessage(
                 {} as ChainMiddlewareContext
             )
@@ -87,11 +89,14 @@ export class ChatChain {
             ctx,
             session,
             command,
-            send: (message) => this.sendMessage(session, message),
+            send: (message) => this.sendMessage(session, message, context),
             recallThinkingMessage: this._createRecallThinkingMessage(
                 {} as ChainMiddlewareContext
             ),
-            options
+            options: {
+                ...options,
+                requestStartedAt: Date.now()
+            }
         }
 
         context.recallThinkingMessage =
@@ -182,7 +187,7 @@ export class ChatChain {
         }
 
         if (context.message != null && context.message !== originMessage) {
-            await this.sendMessage(session, context.message)
+            await this.sendMessage(session, context.message, context)
         }
 
         return true
@@ -312,13 +317,14 @@ export class ChatChain {
 
     private async sendMessage(
         session: Session,
-        message: h[] | h[][] | h | string
+        message: h[] | h[][] | h | string,
+        context?: ChainMiddlewareContext
     ) {
         const messages: (h[] | h | string)[] =
             message instanceof Array ? message : [message]
 
         for (const sender of this._senders) {
-            await sender(session, messages)
+            await sender(session, messages, context)
         }
     }
 
@@ -329,7 +335,7 @@ export class ChatChain {
         isOutputLog: boolean
     ) {
         if (context.message != null && context.message !== originMessage) {
-            await this.sendMessage(session, context.message)
+            await this.sendMessage(session, context.message, context)
         }
 
         if (isOutputLog) {
@@ -347,7 +353,7 @@ export class ChatChain {
                 error.errorCode === ChatLunaErrorCode.ABORTED
                     ? session.text('chatluna.aborted')
                     : error.message
-            await this.sendMessage(session, message)
+            await this.sendMessage(session, message, undefined)
             return
         }
 
@@ -361,7 +367,8 @@ export class ChatChain {
             session.text('chatluna.middleware_error', [
                 middlewareName,
                 error.message
-            ])
+            ]),
+            undefined
         )
     }
 }
@@ -719,7 +726,8 @@ class DefaultChatChainSender {
 
     async send(
         session: Session,
-        messages: (h[] | h | string)[]
+        messages: (h[] | h | string)[],
+        context?: ChainMiddlewareContext
     ): Promise<void> {
         if (!messages?.length) return
 
@@ -740,7 +748,7 @@ class DefaultChatChainSender {
             return
         }
 
-        await this.sendAsNormal(session, messages)
+        await this.sendAsNormal(session, messages, context)
     }
 
     private async sendAsQQMarkdown(
@@ -800,12 +808,14 @@ class DefaultChatChainSender {
 
     private async sendAsNormal(
         session: Session,
-        messages: (h[] | h | string)[]
+        messages: (h[] | h | string)[],
+        context?: ChainMiddlewareContext
     ): Promise<void> {
         for (const message of messages) {
             const messageFragment = await this.buildMessageFragment(
                 session,
-                message
+                message,
+                context
             )
 
             if (!messageFragment?.length) continue
@@ -817,12 +827,20 @@ class DefaultChatChainSender {
 
     private async buildMessageFragment(
         session: Session,
-        message: h[] | h | string
+        message: h[] | h | string,
+        context?: ChainMiddlewareContext
     ): Promise<h[]> {
+        const requestStartedAt = context?.options?.requestStartedAt
+        const elapsedTime =
+            typeof requestStartedAt === 'number'
+                ? Date.now() - requestStartedAt
+                : 0
+        const quoteThreshold = (this.config.replyQuoteThreshold ?? 0) * 1000
         const shouldAddQuote =
             this.config.isReplyWithAt &&
             session.isDirect === false &&
-            session.messageId
+            session.messageId &&
+            elapsedTime >= quoteThreshold
 
         const messageContent = this.convertMessageToArray(message)
 
@@ -896,7 +914,8 @@ export type ChainMiddlewareFunction = (
 
 export type ChatChainSender = (
     session: Session,
-    message: (h[] | h | string)[]
+    message: (h[] | h | string)[],
+    context?: ChainMiddlewareContext
 ) => Promise<void>
 
 export enum ChainMiddlewareRunStatus {
