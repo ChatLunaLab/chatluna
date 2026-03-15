@@ -1,3 +1,5 @@
+import { buildChatCompletionParams } from '@chatluna/v1-shared-adapter'
+
 export type {
     ChatCompletionFunction,
     ChatCompletionRequestMessageToolCall,
@@ -10,3 +12,9 @@ export type {
     CreateEmbeddingResponseDataInner,
     CreateEmbeddingResponseUsage
 } from '@chatluna/v1-shared-adapter'
+
+export type HunyuanChatRequest = Awaited<
+    ReturnType<typeof buildChatCompletionParams>
+> & {
+    enable_enhancement?: boolean
+}

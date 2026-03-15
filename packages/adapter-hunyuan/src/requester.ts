@@ -24,17 +24,11 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { SSEEvent, sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import { Config, logger as pluginLogger } from '.'
-import { ChatCompletionResponse } from './types'
+import { ChatCompletionResponse, HunyuanChatRequest } from './types'
 import {
     formatToolsToHunyuanTools,
     langchainMessageToHunyuanMessage
 } from './utils'
-
-type HunyuanChatRequest = Awaited<
-    ReturnType<typeof buildChatCompletionParams>
-> & {
-    enable_enhancement?: boolean
-}
 
 // eslint-disable-next-line generator-star-spacing
 async function* validateHunyuanStream(
@@ -71,8 +65,8 @@ async function* validateHunyuanStream(
             const err = data.Response?.Error ?? data.Error
 
             if (err != null) {
-                const code = err.Code ?? err.code ?? ''
-                const msg = err.Message ?? err.message ?? ''
+                const code = err.Code ?? err['code'] ?? ''
+                const msg = err.Message ?? err['message'] ?? ''
 
                 if (
                     code.includes('IllegalDetected') ||

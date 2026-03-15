@@ -1,3 +1,5 @@
+import { MessageContentComplex } from '@langchain/core/messages'
+
 export type ClaudeThinkingConfig =
     | {
           type: 'enabled'
@@ -353,4 +355,23 @@ export interface ClaudeListModelsResponse {
     first_id?: string
     has_more?: boolean
     last_id?: string
+}
+
+export const INTERLEAVED_THINKING_SUPPORTED_MODELS = [
+    'claude-3-7-',
+    'claude-sonnet-4',
+    'claude-opus-4-',
+    'claude-haiku-4'
+]
+
+export const INTERLEAVED_THINKING_EXCLUDED_MODELS = ['claude-opus-4-6']
+
+export type ClaudeInputContentBlockParam = Extract<
+    ClaudeMessageContentBlockParam,
+    { type: 'text' | 'image' | 'document' }
+>
+
+export type MessageContentFile = MessageContentComplex & {
+    type: 'file_url'
+    file_url: string | { url: string; mimeType?: string }
 }

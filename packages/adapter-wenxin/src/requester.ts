@@ -27,14 +27,7 @@ import {
     formatToolsToWenxinTools,
     langchainMessageToWenXinMessage
 } from './utils'
-
-type WenxinChatRequest = Awaited<
-    ReturnType<typeof buildChatCompletionParams>
-> & {
-    disable_search?: boolean
-    functions?: ReturnType<typeof formatToolsToWenxinTools>
-    penalty_score?: number
-}
+import { WenxinChatRequest } from './types'
 
 export class WenxinRequester
     extends ModelRequester

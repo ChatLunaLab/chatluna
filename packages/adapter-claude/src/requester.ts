@@ -22,22 +22,15 @@ import {
     ClaudeDeltaResponse,
     ClaudeListModelsResponse,
     ClaudeReasoningBlockParam,
-    ClaudeRequest
+    ClaudeRequest,
+    INTERLEAVED_THINKING_EXCLUDED_MODELS,
+    INTERLEAVED_THINKING_SUPPORTED_MODELS
 } from './types'
 import {
     convertDeltaToMessageChunk,
     formatToolsToClaudeTools,
     langchainMessageToClaudeMessage
 } from './utils'
-
-const INTERLEAVED_THINKING_SUPPORTED_MODELS = [
-    'claude-3-7-',
-    'claude-sonnet-4',
-    'claude-opus-4-',
-    'claude-haiku-4'
-]
-
-const INTERLEAVED_THINKING_EXCLUDED_MODELS = ['claude-opus-4-6']
 
 export class ClaudeRequester extends ModelRequester<ClientConfig> {
     constructor(
