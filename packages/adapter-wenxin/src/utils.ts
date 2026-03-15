@@ -1,262 +1,70 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+import { BaseMessage } from '@langchain/core/messages'
+import type { StructuredTool } from '@langchain/core/tools'
 import {
-    AIMessage,
-    AIMessageChunk,
-    BaseMessage,
-    ChatMessageChunk,
-    FunctionMessageChunk,
-    HumanMessageChunk,
-    MessageContentImageUrl,
-    MessageType,
-    SystemMessageChunk,
-    ToolMessage,
-    ToolMessageChunk
-} from '@langchain/core/messages'
+    convertDeltaToMessageChunk as convertOpenAIDeltaToMessageChunk,
+    formatToolToOpenAITool,
+    langchainMessageToOpenAIMessage
+} from '@chatluna/v1-shared-adapter'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     ChatCompletionFunction,
     WenxinMessage,
     WenxinMessageRole
 } from './types'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
-import {
-    fetchImageUrl,
-    removeAdditionalProperties,
-    supportImageInput
-} from '@chatluna/v1-shared-adapter'
-import { isZodSchemaV3 } from '@langchain/core/utils/types'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
 
-/**
- * Safely normalize content to a string, handling both string and array formats
- */
-function normalizeContentToString(content: unknown): string {
-    if (typeof content === 'string') {
-        return content
-    }
-
-    if (Array.isArray(content)) {
-        // Extract text from array of content blocks
-        const textParts: string[] = []
-        for (const block of content) {
-            if (block && typeof block === 'object') {
-                if (
-                    'type' in block &&
-                    block.type === 'text' &&
-                    'text' in block &&
-                    typeof block.text === 'string'
-                ) {
-                    textParts.push(block.text)
-                }
-            }
-        }
-        return textParts.join(' ')
-    }
-
-    // Fallback for unknown types
-    return ''
-}
-
-/**
- * Safely extract images array, ensuring it's actually an array
- */
-function extractImages(images: unknown): string[] {
-    if (Array.isArray(images)) {
-        return images.filter((img): img is string => typeof img === 'string')
-    }
-    return []
-}
+const CONTINUE_PROMPT =
+    'Continue what I said to you last time. Follow these instructions.'
 
 export async function langchainMessageToWenXinMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin,
     model?: string
 ): Promise<WenxinMessage[]> {
-    const mappedMessage = await Promise.all(
-        messages.map(async (rawMessage) => {
-            const role = messageTypeToWenXinRole(rawMessage.getType())
-
-            const msg = {
-                content: (rawMessage.content ??
-                    undefined) as WenxinMessage['content'],
-                name:
-                    role === 'assistant' || role === 'tool'
-                        ? rawMessage.name
-                        : undefined,
-                role,
-                tool_call_id: (rawMessage as ToolMessage).tool_call_id
-            } as WenxinMessage
-
-            if (rawMessage.getType() === 'ai') {
-                const toolCalls = (rawMessage as AIMessage).tool_calls
-
-                if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-                    msg.tool_calls = toolCalls.map((toolCall) => ({
-                        id: toolCall.id,
-                        type: 'function',
-                        function: {
-                            name: toolCall.name,
-                            arguments: JSON.stringify(toolCall.args)
-                        }
-                    }))
-                }
-            }
-
-            if (msg.tool_calls == null) {
-                delete msg.tool_calls
-            }
-
-            if (msg.tool_call_id == null) {
-                delete msg.tool_call_id
-            }
-
-            if (msg.tool_calls) {
-                for (const toolCall of msg.tool_calls) {
-                    const tool = toolCall.function
-
-                    if (!tool.arguments) {
-                        continue
-                    }
-                    // Remove spaces, new line characters etc.
-                    tool.arguments = JSON.stringify(JSON.parse(tool.arguments))
-                }
-            }
-
-            // Safely extract and normalize images
-            const rawImages = rawMessage.additional_kwargs.images
-            const images = extractImages(rawImages)
-
-            // Normalize content to string for initial setup
-            const normalizedContent = normalizeContentToString(
-                rawMessage.content
-            )
-
-            if (supportImageInput(model ?? '') && images.length > 0) {
-                msg.content = [
-                    {
-                        type: 'text',
-                        text: normalizedContent
-                    }
-                ]
-
-                const imageContents = await Promise.all(
-                    images.map(async (image) => {
-                        try {
-                            const url = await fetchImageUrl(plugin, {
-                                type: 'image_url',
-                                image_url: { url: image }
-                            } as MessageContentImageUrl)
-                            return {
-                                type: 'image_url',
-                                image_url: {
-                                    url,
-                                    detail: 'low'
-                                }
-                            } as const
-                        } catch {
-                            return null
-                        }
-                    })
-                )
-
-                msg.content.push(
-                    ...imageContents.filter((content) => content != null)
-                )
-            } else if (Array.isArray(msg.content) && msg.content.length > 0) {
-                const mappedContent = await Promise.all(
-                    msg.content.map(async (content) => {
-                        if (!isMessageContentImageUrl(content)) return content
-
-                        try {
-                            const url = await fetchImageUrl(plugin, content)
-                            return {
-                                type: 'image_url',
-                                image_url: {
-                                    url,
-                                    detail: 'low'
-                                }
-                            } as const
-                        } catch {
-                            return null
-                        }
-                    })
-                )
-
-                msg.content = mappedContent.filter((content) => content != null)
-            }
-
-            return msg
-        })
-    )
-
+    const mapped = (await langchainMessageToOpenAIMessage(
+        messages,
+        plugin,
+        model
+    )) as WenxinMessage[]
     const result: WenxinMessage[] = []
 
-    for (let i = 0; i < mappedMessage.length; i++) {
-        const message = mappedMessage[i]
+    for (let i = 0; i < mapped.length; i++) {
+        const msg = mapped[i]
 
-        if (i === 0 && message.role === 'assistant') {
+        if (i === 0 && msg.role === 'assistant') {
             result.push({
                 role: 'user',
-                content:
-                    'Continue what I said to you last time. Follow these instructions.'
+                content: CONTINUE_PROMPT
             })
         }
 
-        result.push({
-            role: message.role,
-            content: message.content as string,
-            name: message.name,
-            tool_calls: message.tool_calls,
-            tool_call_id: message.tool_call_id
-        })
+        result.push(msg)
 
         if (
-            mappedMessage?.[i + 1]?.role === 'assistant' &&
-            mappedMessage?.[i].role === 'assistant'
+            mapped[i]?.role === 'assistant' &&
+            mapped[i + 1]?.role === 'assistant'
         ) {
             result.push({
                 role: 'user',
-                content:
-                    'Continue what I said to you last time. Follow these instructions.'
+                content: CONTINUE_PROMPT
             })
         }
     }
 
-    if (result[result.length - 1].role === 'assistant') {
+    if (result[result.length - 1]?.role === 'assistant') {
         result.push({
             role: 'user',
-            content:
-                'Continue what I said to you last time. Follow these instructions.'
+            content: CONTINUE_PROMPT
         })
     }
 
-    if (result[0].role === 'assistant') {
+    if (result[0]?.role === 'assistant') {
         result.unshift({
             role: 'user',
-            content:
-                'Continue what I said to you last time. Follow these instructions.'
+            content: CONTINUE_PROMPT
         })
     }
 
     return result
-}
-
-export function messageTypeToWenXinRole(type: MessageType): WenxinMessageRole {
-    switch (type) {
-        case 'system':
-            return 'system'
-        case 'ai':
-            return 'assistant'
-        case 'human':
-            return 'user'
-        case 'function':
-            return 'function'
-        case 'tool':
-            return 'tool'
-        default:
-            throw new Error(`Unknown message type: ${type}`)
-    }
 }
 
 export function formatToolsToWenxinTools(
@@ -265,25 +73,10 @@ export function formatToolsToWenxinTools(
     if (tools.length < 1) {
         return undefined
     }
-    return tools.map(formatToolToWenxinTool)
-}
 
-export function formatToolToWenxinTool(
-    tool: StructuredTool
-): ChatCompletionFunction {
-    const parameters = removeAdditionalProperties(
-        isZodSchemaV3(tool.schema)
-            ? zodToJsonSchema(tool.schema as never, {
-                  allowedAdditionalProperties: undefined
-              })
-            : tool.schema
-    )
-
-    return {
-        name: tool.name,
-        description: tool.description,
-        parameters
-    }
+    return tools.map(
+        (tool) => formatToolToOpenAITool(tool).function
+    ) as ChatCompletionFunction[]
 }
 
 export function convertDeltaToMessageChunk(
@@ -291,69 +84,5 @@ export function convertDeltaToMessageChunk(
     delta: Record<string, any>,
     defaultRole?: WenxinMessageRole
 ) {
-    const role = (
-        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
-    ).toLowerCase()
-    const content = delta.content ?? ''
-    const reasoningContent = delta.reasoning_content ?? ''
-
-    let additionalKwargs: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
-        function_call?: any
-        reasoning_content?: string
-    }
-    if (delta.function_call) {
-        additionalKwargs = {
-            function_call: delta.function_call
-        }
-    } else {
-        additionalKwargs = {}
-    }
-
-    if (reasoningContent.length > 0) {
-        additionalKwargs.reasoning_content = reasoningContent
-    }
-
-    if (role === 'user') {
-        return new HumanMessageChunk({ content })
-    } else if (role === 'assistant') {
-        const toolCallChunks = []
-        if (Array.isArray(delta.tool_calls)) {
-            for (const rawToolCall of delta.tool_calls) {
-                const toolCall = {
-                    name: rawToolCall.function?.name,
-                    args: rawToolCall.function?.arguments,
-                    id: rawToolCall.id,
-                    index: rawToolCall.index
-                }
-
-                if (toolCall.name != null && toolCall.name.length < 1) {
-                    delete toolCall.name
-                }
-
-                toolCallChunks.push(toolCall)
-            }
-        }
-        return new AIMessageChunk({
-            content,
-            tool_call_chunks: toolCallChunks,
-            additional_kwargs: additionalKwargs
-        })
-    } else if (role === 'system') {
-        return new SystemMessageChunk({ content })
-    } else if (role === 'function') {
-        return new FunctionMessageChunk({
-            content,
-            additional_kwargs: additionalKwargs,
-            name: delta.name
-        })
-    } else if (role === 'tool') {
-        return new ToolMessageChunk({
-            content,
-            additional_kwargs: additionalKwargs,
-            tool_call_id: delta.tool_call_id
-        })
-    } else {
-        return new ChatMessageChunk({ content, role })
-    }
+    return convertOpenAIDeltaToMessageChunk(delta, defaultRole)
 }

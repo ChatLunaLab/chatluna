@@ -1,3 +1,6 @@
+import { buildChatCompletionParams } from '@chatluna/v1-shared-adapter'
+import { formatToolsToWenxinTools } from './utils'
+
 export type WenxinMessageRole =
     | 'assistant'
     | 'user'
@@ -166,4 +169,12 @@ export interface ChatCompletionRequestMessageToolCall {
         name: string
         arguments: string
     }
+}
+
+export type WenxinChatRequest = Awaited<
+    ReturnType<typeof buildChatCompletionParams>
+> & {
+    disable_search?: boolean
+    functions?: ReturnType<typeof formatToolsToWenxinTools>
+    penalty_score?: number
 }

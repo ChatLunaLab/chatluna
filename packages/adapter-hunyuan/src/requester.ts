@@ -1,5 +1,13 @@
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
+    buildChatCompletionParams,
+    createEmbeddings,
+    createRequestContext,
+    processStreamResponse,
+    supportImageInput
+} from '@chatluna/v1-shared-adapter'
+import { Context } from 'koishi'
+import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
     ModelRequester,
@@ -9,27 +17,88 @@ import {
     ClientConfig,
     ClientConfigPool
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
-import { Context } from 'koishi'
+import { SSEEvent, sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import { Config, logger as pluginLogger } from '.'
+import { ChatCompletionResponse, HunyuanChatRequest } from './types'
 import {
-    ChatCompletionResponse,
-    ChatCompletionResponseMessageRoleEnum
-} from './types'
-import {
-    createEmbeddings,
-    createRequestContext
-} from '@chatluna/v1-shared-adapter'
-import {
-    convertDeltaToMessageChunk,
     formatToolsToHunyuanTools,
     langchainMessageToHunyuanMessage
 } from './utils'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+
+// eslint-disable-next-line generator-star-spacing
+async function* validateHunyuanStream(
+    iterator: AsyncGenerator<SSEEvent, string, unknown>
+) {
+    for await (const event of iterator) {
+        const chunk = event.data
+
+        if (
+            chunk === '[DONE]' ||
+            chunk == null ||
+            chunk === '' ||
+            chunk === 'undefined'
+        ) {
+            yield event
+            continue
+        }
+
+        try {
+            const data = JSON.parse(chunk) as ChatCompletionResponse & {
+                Response?: {
+                    Error?: {
+                        Code?: string
+                        Message?: string
+                    }
+                }
+                Error?: {
+                    code?: string
+                    Code?: string
+                    message?: string
+                    Message?: string
+                }
+            }
+            const err = data.Response?.Error ?? data.Error
+
+            if (err != null) {
+                const code = err.Code ?? err['code'] ?? ''
+                const msg = err.Message ?? err['message'] ?? ''
+
+                if (
+                    code.includes('IllegalDetected') ||
+                    msg.includes('IllegalDetected')
+                ) {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_UNSAFE_CONTENT,
+                        new Error(
+                            'Unsafe content detected, please try again.' + chunk
+                        )
+                    )
+                }
+
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_FAILED,
+                    new Error(
+                        'error when calling Hunyuan completion, Result: ' +
+                            chunk
+                    )
+                )
+            }
+        } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
+        }
+
+        yield event
+    }
+
+    return ''
+}
 
 export class HunyuanRequester
     extends ModelRequester<ClientConfig>
@@ -47,110 +116,67 @@ export class HunyuanRequester
     async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
+        const requestContext = createRequestContext(
+            this.ctx,
+            this._config.value,
+            this._pluginConfig,
+            this._plugin,
+            this
+        )
+        const isVisionModel = supportImageInput(params.model)
+        const request = (await buildChatCompletionParams(
+            {
+                ...params,
+                tools: isVisionModel ? undefined : params.tools
+            },
+            this._plugin,
+            false,
+            false
+        )) as HunyuanChatRequest
+
+        request.messages = await langchainMessageToHunyuanMessage(
+            params.input,
+            this._plugin,
+            params.model
+        )
+        request.tools =
+            params.tools != null && !isVisionModel
+                ? formatToolsToHunyuanTools(params.tools)
+                : undefined
+        request.enable_enhancement = isVisionModel
+            ? undefined
+            : this._pluginConfig.enableSearch
+
+        delete request.stop
+        delete request.max_tokens
+        delete request.presence_penalty
+        delete request.frequency_penalty
+        delete request.n
+        delete request.prompt_cache_key
+        delete request.prompt_cache_retention
+        delete request.prediction
+        delete request.reasoning_effort
+        delete request.response_format
+        delete request.safety_identifier
+        delete request.service_tier
+        delete request.logit_bias
+        delete request.stream_options
+
         try {
-            const response = await this.post(
-                'chat/completions',
-                {
-                    model: params.model,
-                    messages: await langchainMessageToHunyuanMessage(
-                        params.input,
-                        this._plugin,
-                        params.model
-                    ),
-                    tools:
-                        params.tools != null && !params.model.includes('vision')
-                            ? formatToolsToHunyuanTools(params.tools)
-                            : undefined,
-                    stream: true,
-                    top_p: params.topP,
-                    temperature: params.temperature,
-                    enable_enhancement: params.model.includes('vision')
-                        ? undefined
-                        : this._pluginConfig.enableSearch
-                },
-                {
-                    signal: params.signal
-                }
+            const response = await this.post('chat/completions', request, {
+                signal: params.signal
+            })
+
+            yield* processStreamResponse(
+                requestContext,
+                validateHunyuanStream(sseIterable(response))
             )
-
-            const iterator = sseIterable(response)
-
-            const defaultRole: ChatCompletionResponseMessageRoleEnum =
-                'assistant'
-
-            for await (const event of iterator) {
-                const chunk = event.data
-
-                if (chunk === '[DONE]') {
-                    return
-                }
-
-                let data: ChatCompletionResponse
-
-                try {
-                    data = JSON.parse(chunk)
-                } catch (err) {
-                    throw new ChatLunaError(
-                        ChatLunaErrorCode.API_REQUEST_FAILED,
-                        new Error(
-                            'error when calling Hunyuan completion, Result: ' +
-                                chunk
-                        )
-                    )
-                }
-
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if ((data as any).Response) {
-                    // check DataInspectionFailed
-
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((data as any).Error?.code.include('IllegalDetected')) {
-                        throw new ChatLunaError(
-                            ChatLunaErrorCode.API_UNSAFE_CONTENT,
-                            new Error(
-                                'Unsafe content detected, please try again.' +
-                                    chunk
-                            )
-                        )
-                    }
-
-                    throw new ChatLunaError(
-                        ChatLunaErrorCode.API_REQUEST_FAILED,
-                        new Error(
-                            'error when calling Hunyuan completion, Result: ' +
-                                chunk
-                        )
-                    )
-                }
-
-                const choice = data.choices?.[0]
-
-                if (!choice) {
-                    continue
-                }
-
-                const messageChunk = convertDeltaToMessageChunk(
-                    choice.delta,
-                    defaultRole
-                )
-
-                const generationChunk = new ChatGenerationChunk({
-                    message: messageChunk,
-                    text: messageChunk.content as string
-                })
-
-                yield generationChunk
-
-                if (choice.finish_reason === 'stop') {
-                    break
-                }
-            }
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e
-            } else {
-                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
+
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         }
     }
 

@@ -7,19 +7,45 @@ import {
     MessageType,
     ToolMessage
 } from '@langchain/core/messages'
+import { StructuredTool } from '@langchain/core/tools'
+import { isZodSchemaV3 } from '@langchain/core/utils/types'
+import { zodToJsonSchema } from 'zod-to-json-schema'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
+import {
+    fetchFileLikeUrl,
+    fetchImageUrl,
+    removeAdditionalProperties
+} from '@chatluna/v1-shared-adapter'
+import { logger } from '.'
 import {
     ChatCompletionResponseMessageRoleEnum,
     ClaudeDeltaResponse,
+    ClaudeInputContentBlockParam,
     ClaudeMessage,
-    CluadeTool
+    ClaudeMessageContentBlockParam,
+    ClaudeReasoningBlockParam,
+    ClaudeTool,
+    ClaudeToolResultContentBlockParam,
+    MessageContentFile
 } from './types'
-import { StructuredTool } from '@langchain/core/tools'
-import { zodToJsonSchema } from 'zod-to-json-schema'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { fetchImageUrl } from '@chatluna/v1-shared-adapter'
-import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/string'
-import { logger } from '.'
-import { isZodSchemaV3 } from '@langchain/core/utils/types'
+
+type ClaudeInlineDataContent = MessageContentComplex & {
+    inline_data: {
+        mime_type: string
+        data: string
+    }
+}
+
+function isClaudeInlineDataContent(
+    message: MessageContentComplex
+): message is ClaudeInlineDataContent {
+    return (
+        message != null &&
+        typeof message === 'object' &&
+        'inline_data' in message
+    )
+}
 
 export async function langchainMessageToClaudeMessage(
     messages: BaseMessage[],
@@ -30,81 +56,122 @@ export async function langchainMessageToClaudeMessage(
 
     const mappedMessages = await Promise.all(
         messages.map(async (rawMessage) => {
+            let content: string | ClaudeInputContentBlockParam[] | undefined =
+                typeof rawMessage.content === 'string'
+                    ? rawMessage.content
+                    : await processMessageContent(plugin, rawMessage.content)
+
             const images = rawMessage.additional_kwargs.images as
                 | string[]
                 | null
 
-            const result: ClaudeMessage = {
-                role: messageTypeToClaudeRole(rawMessage.getType()),
-                content:
-                    typeof rawMessage.content === 'string'
-                        ? rawMessage.content
-                        : await processMessageContent(
-                              plugin,
-                              rawMessage.content
-                          )
-            }
-
             if (
-                (model.includes('claude-3') || model.includes('claude-4')) &&
+                (model?.includes('claude-3') || model?.includes('claude-4')) &&
                 images != null
             ) {
-                result.content = []
-                for (const image of images) {
-                    result.content.push({
-                        type: 'image',
-                        source: {
-                            type: 'base64',
-                            media_type: 'image/jpeg',
-                            // remove base64 header
-                            data: image.replace(/^data:image\/\w+;base64,/, '')
-                        }
+                const mappedImages = await Promise.all(
+                    images.map(async (image) =>
+                        processImageContent(plugin, {
+                            type: 'image_url',
+                            image_url: { url: image }
+                        } as MessageContentImageUrl)
+                    )
+                )
+
+                const nextContent: ClaudeInputContentBlockParam[] =
+                    mappedImages.filter((item) => item != null)
+
+                if (Array.isArray(content)) {
+                    nextContent.push(...content)
+                } else if ((content?.length ?? 0) > 0) {
+                    nextContent.push({
+                        type: 'text',
+                        text: content
                     })
                 }
-                result.content.push({
-                    type: 'text',
-                    text: rawMessage.content as string
-                })
+
+                content = nextContent
+            }
+
+            const result: ClaudeMessage = {
+                role: messageTypeToClaudeRole(rawMessage.getType()),
+                content
+            }
+
+            if (rawMessage instanceof ToolMessage) {
+                result.content = [
+                    {
+                        type: 'tool_result',
+                        content: result.content as
+                            | string
+                            | ClaudeToolResultContentBlockParam[]
+                            | undefined,
+                        tool_use_id: rawMessage.tool_call_id
+                    }
+                ]
+                return result
             }
 
             if (
-                (rawMessage instanceof AIMessageChunk ||
-                    rawMessage instanceof AIMessage) &&
-                (rawMessage.tool_calls?.length ?? 0) > 0
+                rawMessage instanceof AIMessageChunk ||
+                rawMessage instanceof AIMessage
             ) {
-                result.content = []
+                const blocks: ClaudeMessageContentBlockParam[] = []
+                const reasoningBlocks = rawMessage.additional_kwargs
+                    .reasoning_blocks as ClaudeReasoningBlockParam[] | undefined
 
-                const thinkContent = rawMessage.content as string
+                if (
+                    Array.isArray(reasoningBlocks) &&
+                    reasoningBlocks.length > 0
+                ) {
+                    blocks.push(...reasoningBlocks)
+                } else {
+                    const reasoningContent = rawMessage.additional_kwargs
+                        .reasoning_content as string | undefined
+                    const reasoningSignature = rawMessage.additional_kwargs
+                        .reasoning_signature as string | undefined
 
-                if ((thinkContent?.length ?? 0) > 0) {
-                    result.content.push({
+                    if (
+                        (reasoningContent?.length ?? 0) > 0 &&
+                        (reasoningSignature?.length ?? 0) > 0
+                    ) {
+                        blocks.push({
+                            type: 'thinking',
+                            thinking: reasoningContent,
+                            signature: reasoningSignature
+                        })
+                    }
+                }
+
+                if (Array.isArray(content)) {
+                    blocks.push(...content)
+                } else if ((content?.length ?? 0) > 0) {
+                    blocks.push({
                         type: 'text',
-                        text: thinkContent
+                        text: content
                     })
                 }
 
-                const mapToolCalls = rawMessage.tool_calls.map((toolCall) => ({
-                    type: 'tool_use' as const,
-                    id: toolCall.id,
-                    name: toolCall.name,
-                    input: toolCall.args
-                }))
+                if ((rawMessage.tool_calls?.length ?? 0) > 0) {
+                    blocks.push(
+                        ...rawMessage.tool_calls.map((toolCall) => ({
+                            type: 'tool_use' as const,
+                            id: toolCall.id,
+                            name: toolCall.name,
+                            input: toolCall.args
+                        }))
+                    )
+                }
 
-                result.content.push(...mapToolCalls)
-            } else if (rawMessage instanceof ToolMessage) {
-                result.content = []
+                if (blocks.length === 0) {
+                    result.content = ''
+                    return result
+                }
 
-                result.content.push({
-                    type: 'tool_result',
-                    content:
-                        typeof rawMessage.content === 'string'
-                            ? rawMessage.content
-                            : await processMessageContent(
-                                  plugin,
-                                  rawMessage.content
-                              ),
-                    tool_use_id: rawMessage.tool_call_id
-                })
+                result.content =
+                    blocks.length === 1 && blocks[0].type === 'text'
+                        ? blocks[0].text
+                        : blocks
             }
 
             return result
@@ -118,10 +185,6 @@ export async function langchainMessageToClaudeMessage(
             result.push(message)
             continue
         }
-
-        /*   if (removeSystemMessage) {
-            continue
-        } */
 
         result.push({
             role: 'user',
@@ -140,7 +203,7 @@ export async function langchainMessageToClaudeMessage(
         }
     }
 
-    if (result[result.length - 1].role === 'assistant') {
+    if (result.length > 0 && result[result.length - 1].role === 'assistant') {
         result.push({
             role: 'user',
             content:
@@ -167,17 +230,105 @@ async function processImageContent(
         return null
     }
 
-    const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
-    const data = url.replace(/^data:image\/\w+;base64,/, '')
+    const mimeType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
+    const data = url.replace(/^data:[^;]+;base64,/, '')
 
     return {
         type: 'image',
         source: {
             type: 'base64',
-            media_type: mineType,
+            media_type: mimeType,
             data
         }
     } as const
+}
+
+async function processFileContent(
+    plugin: ChatLunaPlugin,
+    message: MessageContentFile
+) {
+    try {
+        const { buffer, mimeType } = await fetchFileLikeUrl(plugin, message)
+
+        if (mimeType === 'application/pdf') {
+            return {
+                type: 'document',
+                source: {
+                    type: 'base64',
+                    media_type: 'application/pdf',
+                    data: buffer.toString('base64')
+                }
+            } as const
+        }
+
+        if (mimeType.startsWith('text/') || mimeType === 'application/json') {
+            return {
+                type: 'document',
+                source: {
+                    type: 'text',
+                    media_type: 'text/plain',
+                    data: buffer.toString('utf8')
+                }
+            } as const
+        }
+
+        logger.warn(`Unsupported Claude document mime type: ${mimeType}`)
+        return null
+    } catch (e) {
+        const rawUrl =
+            typeof message.file_url === 'string'
+                ? message.file_url
+                : message.file_url.url
+        logger.warn(`Failed to fetch file url: ${rawUrl}`, e)
+        return null
+    }
+}
+
+function processInlineDataContent(message: ClaudeInlineDataContent) {
+    const mimeType = message.inline_data.mime_type
+
+    if (mimeType === 'application/pdf') {
+        return {
+            type: 'document',
+            source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: message.inline_data.data
+            }
+        } as const
+    }
+
+    if (mimeType.startsWith('text/') || mimeType === 'application/json') {
+        return {
+            type: 'document',
+            source: {
+                type: 'text',
+                media_type: 'text/plain',
+                data: Buffer.from(message.inline_data.data, 'base64').toString(
+                    'utf8'
+                )
+            }
+        } as const
+    }
+
+    if (
+        mimeType === 'image/jpeg' ||
+        mimeType === 'image/png' ||
+        mimeType === 'image/gif' ||
+        mimeType === 'image/webp'
+    ) {
+        return {
+            type: 'image',
+            source: {
+                type: 'base64',
+                media_type: mimeType,
+                data: message.inline_data.data
+            }
+        } as const
+    }
+
+    logger.warn(`Unsupported Claude inline mime type: ${mimeType}`)
+    return null
 }
 
 async function processMessageContent(
@@ -192,13 +343,33 @@ async function processMessageContent(
                     text: message.text as string
                 } as const
             }
+
             if (isMessageContentImageUrl(message)) {
                 return await processImageContent(plugin, message)
+            }
+
+            if (isClaudeInlineDataContent(message)) {
+                return processInlineDataContent(message)
+            }
+
+            if (message.type === 'file_url') {
+                return await processFileContent(
+                    plugin,
+                    message as MessageContentFile
+                )
             }
         })
     )
 
-    return mappedContent.filter((message) => message != null)
+    const result: ClaudeInputContentBlockParam[] = []
+
+    for (const message of mappedContent) {
+        if (message != null) {
+            result.push(message)
+        }
+    }
+
+    return result
 }
 
 export function messageTypeToClaudeRole(
@@ -220,26 +391,26 @@ export function messageTypeToClaudeRole(
 
 export function formatToolsToClaudeTools(
     tools: StructuredTool[]
-): CluadeTool[] {
+): ClaudeTool[] {
     if (tools.length < 1) {
-        return undefined
+        return []
     }
+
     return tools.map(formatToolToClaudeTool)
 }
 
-export function formatToolToClaudeTool(tool: StructuredTool): CluadeTool {
-    const inputSchema = isZodSchemaV3(tool.schema)
-        ? zodToJsonSchema(tool.schema as never)
-        : tool.schema
-
-    delete inputSchema['$schema']
-    delete inputSchema['additionalProperties']
+export function formatToolToClaudeTool(tool: StructuredTool): ClaudeTool {
+    const inputSchema = removeAdditionalProperties(
+        isZodSchemaV3(tool.schema)
+            ? zodToJsonSchema(tool.schema as never, {
+                  allowedAdditionalProperties: undefined
+              })
+            : tool.schema
+    )
 
     return {
         name: tool.name,
         description: tool.description,
-        // any?
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         input_schema: inputSchema
     }
 }
@@ -250,37 +421,48 @@ export function convertDeltaToMessageChunk(delta: ClaudeDeltaResponse) {
             content: '',
             id: delta.message.id
         })
-    } else if (
-        delta.type === 'content_block_start' &&
-        delta.content_block.type === 'tool_use'
-    ) {
-        const toolCallContentBlock = delta.content_block
-        return new AIMessageChunk({
-            content: '',
-            tool_call_chunks: [
-                {
-                    id: toolCallContentBlock.id,
-                    index: delta.index,
-                    name: toolCallContentBlock.name,
-                    args: ''
-                }
-            ],
-            additional_kwargs: {}
-        })
-    } else if (
-        delta.type === 'content_block_delta' &&
-        delta.delta.type === 'text_delta'
-    ) {
-        const content = delta.delta?.text
-        if (content !== undefined) {
+    }
+
+    if (delta.type === 'content_block_start') {
+        if (delta.content_block.type === 'tool_use') {
             return new AIMessageChunk({
-                content
+                content: '',
+                tool_call_chunks: [
+                    {
+                        id: delta.content_block.id,
+                        index: delta.index,
+                        name: delta.content_block.name,
+                        args: ''
+                    }
+                ],
+                additional_kwargs: {}
             })
         }
-    } else if (
-        delta.type === 'content_block_delta' &&
-        delta.delta.type === 'input_json_delta'
-    ) {
+
+        if (delta.content_block.type === 'text') {
+            const content = delta.content_block.text
+            if (content !== undefined) {
+                return new AIMessageChunk({
+                    content,
+                    additional_kwargs: {}
+                })
+            }
+        }
+
+        return
+    }
+
+    if (delta.type !== 'content_block_delta') {
+        return
+    }
+
+    if (delta.delta.type === 'text_delta') {
+        return new AIMessageChunk({
+            content: delta.delta.text
+        })
+    }
+
+    if (delta.delta.type === 'input_json_delta') {
         return new AIMessageChunk({
             content: '',
             tool_call_chunks: [
@@ -291,26 +473,22 @@ export function convertDeltaToMessageChunk(delta: ClaudeDeltaResponse) {
             ],
             additional_kwargs: {}
         })
-    } else if (
-        delta.type === 'content_block_start' &&
-        delta.content_block.type === 'text'
-    ) {
-        const content = delta.content_block?.text
-        if (content !== undefined) {
-            return new AIMessageChunk({
-                content,
-                additional_kwargs: {}
-            })
-        }
-    } else if (
-        delta.type === 'content_block_delta' &&
-        delta.delta.type === 'thinking_delta'
-    ) {
-        const thinkResult = delta.delta.thinking
+    }
+
+    if (delta.delta.type === 'thinking_delta') {
         return new AIMessageChunk({
             content: '',
             additional_kwargs: {
-                reasoning_content: thinkResult
+                reasoning_content: delta.delta.thinking
+            }
+        })
+    }
+
+    if (delta.delta.type === 'signature_delta') {
+        return new AIMessageChunk({
+            content: '',
+            additional_kwargs: {
+                reasoning_signature: delta.delta.signature
             }
         })
     }

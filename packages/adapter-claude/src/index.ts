@@ -68,12 +68,14 @@ export const Config: Schema<Config> = Schema.intersect([
                 modelCapabilities: Schema.array(
                     Schema.union([
                         Schema.const(ModelCapabilities.ToolCall),
-                        Schema.const(ModelCapabilities.ImageInput)
+                        Schema.const(ModelCapabilities.ImageInput),
+                        Schema.const(ModelCapabilities.FileInput)
                     ])
                 )
                     .default([
                         ModelCapabilities.ToolCall,
-                        ModelCapabilities.ImageInput
+                        ModelCapabilities.ImageInput,
+                        ModelCapabilities.FileInput
                     ])
                     .role('checkbox'),
                 contextSize: Schema.number().min(1).default(200000)

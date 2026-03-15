@@ -1,5 +1,8 @@
 import { Context } from 'koishi'
-import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import {
+    FileHandlingConfig,
+    PlatformModelClient
+} from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -13,6 +16,33 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 export class ClaudeClient extends PlatformModelClient<ClientConfig> {
     platform = 'claude'
+
+    private static readonly _fileHandlingConfig: FileHandlingConfig = {
+        supportedMimeTypes: new Set<string>([
+            'text/html',
+            'text/css',
+            'text/plain',
+            'text/markdown',
+            'text/xml',
+            'text/csv',
+            'text/rtf',
+            'text/javascript',
+            'application/json',
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        ]),
+        maxTotalSizeBytes: 32 * 1024 * 1024,
+        maxFileSizeBytes: 32 * 1024 * 1024,
+        maxFileSizeBytesOverrides: {
+            'image/jpeg': 5 * 1024 * 1024,
+            'image/png': 5 * 1024 * 1024,
+            'image/gif': 5 * 1024 * 1024,
+            'image/webp': 5 * 1024 * 1024
+        }
+    }
 
     private _requester: ClaudeRequester
 
@@ -30,6 +60,10 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             _config,
             plugin
         )
+    }
+
+    getFileHandlingConfig(): FileHandlingConfig {
+        return ClaudeClient._fileHandlingConfig
     }
 
     async refreshModels(): Promise<ModelInfo[]> {
@@ -92,7 +126,8 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
                     maxTokens: 200_000,
                     capabilities: [
                         ModelCapabilities.ToolCall,
-                        ModelCapabilities.ImageInput
+                        ModelCapabilities.ImageInput,
+                        ModelCapabilities.FileInput
                     ],
                     type: ModelType.llm
                 }))
@@ -111,7 +146,8 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
                 maxTokens: 200_000,
                 capabilities: [
                     ModelCapabilities.ToolCall,
-                    ModelCapabilities.ImageInput
+                    ModelCapabilities.ImageInput,
+                    ModelCapabilities.FileInput
                 ],
                 type: ModelType.llm
             }))
@@ -138,6 +174,7 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             modelMaxContextSize,
             timeout: this._config.timeout,
             maxRetries: this._config.maxRetries,
+            fileHandlingConfig: this.getFileHandlingConfig(),
             llmType: model,
             isThinkModel: model.includes('thinking')
         })
