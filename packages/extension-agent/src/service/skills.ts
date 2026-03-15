@@ -10,12 +10,9 @@ import {
     SkillImportResult,
     SkillsStatus
 } from '../types'
-import {
-    ensureSkillsRoot,
-    listSkillResources,
-    ScannedSkill,
-    scanSkills
-} from '../skills/scan'
+import { ensureSkillsRoot, ScannedSkill, scanSkills } from '../skills/scan'
+import { escapeXml, renderSkillContent } from '../skills/render'
+import { getSlashSkillName, stripSlashSkillName } from '../skills/slash'
 import { importSkills as runImportSkills } from '../skills/import'
 import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
 import { SkillTool, SkillToolService } from '../skills/tool'
@@ -32,7 +29,24 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         public ctx: Context,
         public config: AgentConfig
     ) {
-        ctx.on('chatluna/before-chat', async (conversationId) => {
+        ctx.on('chatluna/before-chat', async (conversationId, message) => {
+            const name = getSlashSkillName(message)
+            if (name) {
+                const skill = this._visibleByName.get(name)
+                if (
+                    skill &&
+                    skill.enabled &&
+                    skill.state === 'ready' &&
+                    skill.userInvocable
+                ) {
+                    const current =
+                        this._active.get(conversationId) ?? new Set<string>()
+                    current.add(skill.id)
+                    this._active.set(conversationId, current)
+                    stripSlashSkillName(message)
+                }
+            }
+
             await this.injectConversationSkills(conversationId)
         })
 
@@ -43,11 +57,6 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async start() {
         await ensureSkillsRoot(this.ctx)
-
-        if (!this._providerDispose) {
-            this._providerDispose =
-                this.ctx.chatluna.contextManager.registerSkillProvider(this)
-        }
 
         await this.reload()
     }
@@ -188,7 +197,11 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             this._active.set(conversationId, current)
         }
 
-        return await this.renderSkillContent(skill, true)
+        return await renderSkillContent(
+            skill,
+            this.config.skills.allowComputerUsePrompt,
+            true
+        )
     }
 
     private getRoot() {
@@ -338,7 +351,10 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     }
 
                     return new SystemMessage(
-                        await this.renderSkillContent(skill)
+                        await renderSkillContent(
+                            skill,
+                            this.config.skills.allowComputerUsePrompt
+                        )
                     )
                 })
             )
@@ -357,53 +373,4 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             once: true
         })
     }
-
-    private async renderSkillContent(skill: ScannedSkill, loaded = false) {
-        const resources = await listSkillResources(skill.dir)
-        const lines = [
-            `<skill_content name="${escapeXml(skill.name)}">`,
-            loaded
-                ? 'The following skill is now active for the current conversation.'
-                : 'The following skill remains active for the current conversation.',
-            `Description: ${skill.description}`,
-            ...(skill.compatibility
-                ? [`Compatibility: ${skill.compatibility}`]
-                : []),
-            ...(skill.allowedTools && skill.allowedTools.length > 0
-                ? [`Allowed tools: ${skill.allowedTools.join(', ')}`]
-                : []),
-            ...(this.config.skills.allowComputerUsePrompt
-                ? [
-                      'You may use available computer-use capabilities when the environment provides them.'
-                  ]
-                : [
-                      "By currently, no computer-use capabilities are available. Please don't try run or execute any computer-use capabilities."
-                  ]),
-            '',
-            skill.body.length > 0 ? skill.body : skill.raw,
-            '',
-            `Skill directory: ${skill.dir}`,
-            'Resolve relative paths against the skill directory.',
-            ...(resources.length > 0
-                ? [
-                      '<skill_resources>',
-                      ...resources.map(
-                          (file) => `  <file>${escapeXml(file)}</file>`
-                      ),
-                      '</skill_resources>'
-                  ]
-                : []),
-            '</skill_content>'
-        ]
-
-        return lines.join('\n')
-    }
-}
-
-function escapeXml(value: string) {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
 }

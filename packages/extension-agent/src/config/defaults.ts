@@ -9,10 +9,16 @@ export function getDefaultConfig(): AgentConfig {
         },
         skills: {
             allowComputerUsePrompt: false,
+            dirs: [
+                '~/.agents/skills',
+                '~/.codex/skills',
+                '~/.claude/skills',
+                '~/.config/opencode/skills'
+            ],
             items: {}
         },
-        scheduler: {},
-        tool: {},
-        subAgent: {}
+        computer: {},
+        subAgent: {},
+        tool: {}
     }
 }

@@ -2,8 +2,10 @@
     <div class="json-view">
         <div class="editor-toolbar">
             <div class="editor-copy">
-                <div class="editor-title">原始配置</div>
-                <div class="editor-description">直接编辑 MCP 配置 JSON</div>
+                <div class="editor-title">JSON 配置</div>
+                <div class="editor-description">
+                    可直接查看、粘贴或编辑完整配置。保存前会先检查 JSON 格式。
+                </div>
             </div>
 
             <div class="editor-actions">
@@ -20,7 +22,7 @@
             class="json-editor"
             language="json"
             :min-height="520"
-            placeholder="直接粘贴或编辑 MCP JSON"
+            placeholder="粘贴完整的 MCP JSON 配置"
         />
 
         <div v-if="error" class="error">{{ error }}</div>
@@ -74,7 +76,7 @@ function formatJson() {
             2
         )
     } catch (e) {
-        error.value = e instanceof Error ? e.message : String(e)
+        error.value = `JSON 格式有误：${e instanceof Error ? e.message : String(e)}`
     }
 }
 
@@ -84,40 +86,47 @@ function save() {
     try {
         emit('save', JSON.parse(jsonContent.value || '{}'))
     } catch (e) {
-        error.value = e instanceof Error ? e.message : String(e)
+        error.value = `保存失败：${e instanceof Error ? e.message : String(e)}`
     }
 }
 </script>
 
 <style scoped>
 .json-view {
-    border: 1px solid var(--k-color-divider);
-    border-radius: 18px;
-    background: var(--k-color-surface-1);
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 16px;
+    background: color-mix(
+        in srgb,
+        var(--k-color-surface-1),
+        var(--k-page-bg) 22%
+    );
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding-bottom: 20px;
+    padding-bottom: 18px;
 }
 
 .editor-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 20px;
-    border-bottom: 1px solid var(--k-color-divider);
-    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    gap: 14px;
 }
 
 .editor-title {
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--k-color-text);
 }
 
 .editor-description {
     margin-top: 4px;
     font-size: 12px;
+    line-height: 1.6;
     color: var(--k-text-light);
 }
 
@@ -128,15 +137,16 @@ function save() {
 }
 
 .json-editor {
-    margin: 20px 20px 0;
+    margin: 18px 18px 0;
 }
 
 .error {
-    margin: 0 20px 20px;
-    padding: 12px 14px;
-    background: color-mix(in srgb, var(--el-color-danger), transparent 92%);
-    color: var(--el-color-danger);
-    border-radius: 12px;
+    margin: 0 18px 18px;
+    padding: 11px 13px;
+    background: color-mix(in srgb, var(--el-color-danger), transparent 94%);
+    color: color-mix(in srgb, var(--el-color-danger), var(--k-color-text) 28%);
+    border-radius: 10px;
+    line-height: 1.5;
 }
 
 @media (max-width: 768px) {

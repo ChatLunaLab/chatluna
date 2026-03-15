@@ -1,7 +1,7 @@
 <template>
     <config-record-page
-        title="Scheduler"
-        description="管理调度任务与执行配置"
+        title="Computer"
+        description="管理提供给 Agent 的电脑能力与环境配置"
         :value="config"
         :stats="stats"
         :loading="loading"
@@ -32,7 +32,7 @@ defineEmits<{
 
 const stats = computed(() => [
     {
-        label: '任务数',
+        label: '能力项',
         value: Object.keys(props.config).length
     },
     {

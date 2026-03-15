@@ -14,9 +14,10 @@ interface OldConfig {
     skills?:
         | AgentConfig['skills']
         | Record<string, { enabled?: boolean } | boolean | unknown>
+    computer?: Record<string, unknown>
     scheduler?: Record<string, unknown>
-    tool?: Record<string, unknown>
     subAgent?: Record<string, unknown>
+    tool?: Record<string, unknown>
 }
 
 function migrateSkillsConfig(old?: OldConfig['skills']): AgentConfig['skills'] {
@@ -29,6 +30,22 @@ function migrateSkillsConfig(old?: OldConfig['skills']): AgentConfig['skills'] {
         cfg.allowComputerUsePrompt = old['allowComputerUsePrompt'] === true
     }
 
+    if ('dirs' in old && Array.isArray(old['dirs'])) {
+        cfg.dirs = old['dirs']
+            .map((item) => {
+                const dir = String(item).trim()
+                if (dir === '.config/opencode/skills') {
+                    return '~/.config/opencode/skills'
+                }
+
+                return dir
+            })
+            .filter(
+                (item, idx, list) =>
+                    item.length > 0 && list.indexOf(item) === idx
+            )
+    }
+
     const items =
         'items' in old &&
         old['items'] != null &&
@@ -36,7 +53,8 @@ function migrateSkillsConfig(old?: OldConfig['skills']): AgentConfig['skills'] {
             ? (old['items'] as Record<string, unknown>)
             : Object.fromEntries(
                   Object.entries(old).filter(
-                      ([key]) => key !== 'allowComputerUsePrompt'
+                      ([key]) =>
+                          key !== 'allowComputerUsePrompt' && key !== 'dirs'
                   )
               )
 
@@ -64,9 +82,9 @@ export function migrateFromOldConfig(old?: OldConfig): AgentConfig {
 
     cfg.version = old.version ?? 1
     cfg.skills = migrateSkillsConfig(old.skills)
-    cfg.scheduler = old.scheduler ?? {}
-    cfg.tool = old.tool ?? {}
+    cfg.computer = old.computer ?? old.scheduler ?? {}
     cfg.subAgent = old.subAgent ?? {}
+    cfg.tool = old.tool ?? {}
 
     if (!old.mcp) return cfg
 

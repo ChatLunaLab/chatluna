@@ -32,15 +32,17 @@
                         </div>
 
                         <div
-                            v-else-if="activeTab === 'tool'"
-                            key="tool"
+                            v-else-if="activeTab === 'computer'"
+                            key="computer"
                             class="view-container"
                         >
-                            <tool-page
-                                :config="config?.tool"
+                            <computer-page
+                                :config="config?.computer"
                                 :loading="loading"
                                 @refresh="refreshData"
-                                @save="(value) => saveSection('tool', value)"
+                                @save="
+                                    (value) => saveSection('computer', value)
+                                "
                             />
                         </div>
 
@@ -60,14 +62,12 @@
                             />
                         </div>
 
-                        <div v-else key="scheduler" class="view-container">
-                            <scheduler-page
-                                :config="config?.scheduler"
+                        <div v-else key="tool" class="view-container">
+                            <tool-page
+                                :config="config?.tool"
                                 :loading="loading"
                                 @refresh="refreshData"
-                                @save="
-                                    (value) => saveSection('scheduler', value)
-                                "
+                                @save="(value) => saveSection('tool', value)"
                             />
                         </div>
                     </Transition>
@@ -86,7 +86,7 @@ import { ElMessage } from 'element-plus'
 import AgentSidebar from './agent-sidebar.vue'
 import McpPage from '../mcp/mcp-page.vue'
 import SkillsPage from '../skills/skills-page.vue'
-import SchedulerPage from '../placeholder/scheduler-page.vue'
+import ComputerPage from '../placeholder/computer-page.vue'
 import ToolPage from '../placeholder/tool-page.vue'
 import SubAgentPage from '../placeholder/sub-agent-page.vue'
 import type { AgentConfig, AgentConsoleData } from '../../../src/types'
@@ -126,7 +126,7 @@ const saveMcp = async (value: AgentConfig['mcp']) => {
 }
 
 const saveSection = async (
-    key: 'tool' | 'subAgent' | 'scheduler',
+    key: 'computer' | 'subAgent' | 'tool',
     value: Record<string, unknown>
 ) => {
     if (!config.value) {

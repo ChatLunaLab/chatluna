@@ -3,9 +3,9 @@
         <div class="panel">
             <div class="panel-header">
                 <div>
-                    <div class="panel-title">Servers</div>
+                    <div class="panel-title">服务器</div>
                     <div class="panel-description">
-                        配置 MCP 服务端连接、状态与重连操作
+                        管理 MCP 服务器的连接方式、运行状态和重连操作。
                     </div>
                 </div>
 
@@ -69,7 +69,10 @@
                     </div>
 
                     <div class="server-summary">
-                        {{ item.status?.stateText || '尚未连接，等待初始化' }}
+                        {{
+                            item.status?.stateText ||
+                            '尚未连接，等待首次初始化。'
+                        }}
                     </div>
 
                     <div class="server-chips">
@@ -95,7 +98,7 @@
                     </div>
 
                     <div class="server-endpoint">
-                        {{ item.endpoint || '未配置入口' }}
+                        {{ item.endpoint || '尚未填写入口' }}
                     </div>
 
                     <div v-if="item.status?.error" class="error-box">
@@ -134,16 +137,16 @@
             </div>
 
             <div v-else class="empty-state">
-                <el-empty description="当前没有 MCP 服务器" />
+                <el-empty description="还没有 MCP 服务器，先添加一个。" />
             </div>
         </div>
 
         <div class="panel">
             <div class="panel-header">
                 <div>
-                    <div class="panel-title">Tools</div>
+                    <div class="panel-title">工具</div>
                     <div class="panel-description">
-                        单独查看工具状态、超时与选择器
+                        查看每个工具的状态、超时和启用情况。
                     </div>
                 </div>
             </div>
@@ -187,7 +190,7 @@
                     </div>
 
                     <div class="tool-description">
-                        {{ item.description || '无描述' }}
+                        {{ item.description || '这个工具暂时没有说明。' }}
                     </div>
 
                     <div class="tool-chips">
@@ -224,20 +227,20 @@
                             :disabled="item.updating"
                             @click="openTool(item)"
                         >
-                            编辑配置
+                            编辑
                         </el-button>
                     </div>
                 </div>
             </div>
 
             <div v-else class="empty-state empty-tools">
-                <el-empty description="当前没有 MCP 工具" />
+                <el-empty description="当前还没有可用工具。" />
             </div>
         </div>
 
         <el-dialog
             v-model="showServerDialog"
-            :title="editing ? '编辑 MCP 服务器' : '新建 MCP 服务器'"
+            :title="editing ? '编辑 MCP 服务器' : '新增 MCP 服务器'"
             width="760px"
             destroy-on-close
         >
@@ -252,7 +255,7 @@
                             style="display: flex; align-items: center; gap: 6px"
                         >
                             <el-icon><Menu /></el-icon>
-                            表单模式
+                            表单
                         </div>
                     </el-radio-button>
                     <el-radio-button value="json" label="json">
@@ -260,7 +263,7 @@
                             style="display: flex; align-items: center; gap: 6px"
                         >
                             <el-icon><Document /></el-icon>
-                            JSON 模式
+                            JSON
                         </div>
                     </el-radio-button>
                 </el-radio-group>
@@ -271,7 +274,7 @@
                     <label class="form-label">服务器名称</label>
                     <el-input
                         v-model="form.name"
-                        placeholder="例如: my-mcp-server"
+                        placeholder="例如：my-mcp-server"
                     />
                 </div>
 
@@ -280,7 +283,7 @@
                     <el-select
                         v-model="form.type"
                         style="width: 100%"
-                        placeholder="选择连接类型"
+                        placeholder="选择连接方式"
                     >
                         <el-option label="Stdio (本地进程)" value="stdio" />
                         <el-option
@@ -299,7 +302,7 @@
                     <label class="form-label">启动命令</label>
                     <el-input
                         v-model="form.command"
-                        placeholder="例如: npx, node, python"
+                        placeholder="例如：npx、node、python"
                     />
                 </div>
 
@@ -309,7 +312,7 @@
                         v-model="form.args"
                         type="textarea"
                         :rows="3"
-                        placeholder="每行一个参数，例如:&#10;-y&#10;@modelcontextprotocol/server-everything"
+                        placeholder="每行一个参数，例如：&#10;-y&#10;@modelcontextprotocol/server-everything"
                     />
                 </div>
 
@@ -319,7 +322,7 @@
                         v-model="form.env"
                         language="json"
                         :min-height="160"
-                        placeholder='例如: { "API_KEY": "xxx" }'
+                        placeholder='例如：{ "API_KEY": "xxx" }'
                     />
                 </div>
 
@@ -327,7 +330,7 @@
                     <label class="form-label">服务 URL</label>
                     <el-input
                         v-model="form.url"
-                        placeholder="例如: http://localhost:3000/sse"
+                        placeholder="例如：http://localhost:3000/sse"
                     />
                 </div>
 
@@ -337,7 +340,7 @@
                         v-model="form.headers"
                         language="json"
                         :min-height="160"
-                        placeholder='例如: { "Authorization": "Bearer xxx" }'
+                        placeholder='例如：{ "Authorization": "Bearer xxx" }'
                     />
                 </div>
 
@@ -363,7 +366,7 @@
                     <label class="form-label">网络代理</label>
                     <el-input
                         v-model="form.proxy"
-                        placeholder="可选，例如: http://127.0.0.1:7890"
+                        placeholder="可选，例如：http://127.0.0.1:7890"
                     />
                 </div>
             </div>
@@ -379,7 +382,7 @@
                                 type="success"
                                 effect="plain"
                             >
-                                有效
+                                JSON 有效
                             </el-tag>
                             <el-tag
                                 v-else-if="serverJson.trim()"
@@ -387,20 +390,20 @@
                                 type="warning"
                                 effect="plain"
                             >
-                                输入中
+                                JSON 尚未完成
                             </el-tag>
                         </div>
                         <code-editor
                             v-model="serverJson"
                             language="json"
                             :min-height="400"
-                            placeholder="直接粘贴服务器 JSON 或包含 mcpServers 的对象"
+                            placeholder="粘贴单个服务器配置，或包含 mcpServers 的完整对象"
                             @update:model-value="syncJsonToForm"
                         />
                     </div>
 
                     <div class="json-preview-section">
-                        <label class="form-label">实时预览</label>
+                        <label class="form-label">预览</label>
                         <div class="json-preview">
                             <div class="preview-card">
                                 <div class="preview-header">
@@ -411,7 +414,7 @@
                                     </div>
                                     <div class="preview-info">
                                         <div class="preview-name">
-                                            {{ form.name || '未命名服务器' }}
+                                            {{ form.name || '未命名' }}
                                         </div>
                                         <div class="preview-type">
                                             {{ form.type }}
@@ -426,7 +429,7 @@
                                     <el-input
                                         v-model="form.name"
                                         size="small"
-                                        placeholder="输入服务器名称"
+                                        placeholder="输入名称"
                                         @input="syncFormToJson"
                                     />
                                 </div>
@@ -494,7 +497,7 @@
         >
             <div class="dialog-grid">
                 <div class="form-group">
-                    <label class="form-label">名称</label>
+                    <label class="form-label">工具名称</label>
                     <el-input :model-value="toolForm.name" disabled />
                 </div>
 
@@ -504,7 +507,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">启用状态</label>
+                    <label class="form-label">是否启用</label>
                     <el-switch v-model="toolForm.enabled" />
                 </div>
 
@@ -604,7 +607,7 @@ function parseJson(text: string) {
     const value = JSON.parse(text || '{}')
 
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new Error('请输入合法的 JSON 对象')
+        throw new Error('请输入有效的 JSON 对象')
     }
 
     return value as Record<string, unknown>
@@ -658,7 +661,7 @@ function parseServerJson(text: string, rawName: string) {
             }
         }
 
-        throw new Error('检测到多个服务器，请先输入名称或只保留一个配置')
+        throw new Error('检测到多个服务器，请先填写名称，或只保留一个配置')
     }
 
     if (looksLikeServer(parsed)) {
@@ -666,7 +669,7 @@ function parseServerJson(text: string, rawName: string) {
         const name = rawName.trim() || String(parsed.name || '')
 
         if (!name) {
-            throw new Error('请输入名称，或在 JSON 中提供 name 字段')
+            throw new Error('请填写名称，或在 JSON 中提供 name 字段')
         }
 
         if (next.environment != null && next.env == null) {
@@ -696,7 +699,7 @@ function parseServerJson(text: string, rawName: string) {
         }
     }
 
-    throw new Error('无法从 JSON 识别 MCP 服务器')
+    throw new Error('无法从这段 JSON 中识别 MCP 服务器配置')
 }
 
 const props = withDefaults(
@@ -904,7 +907,7 @@ function switchServerMode(mode: 'form' | 'json') {
         serverMode.value = mode
     } catch (error) {
         ElMessage.error(
-            error instanceof Error ? error.message : '模式切换失败，请检查输入'
+            error instanceof Error ? error.message : '切换失败，请检查输入内容'
         )
     }
 }
@@ -937,8 +940,8 @@ function openTool(item: McpToolInfo) {
 async function removeServer(name: string) {
     try {
         await ElMessageBox.confirm(
-            `确定删除 MCP 服务器 “${name}” 吗？`,
-            '提示',
+            `删除服务器“${name}”后，需要重新创建才能恢复。确定继续吗？`,
+            '删除 MCP 服务器',
             {
                 confirmButtonText: '删除',
                 cancelButtonText: '取消',
@@ -947,10 +950,10 @@ async function removeServer(name: string) {
         )
 
         await send('chatluna-agent/removeMcpServer', name)
-        ElMessage.success('服务器已删除')
+        ElMessage.success('已删除服务器。')
     } catch (error) {
         if (error !== 'cancel') {
-            ElMessage.error('删除服务器失败')
+            ElMessage.error('删除失败，请稍后重试。')
         }
     }
 }
@@ -959,9 +962,9 @@ async function reloadMcp() {
     try {
         reloading.value = true
         await send('chatluna-agent/reloadMcp')
-        ElMessage.success('MCP 已重新加载')
+        ElMessage.success('已重新加载 MCP。')
     } catch {
-        ElMessage.error('重新加载 MCP 失败')
+        ElMessage.error('重新加载失败，请稍后重试。')
     } finally {
         reloading.value = false
     }
@@ -970,9 +973,9 @@ async function reloadMcp() {
 async function reconnect(name: string) {
     try {
         await send('chatluna-agent/reconnectMcpServer', name)
-        ElMessage.success('已发起服务器重连')
+        ElMessage.success('已开始重新连接。')
     } catch {
-        ElMessage.error('服务器重连失败')
+        ElMessage.error('重连失败，请检查连接配置。')
     }
 }
 
@@ -984,9 +987,9 @@ async function toggleTool(item: McpToolInfo, enabled: boolean) {
             timeout: item.timeout,
             selector: item.selector
         })
-        ElMessage.success(enabled ? '工具已启用' : '工具已停用')
+        ElMessage.success(enabled ? '已启用该工具。' : '已停用该工具。')
     } catch {
-        ElMessage.error('切换工具失败')
+        ElMessage.error('更新工具状态失败，请稍后重试。')
     }
 }
 
@@ -1004,17 +1007,17 @@ async function saveServer() {
         }
 
         if (!name) {
-            ElMessage.warning('请输入服务器名称')
+            ElMessage.warning('请先填写服务器名称。')
             return
         }
 
         if (config.type === 'stdio' && !config.command?.trim()) {
-            ElMessage.warning('请输入启动命令')
+            ElMessage.warning('请填写启动命令。')
             return
         }
 
         if (config.type !== 'stdio' && !config.url?.trim()) {
-            ElMessage.warning('请输入服务地址')
+            ElMessage.warning('请填写服务地址。')
             return
         }
 
@@ -1024,13 +1027,13 @@ async function saveServer() {
             config
         })
 
-        ElMessage.success(editing.value ? '服务器已更新' : '服务器已创建')
+        ElMessage.success(editing.value ? '已更新服务器。' : '已创建服务器。')
         showServerDialog.value = false
     } catch (error) {
         ElMessage.error(
             error instanceof Error
                 ? error.message
-                : '保存服务器失败，请检查输入'
+                : '保存失败，请检查填写内容。'
         )
     } finally {
         savingServer.value = false
@@ -1051,10 +1054,10 @@ async function saveTool() {
                 .filter(Boolean)
         } satisfies McpToolConfig)
 
-        ElMessage.success('工具配置已保存')
+        ElMessage.success('已保存工具配置。')
         showToolDialog.value = false
     } catch {
-        ElMessage.error('保存工具配置失败')
+        ElMessage.error('保存失败，请稍后重试。')
     } finally {
         savingTool.value = false
     }
@@ -1065,13 +1068,18 @@ async function saveTool() {
 .servers-view {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
 }
 
 .panel {
-    border: 1px solid var(--k-color-divider);
-    border-radius: 20px;
-    background: var(--k-color-surface-1);
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 16px;
+    background: color-mix(
+        in srgb,
+        var(--k-color-surface-1),
+        var(--k-page-bg) 20%
+    );
     overflow: hidden;
 }
 
@@ -1079,20 +1087,22 @@ async function saveTool() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 20px;
-    border-bottom: 1px solid var(--k-color-divider);
+    padding: 16px 18px;
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 20%);
     gap: 16px;
 }
 
 .panel-title {
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--k-color-text);
 }
 
 .panel-description {
     margin-top: 4px;
     font-size: 12px;
+    line-height: 1.6;
     color: var(--k-text-light);
 }
 
@@ -1105,8 +1115,8 @@ async function saveTool() {
 .card-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 18px 20px;
-    padding: 18px 20px 20px;
+    gap: 14px 16px;
+    padding: 14px 14px 16px;
     align-items: stretch;
     align-content: flex-start;
 }
@@ -1132,11 +1142,17 @@ async function saveTool() {
 .server-card,
 .tool-card {
     border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 10%);
-    border-radius: 14px;
-    background: var(--k-color-surface-2);
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 12px;
+    background: color-mix(
+        in srgb,
+        var(--k-color-surface-2),
+        var(--k-page-bg) 18%
+    );
     padding: 14px;
-    transition: border-color 0.2s ease;
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease;
     display: flex;
     flex-direction: column;
     min-height: 100%;
@@ -1146,7 +1162,12 @@ async function saveTool() {
 
 .server-card.busy,
 .tool-card.busy {
-    border-color: color-mix(in srgb, var(--el-color-warning), transparent 52%);
+    border-color: color-mix(in srgb, var(--el-color-warning), transparent 68%);
+    background: color-mix(
+        in srgb,
+        var(--k-color-surface-2),
+        var(--el-color-warning) 4%
+    );
 }
 
 .server-head,
@@ -1168,14 +1189,14 @@ async function saveTool() {
 .tool-icon {
     width: 32px;
     height: 32px;
-    border-radius: 10px;
+    border-radius: 9px;
     border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 10%);
-    background: color-mix(in srgb, var(--k-color-surface-2), transparent 12%);
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    background: color-mix(in srgb, var(--k-color-surface-1), transparent 8%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--k-color-primary);
+    color: color-mix(in srgb, var(--k-color-text), var(--k-color-primary) 28%);
     flex-shrink: 0;
     overflow: hidden;
 }
@@ -1209,7 +1230,7 @@ async function saveTool() {
 .tool-title {
     margin-top: 2px;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--k-color-text);
     word-break: break-word;
 }
@@ -1221,6 +1242,7 @@ async function saveTool() {
     flex-wrap: wrap;
     font-size: 11px;
     text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--k-text-light);
 }
 
@@ -1228,7 +1250,7 @@ async function saveTool() {
 .tool-description {
     margin-top: 8px;
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.6;
     color: var(--k-text-light);
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -1299,7 +1321,7 @@ async function saveTool() {
 .server-endpoint {
     margin-top: 8px;
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.6;
     color: var(--k-text-light);
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -1309,8 +1331,8 @@ async function saveTool() {
     margin-top: 10px;
     padding: 10px 12px;
     border-radius: 10px;
-    background: color-mix(in srgb, var(--el-color-danger), transparent 92%);
-    color: var(--el-color-danger);
+    background: color-mix(in srgb, var(--el-color-danger), transparent 95%);
+    color: color-mix(in srgb, var(--el-color-danger), var(--k-color-text) 36%);
     font-size: 11px;
     line-height: 1.5;
     word-break: break-word;
@@ -1369,14 +1391,18 @@ async function saveTool() {
 }
 
 .preview-card {
-    border: 1px solid var(--k-color-divider);
-    border-radius: 14px;
-    background: var(--k-color-surface-2);
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    border-radius: 12px;
+    background: color-mix(
+        in srgb,
+        var(--k-color-surface-2),
+        var(--k-page-bg) 16%
+    );
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .preview-header {
@@ -1389,11 +1415,11 @@ async function saveTool() {
     width: 40px;
     height: 40px;
     border-radius: 10px;
-    background: var(--k-color-primary);
+    background: color-mix(in srgb, var(--k-color-primary), white 82%);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: color-mix(in srgb, var(--k-color-primary), var(--k-color-text) 32%);
     flex-shrink: 0;
 }
 
@@ -1404,7 +1430,7 @@ async function saveTool() {
 
 .preview-name {
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--k-color-text);
     word-break: break-word;
 }
@@ -1443,8 +1469,13 @@ async function saveTool() {
     word-break: break-all;
     padding: 8px 10px;
     border-radius: 8px;
-    background: var(--k-color-surface-1);
-    border: 1px solid var(--k-color-divider);
+    background: color-mix(
+        in srgb,
+        var(--k-color-surface-1),
+        var(--k-page-bg) 24%
+    );
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 22%);
     line-height: 1.4;
 }
 
@@ -1460,7 +1491,7 @@ async function saveTool() {
 .dialog-head {
     display: flex;
     justify-content: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 .dialog-grid {

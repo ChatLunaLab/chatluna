@@ -44,7 +44,7 @@ export async function scanSkills(
     ctx: Context,
     cfg: AgentConfig['skills']
 ): Promise<ScannedSkill[]> {
-    const targets = await getScanTargets(ctx)
+    const targets = await getScanTargets(ctx, cfg)
     const skills = (
         await Promise.all(targets.map((target) => scanTarget(target, cfg)))
     ).flat()
@@ -196,7 +196,7 @@ async function parseSkill(
             ? frontmatter.description.trim()
             : ''
 
-    if (name !== fallbackName) {
+    if (name.toLowerCase() !== fallbackName.toLowerCase()) {
         diagnostics.push(
             `Frontmatter name '${name}' does not match directory '${fallbackName}'`
         )
@@ -361,92 +361,125 @@ function pickMetadata(value: unknown) {
     return Object.keys(result).length > 0 ? result : undefined
 }
 
-async function getScanTargets(ctx: Context): Promise<ScanTarget[]> {
-    const projectRoots = await getProjectRoots(ctx.baseDir)
-    const userHome = homedir()
+async function getScanTargets(
+    ctx: Context,
+    cfg: AgentConfig['skills']
+): Promise<ScanTarget[]> {
+    const root = getSkillsRootPath(ctx)
+    const seen = new Set([toPathKey(root)])
     const targets: ScanTarget[] = [
         {
-            root: getSkillsRootPath(ctx),
+            root,
             source: 'chatluna',
             scope: 'data',
             priority: 0
         }
     ]
 
-    for (let idx = 0; idx < projectRoots.length; idx++) {
-        const root = projectRoots[idx]
-
-        targets.push(
-            {
-                root: join(root, '.opencode', 'skills'),
-                source: 'opencode',
-                scope: 'project',
-                priority: 100 + idx
-            },
-            {
-                root: join(root, '.claude', 'skills'),
-                source: 'claude',
-                scope: 'project',
-                priority: 200 + idx
-            },
-            {
-                root: join(root, '.agents', 'skills'),
-                source: 'codex',
-                scope: 'project',
-                priority: 300 + idx
-            }
-        )
-    }
-
-    targets.push(
-        {
-            root: join(userHome, '.config', 'opencode', 'skills'),
-            source: 'opencode',
-            scope: 'user',
-            priority: 400
-        },
-        {
-            root: join(userHome, '.claude', 'skills'),
-            source: 'claude',
-            scope: 'user',
-            priority: 500
-        },
-        {
-            root: join(userHome, '.agents', 'skills'),
-            source: 'codex',
-            scope: 'user',
-            priority: 600
+    for (let idx = 0; idx < cfg.dirs.length; idx++) {
+        const item = cfg.dirs[idx].trim()
+        if (!item) {
+            continue
         }
-    )
+
+        const dir = resolveSkillRoot(ctx.baseDir, item)
+        const key = toPathKey(dir)
+        if (seen.has(key)) {
+            continue
+        }
+
+        seen.add(key)
+        targets.push({
+            root: dir,
+            source: detectSkillSource(item, dir),
+            scope: detectSkillScope(ctx, dir),
+            priority: 100 + idx
+        })
+    }
 
     return targets
 }
 
-async function getProjectRoots(baseDir: string) {
-    const roots: string[] = []
-    let current = resolve(baseDir)
-
-    while (true) {
-        roots.push(current)
-
-        if (await hasGitRoot(current)) {
-            break
-        }
-
-        const parent = resolve(current, '..')
-        if (parent === current) {
-            break
-        }
-
-        current = parent
+function resolveSkillRoot(baseDir: string, dir: string) {
+    if (
+        dir.startsWith('.agents/') ||
+        dir.startsWith('.agents\\') ||
+        dir.startsWith('.codex/') ||
+        dir.startsWith('.codex\\') ||
+        dir.startsWith('.claude/') ||
+        dir.startsWith('.claude\\') ||
+        dir.startsWith('.config/opencode/') ||
+        dir.startsWith('.config\\opencode\\')
+    ) {
+        return resolve(homedir(), dir)
     }
 
-    return roots
+    if (dir === '~') {
+        return homedir()
+    }
+
+    if (dir.startsWith('~/') || dir.startsWith('~\\')) {
+        return resolve(homedir(), dir.slice(2))
+    }
+
+    return resolve(baseDir, dir)
 }
 
-async function hasGitRoot(dir: string) {
-    const file = join(dir, '.git')
-    return (await stat(file).catch(() => undefined)) != null
+function detectSkillSource(raw: string, dir: string): SkillSource {
+    const value = `${raw}\n${dir}`.replaceAll('\\', '/').toLowerCase()
+
+    if (value.includes('/.claude/skills') || value.endsWith('/claude/skills')) {
+        return 'claude'
+    }
+
+    if (
+        value.includes('/.agents/skills') ||
+        value.endsWith('/agents/skills') ||
+        value.includes('/.codex/skills') ||
+        value.endsWith('/codex/skills')
+    ) {
+        return 'codex'
+    }
+
+    if (
+        value.includes('/.opencode/skills') ||
+        value.endsWith('/opencode/skills')
+    ) {
+        return 'opencode'
+    }
+
+    return 'custom'
+}
+
+function detectSkillScope(ctx: Context, dir: string): SkillScope {
+    if (isPathInside(dir, getSkillsRootPath(ctx))) {
+        return 'data'
+    }
+
+    if (isPathInside(dir, ctx.baseDir)) {
+        return 'project'
+    }
+
+    if (isPathInside(dir, homedir())) {
+        return 'user'
+    }
+
+    return 'user'
+}
+
+function isPathInside(dir: string, root: string) {
+    const target = resolve(dir)
+    const base = resolve(root)
+
+    return (
+        target === base ||
+        target.startsWith(`${base}\\`) ||
+        target.startsWith(`${base}/`)
+    )
+}
+
+function toPathKey(dir: string) {
+    return resolve(dir).replaceAll('\\', '/').toLowerCase()
 }
 
 function createSkillId(file: string) {

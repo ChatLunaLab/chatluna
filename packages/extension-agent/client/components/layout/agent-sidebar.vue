@@ -21,9 +21,9 @@
 import {
     Connection,
     MagicStick,
+    Monitor,
     Tools,
-    UserFilled,
-    Timer
+    UserFilled
 } from '@element-plus/icons-vue'
 
 defineProps<{
@@ -37,9 +37,9 @@ defineEmits<{
 const items = [
     { key: 'mcp', label: 'MCP', icon: Connection },
     { key: 'skills', label: 'Skills', icon: MagicStick },
-    { key: 'tool', label: 'Tool', icon: Tools },
+    { key: 'computer', label: 'Computer', icon: Monitor },
     { key: 'subAgent', label: 'Sub Agent', icon: UserFilled },
-    { key: 'scheduler', label: 'Scheduler', icon: Timer }
+    { key: 'tool', label: 'Tool', icon: Tools }
 ]
 </script>
 

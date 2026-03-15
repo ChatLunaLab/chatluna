@@ -4,13 +4,14 @@ export interface AgentConfig {
     version: number
     mcp: McpConfig
     skills: SkillsConfig
-    scheduler: Record<string, unknown>
-    tool: Record<string, unknown>
+    computer: Record<string, unknown>
     subAgent: Record<string, unknown>
+    tool: Record<string, unknown>
 }
 
 export interface SkillsConfig {
     allowComputerUsePrompt: boolean
+    dirs: string[]
     items: Record<string, SkillConfig>
 }
 
@@ -18,7 +19,12 @@ export interface SkillConfig {
     enabled: boolean
 }
 
-export type SkillSource = 'chatluna' | 'codex' | 'claude' | 'opencode'
+export type SkillSource =
+    | 'chatluna'
+    | 'codex'
+    | 'claude'
+    | 'opencode'
+    | 'custom'
 
 export type SkillScope = 'data' | 'project' | 'user'
 

@@ -5,7 +5,7 @@
                 <div class="headline">
                     <div class="page-title">MCP</div>
                     <div class="page-description">
-                        管理服务器、工具与原始配置
+                        统一管理 MCP 服务器、工具和完整配置。
                     </div>
                 </div>
 
@@ -17,25 +17,18 @@
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div v-for="item in stats" :key="item.label" class="stat-card">
-                <div class="stat-label">{{ item.label }}</div>
-                <div class="stat-value">{{ item.value }}</div>
-            </div>
-        </div>
-
         <div class="tabs">
             <div
                 :class="['tab', { active: currentTab === 'servers' }]"
                 @click="currentTab = 'servers'"
             >
-                Servers
+                服务器与工具
             </div>
             <div
                 :class="['tab', { active: currentTab === 'json' }]"
                 @click="currentTab = 'json'"
             >
-                JSON
+                JSON 配置
             </div>
         </div>
 
@@ -57,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { RefreshRight } from '@element-plus/icons-vue'
 import McpServersView from './mcp-servers-view.vue'
 import McpJsonView from './mcp-json-view.vue'
@@ -89,34 +82,12 @@ defineEmits<{
 }>()
 
 const currentTab = ref('servers')
-
-const stats = computed(() => [
-    {
-        label: '已配置服务器',
-        value: Object.keys(props.config.mcpServers).length
-    },
-    {
-        label: '在线服务器',
-        value: Object.values(props.status.servers).filter(
-            (item) => item.connected
-        ).length
-    },
-    {
-        label: '可用工具',
-        value: Object.keys(props.status.tools).length
-    },
-    {
-        label: '启用工具',
-        value: Object.values(props.status.tools).filter((item) => item.enabled)
-            .length
-    }
-])
 </script>
 
 <style scoped>
 .mcp-page {
     min-height: 100%;
-    width: min(100%, 1480px);
+    width: min(100%, 1440px);
     margin: 0 auto;
     padding-bottom: 56px;
 }
@@ -125,27 +96,39 @@ const stats = computed(() => [
     position: sticky;
     top: 0;
     z-index: 5;
-    background: linear-gradient(180deg, var(--k-page-bg) 72%, transparent);
-    padding: 12px 0;
-    margin-bottom: 12px;
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--k-page-bg), var(--k-color-surface-1) 18%) 0%,
+        color-mix(in srgb, var(--k-page-bg), transparent 12%) 76%,
+        transparent 100%
+    );
+    padding: 10px 0 14px;
+    margin-bottom: 10px;
+    backdrop-filter: blur(8px);
 }
 
 .toolbar-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 16px;
+}
+
+.headline {
+    min-width: 0;
 }
 
 .page-title {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     color: var(--k-color-text);
 }
 
 .page-description {
     margin-top: 4px;
     font-size: 13px;
+    line-height: 1.6;
     color: var(--k-text-light);
 }
 
@@ -155,58 +138,45 @@ const stats = computed(() => [
     align-items: center;
 }
 
-.stats-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 20px;
-}
-
-.stat-card {
-    border: 1px solid var(--k-color-divider);
-    border-radius: 16px;
-    background: var(--k-color-surface-1);
-    padding: 18px;
-    flex: 1 1 180px;
-    min-width: 0;
-}
-
-.stat-label {
-    font-size: 12px;
-    color: var(--k-text-light);
-    margin-bottom: 8px;
-}
-
-.stat-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--k-color-text);
-}
-
 .tabs {
     display: flex;
-    border-bottom: 1px solid var(--k-color-divider);
-    margin-bottom: 20px;
-    gap: 4px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 22px;
+    padding: 4px;
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 28%);
+    border-radius: 16px;
+    background: color-mix(
+        in srgb,
+        var(--k-color-surface-1),
+        var(--k-page-bg) 48%
+    );
+    width: fit-content;
+    max-width: 100%;
 }
 
 .tab {
-    padding: 12px 20px;
+    padding: 10px 16px;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-    font-weight: 600;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+    font-weight: 500;
     color: var(--k-text-light);
-    border-radius: 14px 14px 0 0;
+    border-radius: 12px;
+    white-space: nowrap;
 }
 
 .tab:hover {
-    background: var(--k-color-surface-1);
+    background: color-mix(in srgb, var(--k-color-surface-2), transparent 18%);
 }
 
 .tab.active {
-    border-bottom-color: var(--k-color-primary);
-    color: var(--k-color-primary);
+    background: var(--k-color-surface-1);
+    color: color-mix(in srgb, var(--k-color-text), var(--k-color-primary) 24%);
+    box-shadow: inset 0 0 0 1px
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
 }
 
 .tab-content {
@@ -224,12 +194,13 @@ const stats = computed(() => [
         justify-content: flex-end;
     }
 
-    .stats-grid {
-        gap: 12px;
+    .tabs {
+        width: 100%;
     }
 
-    .stat-card {
-        flex-basis: 100%;
+    .tab {
+        flex: 1 1 0;
+        text-align: center;
     }
 }
 </style>

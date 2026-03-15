@@ -7,12 +7,24 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { json } from '@codemirror/lang-json'
+import { markdown } from '@codemirror/lang-markdown'
+import { yaml } from '@codemirror/lang-yaml'
+import { javascript } from '@codemirror/lang-javascript'
+import { python } from '@codemirror/lang-python'
 import { placeholder } from '@codemirror/view'
 
 const props = withDefaults(
     defineProps<{
         modelValue: string
-        language?: 'json' | 'plaintext'
+        language?:
+            | 'json'
+            | 'plaintext'
+            | 'markdown'
+            | 'yaml'
+            | 'javascript'
+            | 'typescript'
+            | 'python'
+            | 'shell'
         minHeight?: number
         placeholder?: string
         readonly?: boolean
@@ -47,6 +59,7 @@ onMounted(() => {
         EditorView.theme({
             '&': {
                 minHeight: `${props.minHeight}px`,
+                maxHeight: '600px',
                 fontSize: '13px'
             },
             '.cm-scroller': { overflow: 'auto' },
@@ -64,6 +77,19 @@ onMounted(() => {
 
     if (props.language === 'json') {
         extensions.push(json())
+    } else if (props.language === 'markdown') {
+        extensions.push(markdown())
+    } else if (props.language === 'yaml') {
+        extensions.push(yaml())
+    } else if (
+        props.language === 'javascript' ||
+        props.language === 'typescript'
+    ) {
+        extensions.push(
+            javascript({ typescript: props.language === 'typescript' })
+        )
+    } else if (props.language === 'python') {
+        extensions.push(python())
     }
 
     view = new EditorView({
