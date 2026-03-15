@@ -78,7 +78,9 @@ function format(items: unknown[]): string[] {
         .map((item) => String(item).trim().replace(/\s+/g, ' '))
         .filter(Boolean)
         .map((item) =>
-            /^[\x00-\x7F]+$/.test(item) ? item.toLowerCase() : item
+            Array.from(item).every((char) => char.charCodeAt(0) <= 0x7f)
+                ? item.toLowerCase()
+                : item
         )
 }
 

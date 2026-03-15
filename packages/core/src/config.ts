@@ -15,6 +15,7 @@ export interface Config {
     isLog: boolean
 
     isReplyWithAt: boolean
+    replyQuoteThreshold?: number
     allowQuoteReply: boolean
     proxyAddress: string
     isProxy: boolean
@@ -66,9 +67,6 @@ export const Config: Schema<Config> = Schema.intersect([
         allowPrivate: Schema.boolean().default(true),
         allowAtReply: Schema.boolean().default(true),
         allowQuoteReply: Schema.boolean().default(false),
-        isReplyWithAt: Schema.boolean().default(false),
-        isForwardMsg: Schema.boolean().default(false),
-        forwardMsgMinLength: Schema.number().min(0).max(400).step(1).default(0),
         privateChatWithoutCommand: Schema.boolean().default(true),
         allowChatWithRoomName: Schema.boolean().default(false),
         includeQuoteReply: Schema.boolean().default(true),
@@ -80,6 +78,40 @@ export const Config: Schema<Config> = Schema.intersect([
             .computed(),
         attachForwardMsgIdToContext: Schema.boolean().default(false)
     }),
+
+    Schema.intersect([
+        Schema.object({
+            isForwardMsg: Schema.boolean().default(false)
+        }),
+        Schema.union([
+            Schema.object({
+                isForwardMsg: Schema.const(true).required(),
+                forwardMsgMinLength: Schema.number()
+                    .min(0)
+                    .max(400)
+                    .step(1)
+                    .default(0)
+            }),
+            Schema.object({})
+        ])
+    ]),
+
+    Schema.intersect([
+        Schema.object({
+            isReplyWithAt: Schema.boolean().default(false)
+        }),
+        Schema.union([
+            Schema.object({
+                isReplyWithAt: Schema.const(true).required(),
+                replyQuoteThreshold: Schema.number()
+                    .min(0)
+                    .max(600)
+                    .step(1)
+                    .default(0)
+            }),
+            Schema.object({})
+        ])
+    ]),
 
     Schema.object({
         sendThinkingMessage: Schema.boolean().default(true),
