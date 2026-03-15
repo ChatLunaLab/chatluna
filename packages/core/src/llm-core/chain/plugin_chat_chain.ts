@@ -15,7 +15,8 @@ import {
     AgentAction,
     AgentExecutor,
     createAgentExecutor,
-    createToolsRef
+    createToolsRef,
+    ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
@@ -42,6 +43,7 @@ export interface ChatLunaPluginChainInput {
     variableService: ChatLunaPromptRenderService
     preset: ComputedRef<PresetTemplate>
     contextManager: ChatLunaContextManagerService
+    toolMask?: ToolMask
 }
 
 export class ChatLunaPluginChain
@@ -70,6 +72,8 @@ export class ChatLunaPluginChain
 
     agentMode?: 'tool-calling' | 'react'
 
+    toolMask?: ToolMask
+
     private _toolsRef: ReturnType<typeof createToolsRef>
 
     constructor({
@@ -80,7 +84,8 @@ export class ChatLunaPluginChain
         preset,
         embeddings,
         agentMode,
-        contextManager
+        contextManager,
+        toolMask
     }: ChatLunaPluginChainInput & {
         tools: ComputedRef<ChatLunaTool[]>
         llm: ChatLunaChatModel
@@ -95,10 +100,12 @@ export class ChatLunaPluginChain
         this.agentMode = agentMode ?? 'react'
         this.preset = preset
         this.contextManager = contextManager
+        this.toolMask = toolMask
 
         this._toolsRef = createToolsRef({
             tools: this.tools,
-            embeddings: this.embeddings
+            embeddings: this.embeddings,
+            toolMask: this.toolMask
         })
 
         this.executor = this._createExecutor()
@@ -113,7 +120,8 @@ export class ChatLunaPluginChain
             embeddings,
             agentMode,
             variableService,
-            contextManager
+            contextManager,
+            toolMask
         }: Omit<ChatLunaPluginChainInput, 'prompt'>
     ): ChatLunaPluginChain {
         const prompt = new ChatLunaChatPrompt({
@@ -135,7 +143,8 @@ export class ChatLunaPluginChain
             tools,
             preset,
             variableService,
-            contextManager
+            contextManager,
+            toolMask
         })
     }
 
@@ -165,7 +174,8 @@ export class ChatLunaPluginChain
         variables,
         maxToken,
         messageQueue,
-        onAgentEvent
+        onAgentEvent,
+        subagentContext
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues & {
             chat_history?: BaseMessage[]
@@ -198,7 +208,8 @@ export class ChatLunaPluginChain
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {
             session,
-            conversationId
+            conversationId,
+            subagentContext
         }
 
         this._toolsRef.update(session, messages.concat(message))
@@ -256,7 +267,8 @@ export class ChatLunaPluginChain
                         preset: preset.triggerKeyword[0],
                         userId: session.userId,
                         messageQueue,
-                        onAgentEvent
+                        onAgentEvent,
+                        subagentContext
                     }
                 }
             )

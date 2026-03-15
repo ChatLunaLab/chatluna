@@ -1,29 +1,37 @@
 import { SystemMessage } from '@langchain/core/messages'
+import {
+    countMessageTokens,
+    PromptContextRuntime
+} from 'koishi-plugin-chatluna/llm-core/prompt'
+import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { Context } from 'koishi'
 import { getSkillsRootPath } from '../config/path'
 import {
     AgentConfig,
     SkillContentResult,
     SkillExportResult,
-    SkillInfo,
     SkillImportInput,
     SkillImportResult,
+    SkillInfo,
     SkillsStatus
 } from '../types'
 import { ensureSkillsRoot, ScannedSkill, scanSkills } from '../skills/scan'
-import { escapeXml, renderSkillContent } from '../skills/render'
+import { renderAvailableSkills, renderSkillContent } from '../skills/render'
 import { getSlashSkillName, stripSlashSkillName } from '../skills/slash'
 import { importSkills as runImportSkills } from '../skills/import'
 import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
 import { SkillTool, SkillToolService } from '../skills/tool'
+import { buildSkillCatalog } from '../skills/catalog'
+import { filterNames, mergeRule } from '../sub-agent/permissions'
 
 export class ChatLunaAgentSkillsService implements SkillToolService {
     private _catalog: SkillInfo[] = []
     private _skills = new Map<string, ScannedSkill>()
     private _visibleByName = new Map<string, ScannedSkill>()
     private _toolDispose?: () => void
-    private _providerDispose?: () => void
+    private _promptDispose?: () => void
     private _active = new Map<string, Set<string>>()
+    private _requested = new Map<string, Set<string>>()
 
     constructor(
         public ctx: Context,
@@ -31,75 +39,79 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     ) {
         ctx.on('chatluna/before-chat', async (conversationId, message) => {
             const name = getSlashSkillName(message)
-            if (name) {
-                const skill = this._visibleByName.get(name)
-                if (
-                    skill &&
-                    skill.enabled &&
-                    skill.state === 'ready' &&
-                    skill.userInvocable
-                ) {
-                    const current =
-                        this._active.get(conversationId) ?? new Set<string>()
-                    current.add(skill.id)
-                    this._active.set(conversationId, current)
-                    stripSlashSkillName(message)
-                }
+            if (!name) return
+
+            const skill = this._visibleByName.get(name)
+            if (
+                !skill ||
+                !skill.enabled ||
+                skill.state !== 'ready' ||
+                !skill.userInvocable
+            ) {
+                return
             }
 
-            await this.injectConversationSkills(conversationId)
+            const active = this._active.get(conversationId) ?? new Set<string>()
+            active.add(skill.id)
+            this._active.set(conversationId, active)
+
+            const requested =
+                this._requested.get(conversationId) ?? new Set<string>()
+            requested.add(skill.id)
+            this._requested.set(conversationId, requested)
+
+            stripSlashSkillName(message)
         })
 
         ctx.on('chatluna/clear-chat-history', async (conversationId) => {
             this._active.delete(conversationId)
+            this._requested.delete(conversationId)
         })
     }
 
     async start() {
         await ensureSkillsRoot(this.ctx)
-
         await this.reload()
     }
 
     async stop() {
         this._toolDispose?.()
         this._toolDispose = undefined
-        this._providerDispose?.()
-        this._providerDispose = undefined
+        this._promptDispose?.()
+        this._promptDispose = undefined
         this._catalog = []
         this._skills.clear()
         this._visibleByName.clear()
         this._active.clear()
+        this._requested.clear()
     }
 
     async reload() {
         const scanned = await scanSkills(this.ctx, this.config.skills)
-        this._skills = new Map(scanned.map((skill) => [skill.id, skill]))
-        this._catalog = this.buildCatalog(scanned)
+        this._skills = new Map(scanned.map((s) => [s.id, s]))
+        this._catalog = buildSkillCatalog(scanned, this.config.skills.items)
         this._visibleByName = new Map(
             this._catalog
-                .filter((skill) => skill.visible)
-                .map((skill) => [skill.name, this._skills.get(skill.id)!])
+                .filter((s) => s.visible)
+                .map((s) => [s.name, this._skills.get(s.id)!])
         )
 
         this.pruneActiveSkills()
         this.syncTool()
+        this.syncPrompt()
     }
 
     getStatus(): SkillsStatus {
         return {
             enabled: true,
-            root: this.getRoot(),
+            root: getSkillsRootPath(this.ctx),
             total: this._catalog.length,
-            visible: this._catalog.filter((skill) => skill.visible).length,
-            modelEnabled: this._catalog.filter((skill) => skill.modelEnabled)
-                .length,
+            visible: this._catalog.filter((s) => s.visible).length,
+            modelEnabled: this._catalog.filter((s) => s.modelEnabled).length,
             activeConversations: Array.from(this._active.values()).filter(
-                (value) => value.size > 0
+                (s) => s.size > 0
             ).length,
-            catalog: Object.fromEntries(
-                this._catalog.map((skill) => [skill.id, skill])
-            )
+            catalog: Object.fromEntries(this._catalog.map((s) => [s.id, s]))
         }
     }
 
@@ -107,16 +119,16 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         return [...this._catalog]
     }
 
+    listVisibleSkills() {
+        return this._catalog.filter(
+            (s) => s.visible && s.enabled && s.state === 'ready'
+        )
+    }
+
     async getSkillContent(id: string): Promise<SkillContentResult | undefined> {
         const skill = this._skills.get(id)
-        if (!skill) {
-            return undefined
-        }
-
-        return {
-            id,
-            content: skill.raw
-        }
+        if (!skill) return undefined
+        return { id, content: skill.raw }
     }
 
     async importSkills(input: SkillImportInput): Promise<SkillImportResult> {
@@ -127,46 +139,28 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async exportSkill(id: string): Promise<SkillExportResult | undefined> {
         const skill = this._skills.get(id)
-        if (!skill || !skill.path) {
-            return undefined
-        }
-
+        if (!skill?.path) return undefined
         return await exportSkillArchive(id, skill.dir)
     }
 
     async removeSkill(id: string): Promise<string | undefined> {
         const skill = this._skills.get(id)
-        if (!skill) {
-            return undefined
-        }
+        if (!skill) return undefined
 
         if (skill.source !== 'chatluna' || skill.scope !== 'data') {
             throw new Error('Only imported local skills can be removed here')
         }
 
-        await removeSkillDirectory(this.getRoot(), skill.dir)
+        await removeSkillDirectory(getSkillsRootPath(this.ctx), skill.dir)
         return skill.name
     }
 
     buildToolDescription() {
-        const skills = this._catalog.filter((skill) => skill.modelEnabled)
         const lines = [
-            'Load a skill by name when the current task matches its description.',
-            'Loaded skills add specialized instructions and stay active for the current conversation until the chat history is cleared.',
-            '<available_skills>'
+            'Load a skill when the current task clearly matches one of the injected available skills.',
+            'Use the exact skill name from the injected catalog.',
+            'The tool response returns the full instructions for that skill.'
         ]
-
-        for (const skill of skills) {
-            lines.push(
-                '  <skill>',
-                `    <name>${escapeXml(skill.name)}</name>`,
-                `    <description>${escapeXml(skill.description)}</description>`,
-                `    <location>${escapeXml(skill.path)}</location>`,
-                '  </skill>'
-            )
-        }
-
-        lines.push('</available_skills>')
 
         if (this.config.skills.allowComputerUsePrompt) {
             lines.push(
@@ -177,10 +171,40 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         return lines.join('\n')
     }
 
-    async activateSkill(name: string, conversationId?: string) {
+    async activateSkill(name: string, runConfig?: ChatLunaToolRunnable) {
         const skill = this._visibleByName.get(name)
+        const conversationId = runConfig?.configurable?.conversationId
+        const sub = runConfig?.configurable?.subagentContext
 
-        if (!skill || !skill.enabled || skill.state !== 'ready') {
+        if (sub) {
+            const agent = this.ctx.chatluna_agent?.subAgent
+                .getCatalogSync()
+                .find((item) => item.id === sub.agentId)
+
+            if (!agent) {
+                throw new Error(`Sub-agent not found: ${sub.agentId}`)
+            }
+
+            const rule = mergeRule(
+                agent.permissions.skills,
+                this.config.subAgent.defaults.skills
+            )
+            const names =
+                rule.mode === 'inherit'
+                    ? []
+                    : filterNames(
+                          this._catalog
+                              .filter((item) => item.modelEnabled)
+                              .map((item) => item.name),
+                          rule
+                      )
+
+            if (!names.includes(name)) {
+                throw new Error(`Skill is not available: ${name}`)
+            }
+        }
+
+        if (!skill?.enabled || skill.state !== 'ready') {
             throw new Error(`Skill not found: ${name}`)
         }
 
@@ -191,10 +215,9 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         }
 
         if (conversationId) {
-            const current =
-                this._active.get(conversationId) ?? new Set<string>()
-            current.add(skill.id)
-            this._active.set(conversationId, current)
+            const active = this._active.get(conversationId) ?? new Set<string>()
+            active.add(skill.id)
+            this._active.set(conversationId, active)
         }
 
         return await renderSkillContent(
@@ -204,103 +227,22 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         )
     }
 
-    private getRoot() {
-        return getSkillsRootPath(this.ctx)
-    }
+    async renderSkill(name: string, loaded = false) {
+        const skill = this._visibleByName.get(name)
+        if (!skill?.enabled || skill.state !== 'ready') return undefined
 
-    private buildCatalog(skills: ScannedSkill[]) {
-        const groups = new Map<string, ScannedSkill[]>()
-
-        for (const skill of skills) {
-            const list = groups.get(skill.name) ?? []
-            list.push(skill)
-            groups.set(skill.name, list)
-        }
-
-        const catalog: SkillInfo[] = []
-
-        for (const list of groups.values()) {
-            list.sort((a, b) => a.priority - b.priority)
-            const winner = list.find(
-                (skill) => skill.enabled && skill.state === 'ready'
-            )
-
-            for (const skill of list) {
-                catalog.push({
-                    id: skill.id,
-                    name: skill.name,
-                    description: skill.description,
-                    path: skill.path,
-                    dir: skill.dir,
-                    source: skill.source,
-                    scope: skill.scope,
-                    state: skill.state,
-                    enabled: skill.enabled,
-                    visible: winner?.id === skill.id,
-                    modelEnabled:
-                        winner?.id === skill.id && skill.implicitInvocation,
-                    userInvocable: skill.userInvocable,
-                    implicitInvocation: skill.implicitInvocation,
-                    shadowedBy:
-                        winner && winner.id !== skill.id
-                            ? winner.id
-                            : undefined,
-                    compatibility: skill.compatibility,
-                    license: skill.license,
-                    metadata: skill.metadata,
-                    allowedTools: skill.allowedTools,
-                    diagnostics: [...skill.diagnostics]
-                })
-            }
-        }
-
-        for (const [id, item] of Object.entries(this.config.skills.items)) {
-            if (this._skills.has(id)) {
-                continue
-            }
-
-            catalog.push({
-                id,
-                name: id,
-                description: '',
-                path: '',
-                dir: '',
-                source: 'chatluna',
-                scope: 'data',
-                state: 'missing',
-                enabled: item.enabled,
-                visible: false,
-                modelEnabled: false,
-                userInvocable: false,
-                implicitInvocation: false,
-                diagnostics: ['Configured skill was not found during scan']
-            })
-        }
-
-        return catalog.sort((a, b) => {
-            const aSkill = this._skills.get(a.id)
-            const bSkill = this._skills.get(b.id)
-            const aPriority = aSkill?.priority ?? 9999
-            const bPriority = bSkill?.priority ?? 9999
-
-            if (aPriority !== bPriority) {
-                return aPriority - bPriority
-            }
-
-            return a.path.localeCompare(b.path)
-        })
+        return await renderSkillContent(
+            skill,
+            this.config.skills.allowComputerUsePrompt,
+            loaded
+        )
     }
 
     private pruneActiveSkills() {
         const loadable = new Set(
             this._catalog
-                .filter(
-                    (skill) =>
-                        skill.visible &&
-                        skill.enabled &&
-                        skill.state === 'ready'
-                )
-                .map((skill) => skill.id)
+                .filter((s) => s.visible && s.enabled && s.state === 'ready')
+                .map((s) => s.id)
         )
 
         for (const [conversationId, current] of this._active.entries()) {
@@ -310,10 +252,9 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
             if (next.size > 0) {
                 this._active.set(conversationId, next)
-                continue
+            } else {
+                this._active.delete(conversationId)
             }
-
-            this._active.delete(conversationId)
         }
     }
 
@@ -322,55 +263,71 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         this._toolDispose = undefined
 
         const names = this._catalog
-            .filter((skill) => skill.modelEnabled)
-            .map((skill) => skill.name)
+            .filter((s) => s.modelEnabled)
+            .map((s) => s.name)
 
-        if (names.length < 1) {
-            return
-        }
+        if (names.length < 1) return
 
         this._toolDispose = this.ctx.chatluna.platform.registerTool('skill', {
-            createTool: () =>
-                new SkillTool(this, names as [string, ...string[]]),
+            createTool: () => new SkillTool(this),
             selector: () => true
         })
     }
 
-    private async injectConversationSkills(conversationId: string) {
-        const current = this._active.get(conversationId)
-        if (!current || current.size < 1) {
-            return
-        }
+    private syncPrompt() {
+        this._promptDispose?.()
+        this._promptDispose = undefined
 
-        const messages = (
-            await Promise.all(
-                Array.from(current).map(async (id) => {
+        this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
+            'after_system_prompts',
+            async (runtime: PromptContextRuntime, next) => {
+                const conversationId = runtime.configurable?.conversationId
+                if (!conversationId) return next()
+
+                const sub = runtime.configurable?.subagentContext
+                const skills = sub
+                    ? []
+                    : this._catalog.filter((s) => s.modelEnabled)
+                const current = this._active.get(conversationId)
+                const active = current
+                    ? this._catalog.filter((s) => current.has(s.id))
+                    : []
+
+                if (skills.length > 0 || active.length > 0) {
+                    const msg = renderAvailableSkills(skills, active)
+                    runtime.result.push(msg)
+                    runtime.usedTokens += await countMessageTokens(
+                        msg,
+                        runtime.tokenCounter
+                    )
+                }
+
+                const requested = this._requested.get(conversationId)
+                if (!requested || requested.size < 1) return next()
+
+                this._requested.delete(conversationId)
+
+                for (const id of requested) {
                     const skill = this._skills.get(id)
-                    if (!skill || !skill.enabled || skill.state !== 'ready') {
-                        return undefined
-                    }
+                    if (!skill?.enabled || skill.state !== 'ready') continue
 
-                    return new SystemMessage(
+                    const msg = new SystemMessage(
                         await renderSkillContent(
                             skill,
-                            this.config.skills.allowComputerUsePrompt
+                            this.config.skills.allowComputerUsePrompt,
+                            true
                         )
                     )
-                })
-            )
-        ).filter((message): message is SystemMessage => message != null)
+                    runtime.result.push(msg)
+                    runtime.usedTokens += await countMessageTokens(
+                        msg,
+                        runtime.tokenCounter
+                    )
+                }
 
-        if (messages.length < 1) {
-            this._active.delete(conversationId)
-            return
-        }
-
-        this.ctx.chatluna.contextManager.inject({
-            conversationId,
-            name: 'agent_skill_context',
-            value: messages,
-            stage: 'injections',
-            once: true
-        })
+                return next()
+            },
+            10
+        )
     }
 }

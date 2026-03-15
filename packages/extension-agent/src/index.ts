@@ -32,7 +32,7 @@ export interface Config extends ChatLunaPlugin.Config {}
 
 export const inject = {
     required: ['chatluna', 'console'],
-    optional: ['chatluna_storage', 'chatluna_agent']
+    optional: ['chatluna_storage', 'chatluna_agent', 'chatluna_agent_webui']
 }
 
 export const name = 'chatluna-agent'

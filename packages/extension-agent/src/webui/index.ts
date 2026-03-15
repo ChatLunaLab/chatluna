@@ -1,5 +1,6 @@
 import { DataService } from '@koishijs/plugin-console'
 import { Context } from 'koishi'
+import { listModelNames } from 'koishi-plugin-chatluna/utils/schema'
 import { resolve } from 'path'
 import { getSkillsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
@@ -7,7 +8,7 @@ import { AgentConsoleData, McpServerConfig } from '../types'
 
 class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
     constructor(ctx: Context) {
-        super(ctx, 'chatlunaAgent')
+        super(ctx, 'chatluna_agent_webui')
     }
 
     async get() {
@@ -28,7 +29,12 @@ class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
                     activeConversations: 0,
                     catalog: {}
                 },
-                subAgent: { enabled: false, agents: {} }
+                subAgent: {
+                    enabled: false,
+                    total: 0,
+                    catalog: {},
+                    runs: []
+                }
             }
         }
     }
@@ -75,6 +81,19 @@ export function apply(ctx: Context) {
         agent().skills.listSkills()
     )
 
+    ctx.console.addListener('chatluna-agent/getSubAgents', async () =>
+        agent().subAgent.getCatalogSync()
+    )
+
+    ctx.console.addListener('chatluna-agent/getSubAgentRuns', async () =>
+        agent().subAgent.getRuns()
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/getModelNames',
+        async () => listModelNames(ctx.chatluna.platform).value
+    )
+
     ctx.console.addListener('chatluna-agent/getSkillContent', async (id) =>
         agent().skills.getSkillContent(id)
     )
@@ -100,10 +119,22 @@ export function apply(ctx: Context) {
     )
 
     ctx.console.addListener(
+        'chatluna-agent/saveSubAgentConfig',
+        ok((cfg) => agent().saveSubAgentConfig(cfg))
+    )
+
+    ctx.console.addListener(
         'chatluna-agent/reloadSkills',
         ok(async () => {
             await agent().skills.reload()
             await agent().refreshConsoleData()
+        })
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/reloadSubAgents',
+        ok(async () => {
+            await agent().reloadSubAgents()
         })
     )
 
@@ -117,6 +148,38 @@ export function apply(ctx: Context) {
         ok((id: string, enabled: boolean) =>
             agent().setSkillEnabled(id, enabled)
         )
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/setSubAgentEnabled',
+        ok((id: string, enabled: boolean) =>
+            agent().setSubAgentEnabled(id, enabled)
+        )
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/uploadSubAgent',
+        ok((input) => agent().uploadSubAgent(input))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/createPresetAgent',
+        ok((name: string, preset: string, config) =>
+            agent().createPresetAgent(name, preset, config)
+        )
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/removeSubAgent',
+        ok((id: string) => agent().removeSubAgent(id))
+    )
+
+    ctx.console.addListener('chatluna-agent/getToolGrants', async () =>
+        agent().getToolGrants()
+    )
+
+    ctx.console.addListener('chatluna-agent/getPresetNames', async () =>
+        agent().getPresetNames()
     )
 
     ctx.console.addListener(

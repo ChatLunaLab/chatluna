@@ -1,4 +1,51 @@
+import { SystemMessage } from '@langchain/core/messages'
+import { SkillInfo } from '../types'
 import { listSkillResources, ScannedSkill } from './scan'
+
+export function renderAvailableSkills(
+    skills: SkillInfo[],
+    active: SkillInfo[]
+) {
+    const lines = ['<available_skills>']
+
+    if (skills.length > 0) {
+        lines.push(
+            'You can load extra instructions with the skill tool when the current task matches one of the skills below.',
+            'Use a skill early when it gives you a better workflow, checklist, or domain-specific procedure.',
+            ''
+        )
+
+        for (const skill of skills) {
+            lines.push(
+                '  <skill>',
+                `    <name>${escapeXml(skill.name)}</name>`,
+                `    <description>${escapeXml(skill.description)}</description>`,
+                '  </skill>'
+            )
+        }
+    }
+
+    if (active.length > 0) {
+        lines.push('', '<loaded_skills>')
+
+        for (const skill of active) {
+            lines.push(`  <skill>${escapeXml(skill.name)}</skill>`)
+        }
+
+        lines.push(
+            '</loaded_skills>',
+            'These skills were loaded earlier in this conversation. Reuse them when they are still relevant.'
+        )
+    }
+
+    if (skills.length > 0) {
+        lines.push('', 'Use the exact skill name when calling the skill tool.')
+    }
+
+    lines.push('</available_skills>')
+
+    return new SystemMessage(lines.join('\n'))
+}
 
 export async function renderSkillContent(
     skill: ScannedSkill,

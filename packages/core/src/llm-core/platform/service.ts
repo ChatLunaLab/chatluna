@@ -8,6 +8,7 @@ import {
 import {
     ChatLunaChainInfo,
     ChatLunaTool,
+    ChatLunaToolMeta,
     CreateChatLunaLLMChainParams,
     CreateClientFunction,
     CreateToolParams,
@@ -26,6 +27,7 @@ import { StructuredTool } from '@langchain/core/tools'
 import { computed, ComputedRef, reactive } from '@vue/reactivity'
 import { randomUUID } from 'crypto'
 import { RunnableConfig } from '@langchain/core/runnables'
+import { ToolMask } from '../agent'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = reactive({})
@@ -177,6 +179,63 @@ export class PlatformService {
 
     getTools() {
         return computed(() => Object.keys(this._tools))
+    }
+
+    getToolRegistry(): Record<
+        string,
+        { name: string; meta?: ChatLunaToolMeta }
+    > {
+        return Object.fromEntries(
+            Object.entries(this._tools).map(([name, tool]) => [
+                name,
+                {
+                    name,
+                    meta: tool.meta
+                }
+            ])
+        )
+    }
+
+    getFilteredTools(mask: ToolMask) {
+        const allNames = Object.keys(this._tools)
+
+        if (mask.mode === 'all') {
+            return allNames
+        }
+
+        if (mask.mode === 'allow') {
+            return allNames.filter((name) => mask.allow.includes(name))
+        }
+
+        return allNames.filter((name) => !mask.deny.includes(name))
+    }
+
+    static buildToolMask(rule: {
+        mode?: 'inherit' | 'all' | 'allow' | 'deny'
+        allow?: string[]
+        deny?: string[]
+    }): ToolMask {
+        if (rule.mode === 'allow') {
+            return {
+                mode: 'allow',
+                allow: rule.allow ?? [],
+                deny: []
+            }
+        }
+
+        if (rule.mode === 'deny') {
+            return {
+                mode: 'deny',
+                allow: [],
+                deny: rule.deny ?? []
+            }
+        }
+
+        return {
+            mode: 'all',
+            allow: [],
+            deny: []
+        }
     }
 
     listAllModels(type: ModelType) {

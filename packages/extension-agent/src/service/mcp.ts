@@ -455,6 +455,13 @@ export class ChatLunaAgentMcpService {
                                 )
                             )
                         )
+                    },
+                    meta: {
+                        source: 'mcp',
+                        group: 'mcp',
+                        tags: ['mcp', serverName],
+                        isMcp: true,
+                        serverName
                     }
                 })
             )

@@ -26,6 +26,7 @@ import {
     AgentFinish,
     AgentObservation,
     AgentStep,
+    applyToolMask,
     MessageQueue,
     ScratchpadEntry
 } from './types'
@@ -59,6 +60,18 @@ async function executeTools(
                 return {
                     action,
                     observation: `${action.tool} is not a valid tool, try another one.`
+                } as AgentStep
+            }
+
+            const mask = config?.configurable?.['subagentContext']?.['toolMask']
+            if (mask && !applyToolMask(action.tool, mask)) {
+                const allowed = Object.values(toolMap)
+                    .map((item) => item.name)
+                    .filter((name) => applyToolMask(name, mask))
+
+                return {
+                    action,
+                    observation: `Tool '${action.tool}' is not allowed for the current sub-agent. Available tools: ${allowed.join(', ')}`
                 } as AgentStep
             }
 

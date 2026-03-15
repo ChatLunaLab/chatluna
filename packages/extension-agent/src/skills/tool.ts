@@ -4,25 +4,24 @@ import { z } from 'zod'
 
 export interface SkillToolService {
     buildToolDescription(): string
-    activateSkill(name: string, conversationId?: string): Promise<string>
+    activateSkill(
+        name: string,
+        runConfig?: ChatLunaToolRunnable
+    ): Promise<string>
 }
 
 export class SkillTool extends StructuredTool {
     name = 'skill'
     description: string
-    schema: z.ZodObject<{
-        name: z.ZodEnum<[string, ...string[]]>
-    }>
+    schema = z.object({
+        name: z
+            .string()
+            .describe('The exact skill name from the injected skills catalog')
+    })
 
-    constructor(
-        private readonly service: SkillToolService,
-        names: [string, ...string[]]
-    ) {
+    constructor(private readonly service: SkillToolService) {
         super()
         this.description = service.buildToolDescription()
-        this.schema = z.object({
-            name: z.enum(names).describe('The exact skill name to load')
-        })
     }
 
     async _call(
@@ -30,9 +29,6 @@ export class SkillTool extends StructuredTool {
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
-        return await this.service.activateSkill(
-            input.name,
-            runConfig?.configurable?.conversationId
-        )
+        return await this.service.activateSkill(input.name, runConfig)
     }
 }

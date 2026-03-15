@@ -12,6 +12,7 @@ import { BaseMessage } from '@langchain/core/messages'
 import { Session } from 'koishi'
 import type { Runnable } from '@langchain/core/runnables'
 import { AgentExecutor } from './executor'
+import { applyToolMask, ToolMask } from './types'
 
 export interface CreateAgentConfigOptions {
     llm: ComputedRef<ChatLunaChatModel>
@@ -92,6 +93,7 @@ export function createAgentExecutor(
 export interface CreateToolsRefOptions {
     tools: ComputedRef<ChatLunaTool[]>
     embeddings: ChatLunaBaseEmbeddings
+    toolMask?: ToolMask
 }
 
 export function createToolsRef(options: CreateToolsRefOptions) {
@@ -119,6 +121,10 @@ export function createToolsRef(options: CreateToolsRefOptions) {
         const oldActiveTools = activeTools.value
 
         const newActiveTools = toolsRef.filter((tool) => {
+            if (!applyToolMask(tool.name, options.toolMask)) {
+                return false
+            }
+
             const selected = tool.selector(messages)
             return tool.authorization
                 ? tool.authorization(session) && selected

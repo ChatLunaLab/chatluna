@@ -195,6 +195,27 @@ export type AgentObservationComplexContent =
 
 export type AgentObservation = AgentObservationComplexContent[] | string
 
+export interface ToolMask {
+    mode: 'all' | 'allow' | 'deny'
+    allow: string[]
+    deny: string[]
+}
+
+export interface SubagentContext {
+    agentId: string
+    agentName: string
+    parentConversationId: string
+    depth: number
+    maxDepth: number
+    toolMask: ToolMask
+    disableHandoff: boolean
+    traceInfo: {
+        runId: string
+        parentAgent: string
+        startedAt: number
+    }
+}
+
 export type AgentStep = {
     action: AgentAction
     observation: AgentObservation
@@ -247,4 +268,16 @@ export class MessageQueue {
     get pending(): boolean {
         return this._queue.length > 0
     }
+}
+
+export function applyToolMask(name: string, mask?: ToolMask) {
+    if (!mask || mask.mode === 'all') {
+        return true
+    }
+
+    if (mask.mode === 'allow') {
+        return mask.allow.includes(name)
+    }
+
+    return !mask.deny.includes(name)
 }

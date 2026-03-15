@@ -6,7 +6,7 @@ export default (ctx: Context) => {
     ctx.page({
         name: 'chatluna-agent',
         path: '/chatluna-agent',
-        fields: ['chatlunaAgent'],
+        fields: ['chatluna_agent_webui'],
         component: Dashboard
     })
 }

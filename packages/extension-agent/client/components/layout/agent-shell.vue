@@ -93,7 +93,7 @@ import type { AgentConfig, AgentConsoleData } from '../../../src/types'
 
 const activeTab = ref('mcp')
 const pending = ref(false)
-const data = computed(() => store.chatlunaAgent as AgentConsoleData | undefined)
+const data = computed(() => store.chatluna_agent_webui as AgentConsoleData | undefined)
 const config = computed(() => data.value?.config)
 const status = computed(() => data.value?.status)
 const loading = computed(() => pending.value || !data.value)

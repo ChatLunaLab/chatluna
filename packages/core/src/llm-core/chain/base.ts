@@ -11,6 +11,7 @@ import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatEvents } from '../../services/types'
+import { SubagentContext } from '../agent'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ChatLunaError,
@@ -49,6 +50,7 @@ export interface ChatLunaLLMCallArg {
     maxToken?: number
     messageQueue?: MessageQueue
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void
+    subagentContext?: SubagentContext
 }
 
 export interface ChatLunaLLMChainInput extends ChainInputs {

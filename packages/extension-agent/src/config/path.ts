@@ -8,3 +8,7 @@ export function getConfigPath(ctx: Context): string {
 export function getSkillsRootPath(ctx: Context): string {
     return resolve(ctx.baseDir, 'data/chatluna/skills')
 }
+
+export function getSubAgentsRootPath(ctx: Context): string {
+    return resolve(ctx.baseDir, 'data/chatluna/agents')
+}

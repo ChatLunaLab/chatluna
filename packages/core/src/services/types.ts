@@ -7,7 +7,10 @@ import {
 } from '../types'
 import { ChatLunaService } from './chat'
 import { BaseMessageChunk } from '@langchain/core/messages'
-import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
+import {
+    AgentAction,
+    SubagentContext
+} from 'koishi-plugin-chatluna/llm-core/agent'
 
 export interface ChatEvents {
     'llm-new-token'?: (token: string) => Promise<void>
@@ -45,6 +48,7 @@ declare module '@chatluna/shared-prompt-renderer' {
     export interface RenderConfigurable {
         session?: Session
         conversationId?: string
+        subagentContext?: SubagentContext
     }
 }
 
