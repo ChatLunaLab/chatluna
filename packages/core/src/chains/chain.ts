@@ -59,7 +59,7 @@ export class ChatChain {
             ctx: ctx ?? this.ctx,
             session,
             options: {
-                requestStartedAt: Date.now()
+                startedAt: Date.now()
             },
             send: (message) => this.sendMessage(session, message, context),
             recallThinkingMessage: this._createRecallThinkingMessage(
@@ -95,7 +95,7 @@ export class ChatChain {
             ),
             options: {
                 ...options,
-                requestStartedAt: Date.now()
+                startedAt: Date.now()
             }
         }
 
@@ -830,17 +830,14 @@ class DefaultChatChainSender {
         message: h[] | h | string,
         context?: ChainMiddlewareContext
     ): Promise<h[]> {
-        const requestStartedAt = context?.options?.requestStartedAt
-        const elapsedTime =
-            typeof requestStartedAt === 'number'
-                ? Date.now() - requestStartedAt
-                : 0
-        const quoteThreshold = (this.config.replyQuoteThreshold ?? 0) * 1000
+        const start = context?.options?.startedAt
+        const elapsed = start ? Date.now() - start : 0
+        const threshold = (this.config.replyQuoteThreshold ?? 0) * 1000
         const shouldAddQuote =
             this.config.isReplyWithAt &&
             session.isDirect === false &&
             session.messageId &&
-            elapsedTime >= quoteThreshold
+            elapsed >= threshold
 
         const messageContent = this.convertMessageToArray(message)
 

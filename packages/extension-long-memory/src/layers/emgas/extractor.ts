@@ -73,15 +73,15 @@ const STOP_WORDS = new Set([
     '所以'
 ])
 
-function isAscii(text: string): boolean {
-    return Array.from(text).every((char) => char.charCodeAt(0) <= 0x7f)
-}
-
 function format(items: unknown[]): string[] {
     return items
         .map((item) => String(item).trim().replace(/\s+/g, ' '))
         .filter(Boolean)
-        .map((item) => (isAscii(item) ? item.toLowerCase() : item))
+        .map((item) =>
+            Array.from(item).every((char) => char.charCodeAt(0) <= 0x7f)
+                ? item.toLowerCase()
+                : item
+        )
 }
 
 function extractLocal(text: string): ExtractedGraphElements {
