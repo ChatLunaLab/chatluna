@@ -21,21 +21,30 @@ import { logger } from '.'
 import {
     ChatCompletionResponseMessageRoleEnum,
     ClaudeDeltaResponse,
+    ClaudeInputContentBlockParam,
     ClaudeMessage,
     ClaudeMessageContentBlockParam,
     ClaudeReasoningBlockParam,
+    ClaudeTool,
     ClaudeToolResultContentBlockParam,
-    ClaudeTool
+    MessageContentFile
 } from './types'
 
-type ClaudeInputContentBlockParam = Extract<
-    ClaudeMessageContentBlockParam,
-    { type: 'text' | 'image' | 'document' }
->
+type ClaudeInlineDataContent = MessageContentComplex & {
+    inline_data: {
+        mime_type: string
+        data: string
+    }
+}
 
-type MessageContentFile = MessageContentComplex & {
-    type: 'file_url'
-    file_url: string | { url: string; mimeType?: string }
+function isClaudeInlineDataContent(
+    message: MessageContentComplex
+): message is ClaudeInlineDataContent {
+    return (
+        message != null &&
+        typeof message === 'object' &&
+        'inline_data' in message
+    )
 }
 
 export async function langchainMessageToClaudeMessage(
@@ -252,7 +261,7 @@ async function processFileContent(
             } as const
         }
 
-        if (mimeType.startsWith('text/')) {
+        if (mimeType.startsWith('text/') || mimeType === 'application/json') {
             return {
                 type: 'document',
                 source: {
@@ -275,6 +284,53 @@ async function processFileContent(
     }
 }
 
+function processInlineDataContent(message: ClaudeInlineDataContent) {
+    const mimeType = message.inline_data.mime_type
+
+    if (mimeType === 'application/pdf') {
+        return {
+            type: 'document',
+            source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: message.inline_data.data
+            }
+        } as const
+    }
+
+    if (mimeType.startsWith('text/') || mimeType === 'application/json') {
+        return {
+            type: 'document',
+            source: {
+                type: 'text',
+                media_type: 'text/plain',
+                data: Buffer.from(message.inline_data.data, 'base64').toString(
+                    'utf8'
+                )
+            }
+        } as const
+    }
+
+    if (
+        mimeType === 'image/jpeg' ||
+        mimeType === 'image/png' ||
+        mimeType === 'image/gif' ||
+        mimeType === 'image/webp'
+    ) {
+        return {
+            type: 'image',
+            source: {
+                type: 'base64',
+                media_type: mimeType,
+                data: message.inline_data.data
+            }
+        } as const
+    }
+
+    logger.warn(`Unsupported Claude inline mime type: ${mimeType}`)
+    return null
+}
+
 async function processMessageContent(
     plugin: ChatLunaPlugin,
     content: MessageContentComplex[]
@@ -290,6 +346,10 @@ async function processMessageContent(
 
             if (isMessageContentImageUrl(message)) {
                 return await processImageContent(plugin, message)
+            }
+
+            if (isClaudeInlineDataContent(message)) {
+                return processInlineDataContent(message)
             }
 
             if (message.type === 'file_url') {
