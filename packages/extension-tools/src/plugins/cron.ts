@@ -173,6 +173,8 @@ export async function apply(
     })
 
     plugin.registerTool('cron', {
+        description: new CronTool(ctx, config, scheduledTasks, prepareTask)
+            .description,
         selector(history) {
             return history.some((message) =>
                 fuzzyQuery(getMessageContent(message.content), [

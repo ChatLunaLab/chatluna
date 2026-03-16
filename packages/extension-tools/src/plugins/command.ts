@@ -26,6 +26,7 @@ export async function apply(
 
     // Register the command search tool
     plugin.registerTool('command_search', {
+        description: new CommandSearchTool(ctx, commandList).description,
         selector(history) {
             return true
         },
@@ -36,6 +37,12 @@ export async function apply(
 
     // Register the command execute tool
     plugin.registerTool('command_execute', {
+        description: new CommandExecuteTool(
+            ctx,
+            commandList,
+            config.commandWithSend,
+            config.commandAutoExecute
+        ).description,
         selector(history) {
             return true
         },

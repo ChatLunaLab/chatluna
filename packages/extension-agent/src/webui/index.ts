@@ -34,6 +34,13 @@ class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
                     total: 0,
                     catalog: {},
                     runs: []
+                },
+                tool: {
+                    enabled: false,
+                    total: 0,
+                    mainEnabled: 0,
+                    subAgentEnabled: 0,
+                    catalog: {}
                 }
             }
         }
@@ -174,8 +181,8 @@ export function apply(ctx: Context) {
         ok((id: string) => agent().removeSubAgent(id))
     )
 
-    ctx.console.addListener('chatluna-agent/getToolGrants', async () =>
-        agent().getToolGrants()
+    ctx.console.addListener('chatluna-agent/getToolAvailability', async () =>
+        agent().getToolAvailability()
     )
 
     ctx.console.addListener('chatluna-agent/getPresetNames', async () =>

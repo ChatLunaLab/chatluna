@@ -2,7 +2,9 @@ import {
     AgentConfig,
     PermissionRule,
     SubAgentConfig,
-    SubAgentItemConfig
+    SubAgentItemConfig,
+    ToolConfig,
+    ToolItemConfig
 } from '../types'
 
 export function createPermissionRule(
@@ -38,6 +40,23 @@ export function createSubAgentItemConfig(
             computer:
                 input.permissions?.computer ?? createPermissionRule('deny')
         }
+    }
+}
+
+export function createToolItemConfig(
+    input: Partial<ToolItemConfig> = {}
+): ToolItemConfig {
+    return {
+        enabled: input.enabled !== false,
+        main: input.main !== false,
+        subAgents: input.subAgents ?? createPermissionRule('all')
+    }
+}
+
+export function createDefaultToolConfig(): ToolConfig {
+    return {
+        items: {},
+        registry: {}
     }
 }
 
@@ -83,7 +102,7 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
 
 export function getDefaultConfig(): AgentConfig {
     return {
-        version: 2,
+        version: 3,
         mcp: {
             mcpServers: {},
             tools: {}
@@ -100,6 +119,6 @@ export function getDefaultConfig(): AgentConfig {
         },
         computer: {},
         subAgent: createDefaultSubAgentConfig(),
-        tool: {}
+        tool: createDefaultToolConfig()
     }
 }

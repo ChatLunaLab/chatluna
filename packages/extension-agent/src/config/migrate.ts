@@ -7,8 +7,10 @@ import {
 } from '../types'
 import {
     createDefaultSubAgentConfig,
+    createDefaultToolConfig,
     createPermissionRule,
     createSubAgentItemConfig,
+    createToolItemConfig,
     getDefaultConfig
 } from './defaults'
 
@@ -280,15 +282,68 @@ function migrateSkillsConfig(old?: OldConfig['skills']): AgentConfig['skills'] {
     return cfg
 }
 
+function migrateToolConfig(old?: OldConfig['tool']): AgentConfig['tool'] {
+    const cfg = createDefaultToolConfig()
+    const raw = asObject(old)
+    if (!raw) {
+        return cfg
+    }
+
+    const items = asObject(raw.items)
+    if (items) {
+        cfg.items = Object.fromEntries(
+            Object.entries(items).map(([name, value]) => {
+                const item = asObject(value)
+                return [
+                    name,
+                    createToolItemConfig({
+                        enabled: item?.enabled !== false,
+                        main: item?.main !== false,
+                        subAgents: migrateRule(
+                            item?.subAgents,
+                            createPermissionRule('all')
+                        )
+                    })
+                ]
+            })
+        )
+    }
+
+    const registry = asObject(raw.registry)
+    if (registry) {
+        cfg.registry = Object.fromEntries(
+            Object.entries(registry).map(([name, value]) => {
+                const item = asObject(value)
+                return [
+                    name,
+                    {
+                        source:
+                            typeof item?.source === 'string'
+                                ? item.source
+                                : undefined,
+                        group:
+                            typeof item?.group === 'string'
+                                ? item.group
+                                : undefined,
+                        tags: readNames(item?.tags)
+                    }
+                ]
+            })
+        )
+    }
+
+    return cfg
+}
+
 export function migrateFromOldConfig(old?: OldConfig): AgentConfig {
     const cfg = getDefaultConfig()
     if (!old) return cfg
 
-    cfg.version = 2
+    cfg.version = 3
     cfg.skills = migrateSkillsConfig(old.skills)
     cfg.computer = old.computer ?? old.scheduler ?? {}
     cfg.subAgent = migrateSubAgentConfig(old.subAgent)
-    cfg.tool = old.tool ?? {}
+    cfg.tool = migrateToolConfig(old.tool)
 
     if (!old.mcp) return cfg
 

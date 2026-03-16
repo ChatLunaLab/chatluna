@@ -11,16 +11,7 @@ import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ComputedRef } from 'koishi-plugin-chatluna'
 
-export interface PuppeteerBrowserToolOptions {
-    timeout?: number
-    idleTimeout?: number
-    waitUntil?: PuppeteerLifeCycleEvent
-    fastMode?: boolean
-}
-
-export class PuppeteerBrowserTool extends StructuredTool {
-    name = 'web_browser'
-    description = `A powerful tool designed for seamless web browsing.
+export const PUPPETEER_BROWSER_TOOL_DESCRIPTION = `A powerful tool designed for seamless web browsing.
     Available actions:
     - open [url]: Open a web page (required first action)
     - summarize [search_text?]: Simple summarize the current page, optionally with a search text.
@@ -35,6 +26,17 @@ export class PuppeteerBrowserTool extends StructuredTool {
         url: 'https://example.com'
     }}
     After using this tool, you must process the result before considering using it again in the next turn.`
+
+export interface PuppeteerBrowserToolOptions {
+    timeout?: number
+    idleTimeout?: number
+    waitUntil?: PuppeteerLifeCycleEvent
+    fastMode?: boolean
+}
+
+export class PuppeteerBrowserTool extends StructuredTool {
+    name = 'web_browser'
+    description = PUPPETEER_BROWSER_TOOL_DESCRIPTION
 
     private pages: LRUCache<string, Page>
     private lastActionTime: number = Date.now()

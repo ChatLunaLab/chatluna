@@ -17,11 +17,13 @@ import {
     SubAgentItemConfig
 } from '../types'
 import { ChatLunaAgentMcpService } from './mcp'
+import { ChatLunaAgentPermissionService } from './permissions'
 import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 
 export class ChatLunaAgentService extends Service {
     public mcp: ChatLunaAgentMcpService
+    public permission: ChatLunaAgentPermissionService
     public skills: ChatLunaAgentSkillsService
     public subAgent: ChatLunaAgentSubAgentService
 
@@ -32,18 +34,29 @@ export class ChatLunaAgentService extends Service {
         super(ctx, 'chatluna_agent')
         const { config, plugin } = args
 
+        this.permission = new ChatLunaAgentPermissionService(ctx, config)
         this.mcp = new ChatLunaAgentMcpService(ctx, config, plugin)
-        this.skills = new ChatLunaAgentSkillsService(ctx, config)
-        this.subAgent = new ChatLunaAgentSubAgentService(ctx, config)
+        this.skills = new ChatLunaAgentSkillsService(
+            ctx,
+            config,
+            this.permission
+        )
+        this.subAgent = new ChatLunaAgentSubAgentService(
+            ctx,
+            config,
+            this.permission
+        )
     }
 
     async start() {
+        await this.permission.start()
         await this.skills.start()
         await this.mcp.start()
         await this.subAgent.start()
     }
 
     async stop() {
+        await this.permission.stop()
         await this.skills.stop()
         await this.mcp.stop()
         await this.subAgent.stop()
@@ -76,7 +89,8 @@ export class ChatLunaAgentService extends Service {
         return {
             mcp: this.mcp.getStatus(),
             skills: this.skills.getStatus(),
-            subAgent: this.subAgent.getStatus()
+            subAgent: this.subAgent.getStatus(),
+            tool: this.permission.getStatus()
         }
     }
 
@@ -272,8 +286,8 @@ export class ChatLunaAgentService extends Service {
         await this.refreshConsoleData()
     }
 
-    async getToolGrants() {
-        return this.subAgent.getToolGrants()
+    async getToolAvailability() {
+        return this.permission.getToolAvailability()
     }
 
     async getPresetNames() {
@@ -282,6 +296,7 @@ export class ChatLunaAgentService extends Service {
 
     private _setConfig(cfg: AgentConfig) {
         this.args.config = cfg
+        this.permission.config = cfg
         this.mcp.config = cfg
         this.skills.config = cfg
         this.subAgent.config = cfg

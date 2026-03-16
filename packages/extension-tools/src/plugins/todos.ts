@@ -29,6 +29,7 @@ export async function apply(
     }
 
     plugin.registerTool('todos', {
+        description: new TodosTool(ctx, config).description,
         selector() {
             return true
         },

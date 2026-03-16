@@ -47,31 +47,45 @@ export async function apply(
     }
 
     plugin.registerTool('file_read', {
+        description: new ReadFileTool({ store, config }).description,
         selector: fsSelector,
         createTool: () => new ReadFileTool({ store, config })
     })
 
     plugin.registerTool('file_write', {
+        description: new WriteFileTool({ store, config }).description,
         selector: fsSelector,
         createTool: () => new WriteFileTool({ store, config })
     })
 
     plugin.registerTool('file_edit', {
+        description: new EditFileTool({ store, config }).description,
         selector: fsSelector,
         createTool: () => new EditFileTool({ store, config })
     })
 
     plugin.registerTool('grep', {
+        description: new GrepTool({ store, config }).description,
         selector: fsSelector,
         createTool: () => new GrepTool({ store, config })
     })
 
     plugin.registerTool('glob', {
+        description: new GlobTool({ store, config }).description,
         selector: fsSelector,
         createTool: () => new GlobTool({ store, config })
     })
 
     plugin.registerTool('bash', {
+        description: new BashTool({
+            store,
+            config,
+            scopePath: config.fsScopePath ?? '',
+            allowedCommands: config.bashAllowedCommands ?? [],
+            blockedCommands: config.bashBlockedCommands ?? [],
+            timeout: config.bashTimeout ?? 30000,
+            autoExecute: config.bashAutoExecute ?? false
+        }).description,
         selector: fsSelector,
         createTool: () =>
             new BashTool({

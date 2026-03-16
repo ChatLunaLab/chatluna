@@ -13,6 +13,7 @@ export async function apply(
 ) {
     if (config.think === true) {
         plugin.registerTool('thinking', {
+            description: new ThinkTool().description,
             selector(_) {
                 return true
             },
@@ -25,6 +26,7 @@ export async function apply(
 
     if (config.chat === true) {
         plugin.registerTool('question', {
+            description: new BuiltQuestionTool().description,
             selector(_) {
                 return true
             },
@@ -35,6 +37,7 @@ export async function apply(
         })
 
         plugin.registerTool('user_confirm', {
+            description: new BuiltUserConfirmTool().description,
             selector(_) {
                 return true
             },
@@ -47,6 +50,7 @@ export async function apply(
 
     if (config.send === true) {
         plugin.registerTool('user_toast', {
+            description: new BuiltUserToastTool(ctx).description,
             selector(history) {
                 return true
             },

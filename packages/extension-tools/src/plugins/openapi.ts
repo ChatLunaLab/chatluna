@@ -55,6 +55,7 @@ export async function apply(
         })
 
         plugin.registerTool(tool.name, {
+            description: tool.description,
             selector(history) {
                 return history.some((item) => {
                     const content = getMessageContent(item.content)

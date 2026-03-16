@@ -1,7 +1,6 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { computed, ComputedRef } from 'koishi-plugin-chatluna'
 import {
-    applyToolMask,
     createAgentExecutor,
     createToolsRef,
     SubagentContext,
@@ -29,8 +28,7 @@ import {
     AgentConfig,
     SubAgentInfo,
     SubAgentRunInfo,
-    SubAgentStatus,
-    ToolGrantInfo
+    SubAgentStatus
 } from '../types'
 import {
     renderAvailableSubAgents,
@@ -43,13 +41,8 @@ import {
     scanMarkdownAgents
 } from '../sub-agent/scan'
 import { getPresetAgents } from '../sub-agent/preset'
-import {
-    createToolMask,
-    filterNames,
-    mergePermissions,
-    mergeRule
-} from '../sub-agent/permissions'
 import { TaskTool } from '../sub-agent/tool'
+import { ChatLunaAgentPermissionService } from './permissions'
 
 export class ChatLunaAgentSubAgentService {
     private _catalog = new Map<string, SubAgentInfo>()
@@ -59,7 +52,8 @@ export class ChatLunaAgentSubAgentService {
 
     constructor(
         public ctx: Context,
-        public config: AgentConfig
+        public config: AgentConfig,
+        private permission: ChatLunaAgentPermissionService
     ) {}
 
     async start() {
@@ -120,30 +114,6 @@ export class ChatLunaAgentSubAgentService {
         return 'Delegate a focused task to a specialized sub-agent when parallel work, deeper investigation, or a narrower prompt will help. Use the exact sub-agent name from the injected catalog and give it a self-contained prompt.'
     }
 
-    getToolGrants(): ToolGrantInfo[] {
-        const registry = this.ctx.chatluna.platform.getToolRegistry()
-        const result = Object.values(registry)
-            .map((item) => ({
-                name: item.name,
-                source: item.meta?.source,
-                group: item.meta?.group,
-                tags: item.meta?.tags,
-                agents: [] as string[]
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name))
-
-        for (const agent of this.listRunnableAgents()) {
-            const mask = createToolMask(agent, registry)
-            for (const tool of result) {
-                if (applyToolMask(tool.name, mask)) {
-                    tool.agents.push(agent.name)
-                }
-            }
-        }
-
-        return result
-    }
-
     async runTask(
         input: { agent: string; prompt: string; reason?: string },
         runConfig?: ChatLunaToolRunnable
@@ -190,8 +160,7 @@ export class ChatLunaAgentSubAgentService {
 
         const runId = randomUUID()
         const conversationId = `subagent:${runId}`
-        const registry = this.ctx.chatluna.platform.getToolRegistry()
-        const mask = createToolMask(info, registry)
+        const mask = this.permission.createSubAgentToolMask(info)
 
         const subCtx = {
             agentId: info.id,
@@ -257,10 +226,7 @@ export class ChatLunaAgentSubAgentService {
             ...getPresetAgents(this.ctx, this.config.subAgent)
         ].map((item) => ({
             ...item,
-            permissions: mergePermissions(
-                item.permissions,
-                this.config.subAgent.defaults
-            )
+            permissions: this.permission.mergePermissions(item.permissions)
         }))
 
         const groups = new Map<string, SubAgentInfo[]>()
@@ -359,7 +325,7 @@ export class ChatLunaAgentSubAgentService {
             options.session,
             llm.modelName
         )
-        toolRef.update(options.session, [msg])
+        toolRef.update(options.session, [msg], mask)
 
         const vars = {
             prompt: getMessageContent(msg.content),
@@ -375,6 +341,7 @@ export class ChatLunaAgentSubAgentService {
                 configurable: {
                     session: options.session,
                     conversationId,
+                    toolMask: mask,
                     subagentContext: subCtx
                 }
             },
@@ -386,6 +353,7 @@ export class ChatLunaAgentSubAgentService {
                     conversationId,
                     preset: info.name,
                     userId: options.session.userId,
+                    toolMask: mask,
                     subagentContext: subCtx,
                     onAgentEvent: async (event) => {
                         if (event.type === 'tool-call') {
@@ -445,12 +413,10 @@ export class ChatLunaAgentSubAgentService {
         if (!service) return undefined
 
         const skills = service.listSkills().filter((s) => s.modelEnabled)
-        const names = skills.map((s) => s.name)
-        const rule = mergeRule(
-            info.permissions.skills,
-            this.config.subAgent.defaults.skills
+        const list = this.permission.filterSkillNames(
+            info,
+            skills.map((s) => s.name)
         )
-        const list = rule.mode === 'inherit' ? [] : filterNames(names, rule)
         if (list.length < 1) return undefined
 
         return getMessageContent(
@@ -496,6 +462,7 @@ export class ChatLunaAgentSubAgentService {
         if (names.length < 1) return
 
         this._toolDispose = this.ctx.chatluna.platform.registerTool('task', {
+            description: this.buildToolDescription(),
             selector: () => this.listRunnableAgents().length > 0,
             authorization: () => true,
             createTool: () => new TaskTool(this),

@@ -63,7 +63,9 @@ async function executeTools(
                 } as AgentStep
             }
 
-            const mask = config?.configurable?.['subagentContext']?.['toolMask']
+            const mask =
+                config?.configurable?.['toolMask'] ??
+                config?.configurable?.['subagentContext']?.['toolMask']
             if (mask && !applyToolMask(action.tool, mask)) {
                 const allowed = Object.values(toolMap)
                     .map((item) => item.name)

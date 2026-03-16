@@ -16,6 +16,7 @@ export async function apply(
     }
 
     plugin.registerTool('group_mute', {
+        description: new GroupMuteTool(config).description,
         selector(history) {
             return true
         },

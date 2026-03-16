@@ -54,6 +54,7 @@
                             <sub-agent-page
                                 :config="config?.subAgent"
                                 :status="status?.subAgent"
+                                :tools="status?.tool?.catalog"
                                 :loading="loading"
                                 @refresh="refreshData"
                                 @save="
@@ -65,6 +66,8 @@
                         <div v-else key="tool" class="view-container">
                             <tool-page
                                 :config="config?.tool"
+                                :status="status?.tool"
+                                :agents="status?.subAgent?.catalog"
                                 :loading="loading"
                                 @refresh="refreshData"
                                 @save="(value) => saveSection('tool', value)"
@@ -93,7 +96,9 @@ import type { AgentConfig, AgentConsoleData } from '../../../src/types'
 
 const activeTab = ref('mcp')
 const pending = ref(false)
-const data = computed(() => store.chatluna_agent_webui as AgentConsoleData | undefined)
+const data = computed(
+    () => store.chatluna_agent_webui as AgentConsoleData | undefined
+)
 const config = computed(() => data.value?.config)
 const status = computed(() => data.value?.status)
 const loading = computed(() => pending.value || !data.value)
@@ -127,7 +132,10 @@ const saveMcp = async (value: AgentConfig['mcp']) => {
 
 const saveSection = async (
     key: 'computer' | 'subAgent' | 'tool',
-    value: Record<string, unknown>
+    value:
+        | AgentConfig['computer']
+        | AgentConfig['subAgent']
+        | AgentConfig['tool']
 ) => {
     if (!config.value) {
         return

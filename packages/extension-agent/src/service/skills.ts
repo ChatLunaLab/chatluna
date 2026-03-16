@@ -22,7 +22,7 @@ import { importSkills as runImportSkills } from '../skills/import'
 import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
 import { SkillTool, SkillToolService } from '../skills/tool'
 import { buildSkillCatalog } from '../skills/catalog'
-import { filterNames, mergeRule } from '../sub-agent/permissions'
+import { ChatLunaAgentPermissionService } from './permissions'
 
 export class ChatLunaAgentSkillsService implements SkillToolService {
     private _catalog: SkillInfo[] = []
@@ -35,7 +35,8 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     constructor(
         public ctx: Context,
-        public config: AgentConfig
+        public config: AgentConfig,
+        private permission: ChatLunaAgentPermissionService
     ) {
         ctx.on('chatluna/before-chat', async (conversationId, message) => {
             const name = getSlashSkillName(message)
@@ -185,19 +186,12 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 throw new Error(`Sub-agent not found: ${sub.agentId}`)
             }
 
-            const rule = mergeRule(
-                agent.permissions.skills,
-                this.config.subAgent.defaults.skills
+            const names = this.permission.filterSkillNames(
+                agent,
+                this._catalog
+                    .filter((item) => item.modelEnabled)
+                    .map((item) => item.name)
             )
-            const names =
-                rule.mode === 'inherit'
-                    ? []
-                    : filterNames(
-                          this._catalog
-                              .filter((item) => item.modelEnabled)
-                              .map((item) => item.name),
-                          rule
-                      )
 
             if (!names.includes(name)) {
                 throw new Error(`Skill is not available: ${name}`)
@@ -269,6 +263,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         if (names.length < 1) return
 
         this._toolDispose = this.ctx.chatluna.platform.registerTool('skill', {
+            description: this.buildToolDescription(),
             createTool: () => new SkillTool(this),
             selector: () => true
         })

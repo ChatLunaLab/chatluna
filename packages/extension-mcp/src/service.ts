@@ -411,6 +411,7 @@ export class ChatLunaMCPClientService extends Service {
 
             // Register tool (same-name tools will be automatically replaced)
             this._plugin.registerTool(langChainTool.name, {
+                description: mcpTool.description,
                 createTool: () => langChainTool,
                 selector: (history) => {
                     if ((globalToolConfig?.selector?.length || 0) === 0) {

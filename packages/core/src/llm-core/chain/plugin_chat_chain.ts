@@ -35,6 +35,8 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 
+const TOOL_MASK_KEY = '__chatluna_agent_tool_mask'
+
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
     historyMemory: BufferMemory
@@ -175,6 +177,7 @@ export class ChatLunaPluginChain
         maxToken,
         messageQueue,
         onAgentEvent,
+        toolMask: callToolMask,
         subagentContext
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues & {
@@ -184,6 +187,12 @@ export class ChatLunaPluginChain
         } = {
             input: message
         }
+        const nextVars = Object.assign({}, variables ?? {})
+        const toolMask =
+            subagentContext?.toolMask ??
+            callToolMask ??
+            (nextVars[TOOL_MASK_KEY] as ToolMask | undefined)
+        delete nextVars[TOOL_MASK_KEY]
 
         const chatHistory = this.historyMemory
             .chatHistory as KoishiChatMessageHistory
@@ -196,7 +205,7 @@ export class ChatLunaPluginChain
 
         requests['chat_history'] = [...messages]
         requests['id'] = conversationId
-        requests['variables'] = Object.assign(variables ?? {}, {
+        requests['variables'] = Object.assign(nextVars, {
             prompt: getMessageContent(message.content)
         })
         requests['variables']['built'] = {
@@ -209,10 +218,11 @@ export class ChatLunaPluginChain
         requests['configurable'] = {
             session,
             conversationId,
+            toolMask,
             subagentContext
         }
 
-        this._toolsRef.update(session, messages.concat(message))
+        this._toolsRef.update(session, messages.concat(message), toolMask)
 
         const preset = this.preset.value
         const executor = this.executor.value
@@ -266,6 +276,7 @@ export class ChatLunaPluginChain
                         conversationId,
                         preset: preset.triggerKeyword[0],
                         userId: session.userId,
+                        toolMask,
                         messageQueue,
                         onAgentEvent,
                         subagentContext

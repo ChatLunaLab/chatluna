@@ -115,13 +115,14 @@ export function createToolsRef(options: CreateToolsRefOptions) {
 
     const getActiveTools = (
         session: Session,
-        messages: BaseMessage[]
+        messages: BaseMessage[],
+        toolMask?: ToolMask
     ): [ChatLunaTool[], boolean] => {
         const toolsRef = options.tools.value
         const oldActiveTools = activeTools.value
 
         const newActiveTools = toolsRef.filter((tool) => {
-            if (!applyToolMask(tool.name, options.toolMask)) {
+            if (!applyToolMask(tool.name, toolMask ?? options.toolMask)) {
                 return false
             }
 
@@ -140,8 +141,16 @@ export function createToolsRef(options: CreateToolsRefOptions) {
         return [newActiveTools, hasChanges]
     }
 
-    const update = (session: Session, messages: BaseMessage[]) => {
-        const [newActiveTools, recreate] = getActiveTools(session, messages)
+    const update = (
+        session: Session,
+        messages: BaseMessage[],
+        toolMask?: ToolMask
+    ) => {
+        const [newActiveTools, recreate] = getActiveTools(
+            session,
+            messages,
+            toolMask
+        )
         activeTools.value = newActiveTools
 
         return recreate

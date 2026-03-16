@@ -183,13 +183,14 @@ export class PlatformService {
 
     getToolRegistry(): Record<
         string,
-        { name: string; meta?: ChatLunaToolMeta }
+        { name: string; description?: string; meta?: ChatLunaToolMeta }
     > {
         return Object.fromEntries(
             Object.entries(this._tools).map(([name, tool]) => [
                 name,
                 {
                     name,
+                    description: tool.description,
                     meta: tool.meta
                 }
             ])

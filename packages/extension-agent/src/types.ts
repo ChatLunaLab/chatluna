@@ -6,15 +6,37 @@ export interface AgentConfig {
     skills: SkillsConfig
     computer: Record<string, unknown>
     subAgent: SubAgentConfig
-    tool: {
-        registry?: Record<string, ToolMetaOverride>
-    }
+    tool: ToolConfig
 }
 
 export interface ToolMetaOverride {
     source?: string
     group?: string
     tags?: string[]
+}
+
+export interface ToolItemConfig {
+    enabled: boolean
+    main: boolean
+    subAgents: PermissionRule
+}
+
+export interface ToolConfig {
+    items: Record<string, ToolItemConfig>
+    registry?: Record<string, ToolMetaOverride>
+}
+
+export interface ToolInfo {
+    name: string
+    description?: string
+    enabled: boolean
+    main: boolean
+    subAgents: PermissionRule
+    source?: string
+    group?: string
+    tags?: string[]
+    isMcp: boolean
+    serverName?: string
 }
 
 export interface SkillsConfig {
@@ -251,12 +273,23 @@ export interface SubAgentRunInfo {
     error?: string
 }
 
-export interface ToolGrantInfo {
+export interface ToolAvailabilityInfo {
     name: string
+    description?: string
+    enabled: boolean
+    main: boolean
     agents: string[]
     source?: string
     group?: string
     tags?: string[]
+}
+
+export interface ToolStatus {
+    enabled: boolean
+    total: number
+    mainEnabled: number
+    subAgentEnabled: number
+    catalog: Record<string, ToolInfo>
 }
 
 export interface SubAgentImportInput {
@@ -285,6 +318,7 @@ export interface AgentStatus {
     mcp: McpStatus
     skills: SkillsStatus
     subAgent: SubAgentStatus
+    tool: ToolStatus
 }
 
 export interface AgentConsoleData {
@@ -383,7 +417,9 @@ declare module '@koishijs/plugin-console' {
             config: Partial<SubAgentItemConfig>
         ) => Promise<ActionResult>
         'chatluna-agent/removeSubAgent': (id: string) => Promise<ActionResult>
-        'chatluna-agent/getToolGrants': () => Promise<ToolGrantInfo[]>
+        'chatluna-agent/getToolAvailability': () => Promise<
+            ToolAvailabilityInfo[]
+        >
         'chatluna-agent/getPresetNames': () => Promise<string[]>
         'chatluna-agent/reconnectMcpServer': (
             name: string

@@ -445,6 +445,7 @@ export class ChatLunaAgentMcpService {
             this._disposers.set(
                 mcpTool.name,
                 this.ctx.chatluna.platform.registerTool(langChainTool.name, {
+                    description: mcpTool.description,
                     createTool: () => langChainTool,
                     selector: (history) => {
                         if (t.selector.length === 0) return true

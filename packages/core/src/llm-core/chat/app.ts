@@ -102,6 +102,7 @@ export class ChatInterface {
         }
 
         try {
+            arg.variables = arg.variables ?? {}
             await this.ctx.parallel(
                 'chatluna/before-chat',
                 arg.conversationId,

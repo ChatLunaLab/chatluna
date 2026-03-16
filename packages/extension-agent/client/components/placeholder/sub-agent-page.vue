@@ -270,7 +270,10 @@
                             <permission-editor v-model="draft.mcp" />
                         </el-collapse-item>
                         <el-collapse-item title="Tools 权限" name="tools">
-                            <permission-editor v-model="draft.tools" />
+                            <permission-editor
+                                v-model="draft.tools"
+                                :options="toolOptions"
+                            />
                         </el-collapse-item>
                         <el-collapse-item title="Computer 权限" name="computer">
                             <permission-editor v-model="draft.computer" />
@@ -345,16 +348,16 @@
             <div class="panel grants-panel">
                 <div class="panel-header">
                     <div>
-                        <div class="panel-title">Tool Grants</div>
+                        <div class="panel-title">Tool Availability</div>
                         <div class="panel-description">
                             反向查看每个工具当前会被哪些 sub-agent 看到与允许。
                         </div>
                     </div>
                 </div>
 
-                <div v-if="toolGrants.length > 0" class="grants-list">
+                <div v-if="toolAvailability.length > 0" class="grants-list">
                     <div
-                        v-for="item in toolGrants"
+                        v-for="item in toolAvailability"
                         :key="item.name"
                         class="grant-row"
                     >
@@ -362,6 +365,9 @@
                         <div class="grant-meta">
                             {{ item.source || 'unknown' }}
                             {{ item.group ? ` / ${item.group}` : '' }}
+                        </div>
+                        <div v-if="item.description" class="grant-meta">
+                            {{ item.description }}
                         </div>
                         <div class="grant-tags">
                             <el-tag
@@ -464,7 +470,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, onMounted, reactive, ref, watch } from 'vue'
+import {
+    computed,
+    defineComponent,
+    onMounted,
+    reactive,
+    ref,
+    watch,
+    type PropType
+} from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RefreshRight, Search } from '@element-plus/icons-vue'
@@ -475,8 +489,14 @@ import type {
     SubAgentItemConfig,
     SubAgentRunInfo,
     SubAgentStatus,
-    ToolGrantInfo
+    ToolAvailabilityInfo,
+    ToolInfo
 } from '../../../src/types'
+
+interface RuleOption {
+    label: string
+    value: string
+}
 
 const PermissionEditor = defineComponent({
     name: 'PermissionEditor',
@@ -484,6 +504,10 @@ const PermissionEditor = defineComponent({
         modelValue: {
             type: Object,
             required: true
+        },
+        options: {
+            type: Array as PropType<RuleOption[]>,
+            default: undefined
         }
     },
     emits: ['update:modelValue'],
@@ -493,7 +517,33 @@ const PermissionEditor = defineComponent({
             set: (next: RuleDraft) => emit('update:modelValue', next)
         })
 
-        return { value }
+        const hasOptions = computed(() => (props.options?.length ?? 0) > 0)
+        const allowValues = computed({
+            get: () => splitItems(value.value.allowText),
+            set: (next: string[]) => {
+                value.value = {
+                    ...value.value,
+                    allowText: next.join(', ')
+                }
+            }
+        })
+        const denyValues = computed({
+            get: () => splitItems(value.value.denyText),
+            set: (next: string[]) => {
+                value.value = {
+                    ...value.value,
+                    denyText: next.join(', ')
+                }
+            }
+        })
+
+        return {
+            value,
+            options: props.options,
+            hasOptions,
+            allowValues,
+            denyValues
+        }
     },
     template: `
         <div class="rule-grid">
@@ -508,7 +558,25 @@ const PermissionEditor = defineComponent({
             </div>
             <div class="field-card full-row">
                 <div class="field-label">Allow 列表</div>
+                <el-select
+                    v-if="hasOptions"
+                    v-model="allowValues"
+                    multiple
+                    filterable
+                    clearable
+                    collapse-tags
+                    collapse-tags-tooltip
+                    placeholder="选择多个允许项"
+                >
+                    <el-option
+                        v-for="item in options"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
+                    />
+                </el-select>
                 <el-input
+                    v-else
                     v-model="value.allowText"
                     type="textarea"
                     :rows="3"
@@ -517,7 +585,25 @@ const PermissionEditor = defineComponent({
             </div>
             <div class="field-card full-row">
                 <div class="field-label">Deny 列表</div>
+                <el-select
+                    v-if="hasOptions"
+                    v-model="denyValues"
+                    multiple
+                    filterable
+                    clearable
+                    collapse-tags
+                    collapse-tags-tooltip
+                    placeholder="选择多个拒绝项"
+                >
+                    <el-option
+                        v-for="item in options"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
+                    />
+                </el-select>
                 <el-input
+                    v-else
                     v-model="value.denyText"
                     type="textarea"
                     :rows="3"
@@ -538,6 +624,7 @@ const props = withDefaults(
     defineProps<{
         config: SubAgentConfig
         status: SubAgentStatus
+        tools: Record<string, ToolInfo>
         loading?: boolean
     }>(),
     {
@@ -611,6 +698,7 @@ const props = withDefaults(
             catalog: {},
             runs: []
         }),
+        tools: () => ({}),
         loading: false
     }
 )
@@ -624,7 +712,7 @@ const busy = ref(false)
 const keyword = ref('')
 const agents = ref<SubAgentInfo[]>([])
 const runs = ref<SubAgentRunInfo[]>([])
-const toolGrants = ref<ToolGrantInfo[]>([])
+const toolAvailability = ref<ToolAvailabilityInfo[]>([])
 const presetNames = ref<string[]>([])
 const modelNames = ref<string[]>([])
 const selectedId = ref('')
@@ -734,6 +822,15 @@ const presetModelOptions = computed(() => {
     return [...items]
 })
 
+const toolOptions = computed(() => {
+    return Object.values(props.tools ?? {})
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((item) => ({
+            value: item.name,
+            label: item.group ? `${item.name} · ${item.group}` : item.name
+        }))
+})
+
 const enabledCount = computed(
     () => agents.value.filter((item) => item.enabled).length
 )
@@ -769,17 +866,18 @@ onMounted(async () => {
 async function loadExtraData() {
     try {
         busy.value = true
-        const [catalog, runList, grants, presets, models] = await Promise.all([
-            send('chatluna-agent/getSubAgents'),
-            send('chatluna-agent/getSubAgentRuns'),
-            send('chatluna-agent/getToolGrants'),
-            send('chatluna-agent/getPresetNames'),
-            send('chatluna-agent/getModelNames')
-        ])
+        const [catalog, runList, availability, presets, models] =
+            await Promise.all([
+                send('chatluna-agent/getSubAgents'),
+                send('chatluna-agent/getSubAgentRuns'),
+                send('chatluna-agent/getToolAvailability'),
+                send('chatluna-agent/getPresetNames'),
+                send('chatluna-agent/getModelNames')
+            ])
 
         agents.value = [...catalog]
         runs.value = [...runList]
-        toolGrants.value = [...grants]
+        toolAvailability.value = [...availability]
         presetNames.value = [...presets]
         modelNames.value = [...models]
         ensureSelection()
