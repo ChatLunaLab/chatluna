@@ -1,3 +1,5 @@
+/** @module skills/import */
+
 import { unzipSync } from 'fflate'
 import { cp, mkdir, readdir, rm, stat, writeFile } from 'fs/promises'
 import { Context } from 'koishi'
@@ -5,6 +7,7 @@ import { basename, dirname, join, resolve } from 'path'
 import { randomUUID } from 'crypto'
 import { getSkillsRootPath } from '../config/path'
 import { SkillImportInput, SkillImportResult } from '../types'
+import { collectFilesRecursive, resolveSafe } from '../utils/fs'
 
 export async function importSkills(
     ctx: Context,
@@ -188,41 +191,14 @@ async function findSubpathRoot(root: string, subpath: string) {
 }
 
 async function findSkillDirs(root: string) {
-    const queue = [root]
-    const result = new Set<string>()
-
-    while (queue.length > 0) {
-        const current = queue.shift()
-        if (!current) {
-            continue
-        }
-
-        const entries = await readdir(current, { withFileTypes: true }).catch(
-            () => []
+    const files = await collectFilesRecursive(root)
+    return Array.from(
+        new Set(
+            files
+                .filter((file) => basename(file) === 'SKILL.md')
+                .map((file) => dirname(file))
         )
-        const hasSkill = entries.some(
-            (entry) => entry.isFile() && entry.name === 'SKILL.md'
-        )
-
-        if (hasSkill) {
-            result.add(current)
-            continue
-        }
-
-        for (const entry of entries) {
-            if (!entry.isDirectory()) {
-                continue
-            }
-
-            if (entry.name === '.git' || entry.name === 'node_modules') {
-                continue
-            }
-
-            queue.push(join(current, entry.name))
-        }
-    }
-
-    return Array.from(result).sort((a, b) => a.localeCompare(b))
+    ).sort((a, b) => a.localeCompare(b))
 }
 
 function parseGithubUrl(url: string) {
@@ -273,22 +249,6 @@ function parseGithubUrl(url: string) {
         subpath: ''
     }
 }
-
-function resolveSafe(root: string, file: string) {
-    const target = resolve(root, file)
-    const base = resolve(root)
-
-    if (
-        target === base ||
-        target.startsWith(`${base}/`) ||
-        target.startsWith(`${base}\\`)
-    ) {
-        return target
-    }
-
-    return undefined
-}
-
 function stripExt(name: string) {
     return name.replace(/\.[^.]+$/, '')
 }

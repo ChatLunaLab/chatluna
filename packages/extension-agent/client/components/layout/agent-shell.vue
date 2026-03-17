@@ -26,6 +26,7 @@
                             <skills-page
                                 :config="config?.skills"
                                 :status="status?.skills"
+                                :computer="status?.computer"
                                 :loading="loading"
                                 @refresh="refreshData"
                             />
@@ -38,11 +39,10 @@
                         >
                             <computer-page
                                 :config="config?.computer"
+                                :status="status?.computer"
                                 :loading="loading"
                                 @refresh="refreshData"
-                                @save="
-                                    (value) => saveSection('computer', value)
-                                "
+                                @save-computer="saveComputer"
                             />
                         </div>
 
@@ -89,7 +89,7 @@ import { ElMessage } from 'element-plus'
 import AgentSidebar from './agent-sidebar.vue'
 import McpPage from '../mcp/mcp-page.vue'
 import SkillsPage from '../skills/skills-page.vue'
-import ComputerPage from '../placeholder/computer-page.vue'
+import ComputerPage from '../computer/computer-page.vue'
 import ToolPage from '../placeholder/tool-page.vue'
 import SubAgentPage from '../placeholder/sub-agent-page.vue'
 import type { AgentConfig, AgentConsoleData } from '../../../src/types'
@@ -130,12 +130,21 @@ const saveMcp = async (value: AgentConfig['mcp']) => {
     }
 }
 
+const saveComputer = async (value: AgentConfig['computer']) => {
+    try {
+        pending.value = true
+        await send('chatluna-agent/saveComputer', value)
+        ElMessage.success('Computer 配置已保存')
+    } catch {
+        ElMessage.error('保存 Computer 配置失败')
+    } finally {
+        pending.value = false
+    }
+}
+
 const saveSection = async (
-    key: 'computer' | 'subAgent' | 'tool',
-    value:
-        | AgentConfig['computer']
-        | AgentConfig['subAgent']
-        | AgentConfig['tool']
+    key: 'subAgent' | 'tool',
+    value: AgentConfig['subAgent'] | AgentConfig['tool']
 ) => {
     if (!config.value) {
         return

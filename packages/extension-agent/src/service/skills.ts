@@ -1,3 +1,5 @@
+/** @module service/skills */
+
 import { SystemMessage } from '@langchain/core/messages'
 import {
     countMessageTokens,
@@ -13,14 +15,15 @@ import {
     SkillImportInput,
     SkillImportResult,
     SkillInfo,
-    SkillsStatus
+    SkillsStatus,
+    SkillToolService
 } from '../types'
 import { ensureSkillsRoot, ScannedSkill, scanSkills } from '../skills/scan'
 import { renderAvailableSkills, renderSkillContent } from '../skills/render'
 import { getSlashSkillName, stripSlashSkillName } from '../skills/slash'
 import { importSkills as runImportSkills } from '../skills/import'
 import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
-import { SkillTool, SkillToolService } from '../skills/tool'
+import { SkillTool } from '../skills/tool'
 import { buildSkillCatalog } from '../skills/catalog'
 import { ChatLunaAgentPermissionService } from './permissions'
 
@@ -126,6 +129,14 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         )
     }
 
+    getScannedSkill(id: string) {
+        return this._skills.get(id)
+    }
+
+    getVisibleSkillByName(name: string) {
+        return this._visibleByName.get(name)
+    }
+
     async getSkillContent(id: string): Promise<SkillContentResult | undefined> {
         const skill = this._skills.get(id)
         if (!skill) return undefined
@@ -163,7 +174,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             'The tool response returns the full instructions for that skill.'
         ]
 
-        if (this.config.skills.allowComputerUsePrompt) {
+        if (this.isComputerPromptAllowed()) {
             lines.push(
                 'If the environment exposes computer-use abilities, loaded skills may use them when needed.'
             )
@@ -214,11 +225,10 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             this._active.set(conversationId, active)
         }
 
-        return await renderSkillContent(
-            skill,
-            this.config.skills.allowComputerUsePrompt,
-            true
-        )
+        return await this.renderActivatedSkill(skill, {
+            conversationId,
+            runConfig
+        })
     }
 
     async renderSkill(name: string, loaded = false) {
@@ -227,8 +237,47 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
         return await renderSkillContent(
             skill,
-            this.config.skills.allowComputerUsePrompt,
+            this.isComputerPromptAllowed(),
             loaded
+        )
+    }
+
+    private isComputerPromptAllowed() {
+        return (
+            this.config.skills.allowComputerUsePrompt ||
+            this.ctx.chatluna_agent?.computer.getStatus().enabled === true
+        )
+    }
+
+    private async renderActivatedSkill(
+        skill: ScannedSkill,
+        input: {
+            conversationId?: string
+            runConfig?: ChatLunaToolRunnable
+        } = {}
+    ) {
+        const computer = this.ctx.chatluna_agent?.computer
+        const session = input.runConfig
+            ? await computer?.getToolSession(input.runConfig)
+            : input.conversationId
+              ? await computer?.getOrCreateSession({
+                    conversationId: input.conversationId
+                })
+              : undefined
+        const skillDir =
+            session != null
+                ? await computer?.materializer.materialize(skill, session)
+                : undefined
+
+        return await renderSkillContent(
+            skill,
+            this.isComputerPromptAllowed(),
+            true,
+            {
+                skillDir,
+                needsMaterialization:
+                    session != null && session.backend !== 'local' && !skillDir
+            }
         )
     }
 
@@ -307,11 +356,9 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     if (!skill?.enabled || skill.state !== 'ready') continue
 
                     const msg = new SystemMessage(
-                        await renderSkillContent(
-                            skill,
-                            this.config.skills.allowComputerUsePrompt,
-                            true
-                        )
+                        await this.renderActivatedSkill(skill, {
+                            conversationId
+                        })
                     )
                     runtime.result.push(msg)
                     runtime.usedTokens += await countMessageTokens(

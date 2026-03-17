@@ -1,3 +1,5 @@
+/** @module service/index */
+
 import { mkdir, rm, stat, writeFile } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
@@ -13,15 +15,18 @@ import {
     SaveMcpServerInput,
     SkillExportResult,
     SubAgentConfig,
+    SubAgentInfo,
     SubAgentImportInput,
     SubAgentItemConfig
 } from '../types'
+import { ChatLunaAgentComputerService } from './computer'
 import { ChatLunaAgentMcpService } from './mcp'
 import { ChatLunaAgentPermissionService } from './permissions'
 import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 
 export class ChatLunaAgentService extends Service {
+    public computer: ChatLunaAgentComputerService
     public mcp: ChatLunaAgentMcpService
     public permission: ChatLunaAgentPermissionService
     public skills: ChatLunaAgentSkillsService
@@ -35,6 +40,7 @@ export class ChatLunaAgentService extends Service {
         const { config, plugin } = args
 
         this.permission = new ChatLunaAgentPermissionService(ctx, config)
+        this.computer = new ChatLunaAgentComputerService(ctx, config)
         this.mcp = new ChatLunaAgentMcpService(ctx, config, plugin)
         this.skills = new ChatLunaAgentSkillsService(
             ctx,
@@ -50,21 +56,24 @@ export class ChatLunaAgentService extends Service {
 
     async start() {
         await this.permission.start()
+        await this.computer.start()
         await this.skills.start()
         await this.mcp.start()
         await this.subAgent.start()
     }
 
     async stop() {
-        await this.permission.stop()
-        await this.skills.stop()
-        await this.mcp.stop()
         await this.subAgent.stop()
+        await this.mcp.stop()
+        await this.skills.stop()
+        await this.computer.stop()
+        await this.permission.stop()
     }
 
     async reload(cfg?: AgentConfig) {
         const next = cfg ?? (await readConfig(this.ctx))
         this._setConfig(next)
+        await this.computer.reload()
         await this.skills.reload()
         await this.mcp.reload()
         await this.subAgent.reload()
@@ -89,6 +98,7 @@ export class ChatLunaAgentService extends Service {
         return {
             mcp: this.mcp.getStatus(),
             skills: this.skills.getStatus(),
+            computer: this.computer.getStatus(),
             subAgent: this.subAgent.getStatus(),
             tool: this.permission.getStatus()
         }
@@ -114,21 +124,30 @@ export class ChatLunaAgentService extends Service {
     }
 
     async saveMcpConfig(mcp: AgentConfig['mcp']) {
-        const next = structuredClone(this.args.config)
-        next.mcp = migrateFromOldConfig({ mcp }).mcp
-        await this._saveMcp(next)
+        const prev = this.args.config.mcp
+        await this.updateConfig('mcp', mcp, async (cfg) => {
+            await this.mcp.sync(prev, cfg.mcp)
+        })
     }
 
     async saveSkillsConfig(skills: AgentConfig['skills']) {
-        const next = structuredClone(this.args.config)
-        next.skills = migrateFromOldConfig({ skills }).skills
-        await this._saveSkills(next)
+        await this.updateConfig('skills', skills, async () => {
+            await this.computer.reload()
+            await this.skills.reload()
+        })
+    }
+
+    async saveComputerConfig(computer: AgentConfig['computer']) {
+        await this.updateConfig('computer', computer, async () => {
+            await this.computer.reload()
+            await this.skills.reload()
+        })
     }
 
     async saveSubAgentConfig(subAgent: SubAgentConfig) {
-        const next = structuredClone(this.args.config)
-        next.subAgent = migrateFromOldConfig({ subAgent }).subAgent
-        await this._saveSubAgent(next)
+        await this.updateConfig('subAgent', subAgent, async () => {
+            await this.subAgent.reload()
+        })
     }
 
     async exportSkill(id: string): Promise<SkillExportResult | undefined> {
@@ -136,50 +155,64 @@ export class ChatLunaAgentService extends Service {
     }
 
     async saveMcpServer(input: SaveMcpServerInput) {
-        const next = structuredClone(this.args.config)
+        const prev = this.args.config.mcp
+        const mcp = structuredClone(this.args.config.mcp)
 
         if (input.oldName && input.oldName !== input.name) {
-            delete next.mcp.mcpServers[input.oldName]
+            delete mcp.mcpServers[input.oldName]
         }
 
-        next.mcp.mcpServers[input.name] = input.config
-        next.mcp = migrateFromOldConfig({ mcp: next.mcp }).mcp
-        await this._saveMcp(next)
+        mcp.mcpServers[input.name] = input.config
+        await this.updateConfig('mcp', mcp, async (cfg) => {
+            await this.mcp.sync(prev, cfg.mcp)
+        })
     }
 
     async removeMcpServer(name: string) {
-        const next = structuredClone(this.args.config)
-        delete next.mcp.mcpServers[name]
-        await this._saveMcp(next)
+        const prev = this.args.config.mcp
+        const mcp = structuredClone(this.args.config.mcp)
+        delete mcp.mcpServers[name]
+        await this.updateConfig('mcp', mcp, async (cfg) => {
+            await this.mcp.sync(prev, cfg.mcp)
+        })
     }
 
     async saveMcpTool(tool: McpToolConfig) {
-        const next = structuredClone(this.args.config)
-        next.mcp.tools[tool.name] = {
+        const prev = this.args.config.mcp
+        const mcp = structuredClone(this.args.config.mcp)
+        mcp.tools[tool.name] = {
             name: tool.name,
             enabled: tool.enabled,
             timeout: tool.timeout,
             selector: tool.selector ?? []
         }
-        await this._saveMcp(next)
+        await this.updateConfig('mcp', mcp, async (cfg) => {
+            await this.mcp.sync(prev, cfg.mcp)
+        })
     }
 
     async setSkillEnabled(id: string, enabled: boolean) {
-        const next = structuredClone(this.args.config)
-        next.skills.items[id] = { enabled }
-        await this._saveSkills(next)
+        const skills = structuredClone(this.args.config.skills)
+        skills.items[id] = { enabled }
+        await this.updateConfig('skills', skills, async () => {
+            await this.computer.reload()
+            await this.skills.reload()
+        })
     }
 
     async removeSkill(id: string) {
         await this.skills.removeSkill(id)
 
-        const next = structuredClone(this.args.config)
-        delete next.skills.items[id]
-        await this._saveSkills(next)
+        const skills = structuredClone(this.args.config.skills)
+        delete skills.items[id]
+        await this.updateConfig('skills', skills, async () => {
+            await this.computer.reload()
+            await this.skills.reload()
+        })
     }
 
     async setSubAgentEnabled(id: string, enabled: boolean) {
-        const next = structuredClone(this.args.config)
+        const subAgent = structuredClone(this.args.config.subAgent)
         const info = this.subAgent
             .getCatalogSync()
             .find((item) => item.id === id)
@@ -188,14 +221,16 @@ export class ChatLunaAgentService extends Service {
         }
 
         if (info.source === 'builtin') {
-            next.subAgent.builtin[info.name] = itemFromInfo(info, enabled)
+            subAgent.builtin[info.name] = itemFromInfo(info, enabled)
         } else if (info.source === 'preset') {
-            next.subAgent.presetAgents[info.name] = itemFromInfo(info, enabled)
+            subAgent.presetAgents[info.name] = itemFromInfo(info, enabled)
         } else {
-            next.subAgent.items[id] = itemFromInfo(info, enabled)
+            subAgent.items[id] = itemFromInfo(info, enabled)
         }
 
-        await this._saveSubAgent(next)
+        await this.updateConfig('subAgent', subAgent, async () => {
+            await this.subAgent.reload()
+        })
     }
 
     async uploadSubAgent(input: SubAgentImportInput) {
@@ -217,8 +252,8 @@ export class ChatLunaAgentService extends Service {
         preset: string,
         config: Partial<SubAgentItemConfig>
     ) {
-        const next = structuredClone(this.args.config)
-        next.subAgent.presetAgents[name] = createSubAgentItemConfig({
+        const subAgent = structuredClone(this.args.config.subAgent)
+        subAgent.presetAgents[name] = createSubAgentItemConfig({
             enabled: config.enabled ?? true,
             name,
             description: config.description ?? name,
@@ -231,9 +266,11 @@ export class ChatLunaAgentService extends Service {
             preset,
             allowKoishiMessageTransform:
                 config.allowKoishiMessageTransform ?? false,
-            permissions: config.permissions ?? next.subAgent.defaults
+            permissions: config.permissions ?? subAgent.defaults
         })
-        await this._saveSubAgent(next)
+        await this.updateConfig('subAgent', subAgent, async () => {
+            await this.subAgent.reload()
+        })
     }
 
     async removeSubAgent(id: string) {
@@ -245,9 +282,11 @@ export class ChatLunaAgentService extends Service {
         }
 
         if (info.source === 'preset') {
-            const next = structuredClone(this.args.config)
-            delete next.subAgent.presetAgents[info.name]
-            await this._saveSubAgent(next)
+            const subAgent = structuredClone(this.args.config.subAgent)
+            delete subAgent.presetAgents[info.name]
+            await this.updateConfig('subAgent', subAgent, async () => {
+                await this.subAgent.reload()
+            })
             return
         }
 
@@ -272,9 +311,11 @@ export class ChatLunaAgentService extends Service {
                 await rm(file, { force: true })
             }
 
-            const next = structuredClone(this.args.config)
-            delete next.subAgent.items[id]
-            await this._saveSubAgent(next)
+            const subAgent = structuredClone(this.args.config.subAgent)
+            delete subAgent.items[id]
+            await this.updateConfig('subAgent', subAgent, async () => {
+                await this.subAgent.reload()
+            })
             return
         }
 
@@ -297,39 +338,30 @@ export class ChatLunaAgentService extends Service {
     private _setConfig(cfg: AgentConfig) {
         this.args.config = cfg
         this.permission.config = cfg
+        this.permission.invalidateCache()
+        this.computer.config = cfg
         this.mcp.config = cfg
         this.skills.config = cfg
         this.subAgent.config = cfg
     }
 
-    private async _saveMcp(next: AgentConfig) {
-        const prev = this.args.config
-        const cfg = migrateFromOldConfig(structuredClone(next))
-
-        await writeConfig(this.ctx, cfg)
-        this._setConfig(cfg)
-        await this.mcp.sync(prev.mcp, cfg.mcp)
-        await this.refreshConsoleData()
-    }
-
-    private async _saveSkills(next: AgentConfig) {
-        const cfg = migrateFromOldConfig(structuredClone(next))
-        await writeConfig(this.ctx, cfg)
-        this._setConfig(cfg)
-        await this.skills.reload()
-        await this.refreshConsoleData()
-    }
-
-    private async _saveSubAgent(next: AgentConfig) {
-        const cfg = migrateFromOldConfig(structuredClone(next))
-        await writeConfig(this.ctx, cfg)
-        this._setConfig(cfg)
-        await this.subAgent.reload()
+    private async updateConfig<K extends keyof AgentConfig>(
+        section: K,
+        patch: AgentConfig[K],
+        afterSave?: (cfg: AgentConfig) => Promise<void>
+    ) {
+        const next = structuredClone(this.args.config)
+        next[section] = migrateFromOldConfig({ [section]: patch } as never)[
+            section
+        ] as AgentConfig[K]
+        await writeConfig(this.ctx, next)
+        this._setConfig(next)
+        await afterSave?.(next)
         await this.refreshConsoleData()
     }
 }
 
-function itemFromInfo(info, enabled: boolean) {
+function itemFromInfo(info: SubAgentInfo, enabled: boolean) {
     return createSubAgentItemConfig({
         enabled,
         name: info.name,

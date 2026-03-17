@@ -1,5 +1,8 @@
+/** @module sub-agent/parse */
+
 import { load } from 'js-yaml'
 import { PermissionRule, SubAgentPermissionConfig } from '../types'
+import { extractFrontmatter } from '../utils/frontmatter'
 
 export interface ParsedAgentFrontmatter {
     format: 'chatluna' | 'claude' | 'opencode'
@@ -13,18 +16,6 @@ export interface ParsedAgentFrontmatter {
     promptContent: string
     allowKoishiMessageTransform: boolean
     diagnostics: string[]
-}
-
-export function extractFrontmatter(raw: string) {
-    const match = raw.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n?([\s\S]*)$/)
-    if (!match) {
-        return undefined
-    }
-
-    return {
-        frontmatter: match[1],
-        body: match[2].trim()
-    }
 }
 
 export function parseAgentFrontmatter(

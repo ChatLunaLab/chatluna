@@ -1,3 +1,5 @@
+/** @module config/read */
+
 import { Context } from 'koishi'
 import { readFile } from 'fs/promises'
 import { getConfigPath } from './path'

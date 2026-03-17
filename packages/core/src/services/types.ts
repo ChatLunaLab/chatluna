@@ -1,15 +1,17 @@
-import { Session } from 'koishi'
+import { Awaitable, Session } from 'koishi'
 import {
     ConversationRoom,
     ConversationRoomGroupInfo,
     ConversationRoomMemberInfo,
-    ConversationRoomUserInfo
+    ConversationRoomUserInfo,
+    Message
 } from '../types'
 import { ChatLunaService } from './chat'
 import { BaseMessageChunk } from '@langchain/core/messages'
 import {
     AgentAction,
-    SubagentContext
+    SubagentContext,
+    ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
 
 export interface ChatEvents {
@@ -53,3 +55,17 @@ declare module '@chatluna/shared-prompt-renderer' {
 }
 
 export * from '@chatluna/shared-prompt-renderer'
+
+export interface ToolMaskArg {
+    session: Session
+    room: ConversationRoom
+    message: Message
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables: Record<string, any>
+    requestId: string
+    stream: boolean
+}
+
+export type ToolMaskResolver = (
+    arg: ToolMaskArg
+) => Awaitable<ToolMask | undefined>

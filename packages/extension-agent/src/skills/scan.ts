@@ -1,11 +1,16 @@
-import { createHash } from 'crypto'
-import { mkdir, readFile, readdir, stat } from 'fs/promises'
+/** @module skills/scan */
+
+import { mkdir, readdir, readFile, stat } from 'fs/promises'
 import { load } from 'js-yaml'
 import { Context } from 'koishi'
 import { homedir } from 'os'
-import { basename, dirname, join, relative, resolve } from 'path'
+import { basename, dirname, join } from 'path'
 import { getSkillsRootPath } from '../config/path'
 import { AgentConfig, SkillScope, SkillSource, SkillState } from '../types'
+import { collectFilesRecursive } from '../utils/fs'
+import { extractFrontmatter } from '../utils/frontmatter'
+import { createHashId } from '../utils/id'
+import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
 
 export interface ScannedSkill {
     id: string
@@ -59,46 +64,11 @@ export async function scanSkills(
 }
 
 export async function listSkillResources(dir: string): Promise<string[]> {
-    const result: string[] = []
-    const queue = [dir]
-
-    while (queue.length > 0 && result.length < 200) {
-        const current = queue.shift()
-        if (!current) {
-            continue
-        }
-
-        const entries = await readdir(current, { withFileTypes: true }).catch(
-            () => []
-        )
-
-        for (const entry of entries) {
-            if (entry.name === '.git' || entry.name === 'node_modules') {
-                continue
-            }
-
-            const file = join(current, entry.name)
-            const rel = relative(dir, file).replaceAll('\\', '/')
-
-            if (rel === 'SKILL.md') {
-                continue
-            }
-
-            if (entry.isDirectory()) {
-                queue.push(file)
-                continue
-            }
-
-            if (entry.isFile()) {
-                result.push(rel)
-                if (result.length >= 200) {
-                    break
-                }
-            }
-        }
-    }
-
-    return result.sort((a, b) => a.localeCompare(b))
+    return await collectFilesRecursive(dir, {
+        limit: 200,
+        excludeNames: ['SKILL.md'],
+        relative: true
+    })
 }
 
 async function scanTarget(
@@ -313,19 +283,6 @@ async function readExtraMetadata(dir: string): Promise<{
         return { diagnostics }
     }
 }
-
-function extractFrontmatter(raw: string) {
-    const match = raw.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n?([\s\S]*)$/)
-    if (!match) {
-        return undefined
-    }
-
-    return {
-        frontmatter: match[1],
-        body: match[2].trim()
-    }
-}
-
 function parseAllowedTools(value: unknown) {
     if (typeof value !== 'string' || value.trim().length < 1) {
         return undefined
@@ -382,7 +339,7 @@ async function getScanTargets(
             continue
         }
 
-        const dir = resolveSkillRoot(ctx.baseDir, item)
+        const dir = resolveTildeDir(ctx.baseDir, item)
         const key = toPathKey(dir)
         if (seen.has(key)) {
             continue
@@ -399,32 +356,6 @@ async function getScanTargets(
 
     return targets
 }
-
-function resolveSkillRoot(baseDir: string, dir: string) {
-    if (
-        dir.startsWith('.agents/') ||
-        dir.startsWith('.agents\\') ||
-        dir.startsWith('.codex/') ||
-        dir.startsWith('.codex\\') ||
-        dir.startsWith('.claude/') ||
-        dir.startsWith('.claude\\') ||
-        dir.startsWith('.config/opencode/') ||
-        dir.startsWith('.config\\opencode\\')
-    ) {
-        return resolve(homedir(), dir)
-    }
-
-    if (dir === '~') {
-        return homedir()
-    }
-
-    if (dir.startsWith('~/') || dir.startsWith('~\\')) {
-        return resolve(homedir(), dir.slice(2))
-    }
-
-    return resolve(baseDir, dir)
-}
-
 function detectSkillSource(raw: string, dir: string): SkillSource {
     const value = `${raw}\n${dir}`.replaceAll('\\', '/').toLowerCase()
 
@@ -432,12 +363,11 @@ function detectSkillSource(raw: string, dir: string): SkillSource {
         return 'claude'
     }
 
-    if (
-        value.includes('/.agents/skills') ||
-        value.endsWith('/agents/skills') ||
-        value.includes('/.codex/skills') ||
-        value.endsWith('/codex/skills')
-    ) {
+    if (value.includes('/.agents/skills') || value.endsWith('/agents/skills')) {
+        return 'universal'
+    }
+
+    if (value.includes('/.codex/skills') || value.endsWith('/codex/skills')) {
         return 'codex'
     }
 
@@ -466,22 +396,6 @@ function detectSkillScope(ctx: Context, dir: string): SkillScope {
 
     return 'user'
 }
-
-function isPathInside(dir: string, root: string) {
-    const target = resolve(dir)
-    const base = resolve(root)
-
-    return (
-        target === base ||
-        target.startsWith(`${base}\\`) ||
-        target.startsWith(`${base}/`)
-    )
-}
-
-function toPathKey(dir: string) {
-    return resolve(dir).replaceAll('\\', '/').toLowerCase()
-}
-
 function createSkillId(file: string) {
-    return createHash('sha1').update(file).digest('hex').slice(0, 16)
+    return createHashId(file)
 }

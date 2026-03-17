@@ -1,11 +1,22 @@
+/** @module mcp/tool_call */
+
 import { RunnableConfig } from '@langchain/core/runnables'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { convertCallToolResult } from './content'
 import { isToolException, ToolException } from './types'
 
+/**
+ * 调用 MCP 工具并转换响应。
+ *
+ * 流程：
+ * 1. 根据 runnable config 生成 timeout/signal 请求选项
+ * 2. 调用 MCP client.callTool
+ * 3. 将返回的 content blocks 转成 ChatLuna 可消费结构
+ * 4. 保留 ToolException，其他错误统一包装
+ */
 export async function callTool(
     serverName: string,
     toolName: string,
@@ -14,7 +25,7 @@ export async function callTool(
     config: RunnableConfig | undefined,
     useStandardContentBlocks: boolean | undefined,
     ctx: Context,
-    logger: { debug: (msg: string, ...args: any[]) => void }
+    logger: Logger
 ) {
     try {
         logger.debug(

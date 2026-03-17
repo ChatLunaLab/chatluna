@@ -1,5 +1,8 @@
+/** @module skills/render */
+
 import { SystemMessage } from '@langchain/core/messages'
 import { SkillInfo } from '../types'
+import { escapeXml } from '../utils/xml'
 import { listSkillResources, ScannedSkill } from './scan'
 
 export function renderAvailableSkills(
@@ -50,7 +53,11 @@ export function renderAvailableSkills(
 export async function renderSkillContent(
     skill: ScannedSkill,
     allowComputerUsePrompt: boolean,
-    loaded = false
+    loaded = false,
+    options: {
+        skillDir?: string
+        needsMaterialization?: boolean
+    } = {}
 ) {
     const resources = await listSkillResources(skill.dir)
     const lines = [
@@ -75,8 +82,13 @@ export async function renderSkillContent(
         '',
         skill.body.length > 0 ? skill.body : skill.raw,
         '',
-        `Skill directory: ${skill.dir}`,
+        `Skill directory: ${options.skillDir ?? skill.dir}`,
         'Resolve relative paths against the skill directory.',
+        ...(options.needsMaterialization
+            ? [
+                  'Skill resources need to be read from the host and written to the execution environment before use.'
+              ]
+            : []),
         ...(resources.length > 0
             ? [
                   '<skill_resources>',
@@ -90,12 +102,4 @@ export async function renderSkillContent(
     ]
 
     return lines.join('\n')
-}
-
-export function escapeXml(value: string) {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
 }

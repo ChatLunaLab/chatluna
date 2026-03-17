@@ -77,6 +77,13 @@
                             <div class="setting-description">
                                 开启后，模型会知道当前环境可以调用电脑操作相关能力。
                             </div>
+                            <div
+                                v-if="props.computer?.enabled"
+                                class="setting-description setting-hint"
+                            >
+                                当前已经检测到可用的 Computer
+                                backend，这条提示会自动生效。
+                            </div>
                         </div>
 
                         <el-switch v-model="allowComputerUsePrompt" />
@@ -740,6 +747,11 @@ function base64ToBlob(data: string, type: string) {
 .path-copy {
     margin-top: 4px;
     font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+.setting-hint {
+    margin-top: 6px;
+    color: color-mix(in srgb, var(--el-color-success), var(--k-color-text) 24%);
 }
 
 .catalog-panel {

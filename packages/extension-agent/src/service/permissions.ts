@@ -1,3 +1,5 @@
+/** @module service/permissions */
+
 import { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import { Context } from 'koishi'
 import { createPermissionRule, createToolItemConfig } from '../config/defaults'
@@ -12,10 +14,11 @@ import {
 } from '../types'
 import { WRITE_TOOL_PATTERNS } from '../sub-agent/scan'
 
-export const TOOL_MASK_KEY = '__chatluna_agent_tool_mask'
-
 export class ChatLunaAgentPermissionService {
-    private _beforeChatDispose?: () => void
+    private _toolMaskDispose?: () => void
+    private _toolCache: ToolInfo[] | null = null
+    private _toolMap: Map<string, ToolInfo> | null = null
+    private _toolCacheKey: string | null = null
 
     constructor(
         public ctx: Context,
@@ -23,17 +26,21 @@ export class ChatLunaAgentPermissionService {
     ) {}
 
     async start() {
-        this._beforeChatDispose = this.ctx.on(
-            'chatluna/before-chat',
-            async (_, __, vars) => {
-                vars[TOOL_MASK_KEY] = this.createMainToolMask()
+        this._toolMaskDispose = this.ctx.chatluna.registerToolMaskResolver(
+            'agent',
+            async ({ room }) => {
+                if (room.chatMode !== 'plugin') {
+                    return
+                }
+
+                return this.createMainToolMask()
             }
         )
     }
 
     async stop() {
-        this._beforeChatDispose?.()
-        this._beforeChatDispose = undefined
+        this._toolMaskDispose?.()
+        this._toolMaskDispose = undefined
     }
 
     mergeRule(rule: PermissionRule, fallback: PermissionRule): PermissionRule {
@@ -96,7 +103,12 @@ export class ChatLunaAgentPermissionService {
 
     listTools(): ToolInfo[] {
         const registry = this.getRegistry()
-        return Object.values(registry)
+        const key = Object.keys(registry).sort().join('\n')
+        if (this._toolCache && this._toolCacheKey === key) {
+            return this._toolCache
+        }
+
+        const list = Object.values(registry)
             .map((item) => {
                 const cfg = createToolItemConfig(
                     this.config.tool.items[item.name]
@@ -115,6 +127,17 @@ export class ChatLunaAgentPermissionService {
                 } satisfies ToolInfo
             })
             .sort((a, b) => a.name.localeCompare(b.name))
+
+        this._toolCache = list
+        this._toolMap = new Map(list.map((item) => [item.name, item]))
+        this._toolCacheKey = key
+        return list
+    }
+
+    invalidateCache() {
+        this._toolCache = null
+        this._toolMap = null
+        this._toolCacheKey = null
     }
 
     getStatus(): ToolStatus {
@@ -149,8 +172,9 @@ export class ChatLunaAgentPermissionService {
     }
 
     createMainToolMask(): ToolMask {
-        const allNames = this.listTools().map((item) => item.name)
-        const allow = this.listTools()
+        const tools = this.listTools()
+        const allNames = tools.map((item) => item.name)
+        const allow = tools
             .filter((item) => item.enabled && item.main)
             .map((item) => item.name)
 
@@ -164,7 +188,7 @@ export class ChatLunaAgentPermissionService {
     }
 
     canUseTool(info: SubAgentInfo, name: string): boolean {
-        const tool = this.listTools().find((item) => item.name === name)
+        const tool = this.getTool(name)
         if (!tool?.enabled) {
             return false
         }
@@ -196,6 +220,21 @@ export class ChatLunaAgentPermissionService {
             )
         ) {
             return false
+        }
+
+        if (tool.tags?.includes('computer')) {
+            const rule = this.mergeRule(
+                info.permissions.computer,
+                this.config.subAgent.defaults.computer
+            )
+
+            if (rule.mode === 'deny') {
+                return false
+            }
+
+            if (rule.mode === 'allow' && !rule.allow.includes(name)) {
+                return false
+            }
         }
 
         if (
@@ -232,6 +271,11 @@ export class ChatLunaAgentPermissionService {
             })
         )
     }
+
+    private getTool(name: string) {
+        this.listTools()
+        return this._toolMap?.get(name)
+    }
 }
 
 function buildToolMask(allNames: string[], allow: string[]): ToolMask {
@@ -267,10 +311,6 @@ function isWriteTool(name: string) {
     return WRITE_TOOL_PATTERNS.some((pattern) =>
         pattern.endsWith('_') ? name.startsWith(pattern) : name === pattern
     )
-}
-
-export function readToolMask(vars: Record<string, unknown>) {
-    return vars[TOOL_MASK_KEY] as ToolMask | undefined
 }
 
 export function createToolRule() {

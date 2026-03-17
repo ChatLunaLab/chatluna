@@ -476,6 +476,7 @@ import {
     onMounted,
     reactive,
     ref,
+    toRaw,
     watch,
     type PropType
 } from 'vue'
@@ -948,7 +949,7 @@ async function saveSelected() {
 
     try {
         busy.value = true
-        const next = structuredClone(props.config)
+        const next = structuredClone(toRaw(props.config))
         const saved = {
             enabled: item.enabled,
             name: item.name,

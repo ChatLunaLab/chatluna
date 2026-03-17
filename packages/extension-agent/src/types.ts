@@ -1,322 +1,58 @@
+/** @module types */
+
 import type { DataService } from '@koishijs/plugin-console'
+import type {
+    ComputerBackendStatus,
+    ComputerBackendType,
+    ComputerConfig,
+    ComputerDesktopState,
+    ComputerStatus,
+    ComputerTerminalInfo
+} from './types/computer'
+import type {
+    McpConfig,
+    McpServerConfig,
+    McpStatus,
+    McpToolConfig
+} from './types/mcp'
+import type {
+    SkillContentResult,
+    SkillExportResult,
+    SkillImportInput,
+    SkillImportResult,
+    SkillInfo,
+    SkillsConfig,
+    SkillsStatus
+} from './types/skills'
+import type {
+    SubAgentConfig,
+    SubAgentImportInput,
+    SubAgentInfo,
+    SubAgentItemConfig,
+    SubAgentRunInfo,
+    SubAgentStatus
+} from './types/sub_agent'
+import type { ToolAvailabilityInfo, ToolConfig, ToolStatus } from './types/tool'
+
+export * from './types/computer'
+export * from './types/mcp'
+export * from './types/skills'
+export * from './types/sub_agent'
+export * from './types/tool'
 
 export interface AgentConfig {
     version: number
     mcp: McpConfig
     skills: SkillsConfig
-    computer: Record<string, unknown>
+    computer: ComputerConfig
     subAgent: SubAgentConfig
     tool: ToolConfig
-}
-
-export interface ToolMetaOverride {
-    source?: string
-    group?: string
-    tags?: string[]
-}
-
-export interface ToolItemConfig {
-    enabled: boolean
-    main: boolean
-    subAgents: PermissionRule
-}
-
-export interface ToolConfig {
-    items: Record<string, ToolItemConfig>
-    registry?: Record<string, ToolMetaOverride>
-}
-
-export interface ToolInfo {
-    name: string
-    description?: string
-    enabled: boolean
-    main: boolean
-    subAgents: PermissionRule
-    source?: string
-    group?: string
-    tags?: string[]
-    isMcp: boolean
-    serverName?: string
-}
-
-export interface SkillsConfig {
-    allowComputerUsePrompt: boolean
-    dirs: string[]
-    items: Record<string, SkillConfig>
-}
-
-export interface SkillConfig {
-    enabled: boolean
-}
-
-export type SkillSource =
-    | 'chatluna'
-    | 'codex'
-    | 'claude'
-    | 'opencode'
-    | 'custom'
-
-export type SkillScope = 'data' | 'project' | 'user'
-
-export type SkillState = 'ready' | 'invalid' | 'missing'
-
-export interface SkillInfo {
-    id: string
-    name: string
-    description: string
-    path: string
-    dir: string
-    source: SkillSource
-    scope: SkillScope
-    state: SkillState
-    enabled: boolean
-    visible: boolean
-    modelEnabled: boolean
-    userInvocable: boolean
-    implicitInvocation: boolean
-    shadowedBy?: string
-    compatibility?: string
-    license?: string
-    metadata?: Record<string, string>
-    allowedTools?: string[]
-    diagnostics: string[]
-}
-
-export interface SkillContentResult {
-    id: string
-    content: string
-}
-
-export interface SkillImportFile {
-    path: string
-    data: string
-}
-
-export type SkillImportInput =
-    | {
-          type: 'github'
-          url: string
-      }
-    | {
-          type: 'zip'
-          name: string
-          data: string
-      }
-    | {
-          type: 'folder'
-          name: string
-          files: SkillImportFile[]
-      }
-
-export interface SkillImportResult {
-    source: SkillImportInput['type']
-    imported: string[]
-    replaced: string[]
-    diagnostics: string[]
-}
-
-export interface SkillExportResult {
-    id: string
-    name: string
-    fileName: string
-    data: string
-}
-
-export interface McpConfig {
-    mcpServers: Record<string, McpServerConfig>
-    tools: Record<string, McpToolConfig>
-}
-
-export interface McpIcon {
-    src: string
-    mimeType?: string
-    theme?: 'light' | 'dark'
-}
-
-export type McpServerState =
-    | 'idle'
-    | 'connecting'
-    | 'connected'
-    | 'reconnecting'
-    | 'error'
-
-export interface McpServerConfig {
-    command?: string
-    args?: string[]
-    env?: Record<string, string>
-    type?: 'stdio' | 'sse' | 'http' | 'streamable_http'
-    url?: string
-    headers?: Record<string, string>
-    timeout?: number
-    cwd?: string
-    proxy?: string
-}
-
-export interface McpToolConfig {
-    name: string
-    enabled: boolean
-    timeout?: number
-    selector: string[]
-}
-
-export interface McpStatus {
-    connected: boolean
-    servers: Record<string, McpServerStatus>
-    tools: Record<string, McpToolInfo>
-}
-
-export interface McpServerStatus {
-    name: string
-    state: McpServerState
-    stateText: string
-    connected: boolean
-    updating: boolean
-    error?: string
-    toolCount: number
-    attempts: number
-    maxAttempts: number
-    pendingReconnect: boolean
-    type?: string
-    endpoint?: string
-    title?: string
-    version?: string
-    icon?: McpIcon
-}
-
-export interface McpToolInfo {
-    name: string
-    description: string
-    enabled: boolean
-    updating: boolean
-    server: string
-    timeout?: number
-    selector: string[]
-    title?: string
-    icon?: McpIcon
-}
-
-export interface PermissionRule {
-    mode: 'inherit' | 'all' | 'allow' | 'deny'
-    allow: string[]
-    deny: string[]
-}
-
-export interface SubAgentPermissionConfig {
-    skills: PermissionRule
-    mcp: PermissionRule
-    tools: PermissionRule
-    computer: PermissionRule
-}
-
-export interface SubAgentItemConfig {
-    enabled: boolean
-    name: string
-    description: string
-    source: 'builtin' | 'markdown' | 'preset'
-    format: 'chatluna' | 'claude' | 'opencode'
-    model?: string
-    maxTurns?: number
-    hidden?: boolean
-    promptMode: 'markdown' | 'preset'
-    preset?: string
-    allowKoishiMessageTransform: boolean
-    permissions: SubAgentPermissionConfig
-}
-
-export interface SubAgentConfig {
-    dirs: string[]
-    items: Record<string, SubAgentItemConfig>
-    builtin: {
-        plan: SubAgentItemConfig
-        general: SubAgentItemConfig
-        explore: SubAgentItemConfig
-    }
-    presetAgents: Record<string, SubAgentItemConfig>
-    defaults: SubAgentPermissionConfig
-}
-
-export interface SubAgentInfo {
-    id: string
-    name: string
-    description: string
-    source: 'builtin' | 'markdown' | 'preset'
-    format: 'chatluna' | 'claude' | 'opencode'
-    state: 'ready' | 'invalid' | 'missing'
-    enabled: boolean
-    hidden: boolean
-    path?: string
-    scope?: 'data' | 'project' | 'user'
-    priority: number
-    promptContent: string
-    model?: string
-    maxTurns?: number
-    permissions: SubAgentPermissionConfig
-    allowKoishiMessageTransform: boolean
-    diagnostics: string[]
-    shadowedBy?: string
-    promptMode: 'markdown' | 'preset'
-    preset?: string
-}
-
-export interface SubAgentRunInfo {
-    runId: string
-    agentId: string
-    agentName: string
-    parentConversationId: string
-    depth: number
-    state: 'running' | 'completed' | 'failed' | 'aborted'
-    startedAt: number
-    endedAt?: number
-    lastTool?: string
-    toolCount: number
-    turnCount: number
-    error?: string
-}
-
-export interface ToolAvailabilityInfo {
-    name: string
-    description?: string
-    enabled: boolean
-    main: boolean
-    agents: string[]
-    source?: string
-    group?: string
-    tags?: string[]
-}
-
-export interface ToolStatus {
-    enabled: boolean
-    total: number
-    mainEnabled: number
-    subAgentEnabled: number
-    catalog: Record<string, ToolInfo>
-}
-
-export interface SubAgentImportInput {
-    name: string
-    data: string
-}
-
-export interface SubAgentStatus {
-    enabled: boolean
-    total: number
-    catalog: Record<string, SubAgentInfo>
-    runs: SubAgentRunInfo[]
-}
-
-export interface SkillsStatus {
-    enabled: boolean
-    root: string
-    total: number
-    visible: number
-    modelEnabled: number
-    activeConversations: number
-    catalog: Record<string, SkillInfo>
 }
 
 export interface AgentStatus {
     mcp: McpStatus
     skills: SkillsStatus
+    computer: ComputerStatus
     subAgent: SubAgentStatus
     tool: ToolStatus
 }
@@ -357,6 +93,70 @@ declare module '@koishijs/plugin-console' {
         ) => Promise<ActionResult>
         'chatluna-agent/getStatus': () => Promise<AgentStatus>
         'chatluna-agent/getMcpStatus': () => Promise<McpStatus>
+        'chatluna-agent/getComputerStatus': () => Promise<ComputerStatus>
+        'chatluna-agent/openComputerTerminal': (input?: {
+            backend?: ComputerBackendType
+            cwd?: string
+            cols?: number
+            rows?: number
+        }) => Promise<ComputerTerminalInfo>
+        'chatluna-agent/closeComputerTerminal': (
+            sessionId: string,
+            terminalId: string
+        ) => Promise<ActionResult>
+        'chatluna-agent/listComputerPorts': (input?: {
+            backend?: ComputerBackendType
+        }) => Promise<
+            {
+                port: number
+                state: 'listening' | 'established'
+                process?: string
+            }[]
+        >
+        'chatluna-agent/getComputerPreviewUrl': (
+            sessionId: string,
+            port: number
+        ) => Promise<string | undefined>
+        'chatluna-agent/readComputerFile': (input: {
+            path: string
+            backend?: ComputerBackendType
+            offset?: number
+            limit?: number
+        }) => Promise<string>
+        'chatluna-agent/globComputerFiles': (input: {
+            pattern: string
+            path?: string
+            backend?: ComputerBackendType
+        }) => Promise<string[]>
+        'chatluna-agent/getComputerDesktop': (input?: {
+            backend?: ComputerBackendType
+        }) => Promise<ComputerDesktopState>
+        'chatluna-agent/sendComputerDesktopAction': (
+            sessionId: string,
+            action:
+                | {
+                      type: 'click'
+                      x: number
+                      y: number
+                      button?: 'left' | 'right' | 'middle'
+                  }
+                | { type: 'type'; text: string }
+                | { type: 'key'; key: string }
+                | {
+                      type: 'scroll'
+                      x: number
+                      y: number
+                      deltaX?: number
+                      deltaY: number
+                  }
+                | {
+                      type: 'drag'
+                      startX: number
+                      startY: number
+                      endX: number
+                      endY: number
+                  }
+        ) => Promise<ActionResult>
         'chatluna-agent/getSkills': () => Promise<SkillInfo[]>
         'chatluna-agent/getSkillContent': (
             id: string
@@ -375,6 +175,9 @@ declare module '@koishijs/plugin-console' {
         ) => Promise<ActionResult>
         'chatluna-agent/saveSkills': (
             config: AgentConfig['skills']
+        ) => Promise<ActionResult>
+        'chatluna-agent/saveComputer': (
+            config: AgentConfig['computer']
         ) => Promise<ActionResult>
         'chatluna-agent/saveSubAgentConfig': (
             config: AgentConfig['subAgent']
@@ -397,8 +200,12 @@ declare module '@koishijs/plugin-console' {
             config: McpToolConfig
         ) => Promise<ActionResult>
         'chatluna-agent/reloadMcp': () => Promise<ActionResult>
+        'chatluna-agent/reloadComputer': () => Promise<ActionResult>
         'chatluna-agent/reloadSkills': () => Promise<ActionResult>
         'chatluna-agent/reloadSubAgents': () => Promise<ActionResult>
+        'chatluna-agent/testBackend': (
+            type: ComputerBackendType
+        ) => Promise<ComputerBackendStatus>
         'chatluna-agent/removeSkill': (id: string) => Promise<ActionResult>
         'chatluna-agent/setSkillEnabled': (
             id: string,

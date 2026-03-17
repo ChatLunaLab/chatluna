@@ -1,211 +1,205 @@
+/** @module commands/mcp */
+
 import { Context } from 'koishi'
 import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
+import { getErrorMessage } from '../utils/shell'
+
+function createMcpCommandMiddleware<T>(options: {
+    command: string
+    parse: (
+        session: any,
+        context: any
+    ) => Promise<T | undefined> | T | undefined
+    execute: (input: T) => Promise<string> | string
+}) {
+    return async (session: any, context: any) => {
+        if (context.command !== options.command) {
+            return ChainMiddlewareRunStatus.SKIPPED
+        }
+
+        try {
+            const input = await options.parse(session, context)
+            if (input !== undefined) {
+                context.message = await options.execute(input)
+            }
+        } catch (error) {
+            context.message = `Error: ${getErrorMessage(error)}`
+        }
+
+        return ChainMiddlewareRunStatus.STOP
+    }
+}
+
+function registerMiddleware(
+    ctx: Context,
+    name:
+        | 'list_mcp_tools'
+        | 'add_mcp_server'
+        | 'remove_mcp_server'
+        | 'enable_mcp_tool',
+    middleware: ReturnType<typeof createMcpCommandMiddleware>
+) {
+    ctx.chatluna.chatChain
+        .middleware(name, middleware, ctx)
+        .after('lifecycle-handle_command')
+}
 
 export function apply(ctx: Context) {
-    const chain = ctx.chatluna.chatChain
-
-    chain
-        .middleware(
-            'list_mcp_tools',
-            async (session, context) => {
-                const { command } = context
-
-                if (command !== 'list_mcp_tools')
-                    return ChainMiddlewareRunStatus.SKIPPED
-
-                try {
-                    const service = ctx.chatluna_agent?.mcp
-                    if (!service) {
-                        context.message = 'MCP service not ready'
-                        return ChainMiddlewareRunStatus.STOP
-                    }
-
-                    const tools = service.listTools()
-
-                    if (tools.length === 0) {
-                        context.message = 'No tools available'
-                        return ChainMiddlewareRunStatus.STOP
-                    }
-
-                    const messages = ['MCP Tools:']
-                    for (const tool of tools) {
-                        messages.push(
-                            `\nName: ${tool.name}`,
-                            `Enabled: ${tool.enabled ? '✅' : '❌'}`,
-                            `Description: ${tool.description || 'N/A'}`,
-                            '---'
-                        )
-                    }
-
-                    context.message = messages.join('\n')
-                } catch (error) {
-                    context.message = `Error: ${error.message}`
+    registerMiddleware(
+        ctx,
+        'list_mcp_tools',
+        createMcpCommandMiddleware({
+            command: 'list_mcp_tools',
+            parse: () => true,
+            execute: async () => {
+                const service = ctx.chatluna_agent?.mcp
+                if (!service) {
+                    return 'MCP service not ready'
                 }
 
-                return ChainMiddlewareRunStatus.STOP
-            },
-            ctx
-        )
-        .after('lifecycle-handle_command')
+                const tools = service.listTools()
+                if (tools.length === 0) {
+                    return 'No tools available'
+                }
 
-    chain
-        .middleware(
-            'add_mcp_server',
-            async (session, context) => {
-                const {
-                    command,
-                    options: { mcpConfig }
-                } = context
+                const messages = ['MCP Tools:']
+                for (const item of tools) {
+                    messages.push(
+                        `\nName: ${item.name}`,
+                        `Enabled: ${item.enabled ? '✅' : '❌'}`,
+                        `Description: ${item.description || 'N/A'}`,
+                        '---'
+                    )
+                }
 
-                if (command !== 'add_mcp_server')
-                    return ChainMiddlewareRunStatus.SKIPPED
+                return messages.join('\n')
+            }
+        })
+    )
 
+    registerMiddleware(
+        ctx,
+        'add_mcp_server',
+        createMcpCommandMiddleware({
+            command: 'add_mcp_server',
+            parse: async (session, context) => {
+                const mcpConfig = context.options?.mcpConfig
                 if (!mcpConfig) {
                     context.message = 'Usage: provide MCP server config as JSON'
-                    return ChainMiddlewareRunStatus.STOP
+                    return undefined
                 }
 
-                try {
-                    const parsedInput = JSON.parse(mcpConfig)
-                    const config = structuredClone(
-                        ctx.chatluna_agent.getConsoleData().config
-                    )
+                const parsed = JSON.parse(mcpConfig)
+                const config = structuredClone(
+                    ctx.chatluna_agent.getConsoleData().config
+                )
+                const servers: Record<string, unknown> = {}
 
-                    const serversToAdd: Record<string, any> = {}
-
-                    if (parsedInput['mcpServers']) {
-                        Object.assign(serversToAdd, parsedInput['mcpServers'])
-                    } else {
-                        const serverName = `server-${Date.now()}`
-                        serversToAdd[serverName] = parsedInput
-                    }
-
-                    const conflicts: string[] = []
-                    for (const name of Object.keys(serversToAdd)) {
-                        if (config.mcp.mcpServers[name]) {
-                            conflicts.push(name)
-                        }
-                    }
-
-                    if (conflicts.length > 0) {
-                        await session.send(`Conflicts: ${conflicts.join(', ')}`)
-                        await session.send('Overwrite? (Y/N)')
-
-                        const response = await session.prompt()
-
-                        if (!response || response.toUpperCase() !== 'Y') {
-                            context.message = 'Cancelled'
-                            return ChainMiddlewareRunStatus.STOP
-                        }
-                    }
-
-                    let addedCount = 0
-                    for (const [name, serverConfig] of Object.entries(
-                        serversToAdd
-                    )) {
-                        config.mcp.mcpServers[name] = serverConfig
-                        addedCount++
-                    }
-
-                    await ctx.chatluna_agent.saveMcpConfig(config.mcp)
-
-                    context.message = `Added ${addedCount} server(s)`
-                } catch (error) {
-                    context.message = `Error: ${error.message}`
+                if (parsed['mcpServers']) {
+                    Object.assign(servers, parsed['mcpServers'])
+                } else {
+                    servers[`server-${Date.now()}`] = parsed
                 }
 
-                return ChainMiddlewareRunStatus.STOP
+                const conflicts = Object.keys(servers).filter(
+                    (name) => config.mcp.mcpServers[name]
+                )
+
+                if (conflicts.length > 0) {
+                    await session.send(`Conflicts: ${conflicts.join(', ')}`)
+                    await session.send('Overwrite? (Y/N)')
+                    const response = await session.prompt()
+                    if (!response || response.toUpperCase() !== 'Y') {
+                        context.message = 'Cancelled'
+                        return undefined
+                    }
+                }
+
+                return servers
             },
-            ctx
-        )
-        .after('lifecycle-handle_command')
+            execute: async (servers) => {
+                const config = structuredClone(
+                    ctx.chatluna_agent.getConsoleData().config
+                )
+                let count = 0
 
-    chain
-        .middleware(
-            'remove_mcp_server',
-            async (session, context) => {
-                const {
-                    command,
-                    options: { serverName }
-                } = context
+                for (const [name, server] of Object.entries(servers)) {
+                    config.mcp.mcpServers[name] = server as never
+                    count += 1
+                }
 
-                if (command !== 'remove_mcp_server')
-                    return ChainMiddlewareRunStatus.SKIPPED
+                await ctx.chatluna_agent.saveMcpConfig(config.mcp)
+                return `Added ${count} server(s)`
+            }
+        })
+    )
 
+    registerMiddleware(
+        ctx,
+        'remove_mcp_server',
+        createMcpCommandMiddleware({
+            command: 'remove_mcp_server',
+            parse: (_, context) => {
+                const serverName = context.options?.serverName
                 if (!serverName) {
                     context.message = 'Usage: provide server name'
-                    return ChainMiddlewareRunStatus.STOP
+                    return undefined
                 }
 
-                try {
-                    const config = structuredClone(
-                        ctx.chatluna_agent.getConsoleData().config
-                    )
-
-                    if (!config.mcp.mcpServers[serverName]) {
-                        context.message = `Server not found: ${serverName}`
-                        return ChainMiddlewareRunStatus.STOP
-                    }
-
-                    await ctx.chatluna_agent.removeMcpServer(serverName)
-
-                    context.message = `Removed server: ${serverName}`
-                } catch (error) {
-                    context.message = `Error: ${error.message}`
+                if (
+                    !ctx.chatluna_agent.getConsoleData().config.mcp.mcpServers[
+                        serverName
+                    ]
+                ) {
+                    context.message = `Server not found: ${serverName}`
+                    return undefined
                 }
 
-                return ChainMiddlewareRunStatus.STOP
+                return serverName
             },
-            ctx
-        )
-        .after('lifecycle-handle_command')
+            execute: async (serverName) => {
+                await ctx.chatluna_agent.removeMcpServer(serverName)
+                return `Removed server: ${serverName}`
+            }
+        })
+    )
 
-    chain
-        .middleware(
-            'enable_mcp_tool',
-            async (session, context) => {
-                const {
-                    command,
-                    options: { toolName }
-                } = context
-
-                if (command !== 'enable_mcp_tool')
-                    return ChainMiddlewareRunStatus.SKIPPED
-
+    registerMiddleware(
+        ctx,
+        'enable_mcp_tool',
+        createMcpCommandMiddleware({
+            command: 'enable_mcp_tool',
+            parse: (_, context) => {
+                const toolName = context.options?.toolName
                 if (!toolName) {
                     context.message = 'Usage: provide tool name'
-                    return ChainMiddlewareRunStatus.STOP
+                    return undefined
                 }
 
-                try {
-                    const tools = ctx.chatluna_agent.mcp.listTools()
-                    const tool = tools.find((t) => t.name === toolName)
+                const item = ctx.chatluna_agent.mcp
+                    .listTools()
+                    .find((tool) => tool.name === toolName)
 
-                    if (!tool) {
-                        context.message = `Tool not found: ${toolName}`
-                        return ChainMiddlewareRunStatus.STOP
-                    }
-
-                    const newEnabled = !tool.enabled
-
-                    await ctx.chatluna_agent.saveMcpTool({
-                        name: toolName,
-                        enabled: newEnabled,
-                        timeout: tool.timeout,
-                        selector: tool.selector
-                    })
-
-                    const status = newEnabled ? 'enabled' : 'disabled'
-                    context.message = `Tool ${toolName} ${status}`
-                } catch (error) {
-                    context.message = `Error: ${error.message}`
+                if (!item) {
+                    context.message = `Tool not found: ${toolName}`
+                    return undefined
                 }
 
-                return ChainMiddlewareRunStatus.STOP
+                return item
             },
-            ctx
-        )
-        .after('lifecycle-handle_command')
+            execute: async (item) => {
+                const enabled = !item.enabled
+                await ctx.chatluna_agent.saveMcpTool({
+                    name: item.name,
+                    enabled,
+                    timeout: item.timeout,
+                    selector: item.selector
+                })
+
+                return `Tool ${item.name} ${enabled ? 'enabled' : 'disabled'}`
+            }
+        })
+    )
 }
 
 declare module 'koishi-plugin-chatluna/chains' {

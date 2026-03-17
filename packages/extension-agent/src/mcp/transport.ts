@@ -1,3 +1,5 @@
+/** @module mcp/transport */
+
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import {
     StreamableHTTPClientTransport,

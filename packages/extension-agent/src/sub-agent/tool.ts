@@ -1,18 +1,9 @@
+/** @module sub-agent/tool */
+
 import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { z } from 'zod'
-
-export interface SubAgentTaskService {
-    buildToolDescription(): string
-    runTask(
-        input: {
-            agent: string
-            prompt: string
-            reason?: string
-        },
-        runConfig?: ChatLunaToolRunnable
-    ): Promise<string>
-}
+import { SubAgentTaskService } from '../types'
 
 export class TaskTool extends StructuredTool {
     name = 'task'

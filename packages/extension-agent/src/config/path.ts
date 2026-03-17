@@ -1,3 +1,5 @@
+/** @module config/path */
+
 import { Context } from 'koishi'
 import { resolve } from 'path'
 
@@ -11,4 +13,8 @@ export function getSkillsRootPath(ctx: Context): string {
 
 export function getSubAgentsRootPath(ctx: Context): string {
     return resolve(ctx.baseDir, 'data/chatluna/agents')
+}
+
+export function getComputerRootPath(ctx: Context): string {
+    return resolve(ctx.baseDir, 'data/chatluna/computer')
 }

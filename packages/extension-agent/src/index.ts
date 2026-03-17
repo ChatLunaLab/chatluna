@@ -1,3 +1,5 @@
+/** @module extension-agent */
+
 import { Context, Logger, Schema } from 'koishi'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -32,7 +34,12 @@ export interface Config extends ChatLunaPlugin.Config {}
 
 export const inject = {
     required: ['chatluna', 'console'],
-    optional: ['chatluna_storage', 'chatluna_agent', 'chatluna_agent_webui']
+    optional: [
+        'chatluna_storage',
+        'chatluna_agent',
+        'chatluna_agent_webui',
+        'server'
+    ]
 }
 
 export const name = 'chatluna-agent'

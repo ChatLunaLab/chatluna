@@ -1,5 +1,8 @@
+/** @module config/defaults */
+
 import {
     AgentConfig,
+    ComputerConfig,
     PermissionRule,
     SubAgentConfig,
     SubAgentItemConfig,
@@ -100,9 +103,62 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
     }
 }
 
+export function createDefaultComputerConfig(): ComputerConfig {
+    return {
+        defaultProvider: 'local',
+        idleTimeoutMs: 600000,
+        local: {
+            enabled: true,
+            sandboxMode: 'workspace-write',
+            approvalMode: 'on-request',
+            dangerouslySkipPermissions: false,
+            preferredShell: 'auto',
+            scopePath: '',
+            writableRoots: [],
+            readOnlyRoots: [],
+            denyRoots: [],
+            ignores: [
+                '**/node_modules/**',
+                '**/.git/**',
+                '**/dist/**',
+                '**/build/**',
+                '**/.yarn/**',
+                '**/coverage/**',
+                '**/.next/**',
+                '**/.nuxt/**',
+                '**/out/**',
+                '**/.cache/**',
+                '**/.vscode/**',
+                '**/.idea/**',
+                '**/temp/**',
+                '**/tmp/**'
+            ],
+            allowedCommands: [],
+            blockedCommands: [],
+            commandTimeoutMs: 30000,
+            networkPolicy: 'block'
+        },
+        e2b: {
+            enabled: false,
+            apiKey: '',
+            template: 'base',
+            desktopTemplate: '',
+            timeoutMs: 300000,
+            keepAlive: true
+        },
+        openTerminal: {
+            enabled: false,
+            baseUrl: '',
+            apiKey: '',
+            deploymentMode: 'unknown',
+            userIsolation: false
+        }
+    }
+}
+
 export function getDefaultConfig(): AgentConfig {
     return {
-        version: 3,
+        version: 4,
         mcp: {
             mcpServers: {},
             tools: {}
@@ -117,7 +173,7 @@ export function getDefaultConfig(): AgentConfig {
             ],
             items: {}
         },
-        computer: {},
+        computer: createDefaultComputerConfig(),
         subAgent: createDefaultSubAgentConfig(),
         tool: createDefaultToolConfig()
     }

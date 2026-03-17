@@ -1,3 +1,5 @@
+/** @module sub-agent/preset */
+
 import { Context } from 'koishi'
 import { AgentConfig, SubAgentInfo } from '../types'
 

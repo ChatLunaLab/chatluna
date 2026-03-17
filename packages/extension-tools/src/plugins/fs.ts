@@ -23,6 +23,16 @@ export async function apply(
     config: Config,
     plugin: ChatLunaPlugin
 ) {
+    const agent = (ctx as Context & { chatluna_agent?: { computer?: unknown } })
+        .chatluna_agent
+
+    if (agent?.computer) {
+        ctx.logger.warn(
+            '[chatluna-plugin-common] fs tools are now managed by extension-agent. Skipping registration.'
+        )
+        return
+    }
+
     if (config.fs !== true) {
         return
     }

@@ -1,10 +1,13 @@
+/** @module webui/index */
+
 import { DataService } from '@koishijs/plugin-console'
 import { Context } from 'koishi'
 import { listModelNames } from 'koishi-plugin-chatluna/utils/schema'
 import { resolve } from 'path'
 import { getSkillsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
-import { AgentConsoleData, McpServerConfig } from '../types'
+import type { ChatLunaAgentService } from '../service'
+import { AgentConsoleData, AgentStatus, McpServerConfig } from '../types'
 
 class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
     constructor(ctx: Context) {
@@ -18,54 +21,103 @@ class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
 
         return {
             config: await readConfig(this.ctx),
-            status: {
-                mcp: { connected: false, servers: {}, tools: {} },
-                skills: {
-                    enabled: true,
-                    root: getSkillsRootPath(this.ctx),
-                    total: 0,
-                    visible: 0,
-                    modelEnabled: 0,
-                    activeConversations: 0,
-                    catalog: {}
+            status: createEmptyStatus(this.ctx)
+        } satisfies AgentConsoleData
+    }
+}
+
+type AgentRef = () => ChatLunaAgentService
+
+function createEmptyStatus(ctx: Context): AgentStatus {
+    return {
+        mcp: { connected: false, servers: {}, tools: {} },
+        skills: {
+            enabled: true,
+            root: getSkillsRootPath(ctx),
+            total: 0,
+            visible: 0,
+            modelEnabled: 0,
+            activeConversations: 0,
+            catalog: {}
+        },
+        computer: {
+            enabled: false,
+            defaultProvider: 'local',
+            backends: {
+                local: {
+                    type: 'local',
+                    state: 'unsupported',
+                    capabilities: [
+                        'file_read',
+                        'file_write',
+                        'file_edit',
+                        'grep',
+                        'glob',
+                        'bash',
+                        'terminal_pty',
+                        'port_preview'
+                    ],
+                    sessionCount: 0
                 },
-                subAgent: {
-                    enabled: false,
-                    total: 0,
-                    catalog: {},
-                    runs: []
+                e2b: {
+                    type: 'e2b',
+                    state: 'unsupported',
+                    capabilities: [
+                        'file_read',
+                        'file_write',
+                        'file_edit',
+                        'grep',
+                        'glob',
+                        'bash',
+                        'terminal_pty',
+                        'desktop_stream',
+                        'desktop_screenshot',
+                        'desktop_action'
+                    ],
+                    sessionCount: 0
                 },
-                tool: {
-                    enabled: false,
-                    total: 0,
-                    mainEnabled: 0,
-                    subAgentEnabled: 0,
-                    catalog: {}
+                'open-terminal': {
+                    type: 'open-terminal',
+                    state: 'unsupported',
+                    capabilities: [
+                        'file_read',
+                        'file_write',
+                        'file_edit',
+                        'grep',
+                        'glob',
+                        'bash',
+                        'terminal_pty',
+                        'port_preview'
+                    ],
+                    sessionCount: 0
                 }
-            }
+            },
+            activeSessions: 0
+        },
+        subAgent: {
+            enabled: false,
+            total: 0,
+            catalog: {},
+            runs: []
+        },
+        tool: {
+            enabled: false,
+            total: 0,
+            mainEnabled: 0,
+            subAgentEnabled: 0,
+            catalog: {}
         }
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ok<T>(fn: (...args: any[]) => Promise<T>) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return async (...args: any[]) => {
+function ok<T, A extends unknown[]>(fn: (...args: A) => Promise<T>) {
+    return async (...args: A) => {
         await fn(...args)
         return { success: true }
     }
 }
 
-export function apply(ctx: Context) {
-    ctx.plugin(ChatLunaAgentConsoleService)
-
-    ctx.console.addEntry({
-        dev: resolve(__dirname, '../client/index.ts'),
-        prod: resolve(__dirname, '../dist')
-    })
-
-    const agent = () => ctx.chatluna_agent
-
+function registerBaseListeners(ctx: Context, agent: AgentRef) {
     ctx.console.addListener(
         'chatluna-agent/getConfig',
         async () => agent().getConsoleData().config
@@ -80,25 +132,102 @@ export function apply(ctx: Context) {
         agent().getStatus()
     )
 
-    ctx.console.addListener('chatluna-agent/getMcpStatus', async () =>
-        agent().mcp.getStatus()
-    )
-
-    ctx.console.addListener('chatluna-agent/getSkills', async () =>
-        agent().skills.listSkills()
-    )
-
-    ctx.console.addListener('chatluna-agent/getSubAgents', async () =>
-        agent().subAgent.getCatalogSync()
-    )
-
-    ctx.console.addListener('chatluna-agent/getSubAgentRuns', async () =>
-        agent().subAgent.getRuns()
-    )
-
     ctx.console.addListener(
         'chatluna-agent/getModelNames',
         async () => listModelNames(ctx.chatluna.platform).value
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/refreshConsoleData',
+        ok(() => agent().refreshConsoleData())
+    )
+}
+
+function registerComputerListeners(ctx: Context, agent: AgentRef) {
+    ctx.console.addListener('chatluna-agent/getComputerStatus', async () =>
+        agent().computer.getStatus()
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/openComputerTerminal',
+        async function (input) {
+            return await agent().computer.createTerminal(this.id, input)
+        }
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/closeComputerTerminal',
+        ok(async (sessionId, terminalId) => {
+            await agent().computer.closeTerminal(sessionId, terminalId)
+        })
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/listComputerPorts',
+        async function (input) {
+            return await agent().computer.listPorts(this.id, input?.backend)
+        }
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/getComputerPreviewUrl',
+        async (sessionId, port) =>
+            agent().computer.getPreviewUrl(sessionId, port)
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/readComputerFile',
+        async function (input) {
+            return await agent().computer.readFileForUi(this.id, input)
+        }
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/globComputerFiles',
+        async function (input) {
+            return await agent().computer.globForUi(this.id, input)
+        }
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/getComputerDesktop',
+        async function (input) {
+            return await agent().computer.getDesktopState(
+                this.id,
+                input?.backend
+            )
+        }
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/sendComputerDesktopAction',
+        ok(async (sessionId, action) => {
+            await agent().computer.sendDesktopAction(sessionId, action)
+        })
+    )
+
+    ctx.console.addListener('chatluna-agent/testBackend', async (type) =>
+        agent().computer.testBackend(type)
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/saveComputer',
+        ok((cfg) => agent().saveComputerConfig(cfg))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/reloadComputer',
+        ok(async () => {
+            await agent().computer.reload()
+            await agent().skills.reload()
+            await agent().refreshConsoleData()
+        })
+    )
+}
+
+function registerSkillsListeners(ctx: Context, agent: AgentRef) {
+    ctx.console.addListener('chatluna-agent/getSkills', async () =>
+        agent().skills.listSkills()
     )
 
     ctx.console.addListener('chatluna-agent/getSkillContent', async (id) =>
@@ -116,18 +245,8 @@ export function apply(ctx: Context) {
     })
 
     ctx.console.addListener(
-        'chatluna-agent/saveMcp',
-        ok((cfg) => agent().saveMcpConfig(cfg))
-    )
-
-    ctx.console.addListener(
         'chatluna-agent/saveSkills',
         ok((cfg) => agent().saveSkillsConfig(cfg))
-    )
-
-    ctx.console.addListener(
-        'chatluna-agent/saveSubAgentConfig',
-        ok((cfg) => agent().saveSubAgentConfig(cfg))
     )
 
     ctx.console.addListener(
@@ -135,13 +254,6 @@ export function apply(ctx: Context) {
         ok(async () => {
             await agent().skills.reload()
             await agent().refreshConsoleData()
-        })
-    )
-
-    ctx.console.addListener(
-        'chatluna-agent/reloadSubAgents',
-        ok(async () => {
-            await agent().reloadSubAgents()
         })
     )
 
@@ -155,6 +267,28 @@ export function apply(ctx: Context) {
         ok((id: string, enabled: boolean) =>
             agent().setSkillEnabled(id, enabled)
         )
+    )
+}
+
+function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
+    ctx.console.addListener('chatluna-agent/getSubAgents', async () =>
+        agent().subAgent.getCatalogSync()
+    )
+
+    ctx.console.addListener('chatluna-agent/getSubAgentRuns', async () =>
+        agent().subAgent.getRuns()
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/saveSubAgentConfig',
+        ok((cfg) => agent().saveSubAgentConfig(cfg))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/reloadSubAgents',
+        ok(async () => {
+            await agent().reloadSubAgents()
+        })
     )
 
     ctx.console.addListener(
@@ -181,12 +315,25 @@ export function apply(ctx: Context) {
         ok((id: string) => agent().removeSubAgent(id))
     )
 
+    ctx.console.addListener('chatluna-agent/getPresetNames', async () =>
+        agent().getPresetNames()
+    )
+}
+
+function registerToolListeners(ctx: Context, agent: AgentRef) {
     ctx.console.addListener('chatluna-agent/getToolAvailability', async () =>
         agent().getToolAvailability()
     )
+}
 
-    ctx.console.addListener('chatluna-agent/getPresetNames', async () =>
-        agent().getPresetNames()
+function registerMcpListeners(ctx: Context, agent: AgentRef) {
+    ctx.console.addListener('chatluna-agent/getMcpStatus', async () =>
+        agent().mcp.getStatus()
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/saveMcp',
+        ok((cfg) => agent().saveMcpConfig(cfg))
     )
 
     ctx.console.addListener(
@@ -233,9 +380,22 @@ export function apply(ctx: Context) {
         'chatluna-agent/reconnectMcpServer',
         ok((name) => agent().mcp.reconnect(name))
     )
+}
 
-    ctx.console.addListener(
-        'chatluna-agent/refreshConsoleData',
-        ok(() => agent().refreshConsoleData())
-    )
+export function apply(ctx: Context) {
+    ctx.plugin(ChatLunaAgentConsoleService)
+
+    ctx.console.addEntry({
+        dev: resolve(__dirname, '../client/index.ts'),
+        prod: resolve(__dirname, '../dist')
+    })
+
+    const agent = () => ctx.chatluna_agent as ChatLunaAgentService
+
+    registerBaseListeners(ctx, agent)
+    registerMcpListeners(ctx, agent)
+    registerSkillsListeners(ctx, agent)
+    registerComputerListeners(ctx, agent)
+    registerSubAgentListeners(ctx, agent)
+    registerToolListeners(ctx, agent)
 }

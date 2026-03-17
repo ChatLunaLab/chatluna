@@ -1,3 +1,5 @@
+/** @module sub-agent/builtin */
+
 import { AgentConfig, SubAgentInfo } from '../types'
 
 export function getBuiltinAgents(cfg: AgentConfig['subAgent']): SubAgentInfo[] {

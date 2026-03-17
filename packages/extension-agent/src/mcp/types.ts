@@ -1,3 +1,5 @@
+/** @module mcp/types */
+
 export class ToolException extends Error {
     constructor(message: string) {
         super(message)

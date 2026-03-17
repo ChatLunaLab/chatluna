@@ -1,12 +1,12 @@
+/** @module skills/slash */
+
 import { HumanMessage } from '@langchain/core/messages'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
 const skillSlashRe = /^\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\s+|$)/i
 
 export function getSlashSkillName(message: HumanMessage) {
-    const raw = message.additional_kwargs?.['raw_content']
-    const text =
-        typeof raw === 'string' ? raw : getMessageContent(message.content)
+    const text = getMessageContent(message.content)
     const match = text.match(skillSlashRe)
     return match?.[1].toLowerCase()
 }
@@ -37,7 +37,7 @@ export function stripSlashSkillName(message: HumanMessage) {
         })
     }
 
-    const raw = message.additional_kwargs?.['raw_content']
+    const raw = getMessageContent(message.content)
     if (typeof raw === 'string') {
         message.additional_kwargs['raw_content'] = raw
             .replace(skillSlashRe, '')

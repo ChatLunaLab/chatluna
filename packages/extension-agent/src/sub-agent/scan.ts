@@ -1,11 +1,14 @@
-import { createHash } from 'crypto'
-import { mkdir, readFile, readdir, stat } from 'fs/promises'
+/** @module sub-agent/scan */
+
+import { mkdir, readFile, stat } from 'fs/promises'
 import { Context } from 'koishi'
-import { homedir } from 'os'
-import { basename, join, resolve } from 'path'
+import { basename } from 'path'
 import { createSubAgentItemConfig } from '../config/defaults'
 import { getSubAgentsRootPath } from '../config/path'
 import { AgentConfig, SubAgentInfo } from '../types'
+import { collectFilesRecursive } from '../utils/fs'
+import { createHashId } from '../utils/id'
+import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
 import { parseAgentFrontmatter } from './parse'
 
 export { getBuiltinAgents } from './builtin'
@@ -69,7 +72,7 @@ function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
             continue
         }
 
-        const dir = resolveRoot(ctx.baseDir, item)
+        const dir = resolveTildeDir(ctx.baseDir, item)
         const key = toPathKey(dir)
         if (seen.has(key)) {
             continue
@@ -166,66 +169,17 @@ async function parseMarkdownAgent(
 }
 
 async function collectMarkdownFiles(root: string) {
-    const queue = [root]
-    const result: string[] = []
-
-    while (queue.length > 0) {
-        const current = queue.shift()
-        if (!current) {
-            continue
-        }
-
-        const entries = await readdir(current, { withFileTypes: true }).catch(
-            () => []
-        )
-
-        for (const entry of entries) {
-            if (entry.name === '.git' || entry.name === 'node_modules') {
-                continue
-            }
-
-            const file = join(current, entry.name)
-            if (entry.isDirectory()) {
-                queue.push(file)
-                continue
-            }
-
-            if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
-                result.push(file)
-            }
-        }
-    }
-
-    return result.sort((a, b) => a.localeCompare(b))
-}
-
-function resolveRoot(baseDir: string, dir: string) {
-    if (
-        dir.startsWith('.claude/') ||
-        dir.startsWith('.claude\\') ||
-        dir.startsWith('.config/opencode/') ||
-        dir.startsWith('.config\\opencode\\')
-    ) {
-        return resolve(homedir(), dir)
-    }
-
-    if (dir === '~') {
-        return homedir()
-    }
-
-    if (dir.startsWith('~/') || dir.startsWith('~\\')) {
-        return resolve(homedir(), dir.slice(2))
-    }
-
-    return resolve(baseDir, dir)
+    return await collectFilesRecursive(root, {
+        extensionFilter: '.md'
+    })
 }
 
 function detectScope(ctx: Context, dir: string) {
-    if (isInside(dir, getSubAgentsRootPath(ctx))) {
+    if (isPathInside(dir, getSubAgentsRootPath(ctx))) {
         return 'data'
     }
 
-    if (isInside(dir, ctx.baseDir)) {
+    if (isPathInside(dir, ctx.baseDir)) {
         return 'project'
     }
 
@@ -248,20 +202,6 @@ function detectHint(raw: string, dir: string) {
     return 'chatluna'
 }
 
-function isInside(dir: string, root: string) {
-    const target = resolve(dir)
-    const base = resolve(root)
-    return (
-        target === base ||
-        target.startsWith(`${base}\\`) ||
-        target.startsWith(`${base}/`)
-    )
-}
-
-function toPathKey(dir: string) {
-    return resolve(dir).replaceAll('\\', '/').toLowerCase()
-}
-
 function createAgentId(file: string) {
-    return createHash('sha1').update(file).digest('hex').slice(0, 16)
+    return createHashId(file)
 }

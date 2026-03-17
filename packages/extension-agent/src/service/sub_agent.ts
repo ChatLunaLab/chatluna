@@ -1,3 +1,5 @@
+/** @module service/sub_agent */
+
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { computed, ComputedRef } from 'koishi-plugin-chatluna'
 import {
@@ -30,6 +32,7 @@ import {
     SubAgentRunInfo,
     SubAgentStatus
 } from '../types'
+import { applyShadowing } from '../utils/shadow'
 import {
     renderAvailableSubAgents,
     renderSubAgentSystemPrompt
@@ -229,29 +232,7 @@ export class ChatLunaAgentSubAgentService {
             permissions: this.permission.mergePermissions(item.permissions)
         }))
 
-        const groups = new Map<string, SubAgentInfo[]>()
-        for (const item of items) {
-            const list = groups.get(item.name) ?? []
-            list.push(item)
-            groups.set(item.name, list)
-        }
-
-        const result: SubAgentInfo[] = []
-        for (const list of groups.values()) {
-            list.sort((a, b) => a.priority - b.priority)
-            const winner = list.find(
-                (item) => item.enabled && item.state === 'ready'
-            )
-            for (const item of list) {
-                result.push({
-                    ...item,
-                    shadowedBy:
-                        winner && winner.id !== item.id ? winner.id : undefined
-                })
-            }
-        }
-
-        return result.sort((a, b) => {
+        return applyShadowing(items).sort((a, b) => {
             if (a.priority !== b.priority) return a.priority - b.priority
             return a.name.localeCompare(b.name)
         })
@@ -272,7 +253,19 @@ export class ChatLunaAgentSubAgentService {
         const llm = await this.resolveModel(info, options.model)
         const embeddings = await this.resolveEmbeddings()
         const skills = await this.resolveSkillPrompt(info)
-        const systemPrompt = renderSubAgentSystemPrompt(info, subCtx, skills)
+        const computer = this.ctx.chatluna_agent?.computer
+        const systemPrompt = renderSubAgentSystemPrompt(
+            info,
+            subCtx,
+            skills,
+            info.permissions.computer.mode !== 'deny' &&
+                computer?.getStatus().enabled
+                ? {
+                      enabled: true,
+                      capabilities: computer.getCapabilities()
+                  }
+                : undefined
+        )
 
         const preset = computed(
             () =>
@@ -329,7 +322,7 @@ export class ChatLunaAgentSubAgentService {
 
         const vars = {
             prompt: getMessageContent(msg.content),
-            built: { conversationId }
+            built: { conversationId, session: options.session }
         }
 
         const result = await executor.value.invoke(

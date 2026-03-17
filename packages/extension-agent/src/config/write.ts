@@ -1,3 +1,5 @@
+/** @module config/write */
+
 import { Context } from 'koishi'
 import { writeFile, mkdir } from 'fs/promises'
 import { dirname } from 'path'

@@ -35,8 +35,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 
-const TOOL_MASK_KEY = '__chatluna_agent_tool_mask'
-
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
     historyMemory: BufferMemory
@@ -188,11 +186,7 @@ export class ChatLunaPluginChain
             input: message
         }
         const nextVars = Object.assign({}, variables ?? {})
-        const toolMask =
-            subagentContext?.toolMask ??
-            callToolMask ??
-            (nextVars[TOOL_MASK_KEY] as ToolMask | undefined)
-        delete nextVars[TOOL_MASK_KEY]
+        const toolMask = subagentContext?.toolMask ?? callToolMask
 
         const chatHistory = this.historyMemory
             .chatHistory as KoishiChatMessageHistory

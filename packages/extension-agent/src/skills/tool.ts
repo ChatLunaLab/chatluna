@@ -1,14 +1,9 @@
+/** @module skills/tool */
+
 import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { z } from 'zod'
-
-export interface SkillToolService {
-    buildToolDescription(): string
-    activateSkill(
-        name: string,
-        runConfig?: ChatLunaToolRunnable
-    ): Promise<string>
-}
+import { SkillToolService } from '../types/skills'
 
 export class SkillTool extends StructuredTool {
     name = 'skill'

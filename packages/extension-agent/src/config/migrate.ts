@@ -1,11 +1,15 @@
+/** @module config/migrate */
+
 import {
     AgentConfig,
+    ComputerConfig,
     McpServerConfig,
     PermissionRule,
     SubAgentConfig,
     SubAgentItemConfig
 } from '../types'
 import {
+    createDefaultComputerConfig,
     createDefaultSubAgentConfig,
     createDefaultToolConfig,
     createPermissionRule,
@@ -27,8 +31,8 @@ interface OldConfig {
     skills?:
         | AgentConfig['skills']
         | Record<string, { enabled?: boolean } | boolean | unknown>
-    computer?: Record<string, unknown>
-    scheduler?: Record<string, unknown>
+    computer?: Record<string, unknown> | AgentConfig['computer']
+    scheduler?: Record<string, unknown> | AgentConfig['computer']
     subAgent?: unknown
     tool?: unknown
 }
@@ -50,6 +54,42 @@ function readNames(value: unknown) {
         .map(String)
         .map((item) => item.trim())
         .filter(Boolean)
+}
+
+function readBool(
+    obj: Record<string, unknown>,
+    key: string,
+    fallback: boolean
+): boolean {
+    return typeof obj[key] === 'boolean' ? obj[key] : fallback
+}
+
+function readString(
+    obj: Record<string, unknown>,
+    key: string,
+    fallback: string
+): string {
+    return typeof obj[key] === 'string' ? obj[key] : fallback
+}
+
+function readNumber(
+    obj: Record<string, unknown>,
+    key: string,
+    fallback: number
+): number {
+    return typeof obj[key] === 'number' ? obj[key] : fallback
+}
+
+function readEnum<T extends string>(
+    obj: Record<string, unknown>,
+    key: string,
+    allowed: T[],
+    fallback: T
+): T {
+    const value = obj[key]
+    return typeof value === 'string' && allowed.includes(value as T)
+        ? (value as T)
+        : fallback
 }
 
 function migrateRule(
@@ -335,13 +375,194 @@ function migrateToolConfig(old?: OldConfig['tool']): AgentConfig['tool'] {
     return cfg
 }
 
+function migrateComputerConfig(old?: OldConfig['computer']): ComputerConfig {
+    const cfg = createDefaultComputerConfig()
+    const raw = asObject(old)
+    if (!raw) {
+        return cfg
+    }
+
+    cfg.defaultProvider = readEnum(
+        raw,
+        'defaultProvider',
+        ['local', 'e2b', 'open-terminal'],
+        cfg.defaultProvider
+    )
+    cfg.idleTimeoutMs = readNumber(raw, 'idleTimeoutMs', cfg.idleTimeoutMs)
+
+    const local = asObject(raw.local)
+    if (local) {
+        cfg.local.enabled = readBool(local, 'enabled', cfg.local.enabled)
+        cfg.local.sandboxMode = readEnum(
+            local,
+            'sandboxMode',
+            ['read-only', 'workspace-write'],
+            cfg.local.sandboxMode
+        )
+        cfg.local.approvalMode = readEnum(
+            local,
+            'approvalMode',
+            ['on-request', 'never'],
+            cfg.local.approvalMode
+        )
+        cfg.local.dangerouslySkipPermissions = readBool(
+            local,
+            'dangerouslySkipPermissions',
+            cfg.local.dangerouslySkipPermissions
+        )
+        cfg.local.preferredShell = readEnum(
+            local,
+            'preferredShell',
+            ['git-bash', 'powershell', 'cmd', 'auto'],
+            cfg.local.preferredShell
+        )
+        cfg.local.scopePath = readString(
+            local,
+            'scopePath',
+            cfg.local.scopePath
+        )
+        cfg.local.writableRoots = readNames(local.writableRoots)
+        cfg.local.readOnlyRoots = readNames(local.readOnlyRoots)
+        cfg.local.denyRoots = readNames(local.denyRoots)
+        cfg.local.ignores = readNames(local.ignores)
+        cfg.local.allowedCommands = readNames(local.allowedCommands)
+        cfg.local.blockedCommands = readNames(local.blockedCommands)
+        cfg.local.commandTimeoutMs = readNumber(
+            local,
+            'commandTimeoutMs',
+            cfg.local.commandTimeoutMs
+        )
+        cfg.local.networkPolicy = readEnum(
+            local,
+            'networkPolicy',
+            ['block', 'allow'],
+            cfg.local.networkPolicy
+        )
+    }
+
+    // v0-v3 兼容：旧版把 local 字段直接平铺在 computer/scheduler 下。
+    if (typeof raw.enabled === 'boolean') {
+        cfg.local.enabled = raw.enabled
+    }
+    if (typeof raw.scopePath === 'string') {
+        cfg.local.scopePath = raw.scopePath
+    }
+    if (readNames(raw.writableRoots).length > 0) {
+        cfg.local.writableRoots = readNames(raw.writableRoots)
+    }
+    if (readNames(raw.readOnlyRoots).length > 0) {
+        cfg.local.readOnlyRoots = readNames(raw.readOnlyRoots)
+    }
+    if (readNames(raw.denyRoots).length > 0) {
+        cfg.local.denyRoots = readNames(raw.denyRoots)
+    }
+    if (readNames(raw.ignores).length > 0) {
+        cfg.local.ignores = readNames(raw.ignores)
+    }
+    if (readNames(raw.fsIgnores).length > 0) {
+        cfg.local.ignores = readNames(raw.fsIgnores)
+    }
+    if (readNames(raw.allowedCommands).length > 0) {
+        cfg.local.allowedCommands = readNames(raw.allowedCommands)
+    }
+    if (readNames(raw.bashAllowedCommands).length > 0) {
+        cfg.local.allowedCommands = readNames(raw.bashAllowedCommands)
+    }
+    if (readNames(raw.blockedCommands).length > 0) {
+        cfg.local.blockedCommands = readNames(raw.blockedCommands)
+    }
+    if (readNames(raw.bashBlockedCommands).length > 0) {
+        cfg.local.blockedCommands = readNames(raw.bashBlockedCommands)
+    }
+    if (typeof raw.commandTimeoutMs === 'number') {
+        cfg.local.commandTimeoutMs = raw.commandTimeoutMs
+    }
+    // v0-v3 兼容：bashTimeout 旧字段已迁移到 commandTimeoutMs。
+    if (typeof raw.bashTimeout === 'number') {
+        cfg.local.commandTimeoutMs = raw.bashTimeout
+    }
+    if (
+        raw.sandboxMode === 'read-only' ||
+        raw.sandboxMode === 'workspace-write'
+    ) {
+        cfg.local.sandboxMode = raw.sandboxMode
+    }
+    if (raw.approvalMode === 'on-request' || raw.approvalMode === 'never') {
+        cfg.local.approvalMode = raw.approvalMode
+    }
+    // v0-v3 兼容：bashAutoExecute=true 等价于 approvalMode='never'。
+    if (typeof raw.bashAutoExecute === 'boolean' && raw.bashAutoExecute) {
+        cfg.local.approvalMode = 'never'
+    }
+    if (typeof raw.dangerouslySkipPermissions === 'boolean') {
+        cfg.local.dangerouslySkipPermissions = raw.dangerouslySkipPermissions
+    }
+    if (
+        raw.preferredShell === 'git-bash' ||
+        raw.preferredShell === 'powershell' ||
+        raw.preferredShell === 'cmd' ||
+        raw.preferredShell === 'auto'
+    ) {
+        cfg.local.preferredShell = raw.preferredShell
+    }
+    if (raw.networkPolicy === 'block' || raw.networkPolicy === 'allow') {
+        cfg.local.networkPolicy = raw.networkPolicy
+    }
+
+    const e2b = asObject(raw.e2b)
+    if (e2b) {
+        cfg.e2b.enabled = readBool(e2b, 'enabled', cfg.e2b.enabled)
+        cfg.e2b.apiKey = readString(e2b, 'apiKey', cfg.e2b.apiKey)
+        cfg.e2b.template = readString(e2b, 'template', cfg.e2b.template)
+        cfg.e2b.desktopTemplate = readString(
+            e2b,
+            'desktopTemplate',
+            cfg.e2b.desktopTemplate
+        )
+        cfg.e2b.timeoutMs = readNumber(e2b, 'timeoutMs', cfg.e2b.timeoutMs)
+        cfg.e2b.keepAlive = readBool(e2b, 'keepAlive', cfg.e2b.keepAlive)
+    }
+
+    const openTerminal = asObject(raw.openTerminal ?? raw.open_terminal)
+    if (openTerminal) {
+        cfg.openTerminal.enabled = readBool(
+            openTerminal,
+            'enabled',
+            cfg.openTerminal.enabled
+        )
+        cfg.openTerminal.baseUrl = readString(
+            openTerminal,
+            'baseUrl',
+            cfg.openTerminal.baseUrl
+        )
+        cfg.openTerminal.apiKey = readString(
+            openTerminal,
+            'apiKey',
+            cfg.openTerminal.apiKey
+        )
+        cfg.openTerminal.deploymentMode = readEnum(
+            openTerminal,
+            'deploymentMode',
+            ['docker', 'bare-metal', 'unknown'],
+            cfg.openTerminal.deploymentMode
+        )
+        cfg.openTerminal.userIsolation = readBool(
+            openTerminal,
+            'userIsolation',
+            cfg.openTerminal.userIsolation
+        )
+    }
+
+    return cfg
+}
+
 export function migrateFromOldConfig(old?: OldConfig): AgentConfig {
     const cfg = getDefaultConfig()
     if (!old) return cfg
 
-    cfg.version = 3
+    cfg.version = 4
     cfg.skills = migrateSkillsConfig(old.skills)
-    cfg.computer = old.computer ?? old.scheduler ?? {}
+    cfg.computer = migrateComputerConfig(old.computer ?? old.scheduler)
     cfg.subAgent = migrateSubAgentConfig(old.subAgent)
     cfg.tool = migrateToolConfig(old.tool)
 
@@ -361,13 +582,18 @@ export function migrateFromOldConfig(old?: OldConfig): AgentConfig {
             const parsed = JSON.parse(old.mcp.servers)
             if (parsed.mcpServers) {
                 cfg.mcp.mcpServers = Object.fromEntries(
-                    Object.entries(parsed.mcpServers).map(
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        ([name, srv]: [string, any]) => [
+                    Object.entries(parsed.mcpServers).map(([name, srv]) => {
+                        const item = srv as McpServerConfig & {
+                            environment?: Record<string, string>
+                        }
+                        return [
                             name,
-                            { ...srv, env: srv.env ?? srv.environment }
+                            {
+                                ...item,
+                                env: item.env ?? item.environment
+                            }
                         ]
-                    )
+                    })
                 )
             }
         } catch {}

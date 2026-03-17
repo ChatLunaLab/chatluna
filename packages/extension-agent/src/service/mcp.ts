@@ -1,3 +1,5 @@
+/** @module service/mcp */
+
 import { Context } from 'koishi'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
