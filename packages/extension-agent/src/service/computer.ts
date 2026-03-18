@@ -599,6 +599,7 @@ export class ChatLunaAgentComputerService {
                         '<computer_use>',
                         `Default provider: ${this.resolveProvider() ?? this.config.computer.defaultProvider}`,
                         `Available capabilities: ${this.getCapabilities().join(', ')}`,
+                        'For local computer tools, /tmp is a managed temp directory mapped inside the workspace sandbox.',
                         'Use these capabilities when file operations, code search, shell execution, terminal interaction, or preview access are needed.',
                         '</computer_use>'
                     ].join('\n')

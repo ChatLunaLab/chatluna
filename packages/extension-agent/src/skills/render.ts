@@ -7,9 +7,18 @@ import { listSkillResources, ScannedSkill } from './scan'
 
 export function renderAvailableSkills(
     skills: SkillInfo[],
-    active: SkillInfo[]
+    active: SkillInfo[],
+    root?: string
 ) {
     const lines = ['<available_skills>']
+
+    if (root) {
+        lines.push(
+            `Skills root: ${escapeXml(root)}`,
+            'When a task installs or updates a skill, place it under <skills-root>/<skill-name>/ and keep the entry file at <skill-dir>/SKILL.md.',
+            ''
+        )
+    }
 
     if (skills.length > 0) {
         lines.push(
@@ -23,6 +32,9 @@ export function renderAvailableSkills(
                 '  <skill>',
                 `    <name>${escapeXml(skill.name)}</name>`,
                 `    <description>${escapeXml(skill.description)}</description>`,
+                ...(skill.dir
+                    ? [`    <location>${escapeXml(skill.dir)}</location>`]
+                    : []),
                 '  </skill>'
             )
         }
@@ -32,7 +44,14 @@ export function renderAvailableSkills(
         lines.push('', '<loaded_skills>')
 
         for (const skill of active) {
-            lines.push(`  <skill>${escapeXml(skill.name)}</skill>`)
+            lines.push(
+                '  <skill>',
+                `    <name>${escapeXml(skill.name)}</name>`,
+                ...(skill.dir
+                    ? [`    <location>${escapeXml(skill.dir)}</location>`]
+                    : []),
+                '  </skill>'
+            )
         }
 
         lines.push(
@@ -83,6 +102,7 @@ export async function renderSkillContent(
         skill.body.length > 0 ? skill.body : skill.raw,
         '',
         `Skill directory: ${options.skillDir ?? skill.dir}`,
+        `Skill entry file: ${options.skillDir ? `${options.skillDir}/SKILL.md` : skill.path}`,
         'Resolve relative paths against the skill directory.',
         ...(options.needsMaterialization
             ? [

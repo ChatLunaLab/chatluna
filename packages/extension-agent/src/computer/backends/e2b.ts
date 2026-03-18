@@ -34,6 +34,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     readonly capabilities = [...CAPABILITIES]
 
     private _connected = false
+    private _root: string
     private _cwd: string
     private _sandbox?: SandboxWrapper
     private _sandboxId?: string
@@ -44,7 +45,8 @@ export class E2BComputerSession implements ComputerSessionApi {
         id = randomUUID()
     ) {
         this.sessionId = id
-        this._cwd = options.cwd || '/workspace'
+        this._root = options.cwd || '/workspace'
+        this._cwd = this._root
     }
 
     get cwd() {
@@ -199,7 +201,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        const dir = searchPath || this._cwd
+        const dir = searchPath || this._root
         const cmd = include
             ? `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(include)} | xargs -r grep -nE ${quoteShell(pattern)}`
             : `grep -R -nE ${quoteShell(pattern)} ${quoteShell(dir)}`
@@ -212,7 +214,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async glob(pattern: string, searchPath?: string) {
-        const dir = searchPath || this._cwd
+        const dir = searchPath || this._root
         const result = await this.execute(
             `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(pattern)}`
         )
@@ -374,7 +376,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     getScopePath() {
-        return this._cwd
+        return this._root
     }
 
     private ensureSandbox() {

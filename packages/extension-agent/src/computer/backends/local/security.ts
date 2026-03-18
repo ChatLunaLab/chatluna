@@ -87,7 +87,8 @@ export function ensureCommandPathsInScope(
         return
     }
 
-    const absolutePathPattern = /(?:^|\s)(\/[^\s]+|[A-Za-z]:[^\s]+)/g
+    const absolutePathPattern =
+        /(?:^|[\s="'`:(\[{;<>@,])((?:\/|[A-Za-z]:)[^\s"'`)\]}<>;,@]*)/g
     for (const match of command.matchAll(absolutePathPattern)) {
         const filePath = match[1]
         if (!isInScope(path.resolve(filePath))) {

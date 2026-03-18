@@ -97,7 +97,8 @@ export function ensureLocalCommandAccess(
 export function wrapCommandWithSandbox(
     command: string,
     workdir: string,
-    cfg: LocalBackendConfig
+    cfg: LocalBackendConfig,
+    tmp: string
 ) {
     if (process.platform === 'win32') {
         return command
@@ -113,12 +114,17 @@ export function wrapCommandWithSandbox(
         cfg.sandboxMode === 'read-only'
             ? [`--ro-bind ${quote(scope)} ${quote(scope)}`]
             : [`--bind ${quote(scope)} ${quote(scope)}`]
+    const temp =
+        cfg.sandboxMode === 'read-only'
+            ? [`--ro-bind ${quote(tmp)} /tmp`]
+            : [`--bind ${quote(tmp)} /tmp`]
     const net = cfg.networkPolicy === 'block' ? ['--unshare-net'] : []
 
     return [
         quote(bwrap),
         '--ro-bind / /',
         ...binds,
+        ...temp,
         '--dev /dev',
         '--proc /proc',
         '--die-with-parent',

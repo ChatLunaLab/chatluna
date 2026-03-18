@@ -42,7 +42,7 @@ Usage:
         const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        await session?.send(`${MSG_READING}: ${input.filePath}`)
+        session.app.logger.info(`${MSG_READING}: ${input.filePath}`)
 
         try {
             const result = await computer.readFile(
@@ -50,7 +50,7 @@ Usage:
                 input.offset,
                 input.limit ?? 2000
             )
-            await session?.send(
+            session.app.logger.info(
                 `${MSG_DONE}: ${input.filePath} (${result.split('\n').length} 行)`
             )
             return result

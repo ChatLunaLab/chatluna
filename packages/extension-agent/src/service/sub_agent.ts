@@ -26,6 +26,7 @@ import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_t
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { randomUUID } from 'crypto'
 import { Context, h, Session } from 'koishi'
+import { getSkillsRootPath } from '../config/path'
 import {
     AgentConfig,
     SubAgentInfo,
@@ -422,12 +423,12 @@ export class ChatLunaAgentSubAgentService {
             info,
             skills.map((s) => s.name)
         )
-        if (list.length < 1) return undefined
 
         return getMessageContent(
             renderAvailableSkills(
                 skills.filter((item) => list.includes(item.name)),
-                []
+                [],
+                getSkillsRootPath(this.ctx)
             ).content
         )
     }

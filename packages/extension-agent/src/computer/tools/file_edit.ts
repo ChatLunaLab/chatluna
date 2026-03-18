@@ -40,10 +40,11 @@ Usage:
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        await session?.send(`${MSG_EDITING}: ${input.filePath}`)
+        toolConfig.configurable.session.app.logger.info(
+            `${MSG_EDITING}: ${input.filePath}`
+        )
 
         try {
             const result = await computer.editFile(
@@ -57,7 +58,7 @@ Usage:
                 return `oldString not found in ${input.filePath}`
             }
 
-            await session?.send(
+            toolConfig.configurable.session.app.logger.info(
                 `${MSG_DONE}: ${input.filePath} (替换 ${result.replacements} 处)`
             )
             return `Replaced ${result.replacements} occurrence(s) in ${input.filePath}\n\nContext (> marks modified lines):\n${result.context}`

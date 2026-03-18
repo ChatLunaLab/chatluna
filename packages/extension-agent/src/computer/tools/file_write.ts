@@ -35,11 +35,11 @@ Usage:
         const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        await session?.send(`${MSG_WRITING}: ${input.filePath}`)
+        session.app.logger.info(`${MSG_WRITING}: ${input.filePath}`)
 
         try {
             await computer.writeFile(input.filePath, input.content)
-            await session?.send(`${MSG_DONE}: ${input.filePath}`)
+            session.app.logger.info(`${MSG_DONE}: ${input.filePath}`)
             return this.formatResult(true, `Wrote ${input.filePath}`)
         } catch (err) {
             return this.formatResult(

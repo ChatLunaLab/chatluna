@@ -27,6 +27,7 @@ import {
     importSkills as runImportSkills
 } from '../skills/import'
 import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
+import { watchSkillFiles } from '../skills/watch'
 import { SkillTool } from '../skills/tool'
 import { buildSkillCatalog } from '../skills/catalog'
 import { ChatLunaAgentPermissionService } from './permissions'
@@ -37,6 +38,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     private _visibleByName = new Map<string, ScannedSkill>()
     private _toolDispose?: () => void
     private _promptDispose?: () => void
+    private _watchDispose?: () => void
     private _active = new Map<string, Set<string>>()
     private _requested = new Map<string, Set<string>>()
 
@@ -83,6 +85,8 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     }
 
     async stop() {
+        this._watchDispose?.()
+        this._watchDispose = undefined
         this._toolDispose?.()
         this._toolDispose = undefined
         this._promptDispose?.()
@@ -107,6 +111,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         this.pruneActiveSkills()
         this.syncTool()
         this.syncPrompt()
+        await this.syncWatch()
     }
 
     getStatus(): SkillsStatus {
@@ -345,8 +350,12 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     ? this._catalog.filter((s) => current.has(s.id))
                     : []
 
-                if (skills.length > 0 || active.length > 0) {
-                    const msg = renderAvailableSkills(skills, active)
+                if (skills.length > 0 || active.length > 0 || !sub) {
+                    const msg = renderAvailableSkills(
+                        skills,
+                        active,
+                        getSkillsRootPath(this.ctx)
+                    )
                     runtime.result.push(msg)
                     runtime.usedTokens += await countMessageTokens(
                         msg,
@@ -378,6 +387,18 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 return next()
             },
             10
+        )
+    }
+
+    private async syncWatch() {
+        this._watchDispose?.()
+        this._watchDispose = await watchSkillFiles(
+            this.ctx,
+            this.config.skills,
+            async () => {
+                await this.reload()
+                await this.ctx.chatluna_agent?.refreshConsoleData()
+            }
         )
     }
 }

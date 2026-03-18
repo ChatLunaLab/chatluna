@@ -7,14 +7,10 @@ import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
 const MSG_EXECUTING = '执行命令'
-const MSG_TIMEOUT = '命令执行超时'
-const MSG_FAILED = '命令执行失败'
-const MSG_DONE = '命令执行完成'
-
 export class BashTool extends ComputerToolBase {
     name = 'bash'
 
-    description = `Execute a shell command. Automatically uses the correct shell for the current platform (cmd/PowerShell on Windows, sh/bash on Unix).
+    description = `Execute a shell command to operate and control the computer. Automatically uses the correct shell for the current platform (cmd/PowerShell on Windows, sh/bash on Unix).
 
 Rules:
 - Working directory defaults to the configured scope path
@@ -56,22 +52,14 @@ When to use:
         const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        await session?.send(`${MSG_EXECUTING}: \`${input.command}\``)
+        session?.app.logger.info(`${MSG_EXECUTING}: \`${input.command}\``)
 
         try {
             const result = await computer.execute(input.command, {
-                workdir: input.workdir,
+                workdir: input.workdir ?? computer.getScopePath(),
                 timeout,
                 session
             })
-
-            await session?.send(
-                result.timedOut
-                    ? MSG_TIMEOUT
-                    : result.signal || result.exitCode !== 0
-                      ? `${MSG_FAILED}${result.signal ? ` (${result.signal})` : ` (exit ${result.exitCode})`}`
-                      : MSG_DONE
-            )
 
             if (result.timedOut) {
                 return `Command timed out after ${timeout}ms.`
@@ -86,6 +74,8 @@ When to use:
             if (result.exitCode !== 0) {
                 return `Command exited with code ${result.exitCode}:\n${output}`
             }
+
+            session?.app.logger.info(output)
 
             return output
         } catch (err) {

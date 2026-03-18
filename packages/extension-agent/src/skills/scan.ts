@@ -63,6 +63,10 @@ export async function scanSkills(
     })
 }
 
+export async function getSkillRoots(ctx: Context, cfg: AgentConfig['skills']) {
+    return (await getScanTargets(ctx, cfg)).map((target) => target.root)
+}
+
 export async function scanSkillRoot(root: string): Promise<ScannedSkill[]> {
     const files = await collectFilesRecursive(root)
     const dirs = Array.from(

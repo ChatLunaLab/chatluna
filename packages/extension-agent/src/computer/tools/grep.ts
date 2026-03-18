@@ -43,7 +43,7 @@ export class GrepTool extends ComputerToolBase {
         const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        await session?.send(
+        session.app.logger.info(
             `${MSG_SEARCHING}: ${input.pattern}${input.include ? ` (${input.include})` : ''}${input.path ? ` in ${input.path}` : ''}`
         )
 
@@ -57,7 +57,7 @@ export class GrepTool extends ComputerToolBase {
                 return 'No matches found.'
             }
 
-            await session?.send(`${MSG_FOUND} ${results.length} 条匹配`)
+            session.app.logger.info(`${MSG_FOUND} ${results.length} 条匹配`)
             return results.join('\n')
         } catch (err) {
             return this.formatResult(
