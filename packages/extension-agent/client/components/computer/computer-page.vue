@@ -17,7 +17,9 @@
                 <div>
                     <div class="row-title">默认电脑能力后端</div>
                     <div class="row-description">
-                        Agent 会优先使用这里选择的执行环境。
+                        Agent
+                        会优先使用这里选择的执行环境，建议优先启用隔离后端，
+                        Local 仅在明确知道风险时再打开。
                     </div>
                 </div>
                 <el-select
@@ -25,9 +27,9 @@
                     class="provider-select"
                     @update:model-value="updateProvider"
                 >
-                    <el-option label="Local" value="local" />
                     <el-option label="E2B" value="e2b" />
                     <el-option label="open-terminal" value="open-terminal" />
+                    <el-option label="Local（高风险）" value="local" />
                 </el-select>
             </div>
             <div class="provider-item">
@@ -129,10 +131,10 @@ const props = withDefaults(
     }>(),
     {
         config: () => ({
-            defaultProvider: 'local',
+            defaultProvider: 'e2b',
             idleTimeoutMs: 600000,
             local: {
-                enabled: true,
+                enabled: false,
                 sandboxMode: 'workspace-write',
                 approvalMode: 'on-request',
                 dangerouslySkipPermissions: false,
@@ -165,7 +167,7 @@ const props = withDefaults(
         }),
         status: () => ({
             enabled: false,
-            defaultProvider: 'local',
+            defaultProvider: 'e2b',
             backends: {
                 local: {
                     type: 'local',

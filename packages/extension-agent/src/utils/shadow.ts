@@ -9,6 +9,7 @@ export function applyShadowing<
         id: string
         enabled: boolean
         state: string
+        available?: boolean
         priority: number
     }
 >(items: T[]): (T & { shadowedBy?: string })[] {
@@ -24,7 +25,10 @@ export function applyShadowing<
     for (const list of groups.values()) {
         list.sort((a, b) => a.priority - b.priority)
         const winner = list.find(
-            (item) => item.enabled && item.state === 'ready'
+            (item) =>
+                item.enabled &&
+                item.state === 'ready' &&
+                item.available !== false
         )
 
         for (const item of list) {

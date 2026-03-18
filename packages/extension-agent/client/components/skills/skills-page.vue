@@ -50,7 +50,8 @@
                     class="skill-card"
                     :class="{
                         muted: !item.visible,
-                        invalid: item.state !== 'ready'
+                        invalid: item.state !== 'ready',
+                        readonly: isReadonly(item)
                     }"
                 >
                     <div class="skill-top">
@@ -60,7 +61,13 @@
                             </div>
 
                             <div class="skill-copy">
-                                <div class="skill-title">{{ item.name }}</div>
+                                <div class="skill-title">
+                                    {{
+                                        item.emoji
+                                            ? `${item.emoji} ${item.name}`
+                                            : item.name
+                                    }}
+                                </div>
                                 <div class="skill-name">
                                     {{ `${item.source} / ${item.scope}` }}
                                 </div>
@@ -70,6 +77,7 @@
                         <el-switch
                             :model-value="item.enabled"
                             :loading="skillBusy[item.id] === true"
+                            :disabled="isReadonly(item)"
                             @change="
                                 (value) => toggleSkill(item, value as boolean)
                             "
@@ -89,14 +97,37 @@
                             <el-tag
                                 size="small"
                                 effect="plain"
+                                :type="item.available ? 'success' : 'warning'"
+                            >
+                                {{ item.available ? '环境就绪' : '缺少依赖' }}
+                            </el-tag>
+                            <el-tag
+                                size="small"
+                                effect="plain"
                                 :type="item.modelEnabled ? 'success' : 'info'"
                             >
-                                {{ item.modelEnabled ? '可用' : '不可用' }}
+                                {{
+                                    item.modelEnabled
+                                        ? '模型可见'
+                                        : '模型不可见'
+                                }}
                             </el-tag>
+                        </div>
+
+                        <div v-if="item.homepage" class="skill-meta">
+                            主页：{{ item.homepage }}
                         </div>
 
                         <div v-if="item.compatibility" class="skill-meta">
                             兼容性：{{ item.compatibility }}
+                        </div>
+
+                        <div v-if="formatRequires(item)" class="skill-meta">
+                            依赖要求：{{ formatRequires(item) }}
+                        </div>
+
+                        <div v-if="formatInstall(item)" class="skill-meta">
+                            安装方式：{{ formatInstall(item) }}
                         </div>
 
                         <div
@@ -109,20 +140,16 @@
                             允许使用的工具：{{ item.allowedTools.join(', ') }}
                         </div>
 
-                        <div
-                            v-if="item.diagnostics.length > 0"
-                            class="diagnostic-box"
-                        >
-                            <div
-                                v-for="line in item.diagnostics.slice(0, 3)"
-                                :key="line"
-                                class="diagnostic-line"
-                            >
-                                {{ line }}
-                            </div>
-                        </div>
-
                         <div class="skill-actions">
+                            <el-button
+                                v-if="hasDiagnostics(item)"
+                                size="small"
+                                plain
+                                type="warning"
+                                @click="openDiagnostics(item)"
+                            >
+                                错误信息
+                            </el-button>
                             <el-button
                                 size="small"
                                 plain
@@ -148,13 +175,12 @@
                                 复制路径
                             </el-button>
                             <el-button
-                                v-if="canRemove(item)"
+                                v-if="item.homepage"
                                 size="small"
-                                type="danger"
                                 plain
-                                @click="removeSkill(item)"
+                                @click="openLink(item.homepage)"
                             >
-                                删除导入项
+                                打开主页
                             </el-button>
                         </div>
                     </div>
@@ -184,6 +210,11 @@
             @refresh="$emit('refresh')"
         />
 
+        <skills-diagnostics-dialog
+            v-model:visible="showDiagnosticsDialog"
+            :skill="diagnosticSkill"
+        />
+
         <el-dialog
             v-model="showPreview"
             title="技能内容"
@@ -204,9 +235,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { MagicStick, Search } from '@element-plus/icons-vue'
 import CodeEditor from '../shared/code-editor.vue'
+import SkillsDiagnosticsDialog from './skills-diagnostics-dialog.vue'
 import SkillsImportFolderDialog from './skills-import-folder-dialog.vue'
 import SkillsImportGithubDialog from './skills-import-github-dialog.vue'
 import SkillsSettingsDialog from './skills-settings-dialog.vue'
@@ -260,7 +292,9 @@ const skillBusy = ref<Record<string, boolean>>({})
 const showSettingsDialog = ref(false)
 const showGithubDialog = ref(false)
 const showFolderDialog = ref(false)
+const showDiagnosticsDialog = ref(false)
 const showPreview = ref(false)
+const diagnosticSkill = ref<SkillInfo>()
 const previewTitle = ref('')
 const previewContent = ref('')
 const previewLanguage = ref('plaintext')
@@ -309,6 +343,9 @@ const filteredSkills = computed(() => {
             item.path,
             item.source,
             item.scope,
+            item.homepage,
+            formatRequires(item),
+            formatInstall(item),
             ...(item.diagnostics ?? [])
         ]
             .join('\n')
@@ -377,27 +414,6 @@ async function exportSkill(item: SkillInfo) {
     }
 }
 
-async function removeSkill(item: SkillInfo) {
-    try {
-        await ElMessageBox.confirm(
-            `删除“${item.name}”后，如需恢复，需要重新导入。确定删除吗？`,
-            '删除技能',
-            {
-                confirmButtonText: '删除',
-                cancelButtonText: '取消',
-                type: 'warning'
-            }
-        )
-
-        await send('chatluna-agent/removeSkill', item.id)
-        ElMessage.success('已删除导入的技能。')
-    } catch (error) {
-        if (error !== 'cancel') {
-            ElMessage.error('删除失败，请稍后重试。')
-        }
-    }
-}
-
 async function copyPath(path: string) {
     try {
         await navigator.clipboard.writeText(path)
@@ -411,8 +427,48 @@ function canExport(item: SkillInfo) {
     return item.path.length > 0 && item.state !== 'missing'
 }
 
-function canRemove(item: SkillInfo) {
-    return item.source === 'chatluna' && item.scope === 'data' && !!item.path
+function hasDiagnostics(item: SkillInfo) {
+    return isReadonly(item) || item.diagnostics.length > 0
+}
+
+function isReadonly(item: SkillInfo) {
+    return item.state !== 'ready' || !item.available
+}
+
+function openDiagnostics(item: SkillInfo) {
+    diagnosticSkill.value = item
+    showDiagnosticsDialog.value = true
+}
+
+function formatRequires(item: SkillInfo) {
+    return [
+        item.requires?.bins?.length
+            ? `bins: ${item.requires.bins.join(', ')}`
+            : '',
+        item.requires?.anyBins?.length
+            ? `anyBins: ${item.requires.anyBins.join(', ')}`
+            : '',
+        item.requires?.env?.length
+            ? `env: ${item.requires.env.join(', ')}`
+            : '',
+        item.requires?.config?.length
+            ? `config: ${item.requires.config.join(', ')}`
+            : ''
+    ]
+        .filter(Boolean)
+        .join(' | ')
+}
+
+function formatInstall(item: SkillInfo) {
+    return (
+        item.install
+            ?.map((entry) => entry.label ?? `${entry.kind}: ${entry.id}`)
+            .join('；') ?? ''
+    )
+}
+
+function openLink(url: string) {
+    window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 function downloadExport(result: SkillExportResult) {
@@ -525,7 +581,6 @@ function base64ToBlob(data: string, type: string) {
 .skill-description,
 .skill-path,
 .skill-meta,
-.diagnostic-line,
 .preview-meta {
     font-size: 12px;
     color: var(--k-text-light);
@@ -668,6 +723,11 @@ function base64ToBlob(data: string, type: string) {
     opacity: 0.72;
 }
 
+.skill-card.readonly {
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 30%);
+    border-style: dashed;
+}
+
 .skill-card.invalid {
     border-color: color-mix(in srgb, var(--el-color-warning), transparent 66%);
 }
@@ -715,17 +775,6 @@ function base64ToBlob(data: string, type: string) {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-}
-
-.diagnostic-box {
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--el-color-warning), transparent 95%);
-    color: color-mix(
-        in srgb,
-        var(--el-color-warning-dark-2),
-        var(--k-text-dark) 26%
-    );
 }
 
 .empty-state {

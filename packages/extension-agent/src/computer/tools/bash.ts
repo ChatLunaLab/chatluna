@@ -6,7 +6,6 @@ import { formatExecuteResult } from '../backends/types'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
-const MSG_EXECUTING = '执行命令'
 export class BashTool extends ComputerToolBase {
     name = 'bash'
 
@@ -52,7 +51,7 @@ When to use:
         const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        session?.app.logger.info(`${MSG_EXECUTING}: \`${input.command}\``)
+        this.computer.ctx.logger.info(`执行命令: \`${input.command}\``)
 
         try {
             const result = await computer.execute(input.command, {
@@ -75,7 +74,7 @@ When to use:
                 return `Command exited with code ${result.exitCode}:\n${output}`
             }
 
-            session?.app.logger.info(output)
+            this.computer.ctx.logger.info(output)
 
             return output
         } catch (err) {

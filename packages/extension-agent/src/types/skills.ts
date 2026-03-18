@@ -23,6 +23,28 @@ export type SkillScope = 'data' | 'project' | 'user'
 
 export type SkillState = 'ready' | 'invalid' | 'missing'
 
+export interface SkillRequires {
+    bins?: string[]
+    anyBins?: string[]
+    env?: string[]
+    config?: string[]
+}
+
+export interface SkillInstallAction {
+    id: string
+    kind: string
+    label?: string
+    bins?: string[]
+    os?: string[]
+    formula?: string
+    package?: string
+    url?: string
+    archive?: string
+    extract?: boolean
+    stripComponents?: number
+    targetDir?: string
+}
+
 export interface SkillInfo {
     id: string
     name: string
@@ -33,14 +55,21 @@ export interface SkillInfo {
     scope: SkillScope
     state: SkillState
     enabled: boolean
+    available: boolean
     visible: boolean
     modelEnabled: boolean
     userInvocable: boolean
     implicitInvocation: boolean
     shadowedBy?: string
+    emoji?: string
+    homepage?: string
+    skillKey?: string
+    primaryEnv?: string
     compatibility?: string
     license?: string
     metadata?: Record<string, string>
+    requires?: SkillRequires
+    install?: SkillInstallAction[]
     allowedTools?: string[]
     diagnostics: string[]
 }

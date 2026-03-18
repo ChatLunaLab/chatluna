@@ -40,10 +40,9 @@ export class GrepTool extends ComputerToolBase {
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        session.app.logger.info(
+        this.computer.ctx.logger.info(
             `${MSG_SEARCHING}: ${input.pattern}${input.include ? ` (${input.include})` : ''}${input.path ? ` in ${input.path}` : ''}`
         )
 
@@ -57,7 +56,9 @@ export class GrepTool extends ComputerToolBase {
                 return 'No matches found.'
             }
 
-            session.app.logger.info(`${MSG_FOUND} ${results.length} 条匹配`)
+            this.computer.ctx.logger.info(
+                `${MSG_FOUND} ${results.length} 条匹配`
+            )
             return results.join('\n')
         } catch (err) {
             return this.formatResult(

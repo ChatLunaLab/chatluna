@@ -14,6 +14,12 @@ export class TaskTool extends StructuredTool {
             .describe(
                 'The exact sub-agent name from the injected sub-agent catalog'
             ),
+        id: z
+            .string()
+            .optional()
+            .describe(
+                'Optional existing task id returned by an earlier task call. Reuse it with the same agent to continue that session'
+            ),
         prompt: z.string().describe('The task to delegate to the sub-agent'),
         reason: z
             .string()
@@ -34,6 +40,7 @@ export class TaskTool extends StructuredTool {
         return await this.service.runTask(
             {
                 agent: input.agent,
+                id: input.id,
                 prompt: input.prompt,
                 reason: input.reason
             },

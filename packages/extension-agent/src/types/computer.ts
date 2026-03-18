@@ -55,6 +55,7 @@ export type ComputerCapability =
     | 'file_read'
     | 'file_write'
     | 'file_edit'
+    | 'file_publish'
     | 'grep'
     | 'glob'
     | 'bash'

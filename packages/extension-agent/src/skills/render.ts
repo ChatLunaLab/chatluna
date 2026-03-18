@@ -85,8 +85,34 @@ export async function renderSkillContent(
             ? 'The following skill is now active for the current conversation.'
             : 'The following skill remains active for the current conversation.',
         `Description: ${skill.description}`,
+        ...(skill.homepage ? [`Homepage: ${skill.homepage}`] : []),
         ...(skill.compatibility
             ? [`Compatibility: ${skill.compatibility}`]
+            : []),
+        ...(skill.requires
+            ? [
+                  `Requirements: ${[
+                      skill.requires.bins?.length
+                          ? `bins=${skill.requires.bins.join(', ')}`
+                          : '',
+                      skill.requires.anyBins?.length
+                          ? `anyBins=${skill.requires.anyBins.join(', ')}`
+                          : '',
+                      skill.requires.env?.length
+                          ? `env=${skill.requires.env.join(', ')}`
+                          : '',
+                      skill.requires.config?.length
+                          ? `config=${skill.requires.config.join(', ')}`
+                          : ''
+                  ]
+                      .filter(Boolean)
+                      .join(' | ')}`
+              ]
+            : []),
+        ...(skill.install && skill.install.length > 0
+            ? [
+                  `Install options: ${skill.install.map((item) => item.label ?? item.id).join('; ')}`
+              ]
             : []),
         ...(skill.allowedTools && skill.allowedTools.length > 0
             ? [`Allowed tools: ${skill.allowedTools.join(', ')}`]
@@ -101,9 +127,6 @@ export async function renderSkillContent(
         '',
         skill.body.length > 0 ? skill.body : skill.raw,
         '',
-        `Skill directory: ${options.skillDir ?? skill.dir}`,
-        `Skill entry file: ${options.skillDir ? `${options.skillDir}/SKILL.md` : skill.path}`,
-        'Resolve relative paths against the skill directory.',
         ...(options.needsMaterialization
             ? [
                   'Skill resources need to be read from the host and written to the execution environment before use.'

@@ -1,9 +1,11 @@
 /** @module computer/backends/local/index */
 
 import { spawn } from 'node:child_process'
+import { createReadStream } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'path'
 import { randomUUID } from 'crypto'
+import mimeTypes from 'mime-types'
 import { ComputerCapability, LocalBackendConfig } from '../../../types'
 import {
     ComputerSessionApi,
@@ -66,15 +68,13 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
-        const file = mapTmp(filePath, this._cfg)
-        ensureLocalPathAccess(file, this._cfg, 'read')
-        return this._store.readFile(file, offset, limit)
+        ensureLocalPathAccess(filePath, this._cfg, 'read')
+        return this._store.readFile(filePath, offset, limit)
     }
 
     async writeFile(filePath: string, content: string) {
-        const file = mapTmp(filePath, this._cfg)
-        ensureLocalPathAccess(file, this._cfg, 'write')
-        await this._store.writeFile(file, content)
+        ensureLocalPathAccess(filePath, this._cfg, 'write')
+        await this._store.writeFile(filePath, content)
     }
 
     async editFile(
@@ -83,66 +83,73 @@ export class LocalComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        const file = mapTmp(filePath, this._cfg)
-        ensureLocalPathAccess(file, this._cfg, 'write')
-        return this._store.editFile(file, oldString, newString, replaceCount)
+        ensureLocalPathAccess(filePath, this._cfg, 'write')
+        return this._store.editFile(
+            filePath,
+            oldString,
+            newString,
+            replaceCount
+        )
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        const dir = searchPath ? mapTmp(searchPath, this._cfg) : undefined
         if (searchPath) {
-            ensureLocalPathAccess(dir, this._cfg, 'read')
+            ensureLocalPathAccess(searchPath, this._cfg, 'read')
         }
-        return this._store.grep(pattern, dir, include)
+        return this._store.grep(pattern, searchPath, include)
     }
 
     async glob(pattern: string, searchPath?: string) {
-        const dir = searchPath ? mapTmp(searchPath, this._cfg) : undefined
         if (searchPath) {
-            ensureLocalPathAccess(dir, this._cfg, 'read')
+            ensureLocalPathAccess(searchPath, this._cfg, 'read')
         }
-        return this._store.glob(pattern, dir)
+        return this._store.glob(pattern, searchPath)
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
         ensureCommandAllowed(command, this._cfg)
 
         const tmp = tmpdir(this._cfg)
-        const workdir = mapTmp(
-            options.workdir || this._cfg.scopePath || process.cwd(),
-            this._cfg
-        )
-        const probe = await resolveShellCommand('', this._cfg)
-        const next = patchTmp(command, shellTmp(tmp, probe.file))
+        const workdir = options.workdir || this._cfg.scopePath || process.cwd()
 
         ensureWorkdirInScope(workdir, this._cfg)
-        ensureCommandPathsInScope(next, this._cfg, (filePath) =>
+        ensureCommandPathsInScope(command, this._cfg, (filePath) =>
             this.isInScope(filePath)
         )
-        ensureLocalCommandAccess(next, workdir, this._cfg)
+        ensureLocalCommandAccess(command, workdir, this._cfg)
         await confirmHighRiskCommand(command, this._cfg, options.session)
 
         await fs.mkdir(tmp, { recursive: true })
 
         const timeout = options.timeout ?? this._cfg.commandTimeoutMs
         const shell = await resolveShellCommand(
-            wrapCommandWithSandbox(next, workdir, this._cfg, tmp),
+            wrapCommandWithSandbox(command, workdir, this._cfg, tmp),
             this._cfg
         )
-        const env = { ...shell.env, ...tmpEnv(tmp, shell.file), ...options.env }
+        const env = { ...shell.env, ...tmpEnv(tmp), ...options.env }
 
         this._cwd = path.resolve(workdir)
         return await runChildProcess(shell, workdir, env, timeout)
     }
 
     async readAsset(filePath: string) {
-        const file = mapTmp(filePath, this._cfg)
-        ensureLocalPathAccess(file, this._cfg, 'read')
-        return (await fs.readFile(file)).toString('base64')
+        ensureLocalPathAccess(filePath, this._cfg, 'read')
+        return (await fs.readFile(filePath)).toString('base64')
+    }
+
+    async openAsset(filePath: string) {
+        ensureLocalPathAccess(filePath, this._cfg, 'read')
+        const info = await fs.stat(filePath)
+        const mimeType = mimeTypes.lookup(filePath)
+        return {
+            stream: createReadStream(filePath),
+            size: info.size,
+            mimeType: mimeType === false ? undefined : mimeType
+        }
     }
 
     isInScope(filePath: string) {
-        return this._store.isInScope(mapTmp(filePath, this._cfg))
+        return this._store.isInScope(filePath)
     }
 
     getScopePath() {
@@ -153,9 +160,9 @@ export class LocalComputerSession implements ComputerSessionApi {
         options: { cwd?: string; cols?: number; rows?: number } = {}
     ) {
         const tmp = tmpdir(this._cfg)
-        const cwd = mapTmp(options.cwd || this._cwd, this._cfg)
+        const cwd = options.cwd || this._cwd
         const shell = await resolveInteractiveShellCommand(this._cfg)
-        const env = { ...shell.env, ...tmpEnv(tmp, shell.file) }
+        const env = { ...shell.env, ...tmpEnv(tmp) }
         return createLocalTerminal(shell, cwd, env)
     }
 }
@@ -291,47 +298,11 @@ function tmpdir(cfg: LocalBackendConfig) {
     return path.join(cfg.scopePath || process.cwd(), '.tmp')
 }
 
-function mapTmp(filePath: string, cfg: LocalBackendConfig) {
-    if (filePath !== '/tmp' && !filePath.startsWith('/tmp/')) {
-        return filePath
-    }
-
-    return path.join(tmpdir(cfg), filePath.slice('/tmp'.length))
-}
-
-function patchTmp(command: string, target: string) {
-    return command.replace(
-        /(^|[\s="'`:(\[{;<>@,])\/tmp(?=\/|$|[\s"'`)\]}])/g,
-        (_, head: string) => `${head}${target}`
-    )
-}
-
-function shellTmp(tmp: string, shellFile: string) {
-    if (process.platform !== 'win32') {
-        return tmp
-    }
-
-    const file = path.basename(shellFile).toLowerCase()
-    if (file !== 'bash.exe' && file !== 'bash') {
-        return tmp.replaceAll('\\', '/')
-    }
-
-    return `/${tmp[0].toLowerCase()}${tmp.slice(2).replaceAll('\\', '/')}`
-}
-
-function tmpEnv(tmp: string, shellFile: string): NodeJS.ProcessEnv {
-    if (process.platform !== 'win32') {
-        return {
-            TMP: tmp,
-            TEMP: tmp,
-            TMPDIR: tmp
-        }
-    }
-
+function tmpEnv(tmp: string): NodeJS.ProcessEnv {
     return {
         TMP: tmp,
         TEMP: tmp,
-        TMPDIR: shellTmp(tmp, shellFile)
+        TMPDIR: tmp
     }
 }
 
@@ -339,6 +310,7 @@ const CAPABILITIES: ComputerCapability[] = [
     'file_read',
     'file_write',
     'file_edit',
+    'file_publish',
     'grep',
     'glob',
     'bash',

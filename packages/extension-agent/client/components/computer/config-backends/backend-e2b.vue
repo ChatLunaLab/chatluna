@@ -64,7 +64,7 @@
         <el-alert
             type="info"
             :closable="false"
-            description="配置将被保存，但实际可用性取决于后端状态检测结果。"
+            description="推荐优先把 E2B 作为默认后端；配置会被保存，但实际可用性仍取决于状态检测结果。"
         />
     </el-form>
 </template>

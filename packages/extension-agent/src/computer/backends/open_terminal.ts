@@ -1,7 +1,10 @@
 /** @module computer/backends/open_terminal */
 
 import { randomUUID } from 'crypto'
+import { Buffer } from 'node:buffer'
+import { Readable } from 'node:stream'
 import { Context } from 'koishi'
+import mimeTypes from 'mime-types'
 import { quoteShell } from './types'
 import { OpenTerminalBackendConfig } from '../../types'
 import {
@@ -67,50 +70,61 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             return result.stdout.trim()
         }
 
+        const params = new URLSearchParams({ path: filePath })
+        if (offset != null) {
+            params.set('start_line', String(offset))
+        }
+        if (limit != null) {
+            params.set(
+                'end_line',
+                String(offset != null ? offset + limit - 1 : limit)
+            )
+        }
+
         const result = await this.ctx.http(
-            this.url(`/files/${encodeRemotePath(filePath)}`),
+            this.url(`/files/read?${params.toString()}`),
             {
                 method: 'GET',
                 headers: this.headers()
             }
         )
 
-        const value = result.data
         const text =
-            typeof value === 'string'
-                ? value
-                : typeof value?.content === 'string'
-                  ? value.content
-                  : typeof value?.data === 'string'
-                    ? value.data
-                    : JSON.stringify(value)
+            typeof result.data?.content === 'string'
+                ? result.data.content
+                : typeof result.data === 'string'
+                  ? result.data
+                  : JSON.stringify(result.data)
 
         if (offset == null && limit == null) {
             return text
         }
 
+        const start = offset ?? 1
         const lines = text.split('\n')
-        const start = offset != null ? Math.max(0, offset - 1) : 0
-        const end =
-            limit != null ? Math.min(lines.length, start + limit) : lines.length
-        const resultLines = lines
-            .slice(start, end)
-            .map((line, idx) => `${start + idx + 1}: ${line}`)
-        if (end >= lines.length) {
+        const resultLines = lines.map((line, idx) => `${start + idx}: ${line}`)
+        const total =
+            typeof result.data?.total_lines === 'number'
+                ? result.data.total_lines
+                : start + lines.length - 1
+        if (start + lines.length - 1 >= total) {
             return resultLines.join('\n')
         }
 
-        return `${resultLines.join('\n')}\n\n(Showing lines ${start + 1}-${end} of ${lines.length}. Use offset=${end + 1} to continue.)`
+        return `${resultLines.join('\n')}\n\n(Showing lines ${start}-${start + lines.length - 1} of ${total}. Use offset=${start + lines.length} to continue.)`
     }
 
     async writeFile(filePath: string, content: string) {
         await this.ctx.http.post(
-            this.url(`/files/${encodeRemotePath(filePath)}`),
-            content,
+            this.url('/files/write'),
+            {
+                path: filePath,
+                content
+            },
             {
                 headers: {
                     ...this.headers(),
-                    'content-type': 'text/plain; charset=utf-8'
+                    'content-type': 'application/json'
                 }
             }
         )
@@ -166,39 +180,79 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        const dir = searchPath || this._root
-        const cmd = include
-            ? `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(include)} | xargs -r grep -nE ${quoteShell(pattern)}`
-            : `grep -R -nE ${quoteShell(pattern)} ${quoteShell(dir)}`
-        const result = await this.execute(cmd)
-        return [result.stdout, result.stderr]
-            .filter(Boolean)
-            .join('\n')
-            .split('\n')
-            .filter(Boolean)
+        const result = await this.ctx.http(this.url('/files/grep'), {
+            method: 'GET',
+            headers: this.headers(),
+            params: {
+                query: pattern,
+                path: searchPath || this._root,
+                regex: true,
+                include: include ? [include] : undefined,
+                match_per_line: true,
+                max_results: 500
+            }
+        })
+
+        const matches = Array.isArray(result.data?.matches)
+            ? result.data.matches
+            : []
+
+        return matches
+            .map((item) => {
+                if (typeof item?.file !== 'string') {
+                    return undefined
+                }
+                if (typeof item?.line === 'number') {
+                    return `${item.file}:${item.line}: ${item.content ?? ''}`
+                }
+                return item.file
+            })
+            .filter((item): item is string => item != null)
     }
 
     async glob(pattern: string, searchPath?: string) {
         const dir = searchPath || this._root
-        const result = await this.execute(
-            `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(pattern)}`
-        )
-        return [result.stdout, result.stderr]
-            .filter(Boolean)
-            .join('\n')
-            .split('\n')
-            .filter(Boolean)
+        const result = await this.ctx.http(this.url('/files/glob'), {
+            method: 'GET',
+            headers: this.headers(),
+            params: {
+                pattern,
+                path: dir,
+                type: 'file',
+                max_results: 500
+            }
+        })
+
+        const matches = Array.isArray(result.data?.matches)
+            ? result.data.matches
+            : []
+
+        return matches
+            .map((item) => {
+                if (typeof item?.path !== 'string') {
+                    return undefined
+                }
+                if (item.path.startsWith('/')) {
+                    return item.path
+                }
+                return `${dir.replace(/\/$/, '')}/${item.path}`
+            })
+            .filter((item): item is string => item != null)
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
+        const wait = Math.max(1, Math.ceil((options.timeout ?? 30000) / 1000))
         const result = await this.ctx.http.post(
             this.url('/execute'),
             {
                 command,
-                workdir: options.workdir || this._cwd,
-                timeout: options.timeout
+                cwd: options.workdir || this._cwd,
+                env: options.env
             },
             {
+                params: {
+                    wait
+                },
                 headers: {
                     ...this.headers(),
                     'content-type': 'application/json'
@@ -208,57 +262,106 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
         this._cwd = options.workdir || this._cwd
         const data = result.data
+        const output = formatOpenTerminalOutput(data?.output)
+
+        if (data?.status === 'running') {
+            if (typeof data?.id === 'string') {
+                await this.ctx.http
+                    .delete(this.url(`/execute/${data.id}`), {
+                        headers: this.headers()
+                    })
+                    .catch(() => undefined)
+            }
+
+            return {
+                exitCode: data?.exit_code ?? 1,
+                stdout: output.stdout,
+                stderr: output.stderr,
+                timedOut: true
+            }
+        }
 
         return {
             exitCode: data?.exitCode ?? data?.code ?? data?.exit_code ?? 0,
-            stdout: data?.stdout ?? data?.output ?? '',
-            stderr: data?.stderr ?? data?.error ?? '',
+            stdout: output.stdout,
+            stderr: output.stderr,
             signal: data?.signal,
-            timedOut: data?.timedOut === true
+            timedOut: false
         }
     }
 
     async readAsset(filePath: string) {
-        const result = await this.execute(
-            `base64 ${quoteShell(filePath)} | tr -d '\n'`
-        )
-        return result.stdout.trim()
+        const asset = await this.openAsset(filePath)
+        return (await readOpenTerminalAsset(asset.stream)).toString('base64')
+    }
+
+    async openAsset(filePath: string) {
+        const url = new URL(this.url('/files/view'))
+        url.searchParams.set('path', filePath)
+        const result = await fetch(url, {
+            headers: this.headers()
+        })
+
+        if (!result.ok || result.body == null) {
+            throw new Error(`Failed to open asset: ${result.status}`)
+        }
+
+        const size = Number(result.headers.get('content-length') ?? '')
+        const mimeType = result.headers.get('content-type')
+        const fallback = mimeTypes.lookup(filePath)
+        return {
+            stream: Readable.fromWeb(result.body),
+            size: Number.isFinite(size) ? size : undefined,
+            mimeType: mimeType ?? (fallback === false ? undefined : fallback)
+        }
     }
 
     async createTerminal(options: TerminalOptions = {}) {
-        const result = await this.ctx.http.post(
-            this.url('/terminals'),
-            {
-                cwd: options.cwd || this._cwd,
-                cols: options.cols,
-                rows: options.rows
-            },
-            {
-                headers: {
-                    ...this.headers(),
-                    'content-type': 'application/json'
-                }
-            }
-        )
-
-        const id = result.data?.id ?? result.data?.terminalId ?? randomUUID()
-        const socket = this.ctx.http.ws(this.url(`/terminals/${id}/ws`), {
+        const result = await this.ctx.http(this.url('/api/terminals'), {
+            method: 'POST',
             headers: this.headers()
         })
+
+        const id = result.data?.id ?? randomUUID()
+        const socket = this.ctx.http.ws(this.url(`/api/terminals/${id}`))
         const callbacks = new Set<(data: string) => void>()
+        const headers = this.headers()
+        const apiKey = this.resolveSecret(this.cfg.apiKey)
+        const url = this.url(`/api/terminals/${id}`)
+        const ctx = this.ctx
+        if (options.cwd) {
+            this._cwd = options.cwd
+        }
 
         socket.onopen = () => {
-            if (this.resolveSecret(this.cfg.apiKey)) {
+            if (apiKey) {
+                socket.send(JSON.stringify({ type: 'auth', token: apiKey }))
+            }
+            if (options.cols != null && options.rows != null) {
                 socket.send(
                     JSON.stringify({
-                        token: this.resolveSecret(this.cfg.apiKey)
+                        type: 'resize',
+                        cols: options.cols,
+                        rows: options.rows
                     })
+                )
+            }
+            if (options.cwd) {
+                socket.send(
+                    Buffer.from(`cd ${quoteShell(options.cwd)}\n`, 'utf8')
                 )
             }
         }
         socket.onmessage = (event) => {
             const data = event.data
-            const text = typeof data === 'string' ? data : ''
+            const text =
+                typeof data === 'string'
+                    ? data
+                    : Buffer.isBuffer(data)
+                      ? data.toString('utf8')
+                      : data instanceof ArrayBuffer
+                        ? Buffer.from(data).toString('utf8')
+                        : ''
             for (const callback of callbacks) {
                 callback(text)
             }
@@ -270,13 +373,18 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 callbacks.add(callback)
             },
             async sendInput(data) {
-                socket.send(data)
+                socket.send(Buffer.from(data, 'utf8'))
             },
             async resize(cols, rows) {
                 socket.send(JSON.stringify({ type: 'resize', cols, rows }))
             },
             async kill() {
                 socket.close()
+                await ctx.http
+                    .delete(url, {
+                        headers
+                    })
+                    .catch(() => undefined)
             }
         } satisfies TerminalHandle
     }
@@ -339,21 +447,50 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 }
 
-function encodeRemotePath(filePath: string) {
-    const normalized = filePath.replaceAll('\\', '/')
-    return normalized
-        .split('/')
-        .map((item) => encodeURIComponent(item))
-        .join('/')
-}
-
 function ensureTrailingSlash(url: string) {
     return url.endsWith('/') ? url : `${url}/`
+}
+
+function formatOpenTerminalOutput(output: unknown) {
+    const stdout: string[] = []
+    const stderr: string[] = []
+
+    if (!Array.isArray(output)) {
+        return { stdout: '', stderr: '' }
+    }
+
+    for (const item of output) {
+        const data = typeof item?.data === 'string' ? item.data : ''
+        if (!data) {
+            continue
+        }
+
+        if (item?.type === 'stderr') {
+            stderr.push(data)
+            continue
+        }
+
+        stdout.push(data)
+    }
+
+    return {
+        stdout: stdout.join(''),
+        stderr: stderr.join('')
+    }
+}
+
+async function readOpenTerminalAsset(stream: Readable) {
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    }
+    return Buffer.concat(chunks)
 }
 
 const CAPABILITIES = [
     'file_read',
     'file_write',
+    'file_publish',
     'file_edit',
     'grep',
     'glob',

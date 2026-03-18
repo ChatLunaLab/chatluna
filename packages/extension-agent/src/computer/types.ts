@@ -1,3 +1,4 @@
+import type { Readable } from 'node:stream'
 import { Session } from 'koishi'
 import { ComputerBackendType, ComputerCapability } from '../types'
 
@@ -27,6 +28,7 @@ export interface ComputerSessionApi {
     glob(pattern: string, searchPath?: string): Promise<string[]>
     execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult>
     readAsset?(path: string): Promise<string>
+    openAsset(path: string): Promise<OpenAssetResult>
 
     createTerminal?(options?: TerminalOptions): Promise<TerminalHandle>
     getDesktopInfo?(): Promise<DesktopInfo | undefined>
@@ -109,4 +111,10 @@ export interface ScreenshotResult {
 export interface StreamHandle {
     url: string
     stop(): Promise<void>
+}
+
+export interface OpenAssetResult {
+    stream: Readable
+    size?: number
+    mimeType?: string
 }

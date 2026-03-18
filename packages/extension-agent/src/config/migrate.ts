@@ -45,9 +45,9 @@ function asObject(value: unknown) {
     return value as Record<string, unknown>
 }
 
-function readNames(value: unknown) {
+function readNames(value: unknown, fallback: string[] = []) {
     if (!Array.isArray(value)) {
-        return []
+        return fallback
     }
 
     return value
@@ -414,12 +414,24 @@ function migrateComputerConfig(old?: OldConfig['computer']): ComputerConfig {
             'scopePath',
             cfg.local.scopePath
         )
-        cfg.local.writableRoots = readNames(local.writableRoots)
-        cfg.local.readOnlyRoots = readNames(local.readOnlyRoots)
-        cfg.local.denyRoots = readNames(local.denyRoots)
-        cfg.local.ignores = readNames(local.ignores)
-        cfg.local.allowedCommands = readNames(local.allowedCommands)
-        cfg.local.blockedCommands = readNames(local.blockedCommands)
+        cfg.local.writableRoots = readNames(
+            local.writableRoots,
+            cfg.local.writableRoots
+        )
+        cfg.local.readOnlyRoots = readNames(
+            local.readOnlyRoots,
+            cfg.local.readOnlyRoots
+        )
+        cfg.local.denyRoots = readNames(local.denyRoots, cfg.local.denyRoots)
+        cfg.local.ignores = readNames(local.ignores, cfg.local.ignores)
+        cfg.local.allowedCommands = readNames(
+            local.allowedCommands,
+            cfg.local.allowedCommands
+        )
+        cfg.local.blockedCommands = readNames(
+            local.blockedCommands,
+            cfg.local.blockedCommands
+        )
         cfg.local.commandTimeoutMs = readNumber(
             local,
             'commandTimeoutMs',

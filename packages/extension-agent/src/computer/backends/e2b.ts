@@ -2,8 +2,10 @@
 
 import { randomUUID } from 'crypto'
 import { Buffer } from 'node:buffer'
+import { Readable } from 'node:stream'
 import { CommandHandle, CommandResult, Sandbox as E2BSandbox } from 'e2b'
 import { Sandbox as DesktopSandbox } from '@e2b/desktop'
+import mimeTypes from 'mime-types'
 import { quoteShell } from './types'
 import { E2BBackendConfig } from '../../types'
 import {
@@ -242,6 +244,21 @@ export class E2BComputerSession implements ComputerSessionApi {
         return result.stdout.trim()
     }
 
+    async openAsset(filePath: string) {
+        const info = await this.ensureSandbox().files.getInfo(filePath)
+        const stream = await this.ensureSandbox().files.read(filePath, {
+            format: 'stream'
+        })
+        const mimeType = mimeTypes.lookup(filePath)
+        return {
+            stream: Readable.fromWeb(
+                stream as unknown as globalThis.ReadableStream<Uint8Array>
+            ),
+            size: info.size,
+            mimeType: mimeType === false ? undefined : mimeType
+        }
+    }
+
     async createTerminal(options: TerminalOptions = {}) {
         const sandbox = this.ensureSandbox()
         const callbacks = new Set<(data: string) => void>()
@@ -433,6 +450,7 @@ const CAPABILITIES = [
     'file_read',
     'file_write',
     'file_edit',
+    'file_publish',
     'grep',
     'glob',
     'bash',

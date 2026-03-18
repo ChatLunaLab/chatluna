@@ -19,6 +19,7 @@ import {
     SkillsStatus,
     SkillToolService
 } from '../types'
+import { syncBundledSkills } from '../skills/builtin'
 import { ensureSkillsRoot, ScannedSkill, scanSkills } from '../skills/scan'
 import { renderAvailableSkills, renderSkillContent } from '../skills/render'
 import { getSlashSkillName, stripSlashSkillName } from '../skills/slash'
@@ -99,7 +100,8 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     }
 
     async reload() {
-        const scanned = await scanSkills(this.ctx, this.config.skills)
+        await syncBundledSkills(this.ctx)
+        const scanned = await scanSkills(this.ctx, this.config)
         this._skills = new Map(scanned.map((s) => [s.id, s]))
         this._catalog = buildSkillCatalog(scanned, this.config.skills.items)
         this._visibleByName = new Map(

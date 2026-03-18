@@ -32,14 +32,13 @@ Usage:
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        session.app.logger.info(`${MSG_WRITING}: ${input.filePath}`)
+        this.computer.ctx.logger.info(`${MSG_WRITING}: ${input.filePath}`)
 
         try {
             await computer.writeFile(input.filePath, input.content)
-            session.app.logger.info(`${MSG_DONE}: ${input.filePath}`)
+            this.computer.ctx.logger.info(`${MSG_DONE}: ${input.filePath}`)
             return this.formatResult(true, `Wrote ${input.filePath}`)
         } catch (err) {
             return this.formatResult(

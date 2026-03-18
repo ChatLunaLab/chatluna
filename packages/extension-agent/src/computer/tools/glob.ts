@@ -30,10 +30,9 @@ export class GlobTool extends ComputerToolBase {
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        session.app.logger.info(
+        this.computer.ctx.logger.info(
             `${MSG_FINDING}: ${input.pattern}${input.path ? ` in ${input.path}` : ''}`
         )
 
@@ -43,7 +42,9 @@ export class GlobTool extends ComputerToolBase {
                 return 'No files matched.'
             }
 
-            session.app.logger.info(`${MSG_FOUND} ${results.length} 个文件`)
+            this.computer.ctx.logger.info(
+                `${MSG_FOUND} ${results.length} 个文件`
+            )
             return results.join('\n')
         } catch (err) {
             return this.formatResult(

@@ -105,10 +105,10 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
 
 export function createDefaultComputerConfig(): ComputerConfig {
     return {
-        defaultProvider: 'local',
+        defaultProvider: 'e2b',
         idleTimeoutMs: 600000,
         local: {
-            enabled: true,
+            enabled: false,
             sandboxMode: 'workspace-write',
             approvalMode: 'on-request',
             dangerouslySkipPermissions: false,

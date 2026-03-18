@@ -10,7 +10,12 @@ import { getSkillsRootPath, getSubAgentsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import { writeConfig } from '../config/write'
 import {
+    createSubAgentMarkdown,
+    getSubAgentFileName
+} from '../sub-agent/markdown'
+import {
     AgentConfig,
+    ManualSubAgentInput,
     McpToolConfig,
     SaveMcpServerInput,
     SkillExportResult,
@@ -252,6 +257,9 @@ export class ChatLunaAgentService extends Service {
             subAgent.builtin[info.name] = itemFromInfo(info, enabled)
         } else if (info.source === 'preset') {
             subAgent.presetAgents[info.name] = itemFromInfo(info, enabled)
+        } else if (info.source === 'manual') {
+            await this.subAgent.setManualAgentEnabled(id, enabled)
+            return
         } else {
             subAgent.items[id] = itemFromInfo(info, enabled)
         }
@@ -262,17 +270,38 @@ export class ChatLunaAgentService extends Service {
     }
 
     async uploadSubAgent(input: SubAgentImportInput) {
-        const name = input.name.replace(/\.md$/i, '').trim()
-        if (!name) {
-            throw new Error('Sub-agent file name is empty')
-        }
-
         const root = getSubAgentsRootPath(this.ctx)
-        const file = join(root, name, 'index.md')
+        const file = join(root, getSubAgentFileName(input.name), 'index.md')
         await mkdir(dirname(file), { recursive: true })
         await writeFile(file, input.data, 'utf-8')
         await this.subAgent.reload()
         await this.refreshConsoleData()
+    }
+
+    async addSubAgent(input: ManualSubAgentInput) {
+        const root = getSubAgentsRootPath(this.ctx)
+        const file = join(root, getSubAgentFileName(input.name), 'index.md')
+        await mkdir(dirname(file), { recursive: true })
+        await writeFile(file, createSubAgentMarkdown(input), 'utf-8')
+        await this.subAgent.reload()
+        await this.refreshConsoleData()
+
+        const path = resolve(file)
+        const info = this.subAgent
+            .getCatalogSync()
+            .find((item) => item.path && resolve(item.path) === path)
+
+        if (!info) {
+            throw new Error(
+                `Sub-agent was created but not found: ${input.name}`
+            )
+        }
+
+        return info
+    }
+
+    async registerSubAgent(input: ManualSubAgentInput) {
+        return await this.subAgent.registerManualAgent(input)
     }
 
     async createPresetAgent(
@@ -344,6 +373,11 @@ export class ChatLunaAgentService extends Service {
             await this.updateConfig('subAgent', subAgent, async () => {
                 await this.subAgent.reload()
             })
+            return
+        }
+
+        if (info.source === 'manual') {
+            await this.subAgent.removeManualAgent(id)
             return
         }
 

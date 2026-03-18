@@ -1,5 +1,12 @@
 <template>
     <el-form class="backend-form" label-position="top">
+        <el-alert
+            type="warning"
+            :closable="false"
+            title="Local 终端能力很危险"
+            description="它会直接在宿主机执行命令，而不是隔离沙箱。建议默认关闭，只在明确知道风险、且需要访问本地工作区时临时启用。"
+        />
+
         <div class="section">
             <div class="section-title">基础设置</div>
 
@@ -85,7 +92,8 @@
         <div class="section">
             <div class="section-title">访问边界</div>
             <div class="section-copy">
-                路径和 glob 模式请逐条输入，按回车后会变成标签，修改时更直观，也不容易误删。
+                路径和 glob
+                模式请逐条输入，按回车后会变成标签，修改时更直观，也不容易误删。
             </div>
 
             <div class="form-grid">

@@ -26,6 +26,7 @@ import type {
     SkillsStatus
 } from './types/skills'
 import type {
+    ManualSubAgentInput,
     SubAgentConfig,
     SubAgentImportInput,
     SubAgentInfo,
@@ -152,6 +153,9 @@ declare module '@koishijs/plugin-console' {
         ) => Promise<SkillExportResult | undefined>
         'chatluna-agent/getSubAgents': () => Promise<SubAgentInfo[]>
         'chatluna-agent/getSubAgentRuns': () => Promise<SubAgentRunInfo[]>
+        'chatluna-agent/addSubAgent': (
+            input: ManualSubAgentInput
+        ) => Promise<SubAgentInfo>
         'chatluna-agent/getModelNames': () => Promise<string[]>
         'chatluna-agent/importSkills': (
             input: SkillImportInput

@@ -21,7 +21,6 @@ class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
             const base = JSON.parse(
                 JSON.stringify(this.ctx.chatluna_agent.getConsoleData())
             )
-            console.log(base)
             return base
         }
 
@@ -48,7 +47,7 @@ function createEmptyStatus(ctx: Context): AgentStatus {
         },
         computer: {
             enabled: false,
-            defaultProvider: 'local',
+            defaultProvider: 'e2b',
             backends: {
                 local: {
                     type: 'local',
@@ -297,6 +296,11 @@ function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
         ok((id: string, enabled: boolean) =>
             agent().setSubAgentEnabled(id, enabled)
         )
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/addSubAgent',
+        async (input) => await agent().addSubAgent(input)
     )
 
     ctx.console.addListener(

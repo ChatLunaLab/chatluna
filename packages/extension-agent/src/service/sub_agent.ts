@@ -1,58 +1,45 @@
 /** @module service/sub_agent */
 
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { computed, ComputedRef } from 'koishi-plugin-chatluna'
-import {
-    createAgentExecutor,
-    createToolsRef,
-    SubagentContext,
-    ToolMask
-} from 'koishi-plugin-chatluna/llm-core/agent'
-import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
-import {
-    ChatLunaBaseEmbeddings,
-    ChatLunaChatModel
-} from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { randomUUID } from 'crypto'
+import { SubagentContext } from 'koishi-plugin-chatluna/llm-core/agent'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
-    PresetTemplate,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { Context, Session } from 'koishi'
+import { buildSubAgentCatalog } from '../sub-agent/catalog'
+import { createManualAgent } from '../sub-agent/manual'
+import { renderAvailableSubAgents } from '../sub-agent/render'
+import { runSubAgentTurn } from '../sub-agent/run'
 import {
-    ChatLunaTool,
-    ChatLunaToolRunnable
-} from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { randomUUID } from 'crypto'
-import { Context, h, Session } from 'koishi'
-import { getSkillsRootPath } from '../config/path'
+    createTaskSession,
+    formatTaskResult,
+    SubAgentTaskSession,
+    touchTaskSession
+} from '../sub-agent/session'
+import { ensureSubAgentsRoot } from '../sub-agent/scan'
+import { TaskTool } from '../sub-agent/tool'
 import {
     AgentConfig,
+    ManualSubAgentInput,
+    ManualSubAgentRegistration,
     SubAgentInfo,
     SubAgentRunInfo,
     SubAgentStatus
 } from '../types'
-import { applyShadowing } from '../utils/shadow'
-import {
-    renderAvailableSubAgents,
-    renderSubAgentSystemPrompt
-} from '../sub-agent/render'
-import { renderAvailableSkills } from '../skills/render'
-import {
-    ensureSubAgentsRoot,
-    getBuiltinAgents,
-    scanMarkdownAgents
-} from '../sub-agent/scan'
-import { getPresetAgents } from '../sub-agent/preset'
-import { TaskTool } from '../sub-agent/tool'
 import { ChatLunaAgentPermissionService } from './permissions'
 
 export class ChatLunaAgentSubAgentService {
     private _catalog = new Map<string, SubAgentInfo>()
     private _runs = new Map<string, SubAgentRunInfo>()
+    private _manual = new Map<string, ManualSubAgentInput>()
+    private _tasks = new Map<string, SubAgentTaskSession>()
     private _toolDispose?: () => void
     private _promptDispose?: () => void
+    private _runDispose = new Map<string, () => void>()
+    private _taskDispose = new Map<string, () => void>()
 
     constructor(
         public ctx: Context,
@@ -62,7 +49,7 @@ export class ChatLunaAgentSubAgentService {
 
     async start() {
         await ensureSubAgentsRoot(this.ctx)
-        await this.reload()
+        await this.refreshCatalog()
     }
 
     async stop() {
@@ -70,15 +57,16 @@ export class ChatLunaAgentSubAgentService {
         this._toolDispose = undefined
         this._promptDispose?.()
         this._promptDispose = undefined
+        clearDisposers(this._runDispose)
+        clearDisposers(this._taskDispose)
         this._catalog.clear()
         this._runs.clear()
+        this._manual.clear()
+        this._tasks.clear()
     }
 
     async reload() {
-        const items = await this.buildCatalog()
-        this._catalog = new Map(items.map((item) => [item.id, item]))
-        this.syncTool()
-        this.syncPrompt()
+        await this.refreshCatalog()
     }
 
     getStatus(): SubAgentStatus {
@@ -115,11 +103,62 @@ export class ChatLunaAgentSubAgentService {
     }
 
     buildToolDescription() {
-        return 'Delegate a focused task to a specialized sub-agent when parallel work, deeper investigation, or a narrower prompt will help. Use the exact sub-agent name from the injected catalog and give it a self-contained prompt.'
+        return [
+            'Delegate a focused task to a specialized sub-agent when parallel work, deeper investigation, or a narrower prompt will help.',
+            'Use the exact sub-agent name from the injected catalog.',
+            'The tool returns a task_id. Reuse the same agent and task_id to continue that sub-agent session later.'
+        ].join('\n')
+    }
+
+    async registerManualAgent(
+        input: ManualSubAgentInput
+    ): Promise<ManualSubAgentRegistration> {
+        const prev = input.id?.trim()
+            ? this._manual.get(input.id.trim())
+            : undefined
+        const next = {
+            ...prev,
+            ...input,
+            id: input.id?.trim() || prev?.id
+        } satisfies ManualSubAgentInput
+        const info = createManualAgent(this.ctx, next)
+
+        this._manual.set(info.id, {
+            ...next,
+            id: info.id
+        })
+
+        await this.refreshCatalog()
+        await this.ctx.chatluna_agent?.refreshConsoleData()
+        return {
+            agent: this._catalog.get(info.id) ?? info,
+            dispose: async () => {
+                await this.disposeManualAgent(info.id)
+            }
+        }
+    }
+
+    async setManualAgentEnabled(id: string, enabled: boolean) {
+        const input = this._manual.get(id)
+        if (!input) {
+            throw new Error(`Manual sub-agent not found: ${id}`)
+        }
+
+        return await this.registerManualAgent({
+            ...input,
+            id,
+            enabled
+        })
+    }
+
+    async removeManualAgent(id: string) {
+        if (!(await this.disposeManualAgent(id))) {
+            throw new Error(`Manual sub-agent not found: ${id}`)
+        }
     }
 
     async runTask(
-        input: { agent: string; prompt: string; reason?: string },
+        input: { agent: string; id?: string; prompt: string; reason?: string },
         runConfig?: ChatLunaToolRunnable
     ) {
         const parent = runConfig?.configurable?.subagentContext
@@ -127,8 +166,8 @@ export class ChatLunaAgentSubAgentService {
             return `Cannot delegate: maximum nesting depth (${parent.maxDepth}) reached.`
         }
 
-        const agent = this.findRunnableAgent(input.agent)
-        if (!agent) return `Sub-agent '${input.agent}' is not available.`
+        const info = this.findRunnableAgent(input.agent)
+        if (!info) return `Sub-agent '${input.agent}' is not available.`
 
         const session = runConfig?.configurable?.session
         const conversationId = runConfig?.configurable?.conversationId
@@ -136,18 +175,55 @@ export class ChatLunaAgentSubAgentService {
             return 'Sub-agent invocation is missing session context.'
         }
 
+        const task = input.id?.trim()
+            ? this._tasks.get(input.id.trim())
+            : this.createTask(info, conversationId, parent)
+
+        if (!task) {
+            return `Sub-agent task '${input.id}' was not found or expired.`
+        }
+
+        if (task.agentId !== info.id) {
+            return `Sub-agent task '${task.id}' belongs to '${task.agentName}', not '${input.agent}'.`
+        }
+
+        if (task.parentConversationId !== conversationId) {
+            return `Sub-agent task '${task.id}' belongs to a different conversation.`
+        }
+
+        if (task.activeRunId) {
+            return `Sub-agent task '${task.id}' is already running.`
+        }
+
         const prompt = input.reason?.trim()
             ? `Reason: ${input.reason.trim()}\n\nTask:\n${input.prompt}`
             : input.prompt
 
-        return await this.runSubAgent({
-            agentId: agent.id,
-            prompt,
-            session,
-            parentConversationId: conversationId,
-            parentSubagentContext: parent,
-            model: runConfig?.configurable?.model
-        })
+        touchTaskSession(task)
+        this.scheduleTaskCleanup(task.id)
+
+        try {
+            return await this.runSubAgent({
+                agentId: info.id,
+                prompt,
+                session,
+                parentConversationId: conversationId,
+                parentSubagentContext: parent,
+                model: runConfig?.configurable?.model,
+                task
+            })
+        } catch (err) {
+            const run = this.getLatestTaskRun(task.id)
+            if (!run) {
+                throw err
+            }
+
+            return formatTaskResult(
+                task,
+                run,
+                err instanceof Error ? err.message : String(err)
+            )
+        }
     }
 
     async runSubAgent(options: RunSubAgentOptions): Promise<string> {
@@ -156,309 +232,134 @@ export class ChatLunaAgentSubAgentService {
             throw new Error(`Sub-agent is not available: ${options.agentId}`)
         }
 
-        const maxDepth = options.parentSubagentContext?.maxDepth ?? 1
-        const depth = (options.parentSubagentContext?.depth ?? 0) + 1
-        if (options.parentSubagentContext && depth > maxDepth) {
-            throw new Error(`Maximum sub-agent depth ${maxDepth} reached`)
+        const task =
+            options.task ??
+            this.createTask(
+                info,
+                options.parentConversationId,
+                options.parentSubagentContext
+            )
+
+        if (task.activeRunId) {
+            throw new Error(`Sub-agent task '${task.id}' is already running.`)
         }
 
         const runId = randomUUID()
-        const conversationId = `subagent:${runId}`
         const mask = this.permission.createSubAgentToolMask(info)
 
         const subCtx = {
             agentId: info.id,
             agentName: info.name,
-            parentConversationId: options.parentConversationId,
-            depth,
-            maxDepth,
+            parentConversationId: task.parentConversationId,
+            depth: task.depth,
+            maxDepth: task.maxDepth,
             toolMask: mask,
-            disableHandoff: depth >= maxDepth,
+            disableHandoff: task.depth >= task.maxDepth,
             traceInfo: {
                 runId,
-                parentAgent: options.parentSubagentContext?.agentName ?? 'main',
+                parentAgent: task.parentAgent,
                 startedAt: Date.now()
             }
         } satisfies SubagentContext
 
         const run: SubAgentRunInfo = {
             runId,
+            taskId: task.id,
             agentId: info.id,
             agentName: info.name,
-            parentConversationId: options.parentConversationId,
-            depth,
+            conversationId: task.conversationId,
+            parentConversationId: task.parentConversationId,
+            depth: task.depth,
             state: 'running',
             startedAt: Date.now(),
             toolCount: 0,
             turnCount: 0
         }
+
+        task.activeRunId = runId
         this._runs.set(runId, run)
+        this.scheduleTaskCleanup(task.id)
         await this.ctx.chatluna_agent?.refreshConsoleData()
 
         try {
-            const output = await this.executeAgent(
+            const result = await runSubAgentTurn({
+                ctx: this.ctx,
+                permission: this.permission,
                 info,
-                options,
-                conversationId,
+                prompt: options.prompt,
+                session: options.session,
+                task,
                 subCtx,
                 mask,
-                run
-            )
+                run,
+                signal: options.signal,
+                model: options.model,
+                refresh: async () => {
+                    await this.ctx.chatluna_agent?.refreshConsoleData()
+                }
+            })
             run.state = 'completed'
             run.endedAt = Date.now()
+            delete task.activeRunId
+            touchTaskSession(task)
             await this.ctx.chatluna_agent?.refreshConsoleData()
             this.scheduleRunCleanup(runId)
-            return String(output ?? '')
+            this.scheduleTaskCleanup(task.id)
+            return formatTaskResult(task, run, String(result.output ?? ''))
         } catch (err) {
             run.state = options.signal?.aborted ? 'aborted' : 'failed'
             run.error = err instanceof Error ? err.message : String(err)
             run.endedAt = Date.now()
+            delete task.activeRunId
+            touchTaskSession(task)
             await this.ctx.chatluna_agent?.refreshConsoleData()
             this.scheduleRunCleanup(runId)
+            this.scheduleTaskCleanup(task.id)
             throw err
         }
     }
 
-    // ------------------------------------------------------------------
-    //  Private: catalog build
-    // ------------------------------------------------------------------
-
-    private async buildCatalog() {
-        const items = [
-            ...getBuiltinAgents(this.config.subAgent),
-            ...(await scanMarkdownAgents(this.ctx, this.config.subAgent)),
-            ...getPresetAgents(this.ctx, this.config.subAgent)
-        ].map((item) => ({
-            ...item,
-            permissions: this.permission.mergePermissions(item.permissions)
-        }))
-
-        return applyShadowing(items).sort((a, b) => {
-            if (a.priority !== b.priority) return a.priority - b.priority
-            return a.name.localeCompare(b.name)
-        })
+    private async refreshCatalog() {
+        const items = await buildSubAgentCatalog(
+            this.ctx,
+            this.config.subAgent,
+            this.permission,
+            this._manual.values()
+        )
+        this._catalog = new Map(items.map((item) => [item.id, item]))
+        this.syncTool()
+        this.syncPrompt()
     }
 
-    // ------------------------------------------------------------------
-    //  Private: agent execution
-    // ------------------------------------------------------------------
-
-    private async executeAgent(
+    private createTask(
         info: SubAgentInfo,
-        options: RunSubAgentOptions,
-        conversationId: string,
-        subCtx: SubagentContext,
-        mask: ToolMask,
-        run: SubAgentRunInfo
+        parentConversationId: string,
+        parent?: SubagentContext
     ) {
-        const llm = await this.resolveModel(info, options.model)
-        const embeddings = await this.resolveEmbeddings()
-        const skills = await this.resolveSkillPrompt(info)
-        const computer = this.ctx.chatluna_agent?.computer
-        const backends = computer
-            ? this.permission.filterComputerBackends(
-                  info,
-                  computer.listAvailableBackends()
-              )
-            : []
-        const systemPrompt = renderSubAgentSystemPrompt(
-            info,
-            subCtx,
-            skills,
-            backends.length > 0 && computer?.getStatus().enabled
-                ? {
-                      enabled: true,
-                      backends,
-                      capabilities: Array.from(
-                          new Set(
-                              backends.flatMap((item) =>
-                                  computer.getCapabilities(item)
-                              )
-                          )
-                      )
-                  }
-                : undefined
-        )
-
-        const preset = computed(
-            () =>
-                ({
-                    triggerKeyword: [info.name],
-                    rawText: systemPrompt,
-                    messages: systemPrompt
-                        ? [new SystemMessage(systemPrompt)]
-                        : [],
-                    config:
-                        info.promptMode === 'preset' && info.preset
-                            ? (this.ctx.chatluna.preset.getPreset(info.preset)
-                                  .value?.config ?? {})
-                            : {}
-                }) satisfies PresetTemplate
-        )
-
-        const chatPrompt = computed(
-            () =>
-                new ChatLunaChatPrompt({
-                    preset,
-                    tokenCounter: (text) => llm.getNumTokens(text),
-                    sendTokenLimit:
-                        llm.invocationParams().maxTokenLimit ??
-                        llm.getModelMaxContextSize(),
-                    contextManager: this.ctx.chatluna.contextManager,
-                    promptRenderService: this.ctx.chatluna.promptRenderer
-                })
-        )
-
-        const toolRef = createToolsRef({
-            tools: this.createTools(mask),
-            embeddings,
-            toolMask: mask
-        })
-
-        const executor = createAgentExecutor({
-            llm: computed(() => llm),
-            tools: toolRef.tools,
-            prompt: chatPrompt.value,
-            agentMode: 'tool-calling',
-            returnIntermediateSteps: false,
-            handleParsingErrors: true,
-            instructions: computed(() => undefined)
-        })
-
-        const msg = await this.createMessage(
-            info,
-            options.prompt,
-            options.session,
-            llm.modelName
-        )
-        toolRef.update(options.session, [msg], mask)
-
-        const vars = {
-            prompt: getMessageContent(msg.content),
-            built: { conversationId, session: options.session }
+        const maxDepth = parent?.maxDepth ?? 1
+        const depth = (parent?.depth ?? 0) + 1
+        if (parent && depth > maxDepth) {
+            throw new Error(`Maximum sub-agent depth ${maxDepth} reached`)
         }
 
-        const result = await executor.value.invoke(
-            {
-                input: msg,
-                chat_history: [],
-                variables: vars,
-                variables_hide: vars,
-                configurable: {
-                    session: options.session,
-                    conversationId,
-                    toolMask: mask,
-                    subagentContext: subCtx
-                }
-            },
-            {
-                signal: options.signal,
-                configurable: {
-                    session: options.session,
-                    model: llm,
-                    conversationId,
-                    preset: info.name,
-                    userId: options.session.userId,
-                    toolMask: mask,
-                    subagentContext: subCtx,
-                    onAgentEvent: async (event) => {
-                        if (event.type === 'tool-call') {
-                            run.toolCount += event.actions.length
-                            run.lastTool =
-                                event.actions[event.actions.length - 1]?.tool
-                        }
-                        if (event.type === 'round-decision') {
-                            run.turnCount += 1
-                        }
-                        await this.ctx.chatluna_agent?.refreshConsoleData()
-                    }
-                }
-            }
-        )
-
-        return result.output
-    }
-
-    // ------------------------------------------------------------------
-    //  Private: resource resolution
-    // ------------------------------------------------------------------
-
-    private createTools(mask: ToolMask): ComputedRef<ChatLunaTool[]> {
-        return computed(() =>
-            this.ctx.chatluna.platform
-                .getFilteredTools(mask)
-                .map((name) => this.ctx.chatluna.platform.getTool(name))
-        )
-    }
-
-    private async resolveModel(info: SubAgentInfo, parent?: ChatLunaChatModel) {
-        if (!info.model) {
-            if (!parent) {
-                throw new Error(
-                    'Parent model is missing for sub-agent inheritance'
-                )
-            }
-            return parent
-        }
-
-        const ref = await this.ctx.chatluna.createChatModel(info.model)
-        if (!ref.value) throw new Error(`Model not found: ${info.model}`)
-        return ref.value
-    }
-
-    private async resolveEmbeddings() {
-        const [platform, model] = parseRawModelName(
-            this.ctx.chatluna.config.defaultEmbeddings
-        )
-        const ref = await this.ctx.chatluna.createEmbeddings(platform, model)
-        return ref.value as ChatLunaBaseEmbeddings
-    }
-
-    private async resolveSkillPrompt(info: SubAgentInfo) {
-        const service = this.ctx.chatluna_agent?.skills
-        if (!service) return undefined
-
-        const skills = service.listSkills().filter((s) => s.modelEnabled)
-        const list = this.permission.filterSkillNames(
+        const task = createTaskSession({
+            id: randomUUID(),
             info,
-            skills.map((s) => s.name)
-        )
-
-        return getMessageContent(
-            renderAvailableSkills(
-                skills.filter((item) => list.includes(item.name)),
-                [],
-                getSkillsRootPath(this.ctx)
-            ).content
-        )
-    }
-
-    private async createMessage(
-        info: SubAgentInfo,
-        prompt: string,
-        session: Session,
-        modelName: string
-    ) {
-        if (!info.allowKoishiMessageTransform) {
-            return new HumanMessage(prompt)
-        }
-
-        const msg = await this.ctx.chatluna.messageTransformer.transform(
-            session,
-            h.parse(prompt),
-            modelName
-        )
-        return new HumanMessage({
-            content: msg.content,
-            name: msg.name,
-            id: session.userId,
-            additional_kwargs: { ...msg.additional_kwargs }
+            parentConversationId,
+            depth,
+            maxDepth,
+            parentAgent: parent?.agentName ?? 'main'
         })
+        this._tasks.set(task.id, task)
+        this.scheduleTaskCleanup(task.id)
+        return task
     }
 
-    // ------------------------------------------------------------------
-    //  Private: tool & prompt sync
-    // ------------------------------------------------------------------
+    private getLatestTaskRun(taskId: string) {
+        return [...this._runs.values()]
+            .filter((item) => item.taskId === taskId)
+            .sort((a, b) => b.startedAt - a.startedAt)[0]
+    }
 
     private syncTool() {
         this._toolDispose?.()
@@ -507,14 +408,68 @@ export class ChatLunaAgentSubAgentService {
         )
     }
 
-    private scheduleRunCleanup(runId: string) {
-        this.ctx.setTimeout(
-            async () => {
+    private scheduleRunCleanup(runId: string, timeout = 30 * 60 * 1000) {
+        this.cancelRunCleanup(runId)
+        this._runDispose.set(
+            runId,
+            this.ctx.setTimeout(async () => {
+                this._runDispose.delete(runId)
                 this._runs.delete(runId)
                 await this.ctx.chatluna_agent?.refreshConsoleData()
-            },
-            30 * 60 * 1000
+            }, timeout)
         )
+    }
+
+    private cancelRunCleanup(runId: string) {
+        this._runDispose.get(runId)?.()
+        this._runDispose.delete(runId)
+    }
+
+    private scheduleTaskCleanup(taskId: string, timeout = 30 * 60 * 1000) {
+        this.cancelTaskCleanup(taskId)
+        this._taskDispose.set(
+            taskId,
+            this.ctx.setTimeout(async () => {
+                this._taskDispose.delete(taskId)
+                const task = this._tasks.get(taskId)
+                if (!task) {
+                    return
+                }
+
+                if (task.activeRunId) {
+                    this.scheduleTaskCleanup(taskId, timeout)
+                    return
+                }
+
+                this._tasks.delete(taskId)
+
+                for (const run of [...this._runs.values()]) {
+                    if (run.taskId !== taskId) {
+                        continue
+                    }
+
+                    this.cancelRunCleanup(run.runId)
+                    this._runs.delete(run.runId)
+                }
+
+                await this.ctx.chatluna_agent?.refreshConsoleData()
+            }, timeout)
+        )
+    }
+
+    private cancelTaskCleanup(taskId: string) {
+        this._taskDispose.get(taskId)?.()
+        this._taskDispose.delete(taskId)
+    }
+
+    private async disposeManualAgent(id: string) {
+        if (!this._manual.delete(id)) {
+            return false
+        }
+
+        await this.refreshCatalog()
+        await this.ctx.chatluna_agent?.refreshConsoleData()
+        return true
     }
 }
 
@@ -526,6 +481,7 @@ interface RunSubAgentOptions {
     parentSubagentContext?: SubagentContext
     signal?: AbortSignal
     model?: ChatLunaChatModel
+    task?: SubAgentTaskSession
 }
 
 function isRunnable(info: SubAgentInfo) {
@@ -535,4 +491,12 @@ function isRunnable(info: SubAgentInfo) {
         !info.hidden &&
         !info.shadowedBy
     )
+}
+
+function clearDisposers(store: Map<string, () => void>) {
+    for (const dispose of store.values()) {
+        dispose()
+    }
+
+    store.clear()
 }

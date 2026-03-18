@@ -13,7 +13,10 @@ export function buildSkillCatalog(
 
     for (const skill of applyShadowing(skills)) {
         const visible =
-            !skill.shadowedBy && skill.enabled && skill.state === 'ready'
+            !skill.shadowedBy &&
+            skill.enabled &&
+            skill.available &&
+            skill.state === 'ready'
         catalog.push({
             id: skill.id,
             name: skill.name,
@@ -24,14 +27,21 @@ export function buildSkillCatalog(
             scope: skill.scope,
             state: skill.state,
             enabled: skill.enabled,
+            available: skill.available,
             visible,
             modelEnabled: visible && skill.implicitInvocation,
             userInvocable: skill.userInvocable,
             implicitInvocation: skill.implicitInvocation,
             shadowedBy: skill.shadowedBy,
+            emoji: skill.emoji,
+            homepage: skill.homepage,
+            skillKey: skill.skillKey,
+            primaryEnv: skill.primaryEnv,
             compatibility: skill.compatibility,
             license: skill.license,
             metadata: skill.metadata,
+            requires: skill.requires,
+            install: skill.install,
             allowedTools: skill.allowedTools,
             diagnostics: [...skill.diagnostics]
         })
@@ -52,6 +62,7 @@ export function buildSkillCatalog(
             scope: 'data',
             state: 'missing',
             enabled: item.enabled,
+            available: false,
             visible: false,
             modelEnabled: false,
             userInvocable: false,

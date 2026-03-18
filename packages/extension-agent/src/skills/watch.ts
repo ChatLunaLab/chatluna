@@ -18,51 +18,23 @@ export async function watchSkillFiles(
     const recursive =
         process.platform === 'win32' || process.platform === 'darwin'
     const dirs = recursive
-        ? await getExistingRoots(roots)
-        : await getWatchDirs(roots)
+        ? await filterExisting(roots)
+        : await getAllDirs(roots)
 
     const watchers: FSWatcher[] = []
     let timer: NodeJS.Timeout | undefined
     let closed = false
-    let queued = false
-    let running = false
-
-    const run = async () => {
-        if (closed) {
-            return
-        }
-
-        if (running) {
-            queued = true
-            return
-        }
-
-        running = true
-
-        try {
-            do {
-                queued = false
-                await reload()
-            } while (queued && !closed)
-        } catch (err) {
-            ctx.logger.error('Failed to hot reload skills', err)
-        } finally {
-            running = false
-        }
-    }
 
     const schedule = () => {
-        if (closed) {
-            return
-        }
-
-        if (timer) {
-            clearTimeout(timer)
-        }
-
-        timer = setTimeout(() => {
+        if (closed) return
+        clearTimeout(timer)
+        timer = setTimeout(async () => {
             timer = undefined
-            void run()
+            try {
+                await reload()
+            } catch (err) {
+                ctx.logger.error('Failed to hot reload skills', err)
+            }
         }, 100)
     }
 
@@ -85,53 +57,34 @@ export async function watchSkillFiles(
 
     return () => {
         closed = true
-
-        if (timer) {
-            clearTimeout(timer)
-            timer = undefined
-        }
-
-        for (const watcher of watchers) {
-            watcher.close()
-        }
+        clearTimeout(timer)
+        for (const watcher of watchers) watcher.close()
     }
 }
 
-async function getExistingRoots(roots: string[]) {
+async function filterExisting(roots: string[]) {
     const dirs: string[] = []
-
     for (const dir of roots) {
         const info = await stat(dir).catch(() => undefined)
-        if (info?.isDirectory()) {
-            dirs.push(dir)
-        }
+        if (info?.isDirectory()) dirs.push(dir)
     }
-
     return dirs
 }
 
-async function getWatchDirs(roots: string[]) {
+async function getAllDirs(roots: string[]) {
     const seen = new Set<string>()
     const queue: string[] = []
     const dirs: string[] = []
 
     for (const dir of roots) {
         const info = await stat(dir).catch(() => undefined)
-        if (info?.isDirectory()) {
-            queue.push(dir)
-        }
+        if (info?.isDirectory()) queue.push(dir)
     }
 
-    while (queue.length > 0) {
-        const dir = queue.shift()
-        if (!dir) {
-            continue
-        }
-
+    while (queue.length) {
+        const dir = queue.shift()!
         const key = toPathKey(dir)
-        if (seen.has(key)) {
-            continue
-        }
+        if (seen.has(key)) continue
 
         seen.add(key)
         dirs.push(dir)
@@ -140,11 +93,7 @@ async function getWatchDirs(roots: string[]) {
             () => []
         )
         for (const entry of entries) {
-            if (!entry.isDirectory()) {
-                continue
-            }
-
-            queue.push(join(dir, entry.name))
+            if (entry.isDirectory()) queue.push(join(dir, entry.name))
         }
     }
 

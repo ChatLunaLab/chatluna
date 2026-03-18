@@ -46,17 +46,17 @@
                     <thead>
                         <tr>
                             <th>Capability</th>
-                            <th>Local</th>
                             <th>E2B</th>
                             <th>open-terminal</th>
+                            <th>Local</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="cap in capabilities" :key="cap">
                             <td>{{ cap }}</td>
-                            <td>{{ supports('local', cap) }}</td>
                             <td>{{ supports('e2b', cap) }}</td>
                             <td>{{ supports('open-terminal', cap) }}</td>
+                            <td>{{ supports('local', cap) }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -93,12 +93,16 @@ const capabilities: ComputerCapability[] = [
 ]
 
 const backends = computed(() => [
-    { key: 'local', label: 'Local', status: props.status.backends.local },
     { key: 'e2b', label: 'E2B', status: props.status.backends.e2b },
     {
         key: 'open-terminal',
         label: 'open-terminal',
         status: props.status.backends['open-terminal']
+    },
+    {
+        key: 'local',
+        label: 'Local',
+        status: props.status.backends.local
     }
 ])
 

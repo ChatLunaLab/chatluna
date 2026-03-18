@@ -70,14 +70,14 @@ const emit = defineEmits<{
 
 const warning = computed(() => {
     if (props.config.deploymentMode === 'docker') {
-        return 'Docker 模式的隔离效果取决于容器配置，建议控制网络访问和挂载目录。'
+        return 'Docker 模式的隔离效果取决于容器配置，建议限制网络访问和挂载目录；如果容器隔离做得不好，风险会逐渐接近 Local。'
     }
 
     if (props.config.deploymentMode === 'bare-metal') {
-        return '裸机模式没有宿主机隔离，命令将直接在远端主机上执行。'
+        return '裸机模式没有宿主机隔离，命令会直接在远端主机上执行。虽然不是本机 Local，但仍属于高风险配置。'
     }
 
-    return '无法确认部署模式，请按最小权限原则配置。'
+    return '无法确认部署模式，请按最小权限原则配置；隔离边界不明确时，不建议把它当成高信任后端。'
 })
 
 function set<K extends keyof OpenTerminalBackendConfig>(

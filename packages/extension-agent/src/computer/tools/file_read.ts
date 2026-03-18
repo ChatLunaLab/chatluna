@@ -39,10 +39,9 @@ Usage:
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
 
-        session.app.logger.info(`${MSG_READING}: ${input.filePath}`)
+        this.computer.ctx.logger.info(`${MSG_READING}: ${input.filePath}`)
 
         try {
             const result = await computer.readFile(
@@ -50,7 +49,7 @@ Usage:
                 input.offset,
                 input.limit ?? 2000
             )
-            session.app.logger.info(
+            this.computer.ctx.logger.info(
                 `${MSG_DONE}: ${input.filePath} (${result.split('\n').length} 行)`
             )
             return result

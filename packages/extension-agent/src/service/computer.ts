@@ -1,5 +1,6 @@
 /** @module service/computer */
 
+import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
@@ -7,6 +8,7 @@ import {
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { Context } from 'koishi'
+import type {} from 'koishi-plugin-chatluna-storage-service'
 import {
     AgentConfig,
     ComputerBackendStatus,
@@ -33,6 +35,7 @@ import { ChatLunaAgentComputerProxy } from '../computer/proxy'
 import { ReadFileTool } from '../computer/tools/file_read'
 import { WriteFileTool } from '../computer/tools/file_write'
 import { EditFileTool } from '../computer/tools/file_edit'
+import { PublishFileTool } from '../computer/tools/publish_file'
 import { GrepTool } from '../computer/tools/grep'
 import { GlobTool } from '../computer/tools/glob'
 import { BashTool } from '../computer/tools/bash'
@@ -386,6 +389,33 @@ export class ChatLunaAgentComputerService {
         )
     }
 
+    async publishFile(
+        filePath: string,
+        runConfig?: ChatLunaToolRunnable
+    ): Promise<{ url: string; name: string }> {
+        const storage = this.ctx.chatluna_storage
+        if (!storage) {
+            throw new Error('chatluna-storage-service is not available.')
+        }
+
+        const computer = await this.getToolSession(runConfig)
+        if (!computer.isInScope(filePath)) {
+            throw new Error(`Path is outside scope: ${filePath}`)
+        }
+
+        const fileName = path.posix.basename(filePath.replaceAll('\\', '/'))
+        const asset = await computer.openAsset(filePath)
+        const file = await storage.createTempFileFromStream(
+            asset.stream,
+            fileName,
+            {
+                mimeType: asset.mimeType,
+                size: asset.size
+            }
+        )
+        return file
+    }
+
     private async getOrCreateUiSession(
         clientId: string,
         backend?: ComputerBackendType
@@ -532,9 +562,9 @@ export class ChatLunaAgentComputerService {
     ) {
         const order: (ComputerBackendType | undefined)[] = [
             preferred ?? this.config.computer.defaultProvider,
-            'local',
+            'e2b',
             'open-terminal',
-            'e2b'
+            'local'
         ]
         const backends = allowedBackends ?? COMPUTER_BACKENDS
         for (const item of order) {
@@ -599,7 +629,7 @@ export class ChatLunaAgentComputerService {
                         '<computer_use>',
                         `Default provider: ${this.resolveProvider() ?? this.config.computer.defaultProvider}`,
                         `Available capabilities: ${this.getCapabilities().join(', ')}`,
-                        'For local computer tools, /tmp is a managed temp directory mapped inside the workspace sandbox.',
+                        'Prefer isolated backends when available. Local computer access runs directly on the host machine and should only be used when explicitly enabled.',
                         'Use these capabilities when file operations, code search, shell execution, terminal interaction, or preview access are needed.',
                         '</computer_use>'
                     ].join('\n')
@@ -725,6 +755,7 @@ const BASE_CAPABILITIES: ComputerCapability[] = [
     'file_read',
     'file_write',
     'file_edit',
+    'file_publish',
     'grep',
     'glob',
     'bash',
@@ -738,9 +769,9 @@ const E2B_EXTRA: ComputerCapability[] = [
 ]
 
 const COMPUTER_BACKENDS: ComputerBackendType[] = [
-    'local',
     'e2b',
-    'open-terminal'
+    'open-terminal',
+    'local'
 ]
 
 const COMPUTER_TOOLS = [
@@ -755,6 +786,10 @@ const COMPUTER_TOOLS = [
     {
         name: 'file_edit',
         factory: (svc: ChatLunaAgentComputerService) => new EditFileTool(svc)
+    },
+    {
+        name: 'file_publish',
+        factory: (svc: ChatLunaAgentComputerService) => new PublishFileTool(svc)
     },
     {
         name: 'grep',
