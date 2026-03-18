@@ -272,10 +272,6 @@ function migrateSkillsConfig(old?: OldConfig['skills']): AgentConfig['skills'] {
         return cfg
     }
 
-    if ('allowComputerUsePrompt' in old) {
-        cfg.allowComputerUsePrompt = old['allowComputerUsePrompt'] === true
-    }
-
     if ('dirs' in old && Array.isArray(old['dirs'])) {
         cfg.dirs = old['dirs']
             .map((item) => {
@@ -298,10 +294,7 @@ function migrateSkillsConfig(old?: OldConfig['skills']): AgentConfig['skills'] {
         typeof old['items'] === 'object'
             ? (old['items'] as Record<string, unknown>)
             : Object.fromEntries(
-                  Object.entries(old).filter(
-                      ([key]) =>
-                          key !== 'allowComputerUsePrompt' && key !== 'dirs'
-                  )
+                  Object.entries(old).filter(([key]) => key !== 'dirs')
               )
 
     cfg.items = Object.fromEntries(

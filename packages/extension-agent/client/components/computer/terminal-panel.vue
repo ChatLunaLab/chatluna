@@ -1,47 +1,82 @@
 <template>
     <div class="terminal-panel">
-        <div class="toolbar-row">
-            <div>
-                <div class="section-title">Terminal</div>
-                <div class="section-copy">
-                    当前 backend 为
-                    <strong>{{ backendLabel }}</strong>
-                    ，
-                    {{
-                        ready
-                            ? '可以直接打开交互式终端。'
-                            : '暂不支持交互式终端。'
-                    }}
+        <div class="terminal-frame">
+            <div class="terminal-tabs">
+                <div
+                    v-for="item in tabs"
+                    :key="item.key"
+                    class="terminal-tab-shell"
+                    :class="{
+                        active: item.key === activeKey,
+                        connecting: item.connecting
+                    }"
+                >
+                    <input
+                        v-if="editingKey === item.key"
+                        ref="editRef"
+                        :value="editingTitle"
+                        class="terminal-tab-input"
+                        @input="updateEditingTitle"
+                        @blur="commitRename"
+                        @keydown.enter.prevent="commitRename"
+                        @keydown.esc.prevent="cancelRename"
+                    />
+                    <button
+                        type="button"
+                        v-else
+                        class="terminal-tab-trigger"
+                        @click="activeKey = item.key"
+                        @dblclick="startRename(item.key)"
+                    >
+                        <span class="terminal-tab-label">{{ item.title }}</span>
+                        <span
+                            class="terminal-tab-state"
+                            :class="{ connected: item.connected }"
+                        />
+                    </button>
+                    <button
+                        type="button"
+                        class="terminal-tab-close"
+                        @click="closeTab(item.key)"
+                    >
+                        <el-icon :size="12"><Close /></el-icon>
+                    </button>
+                </div>
+
+                <div class="terminal-tab-actions">
+                    <button
+                        v-if="tabs.length > 0"
+                        type="button"
+                        class="terminal-tab-clear"
+                        @click="closeAllTabs"
+                    >
+                        关闭全部
+                    </button>
+                    <button
+                        type="button"
+                        class="terminal-tab-add"
+                        :disabled="creating || !ready"
+                        @click="createTab"
+                    >
+                        <el-icon :size="14"><Plus /></el-icon>
+                    </button>
                 </div>
             </div>
 
-            <div class="toolbar-actions">
-                <el-button
-                    v-if="ready && !connected"
-                    :loading="connecting"
-                    @click="openTerminal"
-                >
-                    打开终端
-                </el-button>
-                <el-button v-if="connected" @click="closeTerminal">
-                    关闭终端
-                </el-button>
-            </div>
-        </div>
-
-        <div v-if="ready" class="terminal-shell">
-            <div class="terminal-meta">
-                <span>{{ connected ? '已连接' : '未连接' }}</span>
-                <span v-if="sessionId">session: {{ sessionId }}</span>
-            </div>
-            <div ref="hostRef" class="terminal-host" />
-        </div>
-
-        <div v-else class="placeholder-box">
-            <div class="placeholder-title">当前 provider 不支持终端</div>
-            <div class="placeholder-copy">
-                你仍然可以通过 `bash` 工具执行命令；切换到支持 `terminal_pty` 的
-                backend 后，这里会启用实时终端。
+            <div class="terminal-workspace">
+                <div class="terminal-panes">
+                    <div
+                        v-for="item in tabs"
+                        v-show="item.key === activeKey"
+                        :key="`${item.key}-pane`"
+                        class="terminal-pane"
+                    >
+                        <div
+                            :ref="(el) => setHost(item.key, el)"
+                            class="terminal-host"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -49,9 +84,10 @@
 
 <script setup lang="ts">
 import 'xterm/css/xterm.css'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, computed, onBeforeUnmount, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
+import { Close, Plus } from '@element-plus/icons-vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import type {
@@ -60,16 +96,33 @@ import type {
     ComputerTerminalInfo
 } from '../../../src/types'
 
+interface TerminalTab {
+    key: string
+    title: string
+    sessionId: string
+    terminalId: string
+    connecting: boolean
+    connected: boolean
+}
+
+interface TerminalRuntime {
+    term: Terminal
+    fit: FitAddon
+    socket?: WebSocket
+    observer?: ResizeObserver
+}
+
 const props = defineProps<{
     config: ComputerConfig
     status: ComputerStatus
 }>()
 
-const hostRef = ref<HTMLDivElement>()
-const connecting = ref(false)
-const connected = ref(false)
-const sessionId = ref('')
-const terminalId = ref('')
+const tabs = ref<TerminalTab[]>([])
+const activeKey = ref('')
+const creating = ref(false)
+const editingKey = ref('')
+const editingTitle = ref('')
+const editRef = ref<HTMLInputElement>()
 
 const backend = computed(
     () => props.status.backends[props.config.defaultProvider]
@@ -83,166 +136,274 @@ const backendLabel = computed(() => {
     return 'open-terminal'
 })
 
-let term: Terminal | undefined
-let fit: FitAddon | undefined
-let socket: WebSocket | undefined
-let observer: ResizeObserver | undefined
-
-onMounted(() => {
-    createTerminalView()
-})
+const hostMap = new Map<string, HTMLDivElement>()
+const runtimeMap = new Map<string, TerminalRuntime>()
+let count = 1
 
 onBeforeUnmount(() => {
-    cleanup()
+    for (const item of [...tabs.value]) {
+        void closeTab(item.key)
+    }
 })
 
 watch(
     () => props.config.defaultProvider,
     async () => {
-        await closeTerminal()
-        resetTerminal()
+        await closeAllTabs()
     }
 )
 
-function createTerminalView() {
-    if (term || !hostRef.value) {
+watch(ready, async (value) => {
+    if (!value) {
+        await closeAllTabs()
+    }
+})
+
+watch(activeKey, async (key) => {
+    if (!key) {
         return
     }
 
-    term = new Terminal({
-        convertEol: true,
-        fontSize: 13,
-        fontFamily: 'JetBrains Mono, SFMono-Regular, Consolas, monospace',
-        theme: {
-            background: '#11141a',
-            foreground: '#d7dce2'
-        }
-    })
-    fit = new FitAddon()
-    term.loadAddon(fit)
-    term.open(hostRef.value)
-    fit.fit()
-    term.writeln('Computer terminal is ready.')
-    term.onData((data) => {
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            return
-        }
-        socket.send(JSON.stringify({ type: 'input', data }))
-    })
+    await nextTick()
+    fitTab(key)
+    syncTabSize(key)
+})
 
-    observer = new ResizeObserver(() => {
-        fit?.fit()
-        if (!socket || socket.readyState !== WebSocket.OPEN || !term) {
-            return
-        }
-        socket.send(
-            JSON.stringify({
-                type: 'resize',
-                cols: term.cols,
-                rows: term.rows
-            })
-        )
-    })
-    observer.observe(hostRef.value)
-}
-
-async function openTerminal() {
-    if (!ready.value) {
+async function createTab() {
+    if (!ready.value || creating.value) {
         return
     }
+
+    creating.value = true
+    const key = `terminal-${Date.now()}-${count++}`
+    const tab: TerminalTab = {
+        key,
+        title: `终端 ${tabs.value.length + 1}`,
+        sessionId: '',
+        terminalId: '',
+        connecting: true,
+        connected: false
+    }
+    tabs.value.push(tab)
+    activeKey.value = key
 
     try {
-        connecting.value = true
-        createTerminalView()
-        fit?.fit()
+        await nextTick()
+        const host = hostMap.get(key)
+        if (!host) {
+            throw new Error('terminal host missing')
+        }
 
-        const result = await send('chatluna-agent/openComputerTerminal', {
-            backend: props.config.defaultProvider,
-            cols: term?.cols ?? 80,
-            rows: term?.rows ?? 24
+        const term = new Terminal({
+            convertEol: true,
+            fontSize: 13,
+            fontFamily: 'JetBrains Mono, SFMono-Regular, Consolas, monospace',
+            theme: {
+                background: '#0f1115',
+                foreground: '#d7dce2'
+            }
+        })
+        const fit = new FitAddon()
+        term.loadAddon(fit)
+        term.open(host)
+        fit.fit()
+        term.writeln(`Opening ${backendLabel.value} terminal...`)
+
+        const runtime: TerminalRuntime = {
+            term,
+            fit
+        }
+        runtimeMap.set(key, runtime)
+
+        term.onData((data) => {
+            if (
+                !runtime.socket ||
+                runtime.socket.readyState !== WebSocket.OPEN
+            ) {
+                return
+            }
+
+            runtime.socket.send(JSON.stringify({ type: 'input', data }))
         })
 
-        sessionId.value = result.sessionId
-        terminalId.value = result.terminalId
-        term?.clear()
-        term?.writeln(`Opening ${backendLabel.value} terminal...`)
-        await connectSocket(result)
-        connected.value = true
+        runtime.observer = new ResizeObserver(() => {
+            fitTab(key)
+            syncTabSize(key)
+        })
+        runtime.observer.observe(host)
+
+        const info = await send('chatluna-agent/openComputerTerminal', {
+            backend: props.config.defaultProvider,
+            cols: term.cols,
+            rows: term.rows
+        })
+
+        tab.sessionId = info.sessionId
+        tab.terminalId = info.terminalId
+        await connectSocket(tab, runtime, info)
+        tab.connecting = false
+        tab.connected = true
     } catch {
-        term?.writeln('Failed to open terminal.')
+        await closeTab(key, false)
         ElMessage.error('打开终端失败')
     } finally {
-        connecting.value = false
+        creating.value = false
     }
 }
 
-async function connectSocket(info: ComputerTerminalInfo) {
-    socket?.close()
-    socket = new WebSocket(toWsUrl(info.url))
+async function startRename(key: string) {
+    const tab = tabs.value.find((item) => item.key === key)
+    if (!tab) {
+        return
+    }
+
+    editingKey.value = key
+    editingTitle.value = tab.title
+    await nextTick()
+    editRef.value?.focus()
+    editRef.value?.select()
+}
+
+function updateEditingTitle(event: Event) {
+    editingTitle.value = (event.target as HTMLInputElement).value
+}
+
+function commitRename() {
+    if (!editingKey.value) {
+        return
+    }
+
+    const tab = tabs.value.find((item) => item.key === editingKey.value)
+    if (tab) {
+        tab.title = editingTitle.value.trim() || tab.title
+    }
+
+    editingKey.value = ''
+    editingTitle.value = ''
+}
+
+function cancelRename() {
+    editingKey.value = ''
+    editingTitle.value = ''
+}
+
+async function connectSocket(
+    tab: TerminalTab,
+    runtime: TerminalRuntime,
+    info: ComputerTerminalInfo
+) {
+    runtime.socket?.close()
+    runtime.socket = new WebSocket(toWsUrl(info.url))
 
     await new Promise<void>((resolve, reject) => {
-        if (!socket) {
+        if (!runtime.socket) {
             reject(new Error('socket missing'))
             return
         }
 
-        socket.onopen = () => resolve()
-        socket.onerror = () => reject(new Error('socket error'))
+        runtime.socket.onopen = () => resolve()
+        runtime.socket.onerror = () => reject(new Error('socket error'))
     })
 
-    socket.onmessage = (event) => {
+    runtime.socket.onmessage = (event) => {
         const text = typeof event.data === 'string' ? event.data : ''
         try {
             const data = JSON.parse(text)
             if (data.type === 'data') {
-                term?.write(data.data)
+                runtime.term.write(data.data)
                 return
             }
         } catch {}
-        term?.write(text)
+
+        runtime.term.write(text)
     }
 
-    socket.onclose = () => {
-        connected.value = false
+    runtime.socket.onclose = () => {
+        tab.connected = false
+        tab.connecting = false
     }
 }
 
-async function closeTerminal() {
-    if (!sessionId.value || !terminalId.value) {
-        socket?.close()
-        socket = undefined
-        connected.value = false
+async function closeTab(key: string, remote = true) {
+    const tab = tabs.value.find((item) => item.key === key)
+    if (!tab) {
         return
     }
 
-    try {
-        await send(
-            'chatluna-agent/closeComputerTerminal',
-            sessionId.value,
-            terminalId.value
-        )
-    } catch {}
+    if (remote && tab.sessionId && tab.terminalId) {
+        try {
+            await send(
+                'chatluna-agent/closeComputerTerminal',
+                tab.sessionId,
+                tab.terminalId
+            )
+        } catch {}
+    }
 
-    socket?.close()
-    socket = undefined
-    connected.value = false
-    sessionId.value = ''
-    terminalId.value = ''
+    const runtime = runtimeMap.get(key)
+    runtime?.observer?.disconnect()
+    runtime?.socket?.close()
+    runtime?.term?.dispose()
+    runtimeMap.delete(key)
+    hostMap.delete(key)
+
+    const idx = tabs.value.findIndex((item) => item.key === key)
+    tabs.value = tabs.value.filter((item) => item.key !== key)
+
+    if (activeKey.value === key) {
+        const next = tabs.value[idx] ?? tabs.value[idx - 1]
+        activeKey.value = next?.key ?? ''
+    }
 }
 
-function resetTerminal() {
-    term?.clear()
-    term?.writeln('Computer terminal is ready.')
+async function closeAllTabs() {
+    for (const item of [...tabs.value]) {
+        await closeTab(item.key)
+    }
+
+    tabs.value = []
+    activeKey.value = ''
 }
 
-function cleanup() {
-    observer?.disconnect()
-    observer = undefined
-    socket?.close()
-    socket = undefined
-    term?.dispose()
-    term = undefined
-    fit = undefined
+function setHost(key: string, el: Element | null) {
+    if (el instanceof HTMLDivElement) {
+        hostMap.set(key, el)
+        fitTab(key)
+        syncTabSize(key)
+        return
+    }
+
+    hostMap.delete(key)
+}
+
+function fitTab(key: string) {
+    const runtime = runtimeMap.get(key)
+    const host = hostMap.get(key)
+    if (!runtime || !host || host.offsetParent == null) {
+        return
+    }
+
+    runtime.fit.fit()
+}
+
+function syncTabSize(key: string) {
+    const runtime = runtimeMap.get(key)
+    const host = hostMap.get(key)
+    if (!runtime || !host || host.offsetParent == null) {
+        return
+    }
+
+    if (!runtime.socket || runtime.socket.readyState !== WebSocket.OPEN) {
+        return
+    }
+
+    runtime.socket.send(
+        JSON.stringify({
+            type: 'resize',
+            cols: runtime.term.cols,
+            rows: runtime.term.rows
+        })
+    )
 }
 
 function toWsUrl(path: string) {
@@ -254,77 +415,204 @@ function toWsUrl(path: string) {
 
 <style scoped>
 .terminal-panel {
-    padding: 18px 0 0;
+    padding: 0;
 }
 
-.toolbar-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    align-items: flex-start;
+.terminal-frame {
+    border: 1px solid var(--k-card-border);
+    border-radius: 14px;
+    background: #0f1115;
+    overflow: hidden;
+    box-shadow: var(--k-card-shadow);
 }
 
-.toolbar-actions {
+.terminal-tabs {
     display: flex;
+    align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    padding: 10px;
+    border-bottom: 1px solid var(--k-card-border);
+    background: var(--k-side-bg);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
-.section-title,
-.placeholder-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--k-color-text);
+.terminal-tabs::-webkit-scrollbar {
+    display: none;
 }
 
-.section-copy,
-.placeholder-copy,
-.terminal-meta {
-    margin-top: 6px;
+.terminal-tab-shell {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 240px;
+    height: 34px;
+    border: 1px solid var(--k-card-border);
+    border-radius: 10px;
+    background: var(--k-menu-bg);
+    color: var(--k-text-normal);
+}
+
+.terminal-tab-shell.active {
+    background: var(--k-color-primary-fade);
+    border-color: color-mix(in srgb, var(--k-color-primary), transparent 30%);
+    color: var(--k-text-active);
+}
+
+.terminal-tab-shell.connecting {
+    color: var(--k-text-dark);
+}
+
+.terminal-tab-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0 0 0 10px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.terminal-tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.terminal-tab-input {
+    width: 150px;
+    height: 24px;
+    margin-left: 8px;
+    padding: 0 8px;
+    border: 1px solid var(--k-color-border);
+    border-radius: 6px;
+    background: var(--k-main-bg);
+    color: var(--k-text-dark);
+    outline: none;
+}
+
+.terminal-tab-state {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--k-color-warning);
+    flex: 0 0 auto;
+}
+
+.terminal-tab-state.connected {
+    background: var(--k-color-success);
+}
+
+.terminal-tab-close,
+.terminal-tab-add,
+.terminal-tab-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: currentColor;
+    cursor: pointer;
+}
+
+.terminal-tab-close {
+    width: 24px;
+    height: 24px;
+    margin-right: 4px;
+}
+
+.terminal-tab-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.terminal-tab-add {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--k-card-border);
+    background: var(--k-menu-bg);
+    color: var(--k-color-primary);
+}
+
+.terminal-tab-clear {
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--k-card-border);
+    background: var(--k-menu-bg);
+    color: var(--k-text-normal);
     font-size: 12px;
-    line-height: 1.7;
-    color: var(--k-text-light);
 }
 
-.terminal-shell,
-.placeholder-box {
-    margin-top: 16px;
-    padding: 16px;
-    border-radius: 12px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 24%);
-    background: color-mix(
-        in srgb,
-        var(--k-page-bg),
-        var(--k-color-surface-1) 20%
-    );
+.terminal-tab-close:hover,
+.terminal-tab-add:hover,
+.terminal-tab-clear:hover {
+    background: var(--k-hover-bg);
 }
 
-.terminal-meta {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 0;
-    margin-bottom: 10px;
+.terminal-tab-add:disabled,
+.terminal-tab-clear:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.terminal-workspace {
+    background: #0f1115;
+}
+
+.terminal-panes {
+    min-height: 420px;
+    background: #0f1115;
+}
+
+.terminal-pane {
+    height: 100%;
 }
 
 .terminal-host {
-    height: 420px;
+    height: min(56vh, 520px);
     overflow: hidden;
+    padding: 12px 14px;
 }
 
 :deep(.xterm) {
     height: 100%;
 }
 
+:deep(.xterm-viewport) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar) {
+    display: none;
+}
+
 @media (max-width: 768px) {
-    .toolbar-row {
-        flex-direction: column;
+    .terminal-tabs {
+        flex-wrap: wrap;
     }
 
-    .toolbar-actions {
+    .terminal-tab-shell {
+        max-width: calc(100% - 34px);
+    }
+
+    .terminal-tab-actions {
+        margin-left: 0;
         width: 100%;
         justify-content: flex-end;
+    }
+
+    .terminal-host {
+        height: 420px;
+        padding: 10px;
     }
 }
 </style>

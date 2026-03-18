@@ -2,73 +2,14 @@
     <div class="panel">
         <div class="panel-header">
             <div>
-                <div class="panel-title">Health / Status</div>
+                <div class="panel-title">后端状态</div>
                 <div class="panel-description">
-                    查看当前 provider、能力矩阵和活跃 session 状态。
+                    查看可用性、会话数量和能力矩阵。
                 </div>
             </div>
         </div>
 
         <div class="panel-body">
-            <div class="provider-row">
-                <div>
-                    <div class="row-title">默认 provider</div>
-                    <div class="row-description">
-                        主 Agent 和子 Agent 会优先使用这里选择的执行环境。
-                    </div>
-                </div>
-
-                <el-select
-                    :model-value="config.defaultProvider"
-                    class="provider-select"
-                    @update:model-value="$emit('update-provider', $event)"
-                >
-                    <el-option label="Local" value="local" />
-                    <el-option label="E2B" value="e2b" />
-                    <el-option label="open-terminal" value="open-terminal" />
-                </el-select>
-            </div>
-
-            <div class="provider-row">
-                <div>
-                    <div class="row-title">空闲自动关闭</div>
-                    <div class="row-description">
-                        Session 空闲超过这个时间会自动关闭；持续使用时不会关闭。
-                    </div>
-                </div>
-
-                <el-input-number
-                    :model-value="config.idleTimeoutMs"
-                    class="provider-select"
-                    :min="60000"
-                    :max="3600000"
-                    :step="60000"
-                    controls-position="right"
-                    @update:model-value="updateIdleTimeout"
-                />
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Computer 状态</div>
-                    <div class="stat-value">
-                        {{ status.enabled ? '可用' : '未就绪' }}
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">可用能力</div>
-                    <div class="stat-value">{{ availableCount }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">活跃 Session</div>
-                    <div class="stat-value">{{ status.activeSessions }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">可用 Backend</div>
-                    <div class="stat-value">{{ readyBackends }}</div>
-                </div>
-            </div>
-
             <div class="backend-list">
                 <div
                     v-for="item in backends"
@@ -94,7 +35,7 @@
                             {{ stateLabel(item.status.state) }}
                         </el-tag>
                         <span class="session-copy">
-                            {{ item.status.sessionCount }} sessions
+                            {{ item.status.sessionCount }} 个会话
                         </span>
                     </div>
                 </div>
@@ -138,11 +79,6 @@ const props = defineProps<{
     status: ComputerStatus
 }>()
 
-const emit = defineEmits<{
-    'update-provider': [value: ComputerBackendType]
-    'update-idle-timeout': [value: number]
-}>()
-
 const capabilities: ComputerCapability[] = [
     'file_read',
     'file_write',
@@ -151,7 +87,6 @@ const capabilities: ComputerCapability[] = [
     'glob',
     'bash',
     'terminal_pty',
-    'port_preview',
     'desktop_stream',
     'desktop_screenshot',
     'desktop_action'
@@ -167,20 +102,6 @@ const backends = computed(() => [
     }
 ])
 
-const availableCount = computed(() => {
-    return new Set(
-        Object.values(props.status.backends)
-            .filter((item) => item.state !== 'unsupported')
-            .flatMap((item) => item.capabilities)
-    ).size
-})
-
-const readyBackends = computed(() => {
-    return Object.values(props.status.backends).filter(
-        (item) => item.state !== 'unsupported'
-    ).length
-})
-
 function supports(type: ComputerBackendType, cap: ComputerCapability) {
     const backend = props.status.backends[type]
     if (backend.state === 'unsupported') {
@@ -188,14 +109,6 @@ function supports(type: ComputerBackendType, cap: ComputerCapability) {
     }
 
     return backend.capabilities.includes(cap) ? '支持' : ''
-}
-
-function updateIdleTimeout(value: number | undefined) {
-    if (value == null) {
-        return
-    }
-
-    emit('update-idle-timeout', value)
 }
 
 function stateLabel(state: ComputerStatus['backends']['local']['state']) {
@@ -219,11 +132,7 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 14px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-1),
-        var(--k-page-bg) 18%
-    );
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
 }
 
@@ -236,7 +145,7 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
 .panel-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .panel-description,
@@ -255,7 +164,12 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     padding: 18px;
 }
 
-.provider-row,
+.backend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .backend-row {
     display: flex;
     align-items: flex-start;
@@ -263,50 +177,10 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     gap: 14px;
 }
 
-.provider-select {
-    width: 180px;
-}
-
 .row-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--k-color-text);
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.stat-card {
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 24%);
-    background: color-mix(
-        in srgb,
-        var(--k-page-bg),
-        var(--k-color-surface-1) 24%
-    );
-}
-
-.stat-label {
-    font-size: 12px;
-    color: var(--k-text-light);
-}
-
-.stat-value {
-    margin-top: 6px;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--k-color-text);
-}
-
-.backend-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    color: var(--k-text-dark);
 }
 
 .backend-meta {
@@ -337,7 +211,7 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
 
 .matrix-table th {
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .matrix-table td {
@@ -345,17 +219,8 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
 }
 
 @media (max-width: 768px) {
-    .provider-row,
     .backend-row {
         flex-direction: column;
-    }
-
-    .provider-select {
-        width: 100%;
-    }
-
-    .stats-grid {
-        grid-template-columns: 1fr;
     }
 
     .backend-meta {

@@ -4,7 +4,6 @@ import { randomUUID } from 'crypto'
 import { Buffer } from 'node:buffer'
 import { CommandHandle, CommandResult, Sandbox as E2BSandbox } from 'e2b'
 import { Sandbox as DesktopSandbox } from '@e2b/desktop'
-import { parsePorts } from '../ports'
 import { quoteShell } from './types'
 import { E2BBackendConfig } from '../../types'
 import {
@@ -26,7 +25,6 @@ interface SandboxWrapper {
     setTimeout(timeoutMs: number): Promise<void>
     pause(): Promise<void>
     kill(): Promise<void>
-    getHost(port: number): string
     desktop?: DesktopSandbox
 }
 
@@ -119,6 +117,17 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
+        const stat = await this.execute(
+            `if [ -d ${quoteShell(filePath)} ]; then printf __dir__; fi`,
+            { timeout: 5000 }
+        )
+        if (stat.stdout.trim() === '__dir__') {
+            const result = await this.execute(
+                `find ${quoteShell(filePath)} -mindepth 1 -maxdepth 1 \\( -type d -printf '%p/\\n' -o -type f -printf '%p\\n' \\) | sort`
+            )
+            return result.stdout.trim()
+        }
+
         const raw = await this.ensureSandbox().files.read(filePath)
         const text = String(raw)
         if (offset == null && limit == null) {
@@ -224,6 +233,13 @@ export class E2BComputerSession implements ComputerSessionApi {
         return mapCommandResult(result)
     }
 
+    async readAsset(filePath: string) {
+        const result = await this.execute(
+            `base64 ${quoteShell(filePath)} | tr -d '\n'`
+        )
+        return result.stdout.trim()
+    }
+
     async createTerminal(options: TerminalOptions = {}) {
         const sandbox = this.ensureSandbox()
         const callbacks = new Set<(data: string) => void>()
@@ -258,13 +274,6 @@ export class E2BComputerSession implements ComputerSessionApi {
                 await handle.kill()
             }
         } satisfies TerminalHandle
-    }
-
-    async listPorts() {
-        const result = await this.execute('ss -ltnp || netstat -ltnp')
-        return parsePorts(
-            [result.stdout, result.stderr].filter(Boolean).join('\n')
-        )
     }
 
     async getDesktopInfo(): Promise<DesktopInfo | undefined> {
@@ -368,10 +377,6 @@ export class E2BComputerSession implements ComputerSessionApi {
         return this._cwd
     }
 
-    getProxyUrl(port: number) {
-        return this.ensureSandbox().getHost(port)
-    }
-
     private ensureSandbox() {
         if (!this._sandbox) {
             throw new Error('E2B sandbox is not connected.')
@@ -418,7 +423,6 @@ function wrapSandbox(sandbox: E2BSandbox | DesktopSandbox): SandboxWrapper {
             await sandbox.pause()
         },
         kill: () => sandbox.kill(),
-        getHost: (port) => sandbox.getHost(port),
         desktop: sandbox instanceof DesktopSandbox ? sandbox : undefined
     }
 }

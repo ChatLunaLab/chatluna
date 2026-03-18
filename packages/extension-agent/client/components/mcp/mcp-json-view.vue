@@ -98,7 +98,7 @@ function save() {
     border-radius: 16px;
     background: color-mix(
         in srgb,
-        var(--k-color-surface-1),
+        var(--k-side-bg),
         var(--k-page-bg) 22%
     );
     display: flex;
@@ -120,7 +120,7 @@ function save() {
 .editor-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .editor-description {
@@ -144,7 +144,7 @@ function save() {
     margin: 0 18px 18px;
     padding: 11px 13px;
     background: color-mix(in srgb, var(--el-color-danger), transparent 94%);
-    color: color-mix(in srgb, var(--el-color-danger), var(--k-color-text) 28%);
+    color: color-mix(in srgb, var(--el-color-danger), var(--k-text-dark) 28%);
     border-radius: 10px;
     line-height: 1.5;
 }

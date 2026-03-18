@@ -10,8 +10,8 @@
                             class="view-container"
                         >
                             <mcp-page
-                                :config="config?.mcp"
-                                :status="status?.mcp"
+                                :config="mcpCfg"
+                                :status="mcpStatus"
                                 :loading="loading"
                                 @refresh="refreshData"
                                 @save="saveMcp"
@@ -24,9 +24,9 @@
                             class="view-container"
                         >
                             <skills-page
-                                :config="config?.skills"
-                                :status="status?.skills"
-                                :computer="status?.computer"
+                                :config="skillsCfg"
+                                :status="skillsStatus"
+                                :computer="computerStatus"
                                 :loading="loading"
                                 @refresh="refreshData"
                             />
@@ -38,8 +38,8 @@
                             class="view-container"
                         >
                             <computer-page
-                                :config="config?.computer"
-                                :status="status?.computer"
+                                :config="computerCfg"
+                                :status="computerStatus"
                                 :loading="loading"
                                 @refresh="refreshData"
                                 @save-computer="saveComputer"
@@ -52,9 +52,11 @@
                             class="view-container"
                         >
                             <sub-agent-page
-                                :config="config?.subAgent"
-                                :status="status?.subAgent"
-                                :tools="status?.tool?.catalog"
+                                :config="subAgentCfg"
+                                :status="subAgentStatus"
+                                :skills="skillsStatus?.catalog"
+                                :computer="computerStatus"
+                                :tools="toolStatus?.catalog"
                                 :loading="loading"
                                 @refresh="refreshData"
                                 @save="
@@ -65,9 +67,9 @@
 
                         <div v-else key="tool" class="view-container">
                             <tool-page
-                                :config="config?.tool"
-                                :status="status?.tool"
-                                :agents="status?.subAgent?.catalog"
+                                :config="toolCfg"
+                                :status="toolStatus"
+                                :agents="subAgentStatus?.catalog"
                                 :loading="loading"
                                 @refresh="refreshData"
                                 @save="(value) => saveSection('tool', value)"
@@ -90,17 +92,25 @@ import AgentSidebar from './agent-sidebar.vue'
 import McpPage from '../mcp/mcp-page.vue'
 import SkillsPage from '../skills/skills-page.vue'
 import ComputerPage from '../computer/computer-page.vue'
-import ToolPage from '../placeholder/tool-page.vue'
-import SubAgentPage from '../placeholder/sub-agent-page.vue'
-import type { AgentConfig, AgentConsoleData } from '../../../src/types'
+import ToolPage from '../tool/tool-page.vue'
+import SubAgentPage from '../sub-agent/sub-agent-page.vue'
+import type { AgentConfig } from '../../../src/types'
 
 const activeTab = ref('mcp')
 const pending = ref(false)
-const data = computed(
-    () => store.chatluna_agent_webui as AgentConsoleData | undefined
-)
+const data = computed(() => store.chatluna_agent_webui)
 const config = computed(() => data.value?.config)
 const status = computed(() => data.value?.status)
+const mcpCfg = computed(() => data.value?.config?.mcp)
+const skillsCfg = computed(() => data.value?.config?.skills)
+const computerCfg = computed(() => data.value?.config?.computer)
+const subAgentCfg = computed(() => data.value?.config?.subAgent)
+const toolCfg = computed(() => data.value?.config?.tool)
+const mcpStatus = computed(() => data.value?.status?.mcp)
+const skillsStatus = computed(() => data.value?.status?.skills)
+const computerStatus = computed(() => data.value?.status?.computer)
+const subAgentStatus = computed(() => data.value?.status?.subAgent)
+const toolStatus = computed(() => data.value?.status?.tool)
 const loading = computed(() => pending.value || !data.value)
 
 const refreshData = async () => {
@@ -171,7 +181,7 @@ const saveSection = async (
     position: relative;
     height: 100vh;
     background-color: var(--k-page-bg);
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
     overflow: hidden;
 }
 
@@ -182,8 +192,8 @@ const saveSection = async (
 
 .content-wrapper {
     padding: 28px 96px 120px 28px;
-    width: min(100%, 1540px);
-    max-width: 1540px;
+    width: min(100%, 1920px);
+    max-width: 1920px;
     margin: 0 auto;
 }
 

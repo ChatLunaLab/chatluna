@@ -63,6 +63,35 @@ export async function scanSkills(
     })
 }
 
+export async function scanSkillRoot(root: string): Promise<ScannedSkill[]> {
+    const files = await collectFilesRecursive(root)
+    const dirs = Array.from(
+        new Set(
+            files
+                .filter((file) => basename(file) === 'SKILL.md')
+                .map((file) => dirname(file))
+        )
+    ).sort((a, b) => a.localeCompare(b))
+
+    return await Promise.all(
+        dirs.map((dir) =>
+            parseSkill(
+                join(dir, 'SKILL.md'),
+                {
+                    root,
+                    source: 'custom',
+                    scope: 'project',
+                    priority: 0
+                },
+                {
+                    dirs: [],
+                    items: {}
+                }
+            )
+        )
+    )
+}
+
 export async function listSkillResources(dir: string): Promise<string[]> {
     return await collectFilesRecursive(dir, {
         limit: 200,

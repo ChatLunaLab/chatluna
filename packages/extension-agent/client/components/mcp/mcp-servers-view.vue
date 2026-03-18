@@ -10,21 +10,23 @@
                 </div>
 
                 <div class="panel-actions">
-                    <el-button circle :loading="reloading" @click="reloadMcp">
+                    <el-button :loading="reloading" @click="reloadMcp">
                         <el-icon><RefreshRight /></el-icon>
+                        重新加载
                     </el-button>
-                    <el-button type="primary" circle @click="openCreate">
+                    <el-button type="primary" @click="openCreate">
                         <el-icon><Plus /></el-icon>
+                        添加服务器
                     </el-button>
                 </div>
             </div>
 
-            <div v-if="servers.length > 0" class="card-grid server-grid">
+            <div v-if="servers.length > 0" class="card-list server-grid">
                 <div
                     v-for="item in servers"
                     :key="item.name"
                     class="server-card"
-                    :class="{ busy: item.status?.updating }"
+                    :class="{ busy: item.updating }"
                 >
                     <div class="server-head">
                         <div class="server-brand">
@@ -60,17 +62,31 @@
                         </div>
 
                         <el-tag
-                            :type="stateTag(item.status?.state)"
+                            :type="
+                                stateTag(
+                                    item.updating
+                                        ? 'reconnecting'
+                                        : item.status?.state
+                                )
+                            "
                             round
                             effect="plain"
                         >
-                            {{ stateLabel(item.status?.state) }}
+                            {{
+                                stateLabel(
+                                    item.updating
+                                        ? 'reconnecting'
+                                        : item.status?.state
+                                )
+                            }}
                         </el-tag>
                     </div>
 
                     <div class="server-summary">
                         {{
-                            item.status?.stateText ||
+                            (item.updating && !item.status?.updating
+                                ? '正在重新连接服务器。'
+                                : item.status?.stateText) ||
                             '尚未连接，等待首次初始化。'
                         }}
                     </div>
@@ -108,7 +124,7 @@
                     <div class="server-actions">
                         <el-button
                             size="small"
-                            :disabled="item.status?.updating"
+                            :disabled="item.updating"
                             @click="openEdit(item.name)"
                         >
                             编辑
@@ -117,17 +133,17 @@
                             size="small"
                             type="primary"
                             plain
-                            :loading="item.status?.updating"
-                            :disabled="item.status?.updating"
+                            :loading="item.updating"
+                            :disabled="item.updating"
                             @click="reconnect(item.name)"
                         >
-                            重连
+                            {{ item.updating ? '重连中' : '重连' }}
                         </el-button>
                         <el-button
                             size="small"
                             type="danger"
                             plain
-                            :disabled="item.status?.updating"
+                            :disabled="item.updating"
                             @click="removeServer(item.name)"
                         >
                             删除
@@ -151,7 +167,7 @@
                 </div>
             </div>
 
-            <div v-if="tools.length > 0" class="card-grid tool-grid">
+            <div v-if="tools.length > 0" class="card-list tool-grid">
                 <div
                     v-for="item in tools"
                     :key="item.name"
@@ -241,7 +257,7 @@
         <el-dialog
             v-model="showServerDialog"
             :title="editing ? '编辑 MCP 服务器' : '新增 MCP 服务器'"
-            width="760px"
+            width="min(960px, calc(100vw - 32px))"
             destroy-on-close
         >
             <div class="dialog-head">
@@ -425,13 +441,16 @@
                                 <div class="preview-divider"></div>
 
                                 <div class="preview-field">
-                                    <span class="field-label">名称</span>
+                                    <span class="field-label">保存名称</span>
                                     <el-input
                                         v-model="form.name"
                                         size="small"
-                                        placeholder="输入名称"
-                                        @input="syncFormToJson"
+                                        placeholder="输入名称，或指定 mcpServers 中的目标项"
                                     />
+                                    <div class="preview-note">
+                                        这里只用于选择或保存服务器名称，不会改写左侧
+                                        JSON。
+                                    </div>
                                 </div>
 
                                 <div class="preview-field">
@@ -538,7 +557,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -733,6 +752,38 @@ const editing = ref('')
 const serverMode = ref<'form' | 'json'>('form')
 const serverJson = ref('')
 const syncing = ref(false)
+const serverBusy = ref<Record<string, boolean>>({})
+const toolBusy = ref<Record<string, boolean>>({})
+const toolEnabled = ref<Record<string, boolean>>({})
+
+watch(
+    () => props.status.tools,
+    (value) => {
+        const names = new Set(Object.keys(value))
+
+        for (const [name, item] of Object.entries(value)) {
+            if (!toolBusy.value[name]) {
+                toolEnabled.value[name] = item.enabled
+            }
+        }
+
+        for (const name of Object.keys(toolEnabled.value)) {
+            if (!names.has(name)) {
+                delete toolEnabled.value[name]
+            }
+        }
+
+        for (const name of Object.keys(toolBusy.value)) {
+            if (!names.has(name)) {
+                delete toolBusy.value[name]
+            }
+        }
+    },
+    {
+        immediate: true,
+        deep: true
+    }
+)
 
 const jsonValid = computed(() => {
     if (!serverJson.value.trim()) return false
@@ -773,17 +824,22 @@ const servers = computed(() =>
             endpoint: server.command || server.url || '',
             server,
             status: props.status.servers[name],
-            tools: Object.values(props.status.tools).filter(
-                (tool) => tool.server === name
-            )
+            updating:
+                props.status.servers[name]?.updating ||
+                !!serverBusy.value[name],
+            tools: tools.value.filter((tool) => tool.server === name)
         }))
         .sort((a, b) => a.name.localeCompare(b.name))
 )
 
 const tools = computed(() =>
-    Object.values(props.status.tools).sort((a, b) =>
-        a.name.localeCompare(b.name)
-    )
+    Object.values(props.status.tools)
+        .map((item) => ({
+            ...item,
+            enabled: toolEnabled.value[item.name] ?? item.enabled,
+            updating: item.updating || !!toolBusy.value[item.name]
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
 )
 
 function envCount(server: McpServerConfig) {
@@ -874,19 +930,6 @@ function syncJsonToForm() {
     }
 }
 
-function syncFormToJson() {
-    if (syncing.value) return
-    syncing.value = true
-
-    try {
-        serverJson.value = formatServerJson(form.name.trim(), getFormConfig())
-    } catch {
-        // ignore errors
-    } finally {
-        syncing.value = false
-    }
-}
-
 function switchServerMode(mode: 'form' | 'json') {
     if (mode === serverMode.value) {
         return
@@ -972,15 +1015,22 @@ async function reloadMcp() {
 
 async function reconnect(name: string) {
     try {
+        serverBusy.value[name] = true
         await send('chatluna-agent/reconnectMcpServer', name)
         ElMessage.success('已开始重新连接。')
     } catch {
         ElMessage.error('重连失败，请检查连接配置。')
+    } finally {
+        serverBusy.value[name] = false
     }
 }
 
 async function toggleTool(item: McpToolInfo, enabled: boolean) {
+    const prev = toolEnabled.value[item.name] ?? item.enabled
+
     try {
+        toolEnabled.value[item.name] = enabled
+        toolBusy.value[item.name] = true
         await send('chatluna-agent/saveMcpTool', {
             name: item.name,
             enabled,
@@ -989,7 +1039,10 @@ async function toggleTool(item: McpToolInfo, enabled: boolean) {
         })
         ElMessage.success(enabled ? '已启用该工具。' : '已停用该工具。')
     } catch {
+        toolEnabled.value[item.name] = prev
         ElMessage.error('更新工具状态失败，请稍后重试。')
+    } finally {
+        toolBusy.value[item.name] = false
     }
 }
 
@@ -1042,8 +1095,12 @@ async function saveServer() {
 
 async function saveTool() {
     savingTool.value = true
+    toolBusy.value[toolForm.name] = true
+
+    const prev = toolEnabled.value[toolForm.name]
 
     try {
+        toolEnabled.value[toolForm.name] = toolForm.enabled
         await send('chatluna-agent/saveMcpTool', {
             name: toolForm.name,
             enabled: toolForm.enabled,
@@ -1057,9 +1114,15 @@ async function saveTool() {
         ElMessage.success('已保存工具配置。')
         showToolDialog.value = false
     } catch {
+        if (prev == null) {
+            delete toolEnabled.value[toolForm.name]
+        } else {
+            toolEnabled.value[toolForm.name] = prev
+        }
         ElMessage.error('保存失败，请稍后重试。')
     } finally {
         savingTool.value = false
+        toolBusy.value[toolForm.name] = false
     }
 }
 </script>
@@ -1075,11 +1138,7 @@ async function saveTool() {
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 16px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-1),
-        var(--k-page-bg) 20%
-    );
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 20%);
     overflow: hidden;
 }
 
@@ -1096,7 +1155,7 @@ async function saveTool() {
 .panel-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .panel-description {
@@ -1112,50 +1171,28 @@ async function saveTool() {
     gap: 8px;
 }
 
-.card-grid {
+.card-list {
     display: flex;
     flex-wrap: wrap;
     gap: 14px 16px;
     padding: 14px 14px 16px;
-    align-items: stretch;
-    align-content: flex-start;
-}
-
-.server-grid {
-    justify-content: flex-start;
-}
-
-.tool-grid {
-    justify-content: flex-start;
-}
-
-.server-grid > .server-card {
-    flex: 0 1 340px;
-    max-width: 360px;
-}
-
-.tool-grid > .tool-card {
-    flex: 0 1 300px;
-    max-width: 360px;
 }
 
 .server-card,
 .tool-card {
+    flex: 0 0 320px;
+    width: 320px;
+    max-width: 100%;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-2),
-        var(--k-page-bg) 18%
-    );
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 18%);
     padding: 14px;
     transition:
         border-color 0.2s ease,
         background-color 0.2s ease;
     display: flex;
     flex-direction: column;
-    min-height: 100%;
     min-width: 0;
     box-sizing: border-box;
 }
@@ -1165,7 +1202,7 @@ async function saveTool() {
     border-color: color-mix(in srgb, var(--el-color-warning), transparent 68%);
     background: color-mix(
         in srgb,
-        var(--k-color-surface-2),
+        var(--k-activity-bg),
         var(--el-color-warning) 4%
     );
 }
@@ -1192,11 +1229,11 @@ async function saveTool() {
     border-radius: 9px;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    background: color-mix(in srgb, var(--k-color-surface-1), transparent 8%);
+    background: color-mix(in srgb, var(--k-side-bg), transparent 8%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: color-mix(in srgb, var(--k-color-text), var(--k-color-primary) 28%);
+    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 28%);
     flex-shrink: 0;
     overflow: hidden;
 }
@@ -1231,7 +1268,7 @@ async function saveTool() {
     margin-top: 2px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
     word-break: break-word;
 }
 
@@ -1254,6 +1291,10 @@ async function saveTool() {
     color: var(--k-text-light);
     word-break: break-word;
     overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .meta-grid {
@@ -1266,7 +1307,7 @@ async function saveTool() {
 .meta-card {
     flex: 1 1 120px;
     border-radius: 10px;
-    background: color-mix(in srgb, var(--k-color-surface-2), transparent 22%);
+    background: color-mix(in srgb, var(--k-activity-bg), transparent 22%);
     padding: 8px 10px;
 }
 
@@ -1284,7 +1325,7 @@ async function saveTool() {
     display: block;
     margin-top: 4px;
     font-size: 13px;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
     line-height: 1.4;
     word-break: break-word;
 }
@@ -1305,7 +1346,7 @@ async function saveTool() {
 }
 
 .detail-row span:last-child {
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
     text-align: right;
     word-break: break-word;
 }
@@ -1332,7 +1373,7 @@ async function saveTool() {
     padding: 10px 12px;
     border-radius: 10px;
     background: color-mix(in srgb, var(--el-color-danger), transparent 95%);
-    color: color-mix(in srgb, var(--el-color-danger), var(--k-color-text) 36%);
+    color: color-mix(in srgb, var(--el-color-danger), var(--k-text-dark) 36%);
     font-size: 11px;
     line-height: 1.5;
     word-break: break-word;
@@ -1366,7 +1407,7 @@ async function saveTool() {
 
 .json-layout {
     display: grid;
-    grid-template-columns: 1.2fr 320px;
+    grid-template-columns: minmax(0, 1fr) 280px;
     gap: 24px;
     align-items: start;
 }
@@ -1394,11 +1435,7 @@ async function saveTool() {
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
     border-radius: 12px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-2),
-        var(--k-page-bg) 16%
-    );
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
     padding: 16px;
     display: flex;
     flex-direction: column;
@@ -1419,7 +1456,7 @@ async function saveTool() {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: color-mix(in srgb, var(--k-color-primary), var(--k-color-text) 32%);
+    color: color-mix(in srgb, var(--k-color-primary), var(--k-text-dark) 32%);
     flex-shrink: 0;
 }
 
@@ -1431,7 +1468,7 @@ async function saveTool() {
 .preview-name {
     font-size: 14px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
     word-break: break-word;
 }
 
@@ -1465,18 +1502,20 @@ async function saveTool() {
 
 .field-value {
     font-size: 13px;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
     word-break: break-all;
     padding: 8px 10px;
     border-radius: 8px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-1),
-        var(--k-page-bg) 24%
-    );
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 24%);
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 22%);
     line-height: 1.4;
+}
+
+.preview-note {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--k-text-light);
 }
 
 .dialog-copy {
@@ -1519,7 +1558,7 @@ async function saveTool() {
     margin-bottom: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .dialog-footer {
@@ -1535,11 +1574,20 @@ async function saveTool() {
     }
 
     .dialog-grid > .form-group,
-    .dialog-grid > .form-span,
-    .server-grid > .server-card,
-    .tool-grid > .tool-card {
+    .dialog-grid > .form-span {
         flex-basis: 100%;
         max-width: none;
+    }
+
+    .card-list {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .server-card,
+    .tool-card {
+        flex-basis: auto;
+        width: 100%;
     }
 
     .json-layout {

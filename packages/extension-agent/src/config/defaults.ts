@@ -164,7 +164,6 @@ export function getDefaultConfig(): AgentConfig {
             tools: {}
         },
         skills: {
-            allowComputerUsePrompt: false,
             dirs: [
                 '~/.agents/skills',
                 '~/.codex/skills',

@@ -141,7 +141,7 @@ onUnmounted(() => {
 
 :deep(.cm-editor) {
     background: transparent;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 :deep(.cm-focused) {
@@ -161,7 +161,7 @@ onUnmounted(() => {
 }
 
 :deep(.cm-gutters) {
-    color: color-mix(in srgb, var(--k-color-text), transparent 50%);
+    color: color-mix(in srgb, var(--k-text-dark), transparent 50%);
 }
 
 :deep(.cm-activeLineGutter) {

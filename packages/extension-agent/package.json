@@ -108,7 +108,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna Agent 支持，MCP，Skills，Sub Agent，知识库等，提供 WebUI 界面一站式管理",
+            "zh": "ChatLuna Agent 支持，MCP，Skills，Sub Agent 等，提供 WebUI 一站式管理",
             "en": "ChatLuna Agent framework"
         },
         "service": {
@@ -116,7 +116,6 @@
                 "chatluna",
                 "console"
             ]
-        },
-        "browser": true
+        }
     }
 }

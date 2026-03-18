@@ -232,7 +232,7 @@ async function handleWheel(event: WheelEvent) {
 .placeholder-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .section-copy,
@@ -254,7 +254,7 @@ async function handleWheel(event: WheelEvent) {
     background: color-mix(
         in srgb,
         var(--k-page-bg),
-        var(--k-color-surface-1) 20%
+        var(--k-side-bg) 20%
     );
 }
 

@@ -1,6 +1,5 @@
 /** @module computer/proxy */
 
-import { Readable } from 'stream'
 import { IncomingMessage } from 'http'
 import { WebSocket } from 'ws'
 import { Context } from 'koishi'
@@ -20,15 +19,6 @@ export class ChatLunaAgentComputerProxy {
             return
         }
 
-        this.ctx.server.get(
-            '/chatluna/computer/preview/:sessionId/:port(\\d+)',
-            async (koa) => this.handlePreview(koa, '')
-        )
-        this.ctx.server.get(
-            '/chatluna/computer/preview/:sessionId/:port(\\d+)/:rest(.*)',
-            async (koa) => this.handlePreview(koa, koa.params.rest || '')
-        )
-
         this._terminalLayer = this.ctx.server.ws(
             /^\/chatluna\/computer\/terminal\/([^/]+)\/([^/]+)$/,
             (socket, request) => {
@@ -45,61 +35,6 @@ export class ChatLunaAgentComputerProxy {
     stop() {
         this._terminalLayer?.close()
         this._terminalLayer = undefined
-    }
-
-    private async handlePreview(koa: PreviewContext, rest: string) {
-        const session = this.service.getSession(koa.params.sessionId)
-        if (!session) {
-            koa.status = 404
-            koa.body = 'Computer session not found.'
-            return
-        }
-
-        this.service.touchSession(session.sessionId)
-
-        const port = Number(koa.params.port)
-        const allowed = await this.service.canPreviewPort(
-            session.sessionId,
-            port
-        )
-        if (!allowed) {
-            koa.status = 403
-            koa.body = 'Port preview is not allowed.'
-            return
-        }
-
-        const target = this.service.resolvePreviewTarget(
-            session.sessionId,
-            port,
-            rest,
-            String(koa.querystring || '')
-        )
-        if (!target) {
-            koa.status = 404
-            koa.body = 'Preview target is not available.'
-            return
-        }
-
-        const response = await fetch(target, {
-            method: koa.method,
-            headers: forwardHeaders(koa.headers),
-            body:
-                koa.method === 'GET' || koa.method === 'HEAD'
-                    ? undefined
-                    : (Readable.toWeb(koa.req) as ReadableStream<Uint8Array>)
-        })
-
-        koa.status = response.status
-        response.headers.forEach((value, key) => {
-            if (key === 'content-encoding') {
-                return
-            }
-            koa.set(key, value)
-        })
-
-        koa.body = response.body
-            ? Readable.fromWeb(response.body as ReadableStream<Uint8Array>)
-            : null
     }
 
     private async acceptTerminal(socket: WebSocket, request: IncomingMessage) {
@@ -155,22 +90,3 @@ export class ChatLunaAgentComputerProxy {
         })
     }
 }
-
-function forwardHeaders(
-    headers: Record<string, string | string[] | undefined>
-) {
-    const result: Record<string, string> = {}
-    for (const [key, value] of Object.entries(headers)) {
-        if (value == null) {
-            continue
-        }
-        if (Array.isArray(value)) {
-            result[key] = value.join(', ')
-            continue
-        }
-        result[key] = value
-    }
-    return result
-}
-
-type PreviewContext = Parameters<Parameters<Context['server']['get']>[1]>[0]

@@ -254,15 +254,27 @@ export class ChatLunaAgentSubAgentService {
         const embeddings = await this.resolveEmbeddings()
         const skills = await this.resolveSkillPrompt(info)
         const computer = this.ctx.chatluna_agent?.computer
+        const backends = computer
+            ? this.permission.filterComputerBackends(
+                  info,
+                  computer.listAvailableBackends()
+              )
+            : []
         const systemPrompt = renderSubAgentSystemPrompt(
             info,
             subCtx,
             skills,
-            info.permissions.computer.mode !== 'deny' &&
-                computer?.getStatus().enabled
+            backends.length > 0 && computer?.getStatus().enabled
                 ? {
                       enabled: true,
-                      capabilities: computer.getCapabilities()
+                      backends,
+                      capabilities: Array.from(
+                          new Set(
+                              backends.flatMap((item) =>
+                                  computer.getCapabilities(item)
+                              )
+                          )
+                      )
                   }
                 : undefined
         )

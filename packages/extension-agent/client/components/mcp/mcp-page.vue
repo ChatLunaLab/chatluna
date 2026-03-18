@@ -4,16 +4,9 @@
             <div class="toolbar-main">
                 <div class="headline">
                     <div class="page-title">MCP</div>
-                    <div class="page-description">
-                        统一管理 MCP 服务器、工具和完整配置。
-                    </div>
                 </div>
 
-                <div class="actions-section">
-                    <el-button circle @click="$emit('refresh')">
-                        <el-icon><RefreshRight /></el-icon>
-                    </el-button>
-                </div>
+                <div class="actions-section"></div>
             </div>
         </div>
 
@@ -51,7 +44,6 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RefreshRight } from '@element-plus/icons-vue'
 import McpServersView from './mcp-servers-view.vue'
 import McpJsonView from './mcp-json-view.vue'
 import type { McpConfig, McpStatus } from '../../../src/types'
@@ -87,7 +79,7 @@ const currentTab = ref('servers')
 <style scoped>
 .mcp-page {
     min-height: 100%;
-    width: min(100%, 1440px);
+    width: min(100%, 1800px);
     margin: 0 auto;
     padding-bottom: 56px;
 }
@@ -98,7 +90,7 @@ const currentTab = ref('servers')
     z-index: 5;
     background: linear-gradient(
         180deg,
-        color-mix(in srgb, var(--k-page-bg), var(--k-color-surface-1) 18%) 0%,
+        color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
         color-mix(in srgb, var(--k-page-bg), transparent 12%) 76%,
         transparent 100%
     );
@@ -122,14 +114,7 @@ const currentTab = ref('servers')
     font-size: 19px;
     font-weight: 600;
     letter-spacing: 0.01em;
-    color: var(--k-color-text);
-}
-
-.page-description {
-    margin-top: 4px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--k-text-light);
+    color: var(--k-text-dark);
 }
 
 .actions-section {
@@ -147,11 +132,7 @@ const currentTab = ref('servers')
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 28%);
     border-radius: 16px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-1),
-        var(--k-page-bg) 48%
-    );
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 48%);
     width: fit-content;
     max-width: 100%;
 }
@@ -169,12 +150,12 @@ const currentTab = ref('servers')
 }
 
 .tab:hover {
-    background: color-mix(in srgb, var(--k-color-surface-2), transparent 18%);
+    background: color-mix(in srgb, var(--k-activity-bg), transparent 18%);
 }
 
 .tab.active {
-    background: var(--k-color-surface-1);
-    color: color-mix(in srgb, var(--k-color-text), var(--k-color-primary) 24%);
+    background: var(--k-side-bg);
+    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 24%);
     box-shadow: inset 0 0 0 1px
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
 }

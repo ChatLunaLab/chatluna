@@ -34,7 +34,7 @@ export function renderSubAgentSystemPrompt(
     info: SubAgentInfo,
     context: SubagentContext,
     skills?: string,
-    computer?: { enabled: boolean; capabilities: string[] }
+    computer?: { enabled: boolean; backends: string[]; capabilities: string[] }
 ) {
     const lines = [info.promptContent.trim()]
 
@@ -52,7 +52,7 @@ export function renderSubAgentSystemPrompt(
         '</sub-agent-context>'
     )
 
-    if (info.permissions.computer.mode !== 'deny' && computer?.enabled) {
+    if (computer?.enabled) {
         lines.push(
             '',
             'Computer-use capabilities are available for this sub-agent.',

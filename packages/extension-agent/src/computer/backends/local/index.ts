@@ -1,6 +1,7 @@
 /** @module computer/backends/local/index */
 
 import { spawn } from 'node:child_process'
+import fs from 'node:fs/promises'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import { ComputerCapability, LocalBackendConfig } from '../../../types'
@@ -11,7 +12,6 @@ import {
     TerminalHandle
 } from '../../types'
 import { truncateOutput } from '../types'
-import { parsePorts } from '../../ports'
 import { FileStore } from './store'
 import {
     ResolvedShellCommand,
@@ -125,6 +125,11 @@ export class LocalComputerSession implements ComputerSessionApi {
         return await runChildProcess(shell, workdir, env, timeout)
     }
 
+    async readAsset(filePath: string) {
+        ensureLocalPathAccess(filePath, this._cfg, 'read')
+        return (await fs.readFile(filePath)).toString('base64')
+    }
+
     isInScope(filePath: string) {
         return this._store.isInScope(filePath)
     }
@@ -138,16 +143,6 @@ export class LocalComputerSession implements ComputerSessionApi {
     ) {
         const shell = await resolveInteractiveShellCommand(this._cfg)
         return createLocalTerminal(shell, options.cwd || this._cwd)
-    }
-
-    async listPorts() {
-        const output =
-            process.platform === 'win32'
-                ? await this.execute('netstat -ano -p tcp')
-                : await this.execute('ss -ltnp || netstat -ltnp')
-        return parsePorts(
-            [output.stdout, output.stderr].filter(Boolean).join('\n')
-        )
     }
 }
 
@@ -283,5 +278,6 @@ const CAPABILITIES: ComputerCapability[] = [
     'file_edit',
     'grep',
     'glob',
-    'bash'
+    'bash',
+    'terminal_pty'
 ]

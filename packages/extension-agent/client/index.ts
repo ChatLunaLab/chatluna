@@ -7,6 +7,7 @@ export default (ctx: Context) => {
         name: 'chatluna-agent',
         path: '/chatluna-agent',
         fields: ['chatluna_agent_webui'],
+        authority: 3,
         component: Dashboard
     })
 }

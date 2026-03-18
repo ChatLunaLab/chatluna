@@ -1,13 +1,50 @@
 /** @module skills/import */
 
+import { randomUUID } from 'crypto'
 import { unzipSync } from 'fflate'
-import { cp, mkdir, readdir, rm, stat, writeFile } from 'fs/promises'
+import { cp, mkdir, rm, stat, writeFile } from 'fs/promises'
 import { Context } from 'koishi'
 import { basename, dirname, join, resolve } from 'path'
-import { randomUUID } from 'crypto'
 import { getSkillsRootPath } from '../config/path'
-import { SkillImportInput, SkillImportResult } from '../types'
+import {
+    SkillImportInput,
+    SkillImportPreviewEntry,
+    SkillImportPreviewItem,
+    SkillImportPreviewResult,
+    SkillImportResult
+} from '../types'
+import { scanSkillRoot } from '../skills/scan'
 import { collectFilesRecursive, resolveSafe } from '../utils/fs'
+
+export async function previewSkillsImport(
+    ctx: Context,
+    input: SkillImportInput
+): Promise<SkillImportPreviewResult> {
+    if (input.type === 'github') {
+        return await previewGithub(ctx, input.url)
+    }
+
+    const tmp = resolve(
+        ctx.baseDir,
+        'data/chatluna/agent/tmp',
+        `skills-${randomUUID()}`
+    )
+
+    await mkdir(tmp, { recursive: true })
+
+    try {
+        const source = await materializeImportSource(ctx, input, tmp)
+
+        return await previewMaterializedSource(
+            source.root,
+            input.type,
+            input.name,
+            source.diagnostics
+        )
+    } finally {
+        await rm(tmp, { recursive: true, force: true }).catch(() => {})
+    }
+}
 
 export async function importSkills(
     ctx: Context,
@@ -23,25 +60,37 @@ export async function importSkills(
 
     try {
         const source = await materializeImportSource(ctx, input, tmp)
-        const dirs = await findSkillDirs(source.root)
+        const preview = await previewMaterializedSource(
+            source.root,
+            input.type,
+            input.type === 'zip'
+                ? stripExt(input.name)
+                : input.type === 'folder'
+                  ? input.name
+                  : basename(source.root),
+            source.diagnostics
+        )
 
-        if (dirs.length < 1) {
-            throw new Error(
-                'No skill directories were found in the imported source'
-            )
+        if (preview.skills.length < 1) {
+            throw new Error('导入源中没有找到可用的 Skill 包。')
+        }
+
+        if (!preview.valid) {
+            throw new Error('导入源中存在无效的 Skill 包，请先修复后再导入。')
         }
 
         const result: SkillImportResult = {
             source: input.type,
             imported: [],
             replaced: [],
-            diagnostics: [...source.diagnostics]
+            diagnostics: [...preview.diagnostics]
         }
         const skillsRoot = getSkillsRootPath(ctx)
 
         await mkdir(skillsRoot, { recursive: true })
 
-        for (const dir of dirs) {
+        for (const item of preview.skills) {
+            const dir = join(source.root, item.dir === '.' ? '' : item.dir)
             const name = basename(dir)
             const dest = join(skillsRoot, name)
             const existed = (
@@ -49,7 +98,6 @@ export async function importSkills(
             )?.isDirectory()
 
             await rm(dest, { recursive: true, force: true })
-            await mkdir(dirname(dest), { recursive: true })
             await cp(dir, dest, { recursive: true })
 
             result.imported.push(name)
@@ -71,13 +119,57 @@ export async function importSkills(
     }
 }
 
+async function previewMaterializedSource(
+    root: string,
+    source: SkillImportInput['type'],
+    target: string,
+    diagnostics: string[]
+): Promise<SkillImportPreviewResult> {
+    const entries = await collectPreviewEntries(root)
+    const scanned = await scanSkillRoot(root)
+    const skills = scanned.map((item): SkillImportPreviewItem => {
+        const dir = item.dir
+            .slice(root.length)
+            .replaceAll('\\', '/')
+            .replace(/^\/+/, '')
+
+        return {
+            dir: dir || '.',
+            name: item.name,
+            description: item.description,
+            state: item.state,
+            diagnostics: item.diagnostics
+        }
+    })
+    const valid =
+        skills.length > 0 && skills.every((item) => item.state === 'ready')
+    const notes = [...diagnostics]
+
+    if (skills.length < 1) {
+        notes.push('没有找到包含 SKILL.md 的 Skill 目录。')
+    }
+
+    if (!valid && skills.length > 0) {
+        notes.push('至少有一个 Skill 目录校验失败。')
+    }
+
+    return {
+        source,
+        target: target || basename(root),
+        valid,
+        entries,
+        skills,
+        diagnostics: notes
+    }
+}
+
 async function materializeImportSource(
     ctx: Context,
     input: SkillImportInput,
     tmp: string
 ): Promise<{ root: string; diagnostics: string[] }> {
     if (input.type === 'github') {
-        return importFromGithub(ctx, input.url, tmp)
+        return await importFromGithub(ctx, input.url, tmp)
     }
 
     if (input.type === 'zip') {
@@ -103,6 +195,153 @@ async function materializeImportSource(
     return { root, diagnostics: [] }
 }
 
+async function previewGithub(ctx: Context, url: string) {
+    const info = parseGithubUrl(url)
+    if (!info) {
+        throw new Error('Unsupported GitHub URL')
+    }
+
+    const diagnostics: string[] = []
+    const ref =
+        info.ref || (await fetchGithubDefaultBranch(ctx, info.owner, info.repo))
+    const response = await ctx.http(
+        `https://api.github.com/repos/${info.owner}/${info.repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
+        {
+            method: 'get',
+            headers: githubHeaders()
+        }
+    )
+    const tree = Array.isArray(response.data?.tree) ? response.data.tree : []
+
+    if (response.data?.truncated) {
+        diagnostics.push('GitHub API 返回的文件树已截断，预览结果可能不完整。')
+    }
+
+    const entries: SkillImportPreviewEntry[] = tree
+        .map((item) => ({
+            path: String(item.path ?? ''),
+            type:
+                item.type === 'tree'
+                    ? ('directory' as const)
+                    : ('file' as const)
+        }))
+        .filter((item) => item.path.length > 0)
+        .filter((item) => {
+            if (!info.subpath) {
+                return true
+            }
+
+            return (
+                item.path === info.subpath ||
+                item.path.startsWith(`${info.subpath}/`)
+            )
+        })
+        .map((item) => ({
+            path: info.subpath
+                ? item.path.slice(info.subpath.length).replace(/^\/+/, '')
+                : item.path,
+            type: item.type
+        }))
+        .filter((item) => item.path.length > 0)
+        .sort((a, b) => {
+            if (a.path === b.path) {
+                return a.type === 'directory' ? -1 : 1
+            }
+
+            return a.path.localeCompare(b.path)
+        })
+
+    if (entries.length < 1) {
+        diagnostics.push('GitHub 地址下没有找到可预览的文件。')
+    }
+
+    const tmp = resolve(
+        ctx.baseDir,
+        'data/chatluna/agent/tmp',
+        `skills-${randomUUID()}`
+    )
+
+    await mkdir(tmp, { recursive: true })
+
+    try {
+        const files = new Set(
+            entries
+                .filter((item) => item.type === 'file')
+                .map((item) => item.path)
+        )
+        const needed = new Set(
+            [...files].filter((item) => basename(item) === 'SKILL.md')
+        )
+
+        for (const file of needed) {
+            const dir = dirname(file)
+            const extra =
+                dir === '.' ? 'agents/openai.yaml' : `${dir}/agents/openai.yaml`
+            if (files.has(extra)) {
+                needed.add(extra)
+            }
+        }
+
+        await Promise.all(
+            [...needed].map(async (file) => {
+                const content = await fetchGithubFile(
+                    ctx,
+                    info.owner,
+                    info.repo,
+                    info.subpath ? `${info.subpath}/${file}` : file,
+                    ref
+                )
+                const target = resolveSafe(tmp, file)
+                if (!target) {
+                    return
+                }
+
+                await mkdir(dirname(target), { recursive: true })
+                await writeFile(target, content, 'utf-8')
+            })
+        )
+
+        const target = info.subpath
+            ? `${info.owner}/${info.repo}/${info.subpath}`
+            : `${info.owner}/${info.repo}`
+        const scanned = await scanSkillRoot(tmp)
+        const skills = scanned.map(
+            (item): SkillImportPreviewItem => ({
+                dir:
+                    item.dir
+                        .slice(tmp.length)
+                        .replaceAll('\\', '/')
+                        .replace(/^\/+/, '') || '.',
+                name: item.name,
+                description: item.description,
+                state: item.state,
+                diagnostics: item.diagnostics
+            })
+        )
+        const valid =
+            skills.length > 0 && skills.every((item) => item.state === 'ready')
+
+        if (skills.length < 1) {
+            diagnostics.push('没有找到包含 SKILL.md 的 Skill 目录。')
+        }
+
+        if (!valid && skills.length > 0) {
+            diagnostics.push('至少有一个 Skill 目录校验失败。')
+        }
+
+        return {
+            source: 'github',
+            target,
+            valid,
+            entries,
+            skills,
+            diagnostics
+        } satisfies SkillImportPreviewResult
+    } finally {
+        await rm(tmp, { recursive: true, force: true }).catch(() => {})
+    }
+}
+
 async function importFromGithub(ctx: Context, url: string, tmp: string) {
     const info = parseGithubUrl(url)
     const diagnostics: string[] = []
@@ -114,13 +353,16 @@ async function importFromGithub(ctx: Context, url: string, tmp: string) {
     const root = join(tmp, `${info.owner}-${info.repo}`)
     await mkdir(root, { recursive: true })
 
-    const response = await ctx.http(info.zipUrl, {
-        responseType: 'arraybuffer',
-        method: 'get',
-        headers: {
-            'User-Agent': 'ChatLuna-Agent'
+    const response = await ctx.http(
+        info.ref
+            ? `https://api.github.com/repos/${info.owner}/${info.repo}/zipball/${encodeURIComponent(info.ref)}`
+            : `https://api.github.com/repos/${info.owner}/${info.repo}/zipball`,
+        {
+            responseType: 'arraybuffer',
+            method: 'get',
+            headers: githubHeaders()
         }
-    })
+    )
 
     await unzipToDir(Buffer.from(response.data), root)
 
@@ -130,7 +372,7 @@ async function importFromGithub(ctx: Context, url: string, tmp: string) {
 
     if (info.subpath && !searchRoot) {
         diagnostics.push(
-            `GitHub subpath '${info.subpath}' was not found, scanned the whole archive instead`
+            `GitHub 子路径 '${info.subpath}' 不存在，已回退到整个仓库继续扫描。`
         )
     }
 
@@ -138,6 +380,32 @@ async function importFromGithub(ctx: Context, url: string, tmp: string) {
         root: searchRoot ?? root,
         diagnostics
     }
+}
+
+async function collectPreviewEntries(
+    root: string
+): Promise<SkillImportPreviewEntry[]> {
+    const files = await collectFilesRecursive(root, { relative: true })
+    const dirs = new Set<string>()
+
+    for (const file of files) {
+        let current = dirname(file)
+
+        while (current && current !== '.') {
+            dirs.add(current.replaceAll('\\', '/'))
+            current = dirname(current)
+        }
+    }
+
+    return [
+        ...[...dirs]
+            .sort((a, b) => a.localeCompare(b))
+            .map((path) => ({ path, type: 'directory' as const })),
+        ...files.map((path) => ({
+            path: path.replaceAll('\\', '/'),
+            type: 'file' as const
+        }))
+    ]
 }
 
 async function unzipToDir(buffer: Buffer, root: string) {
@@ -160,45 +428,82 @@ async function findSubpathRoot(root: string, subpath: string) {
         return root
     }
 
-    const queue = [root]
+    const dirs = await collectFilesRecursive(root, { relative: true }).then(
+        (files) =>
+            Array.from(
+                new Set(
+                    files.flatMap((file) => {
+                        const result: string[] = []
+                        let current = dirname(file)
 
-    while (queue.length > 0) {
-        const current = queue.shift()
-        if (!current) {
-            continue
-        }
+                        while (current && current !== '.') {
+                            result.push(current.replaceAll('\\', '/'))
+                            current = dirname(current)
+                        }
 
-        const target = join(current, ...clean.split('/'))
-        const info = await stat(target).catch(() => undefined)
-        if (info?.isDirectory()) {
-            return target
-        }
+                        return result
+                    })
+                )
+            )
+    )
 
-        const entries = await readdir(current, { withFileTypes: true }).catch(
-            () => []
-        )
-
-        for (const entry of entries) {
-            if (!entry.isDirectory()) {
-                continue
-            }
-
-            queue.push(join(current, entry.name))
+    for (const dir of dirs) {
+        if (dir === clean || dir.endsWith(`/${clean}`)) {
+            return join(root, dir)
         }
     }
 
     return undefined
 }
 
-async function findSkillDirs(root: string) {
-    const files = await collectFilesRecursive(root)
-    return Array.from(
-        new Set(
-            files
-                .filter((file) => basename(file) === 'SKILL.md')
-                .map((file) => dirname(file))
-        )
-    ).sort((a, b) => a.localeCompare(b))
+async function fetchGithubDefaultBranch(
+    ctx: Context,
+    owner: string,
+    repo: string
+) {
+    const response = await ctx.http(
+        `https://api.github.com/repos/${owner}/${repo}`,
+        {
+            method: 'get',
+            headers: githubHeaders()
+        }
+    )
+
+    const branch = String(response.data?.default_branch ?? '').trim()
+    if (!branch) {
+        throw new Error('GitHub 仓库没有默认分支。')
+    }
+
+    return branch
+}
+
+async function fetchGithubFile(
+    ctx: Context,
+    owner: string,
+    repo: string,
+    path: string,
+    ref: string
+) {
+    const response = await ctx.http(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${path
+            .split('/')
+            .map((item) => encodeURIComponent(item))
+            .join('/')}?ref=${encodeURIComponent(ref)}`,
+        {
+            method: 'get',
+            headers: githubHeaders()
+        }
+    )
+    const content = String(response.data?.content ?? '').replace(/\n/g, '')
+
+    return Buffer.from(content, 'base64').toString('utf-8')
+}
+
+function githubHeaders() {
+    return {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'ChatLuna-Agent'
+    }
 }
 
 function parseGithubUrl(url: string) {
@@ -231,24 +536,22 @@ function parseGithubUrl(url: string) {
     }
 
     if (parts[2] === 'tree' && parts[3]) {
-        const ref = parts[3]
-        const subpath = parts.slice(4).join('/')
-
         return {
             owner,
             repo,
-            zipUrl: `https://api.github.com/repos/${owner}/${repo}/zipball/${ref}`,
-            subpath
+            ref: parts[3],
+            subpath: parts.slice(4).join('/')
         }
     }
 
     return {
         owner,
         repo,
-        zipUrl: `https://api.github.com/repos/${owner}/${repo}/zipball`,
+        ref: '',
         subpath: ''
     }
 }
+
 function stripExt(name: string) {
     return name.replace(/\.[^.]+$/, '')
 }

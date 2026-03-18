@@ -181,7 +181,7 @@ const handleSave = () => {
 .page-title {
     font-size: 20px;
     font-weight: 700;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .page-description {
@@ -206,7 +206,7 @@ const handleSave = () => {
 .stat-card {
     border: 1px solid var(--k-color-divider);
     border-radius: 16px;
-    background: var(--k-color-surface-1);
+    background: var(--k-side-bg);
     padding: 18px;
 }
 
@@ -219,7 +219,7 @@ const handleSave = () => {
 .stat-value {
     font-size: 24px;
     font-weight: 700;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
     word-break: break-word;
 }
 
@@ -232,7 +232,7 @@ const handleSave = () => {
 .panel {
     border: 1px solid var(--k-color-divider);
     border-radius: 18px;
-    background: var(--k-color-surface-1);
+    background: var(--k-side-bg);
     overflow: hidden;
     min-height: 520px;
     padding: 0 0 20px;
@@ -249,14 +249,14 @@ const handleSave = () => {
 .panel-title {
     font-size: 15px;
     font-weight: 700;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .panel-count {
     min-width: 28px;
     height: 28px;
     border-radius: 999px;
-    background: var(--k-color-surface-2);
+    background: var(--k-activity-bg);
     color: var(--k-text-light);
     display: inline-flex;
     align-items: center;
@@ -282,7 +282,7 @@ const handleSave = () => {
 .record-name {
     font-size: 14px;
     font-weight: 700;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .record-preview {

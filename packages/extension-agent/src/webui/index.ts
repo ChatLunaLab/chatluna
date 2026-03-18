@@ -11,12 +11,18 @@ import { AgentConsoleData, AgentStatus, McpServerConfig } from '../types'
 
 class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
     constructor(ctx: Context) {
-        super(ctx, 'chatluna_agent_webui')
+        super(ctx, 'chatluna_agent_webui', {
+            immediate: true
+        })
     }
 
-    async get() {
+    async get(forced?: boolean) {
         if (this.ctx.chatluna_agent) {
-            return this.ctx.chatluna_agent.getConsoleData()
+            const base = JSON.parse(
+                JSON.stringify(this.ctx.chatluna_agent.getConsoleData())
+            )
+            console.log(base)
+            return base
         }
 
         return {
@@ -54,8 +60,7 @@ function createEmptyStatus(ctx: Context): AgentStatus {
                         'grep',
                         'glob',
                         'bash',
-                        'terminal_pty',
-                        'port_preview'
+                        'terminal_pty'
                     ],
                     sessionCount: 0
                 },
@@ -86,8 +91,7 @@ function createEmptyStatus(ctx: Context): AgentStatus {
                         'grep',
                         'glob',
                         'bash',
-                        'terminal_pty',
-                        'port_preview'
+                        'terminal_pty'
                     ],
                     sessionCount: 0
                 }
@@ -163,22 +167,16 @@ function registerComputerListeners(ctx: Context, agent: AgentRef) {
     )
 
     ctx.console.addListener(
-        'chatluna-agent/listComputerPorts',
+        'chatluna-agent/readComputerFile',
         async function (input) {
-            return await agent().computer.listPorts(this.id, input?.backend)
+            return await agent().computer.readFileForUi(this.id, input)
         }
     )
 
     ctx.console.addListener(
-        'chatluna-agent/getComputerPreviewUrl',
-        async (sessionId, port) =>
-            agent().computer.getPreviewUrl(sessionId, port)
-    )
-
-    ctx.console.addListener(
-        'chatluna-agent/readComputerFile',
+        'chatluna-agent/readComputerFileAsset',
         async function (input) {
-            return await agent().computer.readFileForUi(this.id, input)
+            return await agent().computer.readFileAssetForUi(this.id, input)
         }
     )
 
@@ -238,10 +236,13 @@ function registerSkillsListeners(ctx: Context, agent: AgentRef) {
         agent().exportSkill(id)
     )
 
+    ctx.console.addListener(
+        'chatluna-agent/previewSkillImport',
+        async (input) => agent().previewSkillImport(input)
+    )
+
     ctx.console.addListener('chatluna-agent/importSkills', async (input) => {
-        const result = await agent().skills.importSkills(input)
-        await agent().refreshConsoleData()
-        return result
+        return await agent().importSkills(input)
     })
 
     ctx.console.addListener(
@@ -383,14 +384,14 @@ function registerMcpListeners(ctx: Context, agent: AgentRef) {
 }
 
 export function apply(ctx: Context) {
-    ctx.plugin(ChatLunaAgentConsoleService)
-
     ctx.console.addEntry({
         dev: resolve(__dirname, '../client/index.ts'),
         prod: resolve(__dirname, '../dist')
     })
 
-    const agent = () => ctx.chatluna_agent as ChatLunaAgentService
+    ctx.plugin(ChatLunaAgentConsoleService)
+
+    const agent = () => ctx.chatluna_agent
 
     registerBaseListeners(ctx, agent)
     registerMcpListeners(ctx, agent)

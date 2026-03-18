@@ -2,7 +2,6 @@
 
 import { randomUUID } from 'crypto'
 import { Context } from 'koishi'
-import { parsePorts } from '../ports'
 import { quoteShell } from './types'
 import { OpenTerminalBackendConfig } from '../../types'
 import {
@@ -42,10 +41,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             throw new Error('open-terminal baseUrl is empty.')
         }
 
-        await this.ctx.http(this.url('/ports'), {
-            method: 'GET',
-            headers: this.headers()
-        })
+        await this.execute('pwd', { timeout: 5000 })
         this._connected = true
     }
 
@@ -58,6 +54,17 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
+        const stat = await this.execute(
+            `if [ -d ${quoteShell(filePath)} ]; then printf __dir__; fi`,
+            { timeout: 5000 }
+        )
+        if (stat.stdout.trim() === '__dir__') {
+            const result = await this.execute(
+                `find ${quoteShell(filePath)} -mindepth 1 -maxdepth 1 \\( -type d -printf '%p/\\n' -o -type f -printf '%p\\n' \\) | sort`
+            )
+            return result.stdout.trim()
+        }
+
         const result = await this.ctx.http(
             this.url(`/files/${encodeRemotePath(filePath)}`),
             {
@@ -209,6 +216,13 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         }
     }
 
+    async readAsset(filePath: string) {
+        const result = await this.execute(
+            `base64 ${quoteShell(filePath)} | tr -d '\n'`
+        )
+        return result.stdout.trim()
+    }
+
     async createTerminal(options: TerminalOptions = {}) {
         const result = await this.ctx.http.post(
             this.url('/terminals'),
@@ -263,29 +277,6 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 socket.close()
             }
         } satisfies TerminalHandle
-    }
-
-    async listPorts() {
-        const result = await this.ctx.http(this.url('/ports'), {
-            method: 'GET',
-            headers: this.headers()
-        })
-        if (Array.isArray(result.data)) {
-            return result.data.map((item) => ({
-                port: Number(item.port),
-                state:
-                    item.state === 'established'
-                        ? ('established' as const)
-                        : ('listening' as const),
-                process: item.process
-            }))
-        }
-
-        return parsePorts(JSON.stringify(result.data))
-    }
-
-    getProxyUrl(port: number) {
-        return this.url(`/proxy/${port}`)
     }
 
     async getDesktopInfo() {
@@ -365,6 +356,5 @@ const CAPABILITIES = [
     'grep',
     'glob',
     'bash',
-    'terminal_pty',
-    'port_preview'
+    'terminal_pty'
 ] as const

@@ -6,7 +6,7 @@ import { Context, Service } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createSubAgentItemConfig } from '../config/defaults'
 import { migrateFromOldConfig } from '../config/migrate'
-import { getSubAgentsRootPath } from '../config/path'
+import { getSkillsRootPath, getSubAgentsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import { writeConfig } from '../config/write'
 import {
@@ -14,11 +14,15 @@ import {
     McpToolConfig,
     SaveMcpServerInput,
     SkillExportResult,
+    SkillImportInput,
+    SkillImportPreviewResult,
+    SkillImportResult,
     SubAgentConfig,
-    SubAgentInfo,
     SubAgentImportInput,
+    SubAgentInfo,
     SubAgentItemConfig
 } from '../types'
+import { createHashId } from '../utils/id'
 import { ChatLunaAgentComputerService } from './computer'
 import { ChatLunaAgentMcpService } from './mcp'
 import { ChatLunaAgentPermissionService } from './permissions'
@@ -55,11 +59,14 @@ export class ChatLunaAgentService extends Service {
     }
 
     async start() {
-        await this.permission.start()
-        await this.computer.start()
-        await this.skills.start()
-        await this.mcp.start()
-        await this.subAgent.start()
+        await Promise.all([
+            this.permission.start(),
+            this.computer.start(),
+            this.skills.start(),
+            this.subAgent.start(),
+            this.mcp.start()
+        ])
+        this.ctx.setTimeout(() => this.refreshConsoleData(), 20)
     }
 
     async stop() {
@@ -112,14 +119,13 @@ export class ChatLunaAgentService extends Service {
     }
 
     async refreshConsoleData() {
-        await this.ctx.chatluna_agent_webui?.refresh(true)
+        await this.ctx.console.services.chatluna_agent_webui?.refresh(true)
     }
 
     async saveConfig(cfg: AgentConfig) {
         const next = migrateFromOldConfig(structuredClone(cfg))
         await writeConfig(this.ctx, next)
         this._setConfig(next)
-        await this.refreshConsoleData()
         await this.reload(next)
     }
 
@@ -132,7 +138,6 @@ export class ChatLunaAgentService extends Service {
 
     async saveSkillsConfig(skills: AgentConfig['skills']) {
         await this.updateConfig('skills', skills, async () => {
-            await this.computer.reload()
             await this.skills.reload()
         })
     }
@@ -152,6 +157,31 @@ export class ChatLunaAgentService extends Service {
 
     async exportSkill(id: string): Promise<SkillExportResult | undefined> {
         return await this.skills.exportSkill(id)
+    }
+
+    async previewSkillImport(
+        input: SkillImportInput
+    ): Promise<SkillImportPreviewResult> {
+        return await this.skills.previewImport(input)
+    }
+
+    async importSkills(input: SkillImportInput): Promise<SkillImportResult> {
+        const result = await this.skills.importSkills(input)
+        const skills = structuredClone(this.args.config.skills)
+
+        for (const name of result.imported) {
+            skills.items[
+                createHashId(
+                    join(getSkillsRootPath(this.ctx), name, 'SKILL.md')
+                )
+            ] = { enabled: true }
+        }
+
+        await this.updateConfig('skills', skills, async () => {
+            await this.skills.reload()
+        })
+
+        return result
     }
 
     async saveMcpServer(input: SaveMcpServerInput) {
@@ -195,7 +225,6 @@ export class ChatLunaAgentService extends Service {
         const skills = structuredClone(this.args.config.skills)
         skills.items[id] = { enabled }
         await this.updateConfig('skills', skills, async () => {
-            await this.computer.reload()
             await this.skills.reload()
         })
     }
@@ -206,7 +235,6 @@ export class ChatLunaAgentService extends Service {
         const skills = structuredClone(this.args.config.skills)
         delete skills.items[id]
         await this.updateConfig('skills', skills, async () => {
-            await this.computer.reload()
             await this.skills.reload()
         })
     }

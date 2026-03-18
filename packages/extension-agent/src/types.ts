@@ -19,6 +19,7 @@ import type {
     SkillContentResult,
     SkillExportResult,
     SkillImportInput,
+    SkillImportPreviewResult,
     SkillImportResult,
     SkillInfo,
     SkillsConfig,
@@ -72,12 +73,6 @@ export interface SaveMcpServerInput {
     config: McpServerConfig
 }
 
-declare module 'koishi' {
-    interface Context {
-        chatluna_agent_webui: DataService<AgentConsoleData>
-    }
-}
-
 declare module '@koishijs/plugin-console' {
     // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Console {
@@ -104,24 +99,15 @@ declare module '@koishijs/plugin-console' {
             sessionId: string,
             terminalId: string
         ) => Promise<ActionResult>
-        'chatluna-agent/listComputerPorts': (input?: {
-            backend?: ComputerBackendType
-        }) => Promise<
-            {
-                port: number
-                state: 'listening' | 'established'
-                process?: string
-            }[]
-        >
-        'chatluna-agent/getComputerPreviewUrl': (
-            sessionId: string,
-            port: number
-        ) => Promise<string | undefined>
         'chatluna-agent/readComputerFile': (input: {
             path: string
             backend?: ComputerBackendType
             offset?: number
             limit?: number
+        }) => Promise<string>
+        'chatluna-agent/readComputerFileAsset': (input: {
+            path: string
+            backend?: ComputerBackendType
         }) => Promise<string>
         'chatluna-agent/globComputerFiles': (input: {
             pattern: string
@@ -170,6 +156,9 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/importSkills': (
             input: SkillImportInput
         ) => Promise<SkillImportResult>
+        'chatluna-agent/previewSkillImport': (
+            input: SkillImportInput
+        ) => Promise<SkillImportPreviewResult>
         'chatluna-agent/saveMcp': (
             config: AgentConfig['mcp']
         ) => Promise<ActionResult>

@@ -7,7 +7,6 @@ import {
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { Context } from 'koishi'
-import { writeConfig } from '../config/write'
 import {
     AgentConfig,
     ComputerBackendStatus,
@@ -46,7 +45,6 @@ export class ChatLunaAgentComputerService {
     private _idleDispose?: () => void
     private _proxy: ChatLunaAgentComputerProxy
     private _terminals = new Map<string, Map<string, TerminalHandle>>()
-    private _autoEnabledPrompt = false
 
     readonly materializer = new SkillMaterializer()
 
@@ -83,7 +81,6 @@ export class ChatLunaAgentComputerService {
         await this._sessions.clear()
         this._status = this.buildStatus()
         this.syncIdleCleanup()
-        await this.syncPromptFlag()
         this.syncTools()
         this.syncPrompt()
     }
@@ -124,10 +121,14 @@ export class ChatLunaAgentComputerService {
 
     async getOrCreateSession(options: {
         backend?: ComputerBackendType
+        allowedBackends?: ComputerBackendType[]
         conversationId?: string
         userId?: string
     }) {
-        const backend = this.resolveProvider(options.backend)
+        const backend = this.resolveProvider(
+            options.backend,
+            options.allowedBackends
+        )
         if (!backend) {
             throw new Error('No supported computer backend is available.')
         }
@@ -186,18 +187,22 @@ export class ChatLunaAgentComputerService {
     getCapabilities(type?: ComputerBackendType) {
         if (type) {
             const status = this._status.backends[type]
-            return status.state === 'unsupported'
-                ? []
-                : [...status.capabilities]
+            return !isAvailableBackend(status) ? [] : [...status.capabilities]
         }
 
         return Array.from(
             new Set(
-                Object.values(this._status.backends)
-                    .filter((item) => item.state !== 'unsupported')
-                    .flatMap((item) => item.capabilities)
+                this.listAvailableBackends().flatMap(
+                    (item) => this._status.backends[item].capabilities
+                )
             )
         )
+    }
+
+    listAvailableBackends(): ComputerBackendType[] {
+        return Object.values(this._status.backends)
+            .filter((item) => isAvailableBackend(item))
+            .map((item) => item.type)
     }
 
     async createTerminal(
@@ -256,15 +261,6 @@ export class ChatLunaAgentComputerService {
         }
     }
 
-    async listPorts(clientId: string, backend?: ComputerBackendType) {
-        const session = await this.getOrCreateUiSession(clientId, backend)
-        if (!session.listPorts) {
-            return []
-        }
-
-        return await session.listPorts()
-    }
-
     async readFileForUi(
         clientId: string,
         input: {
@@ -276,6 +272,21 @@ export class ChatLunaAgentComputerService {
     ) {
         const session = await this.getOrCreateUiSession(clientId, input.backend)
         return await session.readFile(input.path, input.offset, input.limit)
+    }
+
+    async readFileAssetForUi(
+        clientId: string,
+        input: {
+            path: string
+            backend?: ComputerBackendType
+        }
+    ) {
+        const session = await this.getOrCreateUiSession(clientId, input.backend)
+        if (!session.readAsset) {
+            throw new Error('Binary file preview is not available.')
+        }
+
+        return await session.readAsset(input.path)
     }
 
     async globForUi(
@@ -358,43 +369,6 @@ export class ChatLunaAgentComputerService {
         await session.desktopAction(action)
     }
 
-    resolvePreviewTarget(
-        sessionId: string,
-        port: number,
-        rest = '',
-        query = ''
-    ) {
-        const session = this.getSession(sessionId)
-        if (!session) {
-            return undefined
-        }
-
-        const target = session.getProxyUrl?.(port)
-        if (target) {
-            return appendPath(target, rest, query)
-        }
-
-        if (session.backend === 'local') {
-            return appendPath(`http://127.0.0.1:${port}`, rest, query)
-        }
-
-        return undefined
-    }
-
-    getPreviewUrl(sessionId: string, port: number) {
-        return `/chatluna/computer/preview/${sessionId}/${port}`
-    }
-
-    async canPreviewPort(sessionId: string, port: number) {
-        const session = this.getSession(sessionId)
-        if (!session?.listPorts) {
-            return false
-        }
-
-        const ports = await session.listPorts()
-        return ports.some((item) => item.port === port)
-    }
-
     resolveSecret(value: string) {
         if (!value.startsWith('env:')) {
             return value
@@ -429,8 +403,19 @@ export class ChatLunaAgentComputerService {
     ) {
         const session = runConfig?.configurable?.session
         const sub = runConfig?.configurable?.subagentContext
+        const info = sub
+            ? this.ctx.chatluna_agent?.subAgent
+                  .getCatalogSync()
+                  .find((item) => item.id === sub.agentId)
+            : undefined
         return {
             backend,
+            allowedBackends: info
+                ? this.ctx.chatluna_agent?.permission.filterComputerBackends(
+                      info,
+                      COMPUTER_BACKENDS
+                  )
+                : undefined,
             conversationId:
                 sub?.parentConversationId ??
                 runConfig?.configurable?.conversationId,
@@ -541,20 +526,28 @@ export class ChatLunaAgentComputerService {
         )
     }
 
-    private resolveProvider(preferred?: ComputerBackendType) {
+    private resolveProvider(
+        preferred?: ComputerBackendType,
+        allowedBackends?: ComputerBackendType[]
+    ) {
         const order: (ComputerBackendType | undefined)[] = [
             preferred ?? this.config.computer.defaultProvider,
             'local',
             'open-terminal',
             'e2b'
         ]
+        const backends = allowedBackends ?? COMPUTER_BACKENDS
         for (const item of order) {
             if (!item) {
                 continue
             }
 
+            if (!backends.includes(item)) {
+                continue
+            }
+
             const status = this._status.backends[item]
-            if (status.state !== 'unsupported') {
+            if (isAvailableBackend(status)) {
                 return item
             }
         }
@@ -621,21 +614,6 @@ export class ChatLunaAgentComputerService {
         )
     }
 
-    private async syncPromptFlag() {
-        if (
-            this._status.enabled &&
-            !this.config.skills.allowComputerUsePrompt &&
-            !this._autoEnabledPrompt
-        ) {
-            this.config.skills.allowComputerUsePrompt = true
-            this._autoEnabledPrompt = true
-            await writeConfig(this.ctx, this.config)
-            this.ctx.logger.info(
-                'Computer backend available, auto-enabling allowComputerUsePrompt'
-            )
-        }
-    }
-
     private refreshStatus() {
         const status = this.buildStatus()
         const sessions = this._sessions.list()
@@ -689,9 +667,9 @@ export class ChatLunaAgentComputerService {
 
         return {
             enabled:
-                local.state !== 'unsupported' ||
-                openTerminal.state !== 'unsupported' ||
-                e2b.state !== 'unsupported',
+                isAvailableBackend(local) ||
+                isAvailableBackend(openTerminal) ||
+                isAvailableBackend(e2b),
             defaultProvider: this.config.computer.defaultProvider,
             backends: {
                 local,
@@ -734,15 +712,12 @@ function buildBackendStatus(
     }
 }
 
-function appendPath(base: string, rest: string, query: string) {
-    const url = new URL(base)
-    if (rest) {
-        url.pathname = url.pathname.replace(/\/$/, '') + '/' + rest
-    }
-    if (query) {
-        url.search = query
-    }
-    return url.toString()
+function isAvailableBackend(status: ComputerBackendStatus) {
+    return (
+        status.state === 'idle' ||
+        status.state === 'connecting' ||
+        status.state === 'connected'
+    )
 }
 
 const BASE_CAPABILITIES: ComputerCapability[] = [
@@ -752,14 +727,19 @@ const BASE_CAPABILITIES: ComputerCapability[] = [
     'grep',
     'glob',
     'bash',
-    'terminal_pty',
-    'port_preview'
+    'terminal_pty'
 ]
 
 const E2B_EXTRA: ComputerCapability[] = [
     'desktop_stream',
     'desktop_screenshot',
     'desktop_action'
+]
+
+const COMPUTER_BACKENDS: ComputerBackendType[] = [
+    'local',
+    'e2b',
+    'open-terminal'
 ]
 
 const COMPUTER_TOOLS = [

@@ -5,6 +5,7 @@ import { Context } from 'koishi'
 import { createPermissionRule, createToolItemConfig } from '../config/defaults'
 import {
     AgentConfig,
+    ComputerBackendType,
     PermissionRule,
     SubAgentInfo,
     SubAgentPermissionConfig,
@@ -79,26 +80,60 @@ export class ChatLunaAgentPermissionService {
         }
     }
 
-    filterNames(names: string[], rule: PermissionRule): string[] {
+    filterSkillNames(info: SubAgentInfo, names: string[]) {
+        const rule = this.mergeRule(
+            info.permissions.skills,
+            this.config.subAgent.defaults.skills
+        )
+
         if (rule.mode === 'allow') {
             return names.filter((name) => rule.allow.includes(name))
         }
 
         if (rule.mode === 'deny') {
+            if (rule.deny.length < 1) {
+                return []
+            }
+
             return names.filter((name) => !rule.deny.includes(name))
         }
 
         return [...names]
     }
 
-    filterSkillNames(info: SubAgentInfo, names: string[]) {
-        return this.filterNames(
-            names,
-            this.mergeRule(
-                info.permissions.skills,
-                this.config.subAgent.defaults.skills
-            )
+    filterComputerBackends(info: SubAgentInfo, names: ComputerBackendType[]) {
+        const rule = this.mergeRule(
+            info.permissions.computer,
+            this.config.subAgent.defaults.computer
         )
+        const allow = rule.allow.filter(isComputerBackend)
+        const deny = rule.deny.filter(isComputerBackend)
+
+        if (rule.mode === 'allow') {
+            if (rule.allow.length < 1) {
+                return []
+            }
+
+            if (allow.length < 1) {
+                return [...names]
+            }
+
+            return names.filter((name) => allow.includes(name))
+        }
+
+        if (rule.mode === 'deny') {
+            if (rule.deny.length < 1) {
+                return []
+            }
+
+            if (deny.length < 1) {
+                return [...names]
+            }
+
+            return names.filter((name) => !deny.includes(name))
+        }
+
+        return [...names]
     }
 
     listTools(): ToolInfo[] {
@@ -223,16 +258,9 @@ export class ChatLunaAgentPermissionService {
         }
 
         if (tool.tags?.includes('computer')) {
-            const rule = this.mergeRule(
-                info.permissions.computer,
-                this.config.subAgent.defaults.computer
-            )
-
-            if (rule.mode === 'deny') {
-                return false
-            }
-
-            if (rule.mode === 'allow' && !rule.allow.includes(name)) {
+            const backends =
+                this.ctx.chatluna_agent?.computer.listAvailableBackends() ?? []
+            if (this.filterComputerBackends(info, backends).length < 1) {
                 return false
             }
         }
@@ -311,6 +339,10 @@ function isWriteTool(name: string) {
     return WRITE_TOOL_PATTERNS.some((pattern) =>
         pattern.endsWith('_') ? name.startsWith(pattern) : name === pattern
     )
+}
+
+function isComputerBackend(name: string): name is ComputerBackendType {
+    return name === 'local' || name === 'e2b' || name === 'open-terminal'
 }
 
 export function createToolRule() {

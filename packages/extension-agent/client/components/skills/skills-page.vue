@@ -4,109 +4,18 @@
             <div class="toolbar-main">
                 <div class="headline">
                     <div class="page-title">Skills</div>
-                    <div class="page-description">
-                        管理技能目录、可用状态和模型提示设置。
-                    </div>
                 </div>
 
                 <div class="actions-section">
-                    <el-button circle @click="$emit('refresh')">
-                        <el-icon><RefreshRight /></el-icon>
+                    <el-button @click="showGithubDialog = true">
+                        从 Github 导入
                     </el-button>
-                </div>
-            </div>
-        </div>
-
-        <div class="top-grid">
-            <div class="panel">
-                <div class="panel-header">
-                    <div>
-                        <div class="panel-title">扫描目录</div>
-                        <div class="panel-description">
-                            `data/chatluna/skills`
-                            会始终扫描，可在这里添加其他目录。
-                        </div>
-                    </div>
-
-                    <el-button @click="addDir()">添加目录</el-button>
-                </div>
-
-                <div class="dir-body">
-                    <div class="dir-note">
-                        支持绝对路径、相对路径和 `~` 路径。保存后会重新扫描。
-                    </div>
-
-                    <div v-if="dirs.length > 0" class="dir-list">
-                        <div
-                            v-for="(item, idx) in dirs"
-                            :key="idx"
-                            class="dir-row"
-                        >
-                            <el-input
-                                v-model="dirs[idx]"
-                                placeholder="~/.agents/skills"
-                            />
-                            <el-button text @click="removeDir(idx)">
-                                删除
-                            </el-button>
-                        </div>
-                    </div>
-
-                    <div v-else class="dir-empty">
-                        还没有额外目录，点“添加目录”即可。
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel settings-panel">
-                <div class="panel-header">
-                    <div>
-                        <div class="panel-title">设置</div>
-                        <div class="panel-description">
-                            控制模型是否收到技能相关提示，并查看当前目录。
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-body">
-                    <div class="setting-row">
-                        <div class="setting-copy">
-                            <div class="setting-title">
-                                告诉模型可以使用电脑能力
-                            </div>
-                            <div class="setting-description">
-                                开启后，模型会知道当前环境可以调用电脑操作相关能力。
-                            </div>
-                            <div
-                                v-if="props.computer?.enabled"
-                                class="setting-description setting-hint"
-                            >
-                                当前已经检测到可用的 Computer
-                                backend，这条提示会自动生效。
-                            </div>
-                        </div>
-
-                        <el-switch v-model="allowComputerUsePrompt" />
-                    </div>
-
-                    <div class="setting-row info-row">
-                        <div class="setting-copy">
-                            <div class="setting-title">技能根目录</div>
-                            <div class="setting-description path-copy">
-                                {{ status.root || '尚未初始化' }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-actions">
-                        <el-button
-                            type="primary"
-                            :loading="savingSettings"
-                            @click="saveSettings"
-                        >
-                            保存更改
-                        </el-button>
-                    </div>
+                    <el-button @click="showFolderDialog = true">
+                        从本地文件夹导入
+                    </el-button>
+                    <el-button @click="showSettingsDialog = true">
+                        管理设置
+                    </el-button>
                 </div>
             </div>
         </div>
@@ -114,9 +23,9 @@
         <div class="panel catalog-panel">
             <div class="panel-header catalog-header">
                 <div>
-                    <div class="panel-title">技能目录</div>
+                    <div class="panel-title">Skills 列表</div>
                     <div class="panel-description">
-                        查看已扫描的技能、来源和当前状态。
+                        ChatLuna 目前可用的全部 Skills。
                     </div>
                 </div>
 
@@ -134,7 +43,7 @@
                 </div>
             </div>
 
-            <div v-if="filteredSkills.length > 0" class="card-grid">
+            <div v-if="filteredSkills.length > 0" class="card-list">
                 <div
                     v-for="item in filteredSkills"
                     :key="item.id"
@@ -144,16 +53,23 @@
                         invalid: item.state !== 'ready'
                     }"
                 >
-                    <div class="skill-head">
-                        <div class="skill-copy">
-                            <div class="skill-title">{{ item.name }}</div>
-                            <div class="skill-path">
-                                {{ item.path || '当前没有可用路径' }}
+                    <div class="skill-top">
+                        <div class="skill-brand">
+                            <div class="skill-icon">
+                                <el-icon :size="16"><MagicStick /></el-icon>
+                            </div>
+
+                            <div class="skill-copy">
+                                <div class="skill-title">{{ item.name }}</div>
+                                <div class="skill-name">
+                                    {{ `${item.source} / ${item.scope}` }}
+                                </div>
                             </div>
                         </div>
 
                         <el-switch
                             :model-value="item.enabled"
+                            :loading="skillBusy[item.id] === true"
                             @change="
                                 (value) => toggleSkill(item, value as boolean)
                             "
@@ -164,99 +80,83 @@
                         {{ item.description || '这个技能暂时没有说明。' }}
                     </div>
 
-                    <div class="skill-chips">
-                        <el-tag size="small" effect="plain">
-                            {{ `${item.source} / ${item.scope}` }}
-                        </el-tag>
-                        <el-tag
-                            size="small"
-                            effect="plain"
-                            :type="stateTag(item.state)"
-                        >
-                            {{ stateLabel(item.state) }}
-                        </el-tag>
-                        <el-tag
-                            size="small"
-                            effect="plain"
-                            :type="item.visible ? 'success' : 'info'"
-                        >
-                            {{
-                                item.visible
-                                    ? '当前生效'
-                                    : item.shadowedBy
-                                      ? '被同名技能替代'
-                                      : '当前目录未使用'
-                            }}
-                        </el-tag>
-                        <el-tag
-                            size="small"
-                            effect="plain"
-                            :type="item.modelEnabled ? 'success' : 'warning'"
-                        >
-                            {{
-                                item.modelEnabled
-                                    ? '模型可自动使用'
-                                    : '模型不会自动使用'
-                            }}
-                        </el-tag>
+                    <div class="skill-path">
+                        {{ item.path || '当前没有可用路径' }}
                     </div>
 
-                    <div v-if="item.compatibility" class="skill-meta">
-                        兼容性：{{ item.compatibility }}
-                    </div>
-
-                    <div
-                        v-if="item.allowedTools && item.allowedTools.length > 0"
-                        class="skill-meta"
-                    >
-                        允许使用的工具：{{ item.allowedTools.join(', ') }}
-                    </div>
-
-                    <div
-                        v-if="item.diagnostics.length > 0"
-                        class="diagnostic-box"
-                    >
-                        <div
-                            v-for="line in item.diagnostics.slice(0, 3)"
-                            :key="line"
-                            class="diagnostic-line"
-                        >
-                            {{ line }}
+                    <div class="skill-footer">
+                        <div class="skill-chips">
+                            <el-tag
+                                size="small"
+                                effect="plain"
+                                :type="item.modelEnabled ? 'success' : 'info'"
+                            >
+                                {{ item.modelEnabled ? '可用' : '不可用' }}
+                            </el-tag>
                         </div>
-                    </div>
 
-                    <div class="skill-actions">
-                        <el-button
-                            size="small"
-                            :disabled="!item.path"
-                            @click="previewSkill(item)"
+                        <div v-if="item.compatibility" class="skill-meta">
+                            兼容性：{{ item.compatibility }}
+                        </div>
+
+                        <div
+                            v-if="
+                                item.allowedTools &&
+                                item.allowedTools.length > 0
+                            "
+                            class="skill-meta"
                         >
-                            查看内容
-                        </el-button>
-                        <el-button
-                            size="small"
-                            :disabled="!canExport(item)"
-                            @click="exportSkill(item)"
+                            允许使用的工具：{{ item.allowedTools.join(', ') }}
+                        </div>
+
+                        <div
+                            v-if="item.diagnostics.length > 0"
+                            class="diagnostic-box"
                         >
-                            导出 ZIP
-                        </el-button>
-                        <el-button
-                            size="small"
-                            text
-                            :disabled="!item.path"
-                            @click="copyPath(item.path)"
-                        >
-                            复制路径
-                        </el-button>
-                        <el-button
-                            v-if="canRemove(item)"
-                            size="small"
-                            type="danger"
-                            text
-                            @click="removeSkill(item)"
-                        >
-                            删除导入项
-                        </el-button>
+                            <div
+                                v-for="line in item.diagnostics.slice(0, 3)"
+                                :key="line"
+                                class="diagnostic-line"
+                            >
+                                {{ line }}
+                            </div>
+                        </div>
+
+                        <div class="skill-actions">
+                            <el-button
+                                size="small"
+                                plain
+                                :disabled="!item.path"
+                                @click="previewSkill(item)"
+                            >
+                                查看内容
+                            </el-button>
+                            <el-button
+                                size="small"
+                                plain
+                                :disabled="!canExport(item)"
+                                @click="exportSkill(item)"
+                            >
+                                导出 ZIP
+                            </el-button>
+                            <el-button
+                                size="small"
+                                plain
+                                :disabled="!item.path"
+                                @click="copyPath(item.path)"
+                            >
+                                复制路径
+                            </el-button>
+                            <el-button
+                                v-if="canRemove(item)"
+                                size="small"
+                                type="danger"
+                                plain
+                                @click="removeSkill(item)"
+                            >
+                                删除导入项
+                            </el-button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -265,6 +165,24 @@
                 <el-empty description="没有找到匹配的技能。" />
             </div>
         </div>
+
+        <skills-settings-dialog
+            v-model:visible="showSettingsDialog"
+            :config="config"
+            :status="status"
+            :computer="computer"
+            @refresh="$emit('refresh')"
+        />
+
+        <skills-import-github-dialog
+            v-model:visible="showGithubDialog"
+            @refresh="$emit('refresh')"
+        />
+
+        <skills-import-folder-dialog
+            v-model:visible="showFolderDialog"
+            @refresh="$emit('refresh')"
+        />
 
         <el-dialog
             v-model="showPreview"
@@ -287,9 +205,13 @@
 import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { RefreshRight, Search } from '@element-plus/icons-vue'
+import { MagicStick, Search } from '@element-plus/icons-vue'
 import CodeEditor from '../shared/code-editor.vue'
+import SkillsImportFolderDialog from './skills-import-folder-dialog.vue'
+import SkillsImportGithubDialog from './skills-import-github-dialog.vue'
+import SkillsSettingsDialog from './skills-settings-dialog.vue'
 import type {
+    ComputerStatus,
     SkillExportResult,
     SkillInfo,
     SkillsConfig,
@@ -300,11 +222,11 @@ const props = withDefaults(
     defineProps<{
         config: SkillsConfig
         status: SkillsStatus
+        computer?: ComputerStatus
         loading?: boolean
     }>(),
     {
         config: () => ({
-            allowComputerUsePrompt: false,
             dirs: [
                 '~/.agents/skills',
                 '~/.codex/skills',
@@ -322,6 +244,7 @@ const props = withDefaults(
             activeConversations: 0,
             catalog: {}
         }),
+        computer: undefined,
         loading: false
     }
 )
@@ -331,47 +254,46 @@ defineEmits<{
 }>()
 
 const filterText = ref('')
-const allowComputerUsePrompt = ref(false)
-const dirs = ref<string[]>([])
-const savingSettings = ref(false)
+const skillState = ref<Record<string, boolean>>({})
+const skillBusy = ref<Record<string, boolean>>({})
 
+const showSettingsDialog = ref(false)
+const showGithubDialog = ref(false)
+const showFolderDialog = ref(false)
 const showPreview = ref(false)
 const previewTitle = ref('')
 const previewContent = ref('')
 const previewLanguage = ref('plaintext')
 
 watch(
-    () => props.config.allowComputerUsePrompt,
+    () => props.status.catalog,
     (value) => {
-        allowComputerUsePrompt.value = value
+        for (const [id, enabled] of Object.entries(skillState.value)) {
+            if (value[id]?.enabled === enabled) {
+                delete skillState.value[id]
+            }
+        }
     },
     {
-        immediate: true
-    }
-)
-
-watch(
-    () => props.config.dirs,
-    (value) => {
-        dirs.value = [...(value ?? [])]
-    },
-    {
+        deep: true,
         immediate: true
     }
 )
 
 const skills = computed(() => {
-    return Object.values(props.status.catalog).sort((a, b) => {
-        if (a.visible !== b.visible) {
-            return a.visible ? -1 : 1
-        }
-
-        if (a.enabled !== b.enabled) {
-            return a.enabled ? -1 : 1
-        }
-
-        return a.name.localeCompare(b.name)
-    })
+    return Object.values(props.status.catalog)
+        .map((item) => {
+            const enabled = skillState.value[item.id] ?? item.enabled
+            return {
+                ...item,
+                enabled,
+                visible: enabled ? item.visible : false,
+                modelEnabled: enabled ? item.modelEnabled : false
+            }
+        })
+        .sort(
+            (a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+        )
 })
 
 const filteredSkills = computed(() => {
@@ -395,54 +317,20 @@ const filteredSkills = computed(() => {
     })
 })
 
-async function saveSettings() {
-    try {
-        savingSettings.value = true
-        const nextDirs = dirs.value
-            .map((item) => item.trim())
-            .filter(
-                (item, idx, list) =>
-                    item.length > 0 && list.indexOf(item) === idx
-            )
-
-        await send('chatluna-agent/saveSkills', {
-            ...props.config,
-            allowComputerUsePrompt: allowComputerUsePrompt.value,
-            dirs: nextDirs
-        } satisfies SkillsConfig)
-
-        dirs.value = nextDirs
-        ElMessage.success('已保存设置，并重新扫描技能目录。')
-    } catch {
-        ElMessage.error('保存失败，请稍后重试。')
-    } finally {
-        savingSettings.value = false
-    }
-}
-
-function addDir(value = '') {
-    if (!value) {
-        dirs.value.push('')
-        return
-    }
-
-    if (dirs.value.includes(value)) {
-        return
-    }
-
-    dirs.value.push(value)
-}
-
-function removeDir(idx: number) {
-    dirs.value.splice(idx, 1)
-}
-
 async function toggleSkill(item: SkillInfo, enabled: boolean) {
+    const prev = skillState.value[item.id] ?? item.enabled
+    skillState.value[item.id] = enabled
+    skillBusy.value[item.id] = true
+
     try {
         await send('chatluna-agent/setSkillEnabled', item.id, enabled)
+        await send('chatluna-agent/refreshConsoleData')
         ElMessage.success(enabled ? '已启用该技能。' : '已停用该技能。')
     } catch {
+        skillState.value[item.id] = prev
         ElMessage.error('更新技能状态失败，请稍后重试。')
+    } finally {
+        skillBusy.value[item.id] = false
     }
 }
 
@@ -519,18 +407,6 @@ async function copyPath(path: string) {
     }
 }
 
-function stateLabel(state: SkillInfo['state']) {
-    if (state === 'ready') return '可用'
-    if (state === 'invalid') return '无效'
-    return '缺少文件'
-}
-
-function stateTag(state: SkillInfo['state']) {
-    if (state === 'ready') return 'success'
-    if (state === 'invalid') return 'warning'
-    return 'info'
-}
-
 function canExport(item: SkillInfo) {
     return item.path.length > 0 && item.state !== 'missing'
 }
@@ -567,7 +443,7 @@ function base64ToBlob(data: string, type: string) {
 <style scoped>
 .skills-page {
     min-height: 100%;
-    width: min(100%, 1440px);
+    width: min(100%, 1800px);
     margin: 0 auto;
     padding-bottom: 56px;
 }
@@ -578,7 +454,7 @@ function base64ToBlob(data: string, type: string) {
     z-index: 5;
     background: linear-gradient(
         180deg,
-        color-mix(in srgb, var(--k-page-bg), var(--k-color-surface-1) 18%) 0%,
+        color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
         color-mix(in srgb, var(--k-page-bg), transparent 12%) 76%,
         transparent 100%
     );
@@ -602,14 +478,7 @@ function base64ToBlob(data: string, type: string) {
     font-size: 19px;
     font-weight: 600;
     letter-spacing: 0.01em;
-    color: var(--k-color-text);
-}
-
-.page-description {
-    margin-top: 4px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--k-text-light);
+    color: var(--k-text-dark);
 }
 
 .actions-section {
@@ -618,22 +487,11 @@ function base64ToBlob(data: string, type: string) {
     align-items: center;
 }
 
-.top-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
-    gap: 18px;
-    margin-bottom: 18px;
-}
-
 .panel {
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 14px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-1),
-        var(--k-page-bg) 18%
-    );
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
 }
 
@@ -650,7 +508,7 @@ function base64ToBlob(data: string, type: string) {
 .panel-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .panel-description {
@@ -660,16 +518,10 @@ function base64ToBlob(data: string, type: string) {
     color: var(--k-text-light);
 }
 
-.dir-body {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 18px;
-}
-
 .dir-note,
 .dir-empty,
 .setting-description,
+.skill-name,
 .skill-description,
 .skill-path,
 .skill-meta,
@@ -679,6 +531,13 @@ function base64ToBlob(data: string, type: string) {
     color: var(--k-text-light);
     line-height: 1.6;
     word-break: break-word;
+}
+
+.skill-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .dir-list {
@@ -702,8 +561,11 @@ function base64ToBlob(data: string, type: string) {
     flex-wrap: wrap;
 }
 
-.settings-panel {
-    min-height: 100%;
+.skill-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .settings-body {
@@ -722,14 +584,14 @@ function base64ToBlob(data: string, type: string) {
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 24%);
     border-radius: 10px;
-    background: color-mix(
-        in srgb,
-        var(--k-page-bg),
-        var(--k-color-surface-1) 24%
-    );
+    background: color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 24%);
 }
 
 .info-row {
+    align-items: center;
+}
+
+.dialog-section-header {
     align-items: center;
 }
 
@@ -741,17 +603,16 @@ function base64ToBlob(data: string, type: string) {
 .skill-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--k-color-text);
+    color: var(--k-text-dark);
 }
 
 .path-copy {
     margin-top: 4px;
-    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
 }
 
 .setting-hint {
     margin-top: 6px;
-    color: color-mix(in srgb, var(--el-color-success), var(--k-color-text) 24%);
+    color: color-mix(in srgb, var(--el-color-success), var(--k-text-dark) 24%);
 }
 
 .catalog-panel {
@@ -774,30 +635,31 @@ function base64ToBlob(data: string, type: string) {
     width: min(360px, 100%);
 }
 
-.card-grid {
+.card-list {
+    --card-cols: 5;
+    --card-gap: 16px;
     display: flex;
     flex-wrap: wrap;
-    gap: 14px 16px;
+    gap: 14px var(--card-gap);
     padding: 14px 14px 16px;
-    align-items: stretch;
-    align-content: flex-start;
 }
 
 .skill-card {
+    flex: 0 1
+        calc(
+            (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
+        );
+    max-width: calc(
+        (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
+    );
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
-    background: color-mix(
-        in srgb,
-        var(--k-color-surface-2),
-        var(--k-page-bg) 16%
-    );
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
     padding: 14px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    flex: 0 1 320px;
-    max-width: 360px;
     min-width: 0;
     box-sizing: border-box;
 }
@@ -810,15 +672,38 @@ function base64ToBlob(data: string, type: string) {
     border-color: color-mix(in srgb, var(--el-color-warning), transparent 66%);
 }
 
-.skill-head {
+.skill-top {
     display: flex;
     justify-content: space-between;
     gap: 12px;
     align-items: flex-start;
 }
 
+.skill-brand {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
 .skill-copy {
     min-width: 0;
+}
+
+.skill-name {
+    margin-top: 4px;
+}
+
+.skill-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-color-primary) 8%);
+    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 36%);
+    flex: 0 0 auto;
 }
 
 .skill-path {
@@ -839,7 +724,7 @@ function base64ToBlob(data: string, type: string) {
     color: color-mix(
         in srgb,
         var(--el-color-warning-dark-2),
-        var(--k-color-text) 26%
+        var(--k-text-dark) 26%
     );
 }
 
@@ -854,20 +739,25 @@ function base64ToBlob(data: string, type: string) {
     margin-bottom: 12px;
 }
 
+@media (max-width: 1680px) {
+    .card-list {
+        --card-cols: 4;
+    }
+}
+
+@media (max-width: 1320px) {
+    .card-list {
+        --card-cols: 3;
+    }
+}
+
 @media (max-width: 1080px) {
-    .top-grid {
-        grid-template-columns: 1fr;
+    .card-list {
+        --card-cols: 2;
     }
 }
 
 @media (max-width: 768px) {
-    .toolbar-main,
-    .catalog-header,
-    .setting-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
     .actions-section,
     .catalog-actions {
         width: 100%;
@@ -878,14 +768,32 @@ function base64ToBlob(data: string, type: string) {
         width: 100%;
     }
 
+    .dialog-section-header,
+    .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .dir-row {
         grid-template-columns: 1fr;
         align-items: stretch;
     }
 
-    .card-grid > .skill-card {
+    .card-list {
+        --card-cols: 1;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .skill-card {
         flex-basis: 100%;
         max-width: none;
+    }
+
+    .skill-top,
+    .skill-brand {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 </style>

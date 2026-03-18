@@ -52,7 +52,7 @@ export function renderAvailableSkills(
 
 export async function renderSkillContent(
     skill: ScannedSkill,
-    allowComputerUsePrompt: boolean,
+    hasComputer: boolean,
     loaded = false,
     options: {
         skillDir?: string
@@ -72,7 +72,7 @@ export async function renderSkillContent(
         ...(skill.allowedTools && skill.allowedTools.length > 0
             ? [`Allowed tools: ${skill.allowedTools.join(', ')}`]
             : []),
-        ...(allowComputerUsePrompt
+        ...(hasComputer
             ? [
                   'You may use available computer-use capabilities when the environment provides them.'
               ]

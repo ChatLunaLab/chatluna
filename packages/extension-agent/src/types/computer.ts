@@ -59,7 +59,6 @@ export type ComputerCapability =
     | 'glob'
     | 'bash'
     | 'terminal_pty'
-    | 'port_preview'
     | 'desktop_stream'
     | 'desktop_screenshot'
     | 'desktop_action'

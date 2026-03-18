@@ -26,10 +26,9 @@ export interface ComputerSessionApi {
     ): Promise<string[]>
     glob(pattern: string, searchPath?: string): Promise<string[]>
     execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult>
+    readAsset?(path: string): Promise<string>
 
     createTerminal?(options?: TerminalOptions): Promise<TerminalHandle>
-    listPorts?(): Promise<PortInfo[]>
-    getProxyUrl?(port: number): string | undefined
     getDesktopInfo?(): Promise<DesktopInfo | undefined>
     screenshot?(): Promise<ScreenshotResult>
     desktopAction?(action: DesktopAction): Promise<void>
@@ -74,12 +73,6 @@ export interface TerminalHandle {
     sendInput(data: string): Promise<void>
     resize(cols: number, rows: number): Promise<void>
     kill(): Promise<void>
-}
-
-export interface PortInfo {
-    port: number
-    state: 'listening' | 'established'
-    process?: string
 }
 
 export interface DesktopInfo {

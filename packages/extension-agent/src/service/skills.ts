@@ -13,6 +13,7 @@ import {
     SkillContentResult,
     SkillExportResult,
     SkillImportInput,
+    SkillImportPreviewResult,
     SkillImportResult,
     SkillInfo,
     SkillsStatus,
@@ -21,7 +22,10 @@ import {
 import { ensureSkillsRoot, ScannedSkill, scanSkills } from '../skills/scan'
 import { renderAvailableSkills, renderSkillContent } from '../skills/render'
 import { getSlashSkillName, stripSlashSkillName } from '../skills/slash'
-import { importSkills as runImportSkills } from '../skills/import'
+import {
+    previewSkillsImport,
+    importSkills as runImportSkills
+} from '../skills/import'
 import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
 import { SkillTool } from '../skills/tool'
 import { buildSkillCatalog } from '../skills/catalog'
@@ -143,10 +147,14 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         return { id, content: skill.raw }
     }
 
+    async previewImport(
+        input: SkillImportInput
+    ): Promise<SkillImportPreviewResult> {
+        return await previewSkillsImport(this.ctx, input)
+    }
+
     async importSkills(input: SkillImportInput): Promise<SkillImportResult> {
-        const result = await runImportSkills(this.ctx, input)
-        await this.reload()
-        return result
+        return await runImportSkills(this.ctx, input)
     }
 
     async exportSkill(id: string): Promise<SkillExportResult | undefined> {
@@ -174,7 +182,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             'The tool response returns the full instructions for that skill.'
         ]
 
-        if (this.isComputerPromptAllowed()) {
+        if (this.hasComputer()) {
             lines.push(
                 'If the environment exposes computer-use abilities, loaded skills may use them when needed.'
             )
@@ -235,17 +243,13 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         const skill = this._visibleByName.get(name)
         if (!skill?.enabled || skill.state !== 'ready') return undefined
 
-        return await renderSkillContent(
-            skill,
-            this.isComputerPromptAllowed(),
-            loaded
-        )
+        return await renderSkillContent(skill, this.hasComputer(), loaded)
     }
 
-    private isComputerPromptAllowed() {
+    private hasComputer() {
         return (
-            this.config.skills.allowComputerUsePrompt ||
-            this.ctx.chatluna_agent?.computer.getStatus().enabled === true
+            (this.ctx.chatluna_agent?.computer.listAvailableBackends().length ??
+                0) > 0
         )
     }
 
@@ -257,28 +261,32 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         } = {}
     ) {
         const computer = this.ctx.chatluna_agent?.computer
-        const session = input.runConfig
-            ? await computer?.getToolSession(input.runConfig)
-            : input.conversationId
-              ? await computer?.getOrCreateSession({
-                    conversationId: input.conversationId
-                })
-              : undefined
+        let session
+
+        if (this.hasComputer()) {
+            if (input.runConfig) {
+                session = await computer
+                    ?.getToolSession(input.runConfig)
+                    .catch(() => undefined)
+            } else if (input.conversationId) {
+                session = await computer
+                    ?.getOrCreateSession({
+                        conversationId: input.conversationId
+                    })
+                    .catch(() => undefined)
+            }
+        }
+
         const skillDir =
             session != null
                 ? await computer?.materializer.materialize(skill, session)
                 : undefined
 
-        return await renderSkillContent(
-            skill,
-            this.isComputerPromptAllowed(),
-            true,
-            {
-                skillDir,
-                needsMaterialization:
-                    session != null && session.backend !== 'local' && !skillDir
-            }
-        )
+        return await renderSkillContent(skill, this.hasComputer(), true, {
+            skillDir,
+            needsMaterialization:
+                session != null && session.backend !== 'local' && !skillDir
+        })
     }
 
     private pruneActiveSkills() {
