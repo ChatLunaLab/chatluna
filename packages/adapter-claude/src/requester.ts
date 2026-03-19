@@ -33,6 +33,8 @@ import {
 } from './utils'
 
 export class ClaudeRequester extends ModelRequester<ClientConfig> {
+    private _models = new Set<string>()
+
     constructor(
         ctx: Context,
         _configPool: ClientConfigPool<ClientConfig>,
@@ -42,11 +44,21 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
         super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
+    setModels(models: string[]) {
+        this._models = new Set(models)
+    }
+
     async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        const model = (params.model ?? '').replace('-thinking-', '-')
-        const maxTokens = params.maxTokens ?? 4096
+        const rawModel = params.model ?? ''
+        const model =
+            rawModel.endsWith('-thinking') &&
+            !this._models.has(rawModel) &&
+            this._models.has(rawModel.slice(0, -'-thinking'.length))
+                ? rawModel.slice(0, -'-thinking'.length)
+                : rawModel
+        const maxTokens = params.maxTokens ?? 10_000
         const request = deepAssign(
             {},
             {
@@ -64,7 +76,7 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
                     this._plugin,
                     model
                 ),
-                thinking: params.model?.includes('thinking')
+                thinking: rawModel.includes('thinking')
                     ? {
                           type: 'enabled',
                           budget_tokens: Math.max(

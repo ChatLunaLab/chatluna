@@ -78,13 +78,15 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
         )
 
         if (!this._config.pullModels) {
+            this._requester.setModels(
+                additionalModels.map((model) => model.name)
+            )
             return additionalModels
         }
 
         const fallbackModels = [
             'claude-3-5-sonnet-20241022',
             'claude-3-7-sonnet-20250219',
-            'claude-3-7-sonnet-thinking-20250219',
             'claude-opus-4-20250514',
             'claude-sonnet-4-20250514',
             'claude-sonnet-4-5-20250929',
@@ -153,10 +155,38 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             }))
         }
 
+        this._requester.setModels(
+            additionalModels
+                .map((model) => model.name)
+                .concat(fetchedModels.map((model) => model.name))
+        )
+
+        const fetchedNames = new Set(fetchedModels.map((model) => model.name))
+        const names = new Set(additionalModels.map((model) => model.name))
+
         return additionalModels.concat(
-            fetchedModels.filter(
-                (model) => !additionalModels.some((m) => m.name === model.name)
-            )
+            fetchedModels
+                .flatMap((model) => {
+                    if (
+                        model.name.includes('thinking') ||
+                        !THINKING_MODELS.some((name) =>
+                            model.name.startsWith(name)
+                        ) ||
+                        fetchedNames.has(`${model.name}-thinking`)
+                    ) {
+                        return [model]
+                    }
+
+                    return [model, { ...model, name: `${model.name}-thinking` }]
+                })
+                .filter((model) => {
+                    if (names.has(model.name)) {
+                        return false
+                    }
+
+                    names.add(model.name)
+                    return true
+                })
         )
     }
 
@@ -180,3 +210,10 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
         })
     }
 }
+
+const THINKING_MODELS = [
+    'claude-3-7-sonnet-',
+    'claude-opus-4',
+    'claude-sonnet-4',
+    'claude-haiku-4-5'
+]

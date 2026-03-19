@@ -232,15 +232,6 @@ export abstract class ModelRequester<
             return apiEndPoint + url
         }
 
-        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
-        if (!apiEndPoint.match(/\/v1\/?$/)) {
-            if (apiEndPoint.endsWith('/')) {
-                return apiEndPoint + 'v1/' + url
-            }
-
-            return apiEndPoint + '/v1/' + url
-        }
-
         return apiEndPoint + '/' + url
     }
 }

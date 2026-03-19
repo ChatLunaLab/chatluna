@@ -84,25 +84,6 @@ export class RWKVRequester
         }
     }
 
-    concatUrl(url: string): string {
-        const apiEndPoint = this._config.value.apiEndpoint
-
-        // match the apiEndPoint ends with '/v1' or '/v1/' using regex
-        if (!apiEndPoint.match(/\/v1\/?$/)) {
-            if (apiEndPoint.endsWith('/')) {
-                return apiEndPoint + 'v1/' + url
-            }
-
-            return apiEndPoint + '/v1/' + url
-        }
-
-        if (apiEndPoint.endsWith('/')) {
-            return apiEndPoint + url
-        }
-
-        return apiEndPoint + '/' + url
-    }
-
     get logger() {
         return this.ctx.logger('chatluna-rwkv-adapter')
     }

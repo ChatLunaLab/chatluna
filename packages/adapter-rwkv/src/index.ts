@@ -48,11 +48,11 @@ export const Config: Schema<Config> = Schema.intersect([
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret').default(''),
-                Schema.string().default('http://127.0.0.1:8000'),
+                Schema.string().default('http://127.0.0.1:8000/v1'),
                 Schema.boolean().default(true)
             ])
         )
-            .default([['', 'http://127.0.0.1:8000', true]])
+            .default([['', 'http://127.0.0.1:8000/v1', true]])
             .role('table')
     }),
     Schema.object({

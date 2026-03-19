@@ -8,6 +8,7 @@ import {
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
 import { lifecycleNames } from '../middlewares/system/lifecycle'
+import { formatDuration } from '../utils/time'
 import type { QQBot } from '@koishijs/plugin-adapter-qq'
 
 let logger: Logger
@@ -285,9 +286,9 @@ export class ChatChain {
 
             if (shouldLogTime) {
                 logger.debug(
-                    `middleware %c executed in %d ms`,
+                    `middleware %c executed in %s`,
                     middleware.name,
-                    executionTime
+                    formatDuration(executionTime)
                 )
             }
 
