@@ -1,6 +1,6 @@
 /** @module commands/mcp */
 
-import { Context, Session, SessionError } from 'koishi'
+import { Context, Session } from 'koishi'
 import {
     ChainMiddlewareContext,
     ChainMiddlewareRunStatus
