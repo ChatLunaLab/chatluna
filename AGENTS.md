@@ -59,7 +59,7 @@ packages/
   adapter-openai-like/     — Generic OpenAI-compatible adapter
   adapter-*/               — Other model adapters (qwen, doubao, ollama, zhipu, etc.)
   extension-tools/         — Tool-calling extension
-  extension-mcp/           — MCP protocol extension
+  extension-agent/         — MCP, Skills extension
   extension-long-memory/   — Long-term memory extension
   extension-variable/      — Variable extension
   service-embeddings/      — Embedding service

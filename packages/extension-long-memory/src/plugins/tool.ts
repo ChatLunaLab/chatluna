@@ -30,7 +30,10 @@ export async function apply(
     config: Config,
     plugin: ChatLunaPlugin
 ) {
+    const params = { embeddings: undefined as never }
+
     plugin.registerTool('memory_search', {
+        description: new MemorySearchTool(ctx, params).description,
         selector(history) {
             return true
         },
@@ -41,6 +44,7 @@ export async function apply(
     })
 
     plugin.registerTool('memory_add', {
+        description: new MemoryAddTool(ctx, params).description,
         selector(history) {
             return true
         },
@@ -51,6 +55,7 @@ export async function apply(
     })
 
     plugin.registerTool('memory_delete', {
+        description: new MemoryDeleteTool(ctx, params).description,
         selector(history) {
             return true
         },
@@ -61,6 +66,7 @@ export async function apply(
     })
 
     plugin.registerTool('memory_update', {
+        description: new MemoryUpdateTool(ctx, params).description,
         selector(history) {
             return true
         },

@@ -1,8 +1,6 @@
 $inner:
     - {}
     - $desc: 'Conversation & AI Features'
-      think: 'Enable thinking function (may improve responses)'
-      send: 'Enable pre-message sending'
       todos: 'Enable task decomposition. Can generate multi-step task lists and automatically break down tasks'
       todosNotify: 'Notify user with current task list on every todos tool call'
       chat: 'Enable interactive query. Note: Rebuilds tool chain'
@@ -19,7 +17,6 @@ $inner:
     - $desc: 'Extended Services Features'
       group: 'Enable group management plugin'
       knowledge: 'Enable knowledge base plugin calls'
-      actions: 'Enable OpenAPI tool calls (requires request tool to be enabled)'
 
     - - $desc: 'Request Plugin Configuration'
         requestMaxOutputLength: 'Max output length for request plugin'
@@ -29,16 +26,6 @@ $inner:
             $inner:
                 matcher: 'Domain matcher pattern (supports wildcards, e.g., *.example.com, api.github.com).'
                 headers: 'Request headers to apply when this domain matches.'
-
-    - - $desc: 'File Plugin Configuration'
-        fsScopePath: 'Scope path for file plugin. Empty for system-wide access'
-        fsNotify: 'Notify user before and after each fs tool operation'
-        fsSelector: 'Keywords to trigger file system tools. Always selected when empty.'
-        fsIgnores: 'Default ignored folder expressions.'
-        bashAllowedCommands: 'Whitelist of commands the bash tool may execute. When non-empty, only listed commands are allowed.'
-        bashBlockedCommands: 'Blacklist of commands always rejected by the bash tool.'
-        bashTimeout: 'Default timeout for bash commands in milliseconds.'
-        bashAutoExecute: 'DANGEROUS - Skip user confirmation for high-risk bash commands. Use at your own risk.'
 
     - - $desc: 'Command Plugin Configuration'
         commandWithSend: Whether to send command execution results by default.
@@ -64,13 +51,3 @@ $inner:
 
     - - $desc: 'Music Generation Plugin Configuration'
         musicSelector: 'Keywords to trigger music generation tool. Always selected when empty.'
-
-    - - $desc: 'OpenAPI Tool Call Plugin Configuration'
-        actionsList:
-            $desc: 'List of available OpenAPI tools'
-            $inner:
-                name: 'Tool name. Please use English names only.'
-                description: 'Tool description'
-                headers: Request headers
-                openAPISpec: 'OpenAPI specification content'
-                selector: 'Keywords to trigger the tool'

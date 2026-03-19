@@ -1,4 +1,4 @@
-import { Session } from 'koishi'
+import { Awaitable, Session } from 'koishi'
 import {
     ConversationRoom,
     ConversationRoomGroupInfo,
@@ -7,7 +7,11 @@ import {
 } from '../types'
 import { ChatLunaService } from './chat'
 import { BaseMessageChunk } from '@langchain/core/messages'
-import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
+import {
+    AgentAction,
+    SubagentContext,
+    ToolMask
+} from 'koishi-plugin-chatluna/llm-core/agent'
 
 export interface ChatEvents {
     'llm-new-token'?: (token: string) => Promise<void>
@@ -45,7 +49,17 @@ declare module '@chatluna/shared-prompt-renderer' {
     export interface RenderConfigurable {
         session?: Session
         conversationId?: string
+        subagentContext?: SubagentContext
     }
 }
 
 export * from '@chatluna/shared-prompt-renderer'
+
+export interface ToolMaskArg {
+    session: Session
+    room?: ConversationRoom
+}
+
+export type ToolMaskResolver = (
+    arg: ToolMaskArg
+) => Awaitable<ToolMask | undefined>

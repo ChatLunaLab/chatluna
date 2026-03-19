@@ -8,6 +8,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ComputedRef } from '@vue/reactivity'
+import { SubagentContext, ToolMask } from '../agent'
 
 export interface ChatLunaChainInfo {
     name: string
@@ -63,8 +64,18 @@ export interface ChatLunaTool {
     createTool: (params: CreateToolParams) => StructuredTool
     selector: (history: BaseMessage[]) => boolean
     authorization?: (session: Session) => boolean
+    description?: string
     name?: string
     id?: string
+    meta?: ChatLunaToolMeta
+}
+
+export interface ChatLunaToolMeta {
+    source?: 'core' | 'extension' | 'mcp' | 'action'
+    group?: string
+    tags?: string[]
+    isMcp?: boolean
+    serverName?: string
 }
 
 export type CreateVectorStoreFunction = (
@@ -114,6 +125,8 @@ export type ChatLunaToolRunnable = ToolRunnableConfig & {
         conversationId?: string
         preset?: string
         userId?: string
+        toolMask?: ToolMask
+        subagentContext?: SubagentContext
     }
 }
 

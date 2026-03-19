@@ -6,12 +6,15 @@ import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/servic
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaBrowsingChain } from './chain/browsing_chain'
-import { PuppeteerBrowserTool } from './tools/puppeteerBrowserTool'
+import {
+    PUPPETEER_BROWSER_TOOL_DESCRIPTION,
+    PuppeteerBrowserTool
+} from './tools/puppeteerBrowserTool'
 import { apply as configApply } from './config'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { SearchManager } from './provide'
 import { providerPlugin } from './plugin'
-import { SearchTool } from './tools/search'
+import { SEARCH_TOOL_DESCRIPTION, SearchTool } from './tools/search'
 import { SummaryType } from './types'
 import { computed } from 'koishi-plugin-chatluna'
 
@@ -38,6 +41,7 @@ export function apply(ctx: Context, config: Config) {
         providerPlugin(ctx, config, plugin, searchManager)
 
         plugin.registerTool('web_search', {
+            description: SEARCH_TOOL_DESCRIPTION,
             createTool(params) {
                 const summaryType: SummaryType =
                     params['summaryType'] ?? config.summaryType
@@ -76,6 +80,7 @@ export function apply(ctx: Context, config: Config) {
         })
 
         plugin.registerTool('web_browser', {
+            description: PUPPETEER_BROWSER_TOOL_DESCRIPTION,
             createTool(params) {
                 const summaryModel = computed(() => keywordExtractModel?.value)
 

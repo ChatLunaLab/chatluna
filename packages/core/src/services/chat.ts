@@ -19,7 +19,7 @@ import { LRUCache } from 'lru-cache'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
-import { MessageQueue } from 'koishi-plugin-chatluna/llm-core/agent'
+import { MessageQueue, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ClientConfig,
@@ -47,7 +47,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { RequestIdQueue } from 'koishi-plugin-chatluna/utils/queue'
 import { MessageTransformer } from './message_transform'
-import { ChatEvents } from './types'
+import { ChatEvents, ToolMaskArg, ToolMaskResolver } from './types'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
@@ -76,6 +76,7 @@ export class ChatLunaService extends Service<Config> {
     private readonly _renderer: DefaultRenderer
     private readonly _promptRenderer: ChatLunaPromptRenderService
     private readonly _contextManager: ChatLunaContextManagerService
+    private _toolMaskResolvers: Record<string, ToolMaskResolver> = {}
 
     declare public config: Config
 
@@ -191,6 +192,23 @@ export class ChatLunaService extends Service<Config> {
         )
     }
 
+    registerToolMaskResolver(name: string, resolver: ToolMaskResolver) {
+        this._toolMaskResolvers[name] = resolver
+
+        return () => {
+            delete this._toolMaskResolvers[name]
+        }
+    }
+
+    async resolveToolMask(arg: ToolMaskArg) {
+        for (const name in this._toolMaskResolvers) {
+            const mask = await this._toolMaskResolvers[name](arg)
+            if (mask) {
+                return mask
+            }
+        }
+    }
+
     getPlugin(platformName: string) {
         return this._plugins[platformName]
     }
@@ -207,7 +225,8 @@ export class ChatLunaService extends Service<Config> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         variables: Record<string, any> = {},
         postHandler?: PostHandler,
-        requestId: string = randomUUID()
+        requestId: string = randomUUID(),
+        toolMask?: ToolMask
     ) {
         const chatInterfaceWrapper =
             this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
@@ -220,7 +239,8 @@ export class ChatLunaService extends Service<Config> {
             stream,
             requestId,
             variables,
-            postHandler
+            postHandler,
+            toolMask
         )
     }
 
@@ -935,7 +955,8 @@ class ChatInterfaceWrapper {
         requestId: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         variables: Record<string, any> = {},
-        postHandler?: PostHandler
+        postHandler?: PostHandler,
+        toolMask?: ToolMask
     ): Promise<Message> {
         const { conversationId, model: fullModelName } = room
 
@@ -1005,6 +1026,13 @@ class ChatInterfaceWrapper {
                 }
             })
 
+            const mask =
+                toolMask ??
+                (await this._service.resolveToolMask({
+                    session,
+                    room
+                }))
+
             const chainValues = await chatInterface.chat({
                 message: humanMessage,
                 events: event,
@@ -1016,6 +1044,7 @@ class ChatInterfaceWrapper {
                 signal: abortController.signal,
                 postHandler,
                 messageQueue: activeRequest.messageQueue,
+                toolMask: mask,
                 onAgentEvent: async (agentEvent) => {
                     if (agentEvent.type === 'round-decision') {
                         activeRequest.lastDecision = agentEvent.canContinue

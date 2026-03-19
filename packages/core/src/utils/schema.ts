@@ -13,7 +13,7 @@ import type {} from '@koishijs/plugin-notifier'
  * @param ctx - Koishi context object
  */
 export function modelSchema(ctx: Context, createNotification: boolean = false) {
-    const modelNames = getModelNames(ctx.chatluna.platform)
+    const modelNames = getModelSchemas(ctx.chatluna.platform)
 
     const notification = createNotification
         ? ctx.notifier?.create({
@@ -59,7 +59,7 @@ export function modelSchema(ctx: Context, createNotification: boolean = false) {
  * @param ctx - Koishi context object
  */
 export function embeddingsSchema(ctx: Context) {
-    const modelNames = getModelNames(
+    const modelNames = getModelSchemas(
         ctx.chatluna.platform,
         ModelType.embeddings
     )
@@ -127,18 +127,30 @@ export function vectorStoreSchema(ctx: Context) {
     ctx.effect(() => stop)
 }
 
-function getModelNames(
+export function listModelNames(
     service: PlatformService,
-    type: ModelType = ModelType.llm
+    type: ModelType = ModelType.llm,
+    includeNone = false
 ) {
     const models = service.listAllModels(type)
 
+    return computed(() => {
+        const names = models.value.map(
+            (model) => model.platform + '/' + model.name
+        )
+
+        return includeNone ? ['无'].concat(names) : names
+    })
+}
+
+function getModelSchemas(
+    service: PlatformService,
+    type: ModelType = ModelType.llm
+) {
+    const models = listModelNames(service, type, true)
+
     return computed(() =>
-        ['无']
-            .concat(
-                models.value.map((model) => model.platform + '/' + model.name)
-            )
-            .map((model) => Schema.const(model).description(model))
+        models.value.map((model) => Schema.const(model).description(model))
     )
 }
 

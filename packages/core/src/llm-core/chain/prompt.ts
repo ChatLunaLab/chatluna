@@ -79,9 +79,6 @@ export class ChatLunaChatPrompt
 
     private fields: ChatLunaChatPromptInput
 
-    private static _registeredPipelineContextManagers =
-        new WeakSet<ChatLunaContextManagerService>()
-
     constructor(fields: ChatLunaChatPromptInput) {
         super({
             inputVariables: [
@@ -127,23 +124,19 @@ export class ChatLunaChatPrompt
             throw new Error('contextManager is required')
         }
 
-        if (ChatLunaChatPrompt._registeredPipelineContextManagers.has(cm)) {
-            return
-        }
+        cm.ensureCoreMiddlewares(() => {
+            // Pipeline stages (execute in STAGE_ORDER)
+            registerSystemPromptsMiddleware(cm)
+            registerChatHistoryMiddleware(cm)
+            registerLongHistoryMiddleware(cm)
+            registerInjectionsMiddleware(cm)
 
-        // Pipeline stages (execute in STAGE_ORDER)
-        registerSystemPromptsMiddleware(cm)
-        registerChatHistoryMiddleware(cm)
-        registerLongHistoryMiddleware(cm)
-        registerInjectionsMiddleware(cm)
-
-        // Injection middlewares (per-name, triggered during 'injections' stage)
-        registerLoreBooksMiddleware(cm)
-        registerAuthorsNoteMiddleware(cm)
-        registerAfterUserMessageMiddleware(cm)
-        registerReadFilesContextMiddleware(cm)
-
-        ChatLunaChatPrompt._registeredPipelineContextManagers.add(cm)
+            // Injection middlewares (per-name, triggered during 'injections' stage)
+            registerLoreBooksMiddleware(cm)
+            registerAuthorsNoteMiddleware(cm)
+            registerAfterUserMessageMiddleware(cm)
+            registerReadFilesContextMiddleware(cm)
+        })
     }
 
     // -----------------------------------------------------------------------
@@ -220,9 +213,10 @@ export class ChatLunaChatPrompt
         // Debug logging
         if (logger?.level === Logger.DEBUG) {
             logger?.debug(
-                runtime.usedTokens > runtime.sendTokenLimit
-                    ? `Used tokens: ${runtime.usedTokens} exceed limit: ${runtime.sendTokenLimit}`
-                    : `Used tokens: ${runtime.usedTokens}, token limit: ${runtime.sendTokenLimit}`
+                `[Agent ${runtime.configurable?.subagentContext?.agentName || 'main'}] ` +
+                    (runtime.usedTokens > runtime.sendTokenLimit
+                        ? `Used tokens: ${runtime.usedTokens} exceed limit: ${runtime.sendTokenLimit}`
+                        : `Used tokens: ${runtime.usedTokens}, token limit: ${runtime.sendTokenLimit}`)
             )
 
             const mapMessages = runtime.result.map((msg) => {

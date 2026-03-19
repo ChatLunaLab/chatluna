@@ -1,34 +1,30 @@
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { Embeddings } from '@langchain/core/embeddings'
+import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import { ChainValues } from '@langchain/core/utils/types'
+import { computed, ComputedRef } from '@vue/reactivity'
 import { Context, Session } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { logger } from 'koishi-plugin-chatluna'
+import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ConversationRoom } from '../../types'
+import type { HandlerResult } from '../../utils/types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { ChatLunaLLMCallArg, ChatLunaLLMChainWrapper } from '../chain/base'
-import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
-import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import {
-    PlatformEmbeddingsClient,
-    PlatformModelAndEmbeddingsClient,
-    PlatformModelClient
-} from 'koishi-plugin-chatluna/llm-core/platform/client'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
-import {
-    ModelCapabilities,
-    ModelInfo
-} from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { AIMessage, HumanMessage } from '@langchain/core/messages'
-import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import type { HandlerResult } from '../../utils/types'
-import { computed, ComputedRef } from '@vue/reactivity'
+    createDisplayResponse,
+    initEmbeddings,
+    initModel,
+    supportChatMode
+} from './helper'
 import type { CompressContextResult } from './infinite_context'
 import { InfiniteContextManager } from './infinite_context'
 
@@ -102,6 +98,7 @@ export class ChatInterface {
         }
 
         try {
+            arg.variables = arg.variables ?? {}
             await this.ctx.parallel(
                 'chatluna/before-chat',
                 arg.conversationId,
@@ -183,11 +180,7 @@ export class ChatInterface {
 
         const responseMessage = response.message
 
-        const displayResponse = new AIMessage({
-            content: responseMessage.content
-        })
-
-        displayResponse.additional_kwargs = responseMessage.additional_kwargs
+        const displayResponse = createDisplayResponse(responseMessage)
 
         this._chatCount++
 
@@ -272,7 +265,10 @@ export class ChatInterface {
         let historyMemory: BufferMemory
 
         try {
-            this._embeddings = await this._initEmbeddings(service)
+            this._embeddings = await initEmbeddings(
+                service,
+                this._input.embeddings
+            )
         } catch (error) {
             if (error instanceof ChatLunaError) {
                 throw error
@@ -284,7 +280,8 @@ export class ChatInterface {
         }
 
         try {
-            ;[llm, modelInfo] = await this._initModel(
+            ;[llm, modelInfo] = await initModel(
+                this.ctx,
                 service,
                 llmPlatform,
                 llmModelName
@@ -330,7 +327,7 @@ export class ChatInterface {
                 vectorStoreName: this._input.vectorStoreName,
                 supportChatChain:
                     modelInfo?.value != null &&
-                    this._supportChatMode(modelInfo.value)
+                    supportChatMode(modelInfo.value, this._input.chatMode)
             })
         })
     }
@@ -406,83 +403,6 @@ export class ChatInterface {
         }
 
         return manager.compressIfNeeded(wrapper, force)
-    }
-
-    private async _initEmbeddings(service: PlatformService) {
-        const [platform, modelName] = parseRawModelName(this._input.embeddings)
-
-        if (
-            this._input.embeddings == null ||
-            this._input.embeddings.length < 1 ||
-            this._input.embeddings === '无'
-        ) {
-            return computed(() => emptyEmbeddings)
-        }
-
-        const clientRef = await service.getClient(platform)
-
-        return computed(() => {
-            const client = clientRef.value
-
-            logger.info(`Init embeddings for %c`, this._input.embeddings)
-
-            if (client == null || client instanceof PlatformModelClient) {
-                logger.warn(
-                    `Platform ${platform} is not supported, falling back to fake embeddings`
-                )
-                return emptyEmbeddings
-            }
-
-            if (client instanceof PlatformEmbeddingsClient) {
-                return client.createModel(modelName)
-            } else if (client instanceof PlatformModelAndEmbeddingsClient) {
-                const model = client.createModel(modelName)
-
-                if (model instanceof ChatLunaChatModel) {
-                    logger.warn(
-                        `Model ${modelName} is not an embeddings model, falling back to fake embeddings`
-                    )
-                    return emptyEmbeddings
-                }
-
-                return model
-            }
-        })
-    }
-
-    private async _initModel(
-        service: PlatformService,
-        llmPlatform: string,
-        llmModelName: string
-    ): Promise<
-        [ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo | undefined>]
-    > {
-        const llmInfo = service.findModel(llmPlatform, llmModelName)
-
-        const llmModel = await this.ctx.chatluna.createChatModel(
-            llmPlatform,
-            llmModelName
-        )
-
-        if (llmModel.value instanceof ChatLunaChatModel) {
-            return [llmModel, llmInfo]
-        }
-
-        throw new ChatLunaError(
-            ChatLunaErrorCode.MODEL_INIT_ERROR,
-            new Error(`Model ${llmModelName} is not a chat model`)
-        )
-    }
-
-    private _supportChatMode(modelInfo: ModelInfo) {
-        if (
-            !modelInfo.capabilities.includes(ModelCapabilities.ToolCall) &&
-            this._input.chatMode === 'plugin'
-        ) {
-            return false
-        }
-
-        return true
     }
 
     private async _createChatHistory(): Promise<BaseChatMessageHistory> {

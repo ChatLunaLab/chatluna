@@ -20,6 +20,7 @@ export async function apply(
     }
 
     plugin.registerTool('music', {
+        description: new MusicTool().description,
         selector(history) {
             if (config.musicSelector.length === 0) {
                 return true

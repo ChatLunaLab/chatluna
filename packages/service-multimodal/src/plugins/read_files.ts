@@ -703,6 +703,8 @@ export async function apply(
     )
 
     plugin.registerTool('read_files', {
+        description: new ReadFilesTool(ctx, config, () => imageUnderstandModel)
+            .description,
         selector() {
             return true
         },

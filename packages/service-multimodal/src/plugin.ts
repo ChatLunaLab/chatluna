@@ -4,7 +4,7 @@ import { Config } from '.'
 // import start
 import { apply as audio } from './plugins/audio'
 import { apply as image } from './plugins/image'
-import { apply as readFiles } from './plugins/read_files' // import end
+import { apply as read_files } from './plugins/read_files' // import end
 
 export async function plugins(
     ctx: Context,
@@ -19,7 +19,7 @@ export async function plugins(
 
     const middlewares: Plugin[] =
         // middleware start
-        [audio, image, readFiles] // middleware end
+        [audio, image, read_files] // middleware end
 
     for (const middleware of middlewares) {
         await middleware(ctx, config, plugin)

@@ -20,6 +20,7 @@ import { Context } from 'koishi'
  */
 export type PromptPipelineStage =
     | 'system_prompts'
+    | 'after_system_prompts'
     | 'chat_history'
     | 'long_history'
     | 'injections'
@@ -31,6 +32,7 @@ export type PromptPipelineStage =
 /** Canonical ordering for built-in stages. */
 export const STAGE_ORDER: Record<string, number> = {
     system_prompts: 0,
+    after_system_prompts: 50,
     chat_history: 100,
     long_history: 200,
     injections: 300,
@@ -282,6 +284,14 @@ export class ChatLunaContextManagerService {
     private _conversationQueue = new Map<string, AnchoredInjection[]>()
 
     private _skillProviders = new Set<unknown>()
+
+    private _coreRegistered = false
+
+    ensureCoreMiddlewares(register: () => void): void {
+        if (this._coreRegistered) return
+        this._coreRegistered = true
+        register()
+    }
 
     constructor(ctx: Context) {
         ctx.on('chatluna/clear-chat-history', async (conversationId) => {
