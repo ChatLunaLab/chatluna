@@ -162,7 +162,38 @@ export async function* processStreamResponse<
 
             if (!choice) continue
 
-            const { delta } = choice
+            const delta = choice.delta
+
+            if (delta == null) {
+                const messageChunk = convertMessageToMessageChunk(
+                    reasoningState.content.length > 0 &&
+                        (choice.message.reasoning_content?.length ?? 0) < 1
+                        ? {
+                              ...choice.message,
+                              reasoning_content: reasoningState.content
+                          }
+                        : choice.message
+                )
+
+                reasoningState.content = ''
+
+                if (reasoningState.endedAt == null) {
+                    reasoningState.endedAt = Date.now()
+                }
+
+                defaultRole = (
+                    (choice.message.role?.length ?? 0) > 0
+                        ? choice.message.role
+                        : defaultRole
+                ) as ChatCompletionResponseMessageRoleEnum
+
+                yield new ChatGenerationChunk({
+                    message: messageChunk,
+                    text: getMessageContent(messageChunk.content)
+                })
+                continue
+            }
+
             const hasResult =
                 (delta.content?.length ?? 0) > 0 ||
                 (delta.tool_calls?.length ?? 0) > 0 ||
@@ -210,7 +241,7 @@ export async function* processStreamResponse<
 
             yield new ChatGenerationChunk({
                 message: messageChunk,
-                text: messageChunk.content as string
+                text: getMessageContent(messageChunk.content)
             })
         } catch (e) {
             if (

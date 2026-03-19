@@ -115,32 +115,13 @@ export class DoubaoRequester
         return await createEmbeddings(requestContext, params)
     }
 
-    private _concatUrl(url: string): string {
-        const apiEndPoint = this._config.value.apiEndpoint
-
-        // match the apiEndPoint ends with '/v3' or '/v3/' using regex
-        if (!apiEndPoint.match(/\/v3\/?$/)) {
-            if (apiEndPoint.endsWith('/')) {
-                return apiEndPoint + 'v3/' + url
-            }
-
-            return apiEndPoint + '/v3/' + url
-        }
-
-        if (apiEndPoint.endsWith('/')) {
-            return apiEndPoint + url
-        }
-
-        return apiEndPoint + '/' + url
-    }
-
     post(
         url: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data: any,
         params: fetchType.RequestInit = {}
     ) {
-        const requestUrl = this._concatUrl(url)
+        const requestUrl = this.concatUrl(url)
 
         for (const key in data) {
             if (data[key] === undefined) {
@@ -159,7 +140,7 @@ export class DoubaoRequester
     }
 
     get(url: string) {
-        const requestUrl = this._concatUrl(url)
+        const requestUrl = this.concatUrl(url)
 
         return this._plugin.fetch(requestUrl, {
             method: 'GET',
