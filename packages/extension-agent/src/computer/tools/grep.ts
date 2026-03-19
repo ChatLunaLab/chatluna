@@ -59,7 +59,11 @@ export class GrepTool extends ComputerToolBase {
             this.computer.ctx.logger.info(
                 `${MSG_FOUND} ${results.length} 条匹配`
             )
-            return results.join('\n')
+            return await this.formatLargeResult(
+                computer,
+                'grep',
+                results.join('\n')
+            )
         } catch (err) {
             return this.formatResult(
                 false,

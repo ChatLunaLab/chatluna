@@ -1,5 +1,6 @@
 /** @module service/computer */
 
+import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -13,6 +14,7 @@ import {
     AgentConfig,
     ComputerBackendStatus,
     ComputerBackendType,
+    ComputerBackgroundJobState,
     ComputerCapability,
     ComputerDesktopState,
     ComputerStatus,
@@ -32,6 +34,14 @@ import {
 } from '../computer/types'
 import { SkillMaterializer } from '../computer/materialize'
 import { ChatLunaAgentComputerProxy } from '../computer/proxy'
+import {
+    appendBackgroundOutput,
+    BackgroundJob,
+    ManagedTerminal,
+    readBackgroundExit,
+    stripBackgroundMarker,
+    toBackgroundJobInfo
+} from '../computer/background'
 import { ReadFileTool } from '../computer/tools/file_read'
 import { WriteFileTool } from '../computer/tools/file_write'
 import { EditFileTool } from '../computer/tools/file_edit'
@@ -47,7 +57,8 @@ export class ChatLunaAgentComputerService {
     private _promptDispose?: () => void
     private _idleDispose?: () => void
     private _proxy: ChatLunaAgentComputerProxy
-    private _terminals = new Map<string, Map<string, TerminalHandle>>()
+    private _terminals = new Map<string, Map<string, ManagedTerminal>>()
+    private _jobs = new Map<string, BackgroundJob>()
 
     readonly materializer = new SkillMaterializer()
 
@@ -74,6 +85,7 @@ export class ChatLunaAgentComputerService {
         this._promptDispose?.()
         this._promptDispose = undefined
         await this.closeAllTerminals()
+        this._jobs.clear()
         await this._sessions.clear()
         this._status = this.buildStatus()
         this._proxy.stop()
@@ -81,6 +93,7 @@ export class ChatLunaAgentComputerService {
 
     async reload() {
         await this.closeAllTerminals()
+        this._jobs.clear()
         await this._sessions.clear()
         this._status = this.buildStatus()
         this.syncIdleCleanup()
@@ -101,7 +114,16 @@ export class ChatLunaAgentComputerService {
     }
 
     getTerminal(sessionId: string, terminalId: string) {
-        return this._terminals.get(sessionId)?.get(terminalId)
+        return this._terminals.get(sessionId)?.get(terminalId)?.terminal
+    }
+
+    shouldCloseTerminalOnSocketClose(sessionId: string, terminalId: string) {
+        const terminal = this._terminals.get(sessionId)?.get(terminalId)
+        if (!terminal) {
+            return true
+        }
+
+        return !terminal.persistent
     }
 
     touchSession(sessionId: string) {
@@ -109,13 +131,145 @@ export class ChatLunaAgentComputerService {
     }
 
     async closeTerminal(sessionId: string, terminalId: string) {
+        await this.closeManagedTerminal(sessionId, terminalId, 'killed')
+    }
+
+    async listBackgroundJobs(backend?: ComputerBackendType) {
+        return Array.from(this._jobs.values())
+            .filter((job) => (backend ? job.backend === backend : true))
+            .sort((a, b) => b.startedAt - a.startedAt)
+            .map((job) => toBackgroundJobInfo(job))
+    }
+
+    getBackgroundJob(jobId: string) {
+        const job = this._jobs.get(jobId)
+        return job ? toBackgroundJobInfo(job) : undefined
+    }
+
+    async killBackgroundJob(jobId: string) {
+        const job = this._jobs.get(jobId)
+        if (!job) {
+            return undefined
+        }
+
+        await this.closeManagedTerminal(job.sessionId, job.terminalId, 'killed')
+        return toBackgroundJobInfo(job)
+    }
+
+    async runBackgroundCommand(
+        command: string,
+        options: {
+            runConfig?: ChatLunaToolRunnable
+            backend?: ComputerBackendType
+            workdir?: string
+            timeout?: number
+        } = {}
+    ) {
+        const session = await this.getToolSession(
+            options.runConfig,
+            options.backend
+        )
+        if (!session.createTerminal) {
+            throw new Error(
+                `Backend ${session.backend} does not support terminals.`
+            )
+        }
+
+        const cwd = options.workdir ?? session.getScopePath()
+        const marker = `__CHATLUNA_BACKGROUND_EXIT__${randomUUID().replaceAll('-', '')}`
+        const userSession = options.runConfig?.configurable?.session
+        const wrapped = session.prepareBackgroundCommand
+            ? await session.prepareBackgroundCommand(command, marker, {
+                  workdir: cwd,
+                  session: userSession
+              })
+            : `${command}\n`
+        const terminal = await this.createManagedTerminal(
+            session,
+            {
+                cwd,
+                cols: 120,
+                rows: 30
+            },
+            true
+        )
+        const job: BackgroundJob = {
+            id: randomUUID(),
+            sessionId: session.sessionId,
+            terminalId: terminal.info.terminalId,
+            backend: session.backend,
+            url: terminal.info.url,
+            command,
+            cwd,
+            state: 'running',
+            startedAt: Date.now(),
+            timeout: options.timeout,
+            output: '',
+            marker,
+            pending: ''
+        }
+
+        this._jobs.set(job.id, job)
+        job.offData = await terminal.handle.onData((data) => {
+            this.appendBackgroundJobOutput(job, data)
+        })
+
+        if (options.timeout != null && options.timeout > 0) {
+            job.timer = setTimeout(() => {
+                this.closeManagedTerminal(
+                    job.sessionId,
+                    job.terminalId,
+                    'timed_out'
+                ).catch(() => undefined)
+            }, options.timeout)
+        }
+
+        try {
+            await terminal.handle.sendInput(wrapped)
+        } catch (err) {
+            this.finishBackgroundJob(job, 'failed', 1)
+            await this.closeManagedTerminal(
+                job.sessionId,
+                job.terminalId
+            ).catch(() => undefined)
+            throw err
+        }
+
+        return toBackgroundJobInfo(job)
+    }
+
+    hasRunningJobs(sessionId: string) {
+        return Array.from(this._jobs.values()).some(
+            (job) => job.sessionId === sessionId && job.state === 'running'
+        )
+    }
+
+    async handleTerminalSocketClose(sessionId: string, terminalId: string) {
+        if (this.shouldCloseTerminalOnSocketClose(sessionId, terminalId)) {
+            await this.closeManagedTerminal(sessionId, terminalId)
+        }
+    }
+
+    private async closeManagedTerminal(
+        sessionId: string,
+        terminalId: string,
+        state?: Extract<ComputerBackgroundJobState, 'killed' | 'timed_out'>
+    ) {
         const session = this._terminals.get(sessionId)
         const terminal = session?.get(terminalId)
         if (!terminal) {
             return
         }
 
-        await terminal.kill()
+        const job = Array.from(this._jobs.values()).find(
+            (item) =>
+                item.sessionId === sessionId && item.terminalId === terminalId
+        )
+        if (job && job.state === 'running') {
+            this.finishBackgroundJob(job, state ?? 'killed', 1)
+        }
+
+        await terminal.terminal.kill()
         session?.delete(terminalId)
         if (session && session.size < 1) {
             this._terminals.delete(sessionId)
@@ -218,21 +372,39 @@ export class ChatLunaAgentComputerService {
         } = {}
     ): Promise<ComputerTerminalInfo> {
         const session = await this.getOrCreateUiSession(clientId, input.backend)
+        return (
+            await this.createManagedTerminal(
+                session,
+                {
+                    cwd: input.cwd,
+                    cols: input.cols,
+                    rows: input.rows
+                },
+                false
+            )
+        ).info
+    }
+
+    private async createManagedTerminal(
+        session: ComputerSessionApi,
+        options: {
+            cwd?: string
+            cols?: number
+            rows?: number
+        },
+        persistent: boolean
+    ) {
         if (!session.createTerminal) {
             throw new Error(
                 `Backend ${session.backend} does not support terminals.`
             )
         }
 
-        const raw = await session.createTerminal({
-            cwd: input.cwd,
-            cols: input.cols,
-            rows: input.rows
-        })
+        const raw = await session.createTerminal(options)
         const terminal: TerminalHandle = {
             id: raw.id,
             onData: async (callback) => {
-                await raw.onData((data) => {
+                return await raw.onData((data) => {
                     this.touchSession(session.sessionId)
                     callback(data)
                 })
@@ -252,16 +424,56 @@ export class ChatLunaAgentComputerService {
         }
         const list =
             this._terminals.get(session.sessionId) ??
-            new Map<string, TerminalHandle>()
-        list.set(terminal.id, terminal)
+            new Map<string, ManagedTerminal>()
+        list.set(terminal.id, { terminal, persistent })
         this._terminals.set(session.sessionId, list)
 
         return {
-            sessionId: session.sessionId,
-            terminalId: terminal.id,
-            backend: session.backend,
-            url: `/chatluna/computer/terminal/${session.sessionId}/${terminal.id}`
+            info: {
+                sessionId: session.sessionId,
+                terminalId: terminal.id,
+                backend: session.backend,
+                url: `/chatluna/computer/terminal/${session.sessionId}/${terminal.id}`
+            },
+            handle: terminal
         }
+    }
+
+    private appendBackgroundJobOutput(job: BackgroundJob, data: string) {
+        this.touchSession(job.sessionId)
+        job.output = appendBackgroundOutput(job.output, data)
+
+        const result = readBackgroundExit(job.pending, data, job.marker)
+        job.pending = result.pending
+        if (result.exitCode != null) {
+            job.output = stripBackgroundMarker(job.output, job.marker)
+            this.finishBackgroundJob(
+                job,
+                result.exitCode === 0 ? 'completed' : 'failed',
+                result.exitCode
+            )
+            this.closeManagedTerminal(job.sessionId, job.terminalId).catch(
+                () => undefined
+            )
+        }
+    }
+
+    private finishBackgroundJob(
+        job: BackgroundJob,
+        state: Exclude<ComputerBackgroundJobState, 'running'>,
+        exitCode?: number
+    ) {
+        if (job.state !== 'running') {
+            return
+        }
+
+        clearTimeout(job.timer)
+        job.timer = undefined
+        job.offData?.()
+        job.offData = undefined
+        job.state = state
+        job.exitCode = exitCode
+        job.endedAt = Date.now()
     }
 
     async readFileForUi(
@@ -501,12 +713,19 @@ export class ChatLunaAgentComputerService {
                         return false
                     }
 
+                    if (this.hasRunningJobs(item.id)) {
+                        return false
+                    }
+
                     return Date.now() - item.lastActiveAt >= timeout
                 })
 
                 for (const item of items) {
                     const info = this.getSessionInfo(item.id)
                     if (!info || this._sessions.isBusy(item.id)) {
+                        continue
+                    }
+                    if (this.hasRunningJobs(item.id)) {
                         continue
                     }
                     if (Date.now() - info.lastActiveAt < timeout) {
@@ -629,7 +848,8 @@ export class ChatLunaAgentComputerService {
                         '<computer_use>',
                         `Default provider: ${this.resolveProvider() ?? this.config.computer.defaultProvider}`,
                         `Available capabilities: ${this.getCapabilities().join(', ')}`,
-                        'Prefer isolated backends when available. Local computer access runs directly on the host machine and should only be used when explicitly enabled.',
+                        'Prefer isolated backends when available. ' +
+                            'Local computer access runs directly on the host machine and should only be used when explicitly enabled.',
                         'Use these capabilities when file operations, code search, shell execution, terminal interaction, or preview access are needed.',
                         '</computer_use>'
                     ].join('\n')
@@ -712,7 +932,7 @@ export class ChatLunaAgentComputerService {
     }
 
     private async closeAllTerminals(sessionId?: string) {
-        const entries: [string, Map<string, TerminalHandle> | undefined][] =
+        const entries: [string, Map<string, ManagedTerminal> | undefined][] =
             sessionId
                 ? [[sessionId, this._terminals.get(sessionId)]]
                 : Array.from(this._terminals.entries())
@@ -720,8 +940,8 @@ export class ChatLunaAgentComputerService {
             if (!items) {
                 continue
             }
-            for (const terminal of items.values()) {
-                await terminal.kill()
+            for (const terminalId of Array.from(items.keys())) {
+                await this.closeManagedTerminal(id, terminalId, 'killed')
             }
             this._terminals.delete(id)
         }

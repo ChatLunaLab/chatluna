@@ -52,15 +52,21 @@ Usage:
             this.computer.ctx.logger.info(
                 `${MSG_DONE}: ${input.filePath} (${result.split('\n').length} 行)`
             )
-            return result
+            return await this.formatLargeResult(computer, 'file-read', result)
         } catch (err) {
             if (computer.backend !== 'local') {
                 try {
-                    return await this.computer.readMaterializedSkillFile(
+                    const result =
+                        await this.computer.readMaterializedSkillFile(
+                            computer,
+                            input.filePath,
+                            input.offset,
+                            input.limit ?? 2000
+                        )
+                    return await this.formatLargeResult(
                         computer,
-                        input.filePath,
-                        input.offset,
-                        input.limit ?? 2000
+                        'file-read',
+                        result
                     )
                 } catch {}
             }

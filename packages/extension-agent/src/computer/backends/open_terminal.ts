@@ -5,7 +5,7 @@ import { Buffer } from 'node:buffer'
 import { Readable } from 'node:stream'
 import { Context } from 'koishi'
 import mimeTypes from 'mime-types'
-import { quoteShell } from './types'
+import { buildPosixBackgroundCommand, quoteShell } from './types'
 import { OpenTerminalBackendConfig } from '../../types'
 import {
     ComputerSessionApi,
@@ -146,7 +146,8 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             const secondIdx = content.indexOf(oldString, firstIdx + 1)
             if (secondIdx !== -1) {
                 throw new Error(
-                    `Found multiple matches for oldString in ${filePath}. Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.`
+                    `Found multiple matches for oldString in ${filePath}. ` +
+                        'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
                 )
             }
         }
@@ -371,6 +372,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             id,
             async onData(callback) {
                 callbacks.add(callback)
+                return () => {
+                    callbacks.delete(callback)
+                }
             },
             async sendInput(data) {
                 socket.send(Buffer.from(data, 'utf8'))
@@ -387,6 +391,14 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                     .catch(() => undefined)
             }
         } satisfies TerminalHandle
+    }
+
+    async prepareBackgroundCommand(
+        command: string,
+        marker: string,
+        _options: ExecuteOptions = {}
+    ) {
+        return buildPosixBackgroundCommand(command, marker)
     }
 
     async getDesktopInfo() {

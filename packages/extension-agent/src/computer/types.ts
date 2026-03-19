@@ -31,6 +31,11 @@ export interface ComputerSessionApi {
     openAsset(path: string): Promise<OpenAssetResult>
 
     createTerminal?(options?: TerminalOptions): Promise<TerminalHandle>
+    prepareBackgroundCommand?(
+        command: string,
+        marker: string,
+        options?: ExecuteOptions
+    ): Promise<string>
     getDesktopInfo?(): Promise<DesktopInfo | undefined>
     screenshot?(): Promise<ScreenshotResult>
     desktopAction?(action: DesktopAction): Promise<void>
@@ -71,7 +76,7 @@ export interface TerminalOptions {
 
 export interface TerminalHandle {
     id: string
-    onData(callback: (data: string) => void): Promise<void>
+    onData(callback: (data: string) => void): Promise<() => void>
     sendInput(data: string): Promise<void>
     resize(cols: number, rows: number): Promise<void>
     kill(): Promise<void>

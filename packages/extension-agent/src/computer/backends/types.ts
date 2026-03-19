@@ -33,3 +33,7 @@ export function formatExecuteResult(result: ExecuteResult): string {
 
     return parts.join('\n') || '(no output)'
 }
+
+export function buildPosixBackgroundCommand(command: string, marker: string) {
+    return `${command}\n__chatluna_code=$?\nprintf '\\n${marker}:%s\\n' \"$__chatluna_code\"\nexit\n`
+}

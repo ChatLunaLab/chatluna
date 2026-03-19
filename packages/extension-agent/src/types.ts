@@ -2,6 +2,7 @@
 
 import type { DataService } from '@koishijs/plugin-console'
 import type {
+    ComputerBackgroundJobInfo,
     ComputerBackendStatus,
     ComputerBackendType,
     ComputerConfig,
@@ -99,6 +100,12 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/closeComputerTerminal': (
             sessionId: string,
             terminalId: string
+        ) => Promise<ActionResult>
+        'chatluna-agent/listComputerBackgroundJobs': (input?: {
+            backend?: ComputerBackendType
+        }) => Promise<ComputerBackgroundJobInfo[]>
+        'chatluna-agent/killComputerBackgroundJob': (
+            jobId: string
         ) => Promise<ActionResult>
         'chatluna-agent/readComputerFile': (input: {
             path: string

@@ -30,16 +30,6 @@ $inner:
                 matcher: 'Domain matcher pattern (supports wildcards, e.g., *.example.com, api.github.com).'
                 headers: 'Request headers to apply when this domain matches.'
 
-    - - $desc: 'File Plugin Configuration'
-        fsScopePath: 'Scope path for file plugin. Empty for system-wide access'
-        fsNotify: 'Notify user before and after each fs tool operation'
-        fsSelector: 'Keywords to trigger file system tools. Always selected when empty.'
-        fsIgnores: 'Default ignored folder expressions.'
-        bashAllowedCommands: 'Whitelist of commands the bash tool may execute. When non-empty, only listed commands are allowed.'
-        bashBlockedCommands: 'Blacklist of commands always rejected by the bash tool.'
-        bashTimeout: 'Default timeout for bash commands in milliseconds.'
-        bashAutoExecute: 'DANGEROUS - Skip user confirmation for high-risk bash commands. Use at your own risk.'
-
     - - $desc: 'Command Plugin Configuration'
         commandWithSend: Whether to send command execution results by default.
         commandAutoExecute: DANGEROUS - Allow all commands to execute without confirmation. This may cause unexpected operations. Use at your own risk. Default is disabled for safety.

@@ -11,7 +11,6 @@ $inner:
       music: 启用简易音频生成功能。（需要安装并启用 [@dgck81lnn/music](https://github.com/DGCK81LNN/koishi-plugin-music)
     - $desc: 系统工具功能
       request: 启用 request 插件，提供 GET/POST 请求接口。
-      fs: 启用 fs 插件，提供文件读写接口。
       command: 启用指令辅助功能，允许执行 Koishi 机器人指令。
       cron: 启用定时提醒功能。
       codeSandbox: 启用 Python 代码执行功能。(需要申请 API)
@@ -28,16 +27,6 @@ $inner:
             $inner:
                 matcher: 域名匹配模式（支持通配符，如 *.example.com, api.github.com）。
                 headers: 该域名匹配时应用的请求头。
-
-    - - $desc: fs 插件配置
-        fsScopePath: fs 插件作用域路径。留空则为系统任意路径。
-        fsNotify: 启用 fs 工具操作通知，调用前后向用户发送操作提示。
-        fsSelector: 触发 fs 工具的关键词。为空时始终选中。
-        fsIgnores: 默认忽略的文件夹表达式。
-        bashAllowedCommands: bash 工具允许执行的命令白名单。不为空时只允许列表内的命令。
-        bashBlockedCommands: bash 工具禁止执行的命令黑名单。列表内命令始终被拒绝。
-        bashTimeout: bash 命令的默认超时时间（毫秒）。
-        bashAutoExecute: 危险操作 - 跳过高危命令的用户确认。请谨慎使用。
 
     - - $desc: 指令插件配置
         commandWithSend: 是否默认发送指令的执行结果。

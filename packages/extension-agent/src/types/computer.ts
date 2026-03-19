@@ -96,6 +96,29 @@ export interface ComputerTerminalInfo {
     url: string
 }
 
+export type ComputerBackgroundJobState =
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'killed'
+    | 'timed_out'
+
+export interface ComputerBackgroundJobInfo {
+    id: string
+    sessionId: string
+    terminalId: string
+    backend: ComputerBackendType
+    url: string
+    command: string
+    cwd: string
+    state: ComputerBackgroundJobState
+    startedAt: number
+    endedAt?: number
+    timeout?: number
+    exitCode?: number
+    output: string
+}
+
 export interface ComputerFileEntry {
     path: string
     type: 'file' | 'dir'

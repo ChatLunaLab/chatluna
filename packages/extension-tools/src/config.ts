@@ -9,15 +9,6 @@ export interface Config extends ChatLunaPlugin.Config {
         matcher: string
         headers: Record<string, string>
     }[]
-    fs: boolean
-    fsNotify: boolean
-    fsScopePath: string
-    fsSelector: string[]
-    fsIgnores: string[]
-    bashAllowedCommands: string[]
-    bashBlockedCommands: string[]
-    bashTimeout: number
-    bashAutoExecute: boolean
     bilibili: boolean
     bilibiliTempTimeout: number
     group: boolean
@@ -100,55 +91,6 @@ export const Config: Schema<Config> = Schema.intersect([
                         .description('Headers to apply for this domain')
                 })
             ).default([])
-        }),
-        Schema.object({})
-    ]),
-    Schema.union([
-        Schema.object({
-            fs: Schema.const(true).required(),
-            fsNotify: Schema.boolean().default(true),
-            fsScopePath: Schema.string().default(''),
-            fsSelector: Schema.array(Schema.string()).role('table').default([]),
-            fsIgnores: Schema.array(Schema.string())
-                .role('table')
-                .default([
-                    '**/node_modules/**',
-                    '**/.git/**',
-                    '**/dist/**',
-                    '**/build/**',
-                    '**/.yarn/**',
-                    '**/coverage/**',
-                    '**/.next/**',
-                    '**/.nuxt/**',
-                    '**/out/**',
-                    '**/.cache/**',
-                    '**/.vscode/**',
-                    '**/.idea/**',
-                    '**/temp/**',
-                    '**/tmp/**'
-                ]),
-            bashAllowedCommands: Schema.array(Schema.string())
-                .role('table')
-                .default([])
-                .description(
-                    'Whitelist of allowed commands. When non-empty, only listed commands can be executed.'
-                ),
-            bashBlockedCommands: Schema.array(Schema.string())
-                .role('table')
-                .default([])
-                .description('Blacklist of commands that are always rejected.'),
-            bashTimeout: Schema.number()
-                .min(1000)
-                .max(300000)
-                .default(30000)
-                .description(
-                    'Default timeout for bash commands in milliseconds.'
-                ),
-            bashAutoExecute: Schema.boolean()
-                .default(false)
-                .description(
-                    '⚠️ DANGEROUS: Skip user confirmation for high-risk commands. Use at your own risk.'
-                )
         }),
         Schema.object({})
     ]),

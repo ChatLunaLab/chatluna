@@ -6,7 +6,7 @@ import { Readable } from 'node:stream'
 import { CommandHandle, CommandResult, Sandbox as E2BSandbox } from 'e2b'
 import { Sandbox as DesktopSandbox } from '@e2b/desktop'
 import mimeTypes from 'mime-types'
-import { quoteShell } from './types'
+import { buildPosixBackgroundCommand, quoteShell } from './types'
 import { E2BBackendConfig } from '../../types'
 import {
     ComputerSessionApi,
@@ -168,7 +168,8 @@ export class E2BComputerSession implements ComputerSessionApi {
             const secondIdx = content.indexOf(oldString, firstIdx + 1)
             if (secondIdx !== -1) {
                 throw new Error(
-                    `Found multiple matches for oldString in ${filePath}. Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.`
+                    `Found multiple matches for oldString in ${filePath}. ` +
+                        'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
                 )
             }
         }
@@ -279,6 +280,9 @@ export class E2BComputerSession implements ComputerSessionApi {
             id: String(handle.pid),
             async onData(callback) {
                 callbacks.add(callback)
+                return () => {
+                    callbacks.delete(callback)
+                }
             },
             async sendInput(data) {
                 await sandbox.pty.sendInput(
@@ -293,6 +297,14 @@ export class E2BComputerSession implements ComputerSessionApi {
                 await handle.kill()
             }
         } satisfies TerminalHandle
+    }
+
+    async prepareBackgroundCommand(
+        command: string,
+        marker: string,
+        _options: ExecuteOptions = {}
+    ) {
+        return buildPosixBackgroundCommand(command, marker)
     }
 
     async getDesktopInfo(): Promise<DesktopInfo | undefined> {

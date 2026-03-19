@@ -54,7 +54,7 @@ export class ChatLunaAgentComputerProxy {
 
         this.service.touchSession(match[1])
 
-        terminal.onData((data) => {
+        const offData = await terminal.onData((data) => {
             if (socket.readyState === socket.OPEN) {
                 socket.send(JSON.stringify({ type: 'data', data }))
             }
@@ -86,7 +86,10 @@ export class ChatLunaAgentComputerProxy {
         })
 
         socket.on('close', () => {
-            this.service.closeTerminal(match[1], match[2]).catch(() => {})
+            offData()
+            this.service
+                .handleTerminalSocketClose(match[1], match[2])
+                .catch(() => {})
         })
     }
 }

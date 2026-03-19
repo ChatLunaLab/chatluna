@@ -45,7 +45,11 @@ export class GlobTool extends ComputerToolBase {
             this.computer.ctx.logger.info(
                 `${MSG_FOUND} ${results.length} 个文件`
             )
-            return results.join('\n')
+            return await this.formatLargeResult(
+                computer,
+                'glob',
+                results.join('\n')
+            )
         } catch (err) {
             return this.formatResult(
                 false,

@@ -13,7 +13,7 @@ import {
     ExecuteResult,
     TerminalHandle
 } from '../../types'
-import { truncateOutput } from '../types'
+import { buildPosixBackgroundCommand } from '../types'
 import { FileStore } from './store'
 import {
     ResolvedShellCommand,
@@ -132,6 +132,44 @@ export class LocalComputerSession implements ComputerSessionApi {
         return await runChildProcess(shell, workdir, env, timeout)
     }
 
+    async prepareBackgroundCommand(
+        command: string,
+        marker: string,
+        options: ExecuteOptions = {}
+    ) {
+        ensureCommandAllowed(command, this._cfg)
+
+        const tmp = tmpdir(this._cfg)
+        const workdir = options.workdir || this._cfg.scopePath || process.cwd()
+
+        ensureWorkdirInScope(workdir, this._cfg)
+        ensureCommandPathsInScope(command, this._cfg, (filePath) =>
+            this.isInScope(filePath)
+        )
+        ensureLocalCommandAccess(command, workdir, this._cfg)
+        await confirmHighRiskCommand(command, this._cfg, options.session)
+
+        await fs.mkdir(tmp, { recursive: true })
+
+        const shell = await resolveInteractiveShellCommand(this._cfg)
+        const wrapped = wrapCommandWithSandbox(command, workdir, this._cfg, tmp)
+        this._cwd = path.resolve(workdir)
+
+        if (process.platform !== 'win32') {
+            return buildPosixBackgroundCommand(wrapped, marker)
+        }
+
+        if (shell.file.toLowerCase().includes('cmd.exe')) {
+            return buildCmdBackgroundCommand(wrapped, marker)
+        }
+
+        if (shell.file.toLowerCase().includes('bash')) {
+            return buildPosixBackgroundCommand(wrapped, marker)
+        }
+
+        return buildPowerShellBackgroundCommand(wrapped, marker)
+    }
+
     async readAsset(filePath: string) {
         ensureLocalPathAccess(filePath, this._cfg, 'read')
         return (await fs.readFile(filePath)).toString('base64')
@@ -161,8 +199,10 @@ export class LocalComputerSession implements ComputerSessionApi {
     ) {
         const tmp = tmpdir(this._cfg)
         const cwd = options.cwd || this._cwd
+        ensureWorkdirInScope(cwd, this._cfg)
         const shell = await resolveInteractiveShellCommand(this._cfg)
         const env = { ...shell.env, ...tmpEnv(tmp) }
+        this._cwd = path.resolve(cwd)
         return createLocalTerminal(shell, cwd, env)
     }
 }
@@ -173,84 +213,75 @@ async function runChildProcess(
     env: NodeJS.ProcessEnv,
     timeout: number
 ): Promise<ExecuteResult> {
-    const ac = new AbortController()
-    const timer = setTimeout(() => ac.abort(), timeout)
-
-    try {
-        const result = await new Promise<{
-            code: number | null
-            stdout: string
-            stderr: string
-            signal: NodeJS.Signals | null
-        }>((resolve, reject) => {
-            const stdoutChunks: Buffer[] = []
-            const stderrChunks: Buffer[] = []
-            const child = spawn(shell.file, shell.args, {
-                cwd,
-                env,
-                stdio: ['ignore', 'pipe', 'pipe'],
-                windowsHide: true,
-                signal: ac.signal
-            })
-
-            let done = false
-            child.stdout.on('data', (chunk: Buffer | string) => {
-                stdoutChunks.push(
-                    Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-                )
-            })
-
-            child.stderr.on('data', (chunk: Buffer | string) => {
-                stderrChunks.push(
-                    Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-                )
-            })
-
-            child.on('error', (err) => {
-                if (done) {
-                    return
-                }
-
-                done = true
-                reject(err)
-            })
-
-            child.on('close', (code, signal) => {
-                if (done) {
-                    return
-                }
-
-                done = true
-                resolve({
-                    code,
-                    signal,
-                    stdout: decodeOutput(stdoutChunks),
-                    stderr: decodeOutput(stderrChunks)
-                })
-            })
+    return await new Promise<ExecuteResult>((resolve, reject) => {
+        const stdoutChunks: Buffer[] = []
+        const stderrChunks: Buffer[] = []
+        const child = spawn(shell.file, shell.args, {
+            cwd,
+            env,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true,
+            detached: process.platform !== 'win32'
         })
 
-        return {
-            exitCode: result.code ?? 0,
-            stdout: truncateOutput(result.stdout, 8000),
-            stderr: truncateOutput(result.stderr, 2000),
-            signal: result.signal ?? undefined,
-            timedOut: false
-        }
-    } catch (err) {
-        if (ac.signal.aborted) {
-            return {
-                exitCode: 1,
-                stdout: '',
-                stderr: '',
-                timedOut: true
-            }
-        }
+        let done = false
+        let timedOut = false
+        const timer =
+            timeout > 0
+                ? setTimeout(() => {
+                      timedOut = true
+                      killLocalChild(child).catch(() => undefined)
+                  }, timeout)
+                : undefined
 
-        throw err
-    } finally {
-        clearTimeout(timer)
-    }
+        child.stdout.on('data', (chunk: Buffer | string) => {
+            stdoutChunks.push(
+                Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+            )
+        })
+
+        child.stderr.on('data', (chunk: Buffer | string) => {
+            stderrChunks.push(
+                Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+            )
+        })
+
+        child.on('error', (err) => {
+            if (done) {
+                return
+            }
+
+            done = true
+            clearTimeout(timer)
+            if (timedOut) {
+                resolve({
+                    exitCode: 1,
+                    stdout: decodeOutput(stdoutChunks),
+                    stderr: decodeOutput(stderrChunks),
+                    timedOut: true
+                })
+                return
+            }
+
+            reject(err)
+        })
+
+        child.on('close', (code, signal) => {
+            if (done) {
+                return
+            }
+
+            done = true
+            clearTimeout(timer)
+            resolve({
+                exitCode: code ?? (timedOut ? 1 : 0),
+                stdout: decodeOutput(stdoutChunks),
+                stderr: decodeOutput(stderrChunks),
+                signal: signal ?? undefined,
+                timedOut
+            })
+        })
+    })
 }
 
 function createLocalTerminal(
@@ -279,15 +310,75 @@ function createLocalTerminal(
         id: randomUUID(),
         async onData(callback) {
             callbacks.add(callback)
+            return () => {
+                callbacks.delete(callback)
+            }
         },
         async sendInput(data) {
             child.stdin.write(data)
         },
         async resize() {},
         async kill() {
-            child.kill()
+            await killLocalChild(child)
         }
     }
+}
+
+async function killLocalChild(child: ReturnType<typeof spawn>) {
+    if (!child.pid) {
+        child.kill('SIGTERM')
+        return
+    }
+
+    if (process.platform !== 'win32') {
+        try {
+            process.kill(-child.pid, 'SIGKILL')
+            return
+        } catch {}
+
+        child.kill('SIGKILL')
+        return
+    }
+
+    await new Promise<void>((resolve) => {
+        const killer = spawn(
+            'taskkill.exe',
+            ['/pid', String(child.pid), '/t', '/f'],
+            {
+                stdio: 'ignore',
+                windowsHide: true
+            }
+        )
+
+        killer.on('error', () => {
+            child.kill('SIGTERM')
+            resolve()
+        })
+        killer.on('close', () => resolve())
+    })
+}
+
+function buildCmdBackgroundCommand(command: string, marker: string) {
+    return (
+        [
+            command,
+            'set "__chatluna_code=%errorlevel%"',
+            'echo.',
+            `echo ${marker}:%__chatluna_code%`,
+            'exit /b %__chatluna_code%'
+        ].join('\r\n') + '\r\n'
+    )
+}
+
+function buildPowerShellBackgroundCommand(command: string, marker: string) {
+    return (
+        [
+            command,
+            '$__chatluna_code = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }',
+            `Write-Output "\`n${marker}:$($__chatluna_code)"`,
+            'exit $__chatluna_code'
+        ].join('\r\n') + '\r\n'
+    )
 }
 
 function decodeOutput(chunks: Buffer[]): string {

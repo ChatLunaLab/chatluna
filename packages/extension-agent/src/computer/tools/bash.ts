@@ -3,58 +3,161 @@
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import z from 'zod'
 import { formatExecuteResult } from '../backends/types'
+import type { ComputerBackgroundJobInfo } from '../../types'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
 export class BashTool extends ComputerToolBase {
     name = 'bash'
 
-    description = `Execute a shell command to operate and control the computer. Automatically uses the correct shell for the current platform (cmd/PowerShell on Windows, sh/bash on Unix).
+    description = `Execute a shell command to operate and control the computer.
+Automatically uses the correct shell for the current platform (cmd/PowerShell on Windows, sh/bash on Unix).
 
 Rules:
 - Working directory defaults to the configured scope path
 - Absolute paths outside the scope path are blocked
 - Certain high-risk commands require explicit user confirmation
 - Commands in the blocked list are always rejected
-- Output is capped at 8000 characters
 
 When to use:
 - File listing, searching (ls, find, grep, rg, fd)
 - Running build tools, tests, scripts
 - Renaming, moving, copying files
-- Any shell operation not covered by the dedicated file tools`
+- Any shell operation not covered by the dedicated file tools
+- Long-lived services can be started as managed background jobs and later queried or killed`
 
-    schema = z.object({
-        command: z.string().describe('The shell command to execute.'),
-        workdir: z
-            .string()
-            .optional()
-            .describe(
-                'Working directory for the command. Defaults to the scope path. Must be within the scope path when scope is set.'
-            ),
-        timeout: z
-            .number()
-            .optional()
-            .describe(
-                'Timeout in milliseconds. Defaults to the configured timeout.'
-            )
-    })
+    schema = z
+        .object({
+            command: z
+                .string()
+                .optional()
+                .describe('The shell command to execute.'),
+            workdir: z
+                .string()
+                .optional()
+                .describe(
+                    'Working directory for the command. Defaults to the scope path. Must be within the scope path when scope is set.'
+                ),
+            timeout: z
+                .number()
+                .optional()
+                .describe(
+                    'Timeout in milliseconds. Foreground commands default to the configured timeout. Background commands only use this when provided.'
+                ),
+            background: z
+                .boolean()
+                .optional()
+                .describe(
+                    'Run the command as a managed background job. Commands ending with & are also treated as background jobs automatically.'
+                ),
+            action: z
+                .enum(['run', 'status', 'list', 'kill'])
+                .optional()
+                .describe(
+                    'run executes a command, status reads one background job, list shows all background jobs, kill stops one background job.'
+                ),
+            jobId: z
+                .string()
+                .optional()
+                .describe('Background job ID used with status or kill.')
+        })
+        .superRefine((input, ctx) => {
+            const action = input.action ?? (input.jobId ? 'status' : 'run')
+            if (action === 'run' && !input.command?.trim()) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['command'],
+                    message: 'command is required when action is run.'
+                })
+            }
+
+            if (
+                (action === 'status' || action === 'kill') &&
+                !input.jobId?.trim()
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['jobId'],
+                    message: 'jobId is required when action is status or kill.'
+                })
+            }
+        })
 
     async _call(
         input: z.infer<typeof this.schema>,
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        const timeout =
-            input.timeout ??
-            this.computer.config.computer.local.commandTimeoutMs
         const session = toolConfig?.configurable?.session
         const computer = await this.getSession(toolConfig)
-
-        this.computer.ctx.logger.info(`执行命令: \`${input.command}\``)
+        const action = input.action ?? (input.jobId ? 'status' : 'run')
 
         try {
-            const result = await computer.execute(input.command, {
+            if (action === 'list') {
+                const jobs = await this.computer.listBackgroundJobs()
+                if (jobs.length < 1) {
+                    return 'No background jobs.'
+                }
+
+                return formatJobList(jobs)
+            }
+
+            if (action === 'status') {
+                const job = this.computer.getBackgroundJob(input.jobId!)
+                if (!job) {
+                    return this.formatResult(
+                        false,
+                        `Background job not found: ${input.jobId}`
+                    )
+                }
+
+                return await this.formatLargeResult(
+                    computer,
+                    'bash',
+                    formatJobDetail(job)
+                )
+            }
+
+            if (action === 'kill') {
+                const job = await this.computer.killBackgroundJob(input.jobId!)
+                if (!job) {
+                    return this.formatResult(
+                        false,
+                        `Background job not found: ${input.jobId}`
+                    )
+                }
+
+                return await this.formatLargeResult(
+                    computer,
+                    'bash',
+                    `Background job stopped:\n${formatJobDetail(job)}`
+                )
+            }
+
+            const raw = input.command?.trim()
+            const backgroundCommand = raw
+                ? stripBackgroundSuffix(raw)
+                : undefined
+            const background =
+                input.background === true || backgroundCommand != null
+            const command = backgroundCommand ?? raw ?? ''
+
+            this.computer.ctx.logger.info(`执行命令: \`${command}\``)
+
+            if (background) {
+                const job = await this.computer.runBackgroundCommand(command, {
+                    runConfig: toolConfig,
+                    workdir: input.workdir ?? computer.getScopePath(),
+                    timeout: input.timeout
+                })
+
+                return formatJobStart(job)
+            }
+
+            const timeout =
+                input.timeout ??
+                this.computer.config.computer.local.commandTimeoutMs
+            const result = await computer.execute(command, {
                 workdir: input.workdir ?? computer.getScopePath(),
                 timeout,
                 session
@@ -64,7 +167,11 @@ When to use:
                 return `Command timed out after ${timeout}ms.`
             }
 
-            const output = formatExecuteResult(result)
+            const output = await this.formatLargeResult(
+                computer,
+                'bash',
+                formatExecuteResult(result)
+            )
 
             if (result.signal) {
                 return `Command terminated by signal ${result.signal}:\n${output}`
@@ -84,4 +191,63 @@ When to use:
             )
         }
     }
+}
+
+function stripBackgroundSuffix(command: string) {
+    const trimmed = command.trimEnd()
+    if (!trimmed.endsWith('&') || trimmed.endsWith('&&')) {
+        return undefined
+    }
+
+    return trimmed.slice(0, -1).trimEnd()
+}
+
+function formatJobStart(job: ComputerBackgroundJobInfo) {
+    return [
+        `Background job started: ${job.id}`,
+        `State: ${job.state}`,
+        `Backend: ${job.backend}`,
+        `Terminal: ${job.sessionId}/${job.terminalId}`,
+        `Working directory: ${job.cwd}`,
+        `Timeout: ${job.timeout == null ? 'none' : `${job.timeout}ms`}`,
+        `Command: ${job.command}`,
+        `Terminal URL: ${job.url}`,
+        `Use bash with {"action":"status","jobId":"${job.id}"} to inspect it.`
+    ].join('\n')
+}
+
+function formatJobList(jobs: ComputerBackgroundJobInfo[]) {
+    return jobs
+        .map(
+            (job) =>
+                `${job.id} [${job.state}] ${job.backend} timeout=${job.timeout == null ? 'none' : `${job.timeout}ms`} ${job.command}`
+        )
+        .join('\n')
+}
+
+function formatJobDetail(job: ComputerBackgroundJobInfo) {
+    const lines = [
+        `Job: ${job.id}`,
+        `State: ${job.state}`,
+        `Backend: ${job.backend}`,
+        `Terminal: ${job.sessionId}/${job.terminalId}`,
+        `Working directory: ${job.cwd}`,
+        `Started: ${new Date(job.startedAt).toISOString()}`,
+        `Timeout: ${job.timeout == null ? 'none' : `${job.timeout}ms`}`,
+        `Command: ${job.command}`,
+        `Terminal URL: ${job.url}`
+    ]
+
+    if (job.endedAt != null) {
+        lines.push(`Ended: ${new Date(job.endedAt).toISOString()}`)
+    }
+    if (job.exitCode != null) {
+        lines.push(`Exit code: ${job.exitCode}`)
+    }
+
+    lines.push('')
+    lines.push('Output:')
+    lines.push(job.output || '(no output)')
+
+    return lines.join('\n')
 }
