@@ -199,6 +199,7 @@ export interface ToolMask {
     mode: 'all' | 'allow' | 'deny'
     allow: string[]
     deny: string[]
+    toolCallMask?: ToolMask
 }
 
 export interface SubagentContext {

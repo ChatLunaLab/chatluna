@@ -122,6 +122,13 @@
                             >
                                 {{ subAgentModeLabel(item.subAgents.mode) }}
                             </el-tag>
+                            <el-tag size="small" effect="plain">
+                                {{
+                                    item.authority > 0
+                                        ? `权限 >= ${item.authority}`
+                                        : '无权限限制'
+                                }}
+                            </el-tag>
                             <el-tag
                                 v-if="item.isMcp"
                                 size="small"
@@ -251,7 +258,8 @@ const tools = computed(() => {
                 ...item,
                 enabled: saved?.enabled ?? item.enabled,
                 main: saved?.main ?? item.main,
-                subAgents: cloneRule(saved?.subAgents ?? item.subAgents)
+                subAgents: cloneRule(saved?.subAgents ?? item.subAgents),
+                authority: saved?.authority ?? item.authority
             }
         })
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -345,18 +353,37 @@ function normalizeConfig(value: ToolConfig): ToolConfig {
         items: Object.fromEntries(
             Object.entries(value.items ?? {}).map(([name, item]) => [
                 name,
-                createItem(item)
+                createItem(item, name)
             ])
         )
     }
 }
 
-function createItem(item?: Partial<ToolItemConfig> | ToolInfo): ToolItemConfig {
+function createItem(
+    item?: Partial<ToolItemConfig> | ToolInfo,
+    name?: string
+): ToolItemConfig {
     return {
         enabled: item?.enabled !== false,
         main: item?.main !== false,
-        subAgents: cloneRule(item?.subAgents)
+        subAgents: cloneRule(item?.subAgents),
+        authority: item?.authority ?? defaultAuthority(name)
     }
+}
+
+function defaultAuthority(name?: string) {
+    if (
+        name === 'bash' ||
+        name === 'file_edit' ||
+        name === 'file_read' ||
+        name === 'file_write' ||
+        name === 'glob' ||
+        name === 'grep'
+    ) {
+        return 3
+    }
+
+    return 0
 }
 
 function cloneRule(rule?: PermissionRule): PermissionRule {
@@ -405,11 +432,16 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    flex: 1 1 auto;
 }
 
 .headline,
 .tool-copy {
     min-width: 0;
+}
+
+.tool-copy {
+    flex: 1 1 auto;
 }
 
 .page-title {
@@ -460,6 +492,13 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     font-weight: 600;
     color: var(--k-text-dark);
     line-height: 1.4;
+}
+
+.tool-title {
+    font-size: 18px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tool-name {

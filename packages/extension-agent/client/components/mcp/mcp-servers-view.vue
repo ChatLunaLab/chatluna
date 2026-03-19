@@ -1255,6 +1255,7 @@ async function saveTool() {
     display: flex;
     gap: 10px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .server-card.centered .server-brand,
@@ -1296,6 +1297,7 @@ async function saveTool() {
 .server-copy,
 .tool-copy {
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .server-card.centered .server-copy,
@@ -1314,11 +1316,13 @@ async function saveTool() {
 .server-name,
 .tool-title {
     margin-top: 2px;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--k-text-dark);
-    word-break: break-word;
     line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .server-kind {

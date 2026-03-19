@@ -2,6 +2,7 @@
     <el-form class="backend-form" label-position="top">
         <el-alert
             type="warning"
+            effect="dark"
             :closable="false"
             title="Local 终端能力很危险"
             description="它会直接在宿主机执行命令，而不是隔离沙箱。建议默认关闭，只在明确知道风险、且需要访问本地工作区时临时启用。"
@@ -63,12 +64,14 @@
                 </div>
 
                 <div class="form-cell">
-                    <el-form-item label="命令超时（毫秒）">
+                    <el-form-item label="命令超时（分钟）">
                         <el-input-number
-                            :model-value="config.commandTimeoutMs"
-                            :min="1000"
-                            :max="300000"
-                            :step="1000"
+                            class="timeout-input"
+                            :model-value="config.commandTimeoutMs / 60000"
+                            :min="0.5"
+                            :max="5"
+                            :step="0.5"
+                            :precision="1"
                             controls-position="right"
                             @update:model-value="setTimeout"
                         />
@@ -296,7 +299,7 @@ function set<K extends keyof LocalBackendConfig>(
 
 function setTimeout(value: number | undefined) {
     if (value == null) return
-    set('commandTimeoutMs', value)
+    set('commandTimeoutMs', Math.round(value * 60000))
 }
 
 function setList(key: LocalListKey, value: string[]) {
@@ -313,6 +316,10 @@ function setList(key: LocalListKey, value: string[]) {
 </script>
 
 <style scoped>
+:deep(.timeout-input .el-input__inner) {
+    text-align: left;
+}
+
 .danger-box {
     display: flex;
     flex-direction: column;

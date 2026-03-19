@@ -16,6 +16,7 @@ export interface ToolItemConfig {
     enabled: boolean
     main: boolean
     subAgents: PermissionRule
+    authority: number
 }
 
 export interface ToolConfig {
@@ -29,6 +30,7 @@ export interface ToolInfo {
     enabled: boolean
     main: boolean
     subAgents: PermissionRule
+    authority: number
     source?: string
     group?: string
     tags?: string[]

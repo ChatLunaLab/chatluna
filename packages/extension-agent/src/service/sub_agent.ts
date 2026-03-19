@@ -12,6 +12,7 @@ import {
     countMessageTokens,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { getSubAgentsRootPath } from '../config/path'
 import { buildSubAgentCatalog } from '../sub-agent/catalog'
 import { createManualAgent } from '../sub-agent/manual'
 import { renderAvailableSubAgents } from '../sub-agent/render'
@@ -526,7 +527,17 @@ export class ChatLunaAgentSubAgentService {
                 const agents = this.listRunnableAgents()
                 if (agents.length < 1) return next()
 
-                const msg = renderAvailableSubAgents(agents)
+                const status = this.ctx.chatluna_agent?.computer.getStatus()
+                const remote =
+                    status != null && status.defaultProvider !== 'local'
+
+                const msg = renderAvailableSubAgents(
+                    agents,
+                    remote
+                        ? '~/.chatluna/agents'
+                        : getSubAgentsRootPath(this.ctx),
+                    remote ? 'remote' : 'local'
+                )
                 runtime.result.push(msg)
                 runtime.usedTokens += await countMessageTokens(
                     msg,

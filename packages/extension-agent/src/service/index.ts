@@ -132,7 +132,7 @@ export class ChatLunaAgentService extends Service {
     }
 
     async saveConfig(cfg: AgentConfig) {
-        const next = structuredClone(cfg)
+        const next = cfg
         await writeConfig(this.ctx, next)
         this._setConfig(next)
         await this.reload(next)
@@ -180,7 +180,10 @@ export class ChatLunaAgentService extends Service {
 
     async importSkills(input: SkillImportInput): Promise<SkillImportResult> {
         const result = await this.skills.importSkills(input)
-        const skills = structuredClone(this.args.config.skills)
+        const skills = {
+            dirs: [...this.args.config.skills.dirs],
+            items: { ...this.args.config.skills.items }
+        }
 
         for (const name of result.imported) {
             skills.items[
@@ -199,7 +202,10 @@ export class ChatLunaAgentService extends Service {
 
     async saveMcpServer(input: SaveMcpServerInput) {
         const prev = this.args.config.mcp
-        const mcp = structuredClone(this.args.config.mcp)
+        const mcp = {
+            mcpServers: { ...this.args.config.mcp.mcpServers },
+            tools: { ...this.args.config.mcp.tools }
+        }
 
         if (input.oldName && input.oldName !== input.name) {
             delete mcp.mcpServers[input.oldName]
@@ -213,7 +219,10 @@ export class ChatLunaAgentService extends Service {
 
     async removeMcpServer(name: string) {
         const prev = this.args.config.mcp
-        const mcp = structuredClone(this.args.config.mcp)
+        const mcp = {
+            mcpServers: { ...this.args.config.mcp.mcpServers },
+            tools: { ...this.args.config.mcp.tools }
+        }
         delete mcp.mcpServers[name]
         await this.updateConfig('mcp', mcp, async (cfg) => {
             await this.mcp.sync(prev, cfg.mcp)
@@ -222,7 +231,10 @@ export class ChatLunaAgentService extends Service {
 
     async saveMcpTool(tool: McpToolConfig) {
         const prev = this.args.config.mcp
-        const mcp = structuredClone(this.args.config.mcp)
+        const mcp = {
+            mcpServers: { ...this.args.config.mcp.mcpServers },
+            tools: { ...this.args.config.mcp.tools }
+        }
         mcp.tools[tool.name] = {
             name: tool.name,
             enabled: tool.enabled,
@@ -235,7 +247,10 @@ export class ChatLunaAgentService extends Service {
     }
 
     async setSkillEnabled(id: string, enabled: boolean) {
-        const skills = structuredClone(this.args.config.skills)
+        const skills = {
+            dirs: [...this.args.config.skills.dirs],
+            items: { ...this.args.config.skills.items }
+        }
         skills.items[id] = { enabled }
         await this.updateConfig('skills', skills, async () => {
             await this.skills.reload()
@@ -245,7 +260,10 @@ export class ChatLunaAgentService extends Service {
     async removeSkill(id: string) {
         await this.skills.removeSkill(id)
 
-        const skills = structuredClone(this.args.config.skills)
+        const skills = {
+            dirs: [...this.args.config.skills.dirs],
+            items: { ...this.args.config.skills.items }
+        }
         delete skills.items[id]
         await this.updateConfig('skills', skills, async () => {
             await this.skills.reload()
@@ -420,8 +438,10 @@ export class ChatLunaAgentService extends Service {
         patch: AgentConfig[K],
         afterSave?: (cfg: AgentConfig) => Promise<void>
     ) {
-        const next = structuredClone(this.args.config)
-        next[section] = structuredClone(patch)
+        const next = {
+            ...this.args.config,
+            [section]: patch
+        } as AgentConfig
         await writeConfig(this.ctx, next)
         this._setConfig(next)
         await afterSave?.(next)

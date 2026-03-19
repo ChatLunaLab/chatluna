@@ -24,7 +24,7 @@ export const WRITE_TOOL_PATTERNS = [
     'file_write',
     'file_edit',
     'bash',
-    'command_execute',
+    'koishi_command_execute',
     'group_mute',
     'cron',
     'memory_add',

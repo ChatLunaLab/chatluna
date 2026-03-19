@@ -1,7 +1,7 @@
 /** @module service/permissions */
 
-import { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
-import { Context } from 'koishi'
+import { applyToolMask, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
+import { Context, Session, User } from 'koishi'
 import { createPermissionRule, createToolItemConfig } from '../config/defaults'
 import {
     AgentConfig,
@@ -29,12 +29,16 @@ export class ChatLunaAgentPermissionService {
     async start() {
         this._toolMaskDispose = this.ctx.chatluna.registerToolMaskResolver(
             'agent',
-            async ({ room }) => {
-                if (room.chatMode !== 'plugin') {
+            async ({ room, session }) => {
+                if (room && room.chatMode !== 'plugin') {
                     return
                 }
 
-                return this.createMainToolMask()
+                const mask = this.createMainToolMask()
+                return {
+                    ...mask,
+                    toolCallMask: await this.createToolCallMask(session, mask)
+                }
             }
         )
     }
@@ -146,7 +150,8 @@ export class ChatLunaAgentPermissionService {
         const list = Object.values(registry)
             .map((item) => {
                 const cfg = createToolItemConfig(
-                    this.config.tool.items[item.name]
+                    this.config.tool.items[item.name],
+                    item.name
                 )
                 return {
                     name: item.name,
@@ -154,6 +159,7 @@ export class ChatLunaAgentPermissionService {
                     enabled: cfg.enabled,
                     main: cfg.main,
                     subAgents: cfg.subAgents,
+                    authority: cfg.authority,
                     source: item.meta?.source,
                     group: item.meta?.group,
                     tags: item.meta?.tags,
@@ -219,6 +225,18 @@ export class ChatLunaAgentPermissionService {
     createSubAgentToolMask(info: SubAgentInfo): ToolMask {
         const allNames = this.listTools().map((item) => item.name)
         const allow = allNames.filter((name) => this.canUseTool(info, name))
+        return buildToolMask(allNames, allow)
+    }
+
+    async createToolCallMask(session: Session, mask?: ToolMask) {
+        const auth = (session as Session<User.Field>).user?.['authority'] ?? 0
+
+        const allNames = this.listTools()
+            .map((item) => item.name)
+            .filter((name) => applyToolMask(name, mask))
+        const allow = allNames.filter(
+            (name) => auth >= (this.getTool(name)?.authority ?? 0)
+        )
         return buildToolMask(allNames, allow)
     }
 

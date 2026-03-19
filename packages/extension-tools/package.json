@@ -56,13 +56,11 @@
   ],
   "dependencies": {
     "@langchain/core": "^0.3.80",
-    "js-yaml": "^4.1.0",
     "micromatch": "^4.0.8",
     "which": "^6.0.1",
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@types/json-schema": "^7.0.15",
     "@types/micromatch": "^4.0.9",
     "atsc": "^2.1.0",
     "koishi": "^4.18.9"
@@ -70,20 +68,20 @@
   "peerDependencies": {
     "koishi": "^4.18.9",
     "koishi-plugin-chatluna": "^1.3.33",
-    "koishi-plugin-chatluna-storage-service": "^1.0.1",
-    "koishi-plugin-chatluna-agent": "^1.0.0"
+    "koishi-plugin-chatluna-agent": "^1.0.0",
+    "koishi-plugin-chatluna-storage-service": "^1.0.1"
   },
   "peerDependenciesMeta": {
-    "koishi-plugin-chatluna-storage-service": {
+    "koishi-plugin-chatluna-agent": {
       "optional": true
     },
-    "koishi-plugin-chatluna-agent": {
+    "koishi-plugin-chatluna-storage-service": {
       "optional": true
     }
   },
   "koishi": {
     "description": {
-      "zh": "ChatLuna Agent 模式的功能集（图像生成、代码执行、网络请求、文件操作、定时任务、Koishi 命令执行等）",
+      "zh": "ChatLuna Agent 模式的一部分功能集（网络请求、定时任务、Koishi 命令执行等）",
       "en": "Core functionalities for ChatLuna's agent mode (image gen, code exec, network, file ops, scheduling, memory, Koishi cmds, etc.)"
     },
     "service": {

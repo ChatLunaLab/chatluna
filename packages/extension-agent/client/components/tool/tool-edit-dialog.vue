@@ -12,22 +12,26 @@
                     <div class="field-label">工具名</div>
                     <div class="field-static">{{ tool.name }}</div>
                 </div>
-                <div class="field-card">
-                    <div class="field-label">来源</div>
-                    <div class="field-static">
-                        {{ tool.source || 'unknown' }}
+                <div class="field-card meta-card">
+                    <div class="meta-item">
+                        <div class="meta-label">来源</div>
+                        <div class="meta-value">
+                            {{ tool.source || 'unknown' }}
+                        </div>
                     </div>
-                </div>
-                <div class="field-card">
-                    <div class="field-label">分组</div>
-                    <div class="field-static">
-                        {{ tool.group || '未设置' }}
+
+                    <div class="meta-item">
+                        <div class="meta-label">分组</div>
+                        <div class="meta-value">
+                            {{ tool.group || '未设置' }}
+                        </div>
                     </div>
-                </div>
-                <div class="field-card">
-                    <div class="field-label">MCP Server</div>
-                    <div class="field-static">
-                        {{ tool.serverName || '不是 MCP 工具' }}
+
+                    <div class="meta-item">
+                        <div class="meta-label">MCP Server</div>
+                        <div class="meta-value">
+                            {{ tool.serverName || '不是 MCP 工具' }}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -61,37 +65,53 @@
                 </div>
             </div>
 
-            <div class="field-card full-row">
-                <div class="field-label">Sub Agent 范围</div>
-                <div class="field-help">
-                    `all` 为全部 sub-agent，`allow` 为仅允许指定项，`deny`
-                    为排除指定项。
+            <div class="field-grid permission-grid">
+                <div class="field-card">
+                    <div class="field-label">最低权限</div>
+                    <div class="field-help">
+                        基于 Koishi 用户 authority。0 表示不限制，3
+                        通常表示管理员。
+                    </div>
+                    <el-input-number
+                        v-model="draft.authority"
+                        :min="0"
+                        :step="1"
+                        controls-position="right"
+                    />
                 </div>
 
-                <div class="scope-grid">
-                    <el-select v-model="draft.subAgents.mode">
-                        <el-option label="all" value="all" />
-                        <el-option label="allow" value="allow" />
-                        <el-option label="deny" value="deny" />
-                    </el-select>
+                <div class="field-card scope-card">
+                    <div class="field-label">Sub Agent 范围</div>
+                    <div class="field-help">
+                        `all` 为全部 sub-agent，`allow` 为仅允许指定项，`deny`
+                        为排除指定项。
+                    </div>
 
-                    <el-select
-                        v-if="draft.subAgents.mode !== 'all'"
-                        v-model="scopeValues"
-                        multiple
-                        filterable
-                        clearable
-                        collapse-tags
-                        collapse-tags-tooltip
-                        placeholder="选择 sub-agent"
-                    >
-                        <el-option
-                            v-for="item in agentOptions"
-                            :key="item.id"
-                            :label="agentLabel(item)"
-                            :value="item.id"
-                        />
-                    </el-select>
+                    <div class="scope-grid">
+                        <el-select v-model="draft.subAgents.mode">
+                            <el-option label="all" value="all" />
+                            <el-option label="allow" value="allow" />
+                            <el-option label="deny" value="deny" />
+                        </el-select>
+
+                        <el-select
+                            v-if="draft.subAgents.mode !== 'all'"
+                            v-model="scopeValues"
+                            multiple
+                            filterable
+                            clearable
+                            collapse-tags
+                            collapse-tags-tooltip
+                            placeholder="选择 sub-agent"
+                        >
+                            <el-option
+                                v-for="item in agentOptions"
+                                :key="item.id"
+                                :label="agentLabel(item)"
+                                :value="item.id"
+                            />
+                        </el-select>
+                    </div>
                 </div>
             </div>
 
@@ -105,6 +125,13 @@
                     >
                         {{ draft.main ? '主 Agent 可用' : '主 Agent 禁用' }}
                     </el-tag>
+                    <el-tag size="small" effect="plain">
+                        {{
+                            draft.authority > 0
+                                ? `权限 >= ${draft.authority}`
+                                : '无权限限制'
+                        }}
+                    </el-tag>
                     <el-tag
                         v-for="item in grantedAgents"
                         :key="item.id"
@@ -117,11 +144,11 @@
                         当前没有 sub-agent 能使用这个工具
                     </span>
                 </div>
-            </div>
 
-            <div v-if="tool.tags?.length" class="field-card full-row">
-                <div class="field-label">标签</div>
-                <div class="tool-meta">{{ tool.tags.join(', ') }}</div>
+                <template v-if="tool.tags?.length">
+                    <div class="field-subtitle">标签</div>
+                    <div class="tool-meta">{{ tool.tags.join(', ') }}</div>
+                </template>
             </div>
         </div>
 
@@ -150,6 +177,7 @@ interface ToolEntry {
     enabled: boolean
     main: boolean
     subAgents: PermissionRule
+    authority: number
 }
 
 const props = defineProps<{
@@ -176,7 +204,8 @@ watch(
         draft.value = {
             enabled: tool.enabled,
             main: tool.main,
-            subAgents: cloneRule(tool.subAgents)
+            subAgents: cloneRule(tool.subAgents),
+            authority: tool.authority
         }
     },
     { immediate: true }
@@ -230,7 +259,8 @@ function handleSave() {
     emit('save', props.tool.name, {
         enabled: draft.value.enabled,
         main: draft.value.main,
-        subAgents: cloneRule(draft.value.subAgents)
+        subAgents: cloneRule(draft.value.subAgents),
+        authority: draft.value.authority
     })
     emit('update:visible', false)
 }
@@ -278,9 +308,24 @@ function matchRule(name: string, rule: PermissionRule) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.permission-grid {
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: stretch;
+}
+
+.permission-grid > .field-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
 .scope-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 140px minmax(0, 1fr);
     margin-top: 10px;
+}
+
+.scope-grid > :only-child {
+    grid-column: 1 / -1;
 }
 
 .readonly-grid {
@@ -311,6 +356,33 @@ function matchRule(name: string, rule: PermissionRule) {
     line-height: 1.6;
 }
 
+.meta-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+}
+
+.meta-item {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+}
+
+.meta-label {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--k-text-light);
+}
+
+.meta-value {
+    color: var(--k-text-dark);
+    line-height: 1.6;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
 .field-help,
 .tool-description,
 .tool-meta,
@@ -335,6 +407,18 @@ function matchRule(name: string, rule: PermissionRule) {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+}
+
+.field-subtitle {
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--k-text-dark);
+}
+
+.scope-card {
+    display: flex;
+    flex-direction: column;
 }
 
 .grant-tags {

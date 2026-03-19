@@ -362,7 +362,7 @@ const guide = computed<GuideContent>(() => {
                         '可写根目录：仅当需要写 scopePath 之外的路径时再加。',
                         '只读根目录 / 禁止访问目录：用来进一步收紧访问边界。',
                         '首选终端：一般保持“自动检测”即可。',
-                        '命令超时：保守值可以先用 30000 毫秒。',
+                        '命令超时：保守值可以先用 0.5 分钟。',
                         '忽略模式：把 node_modules、dist、缓存目录排除掉，能减少误读和误改。'
                     ],
                     code: [
@@ -371,7 +371,7 @@ const guide = computed<GuideContent>(() => {
                         '沙箱模式: read-only',
                         '审批模式: on-request',
                         '首选终端: auto',
-                        '命令超时: 30000',
+                        '命令超时: 0.5',
                         '网络策略: block'
                     ].join('\n')
                 }
@@ -458,7 +458,7 @@ const guide = computed<GuideContent>(() => {
                     '把“API 密钥”填成 env:E2B_API_KEY，或直接填入你的密钥。',
                     '普通文件和终端任务直接把“模板”保持为 base 即可。',
                     '如果你需要桌面能力，再去构建一个 desktop template，并把模板名填到“桌面模板”。',
-                    '“超时时间”建议先保留 300000 毫秒；“保持连接”适合连续任务复用同一个沙箱。',
+                    '“超时时间”建议先保留 5 分钟；“保持连接”适合连续任务复用同一个沙箱。',
                     '配置完先点“测试连接”，通过后再启用。'
                 ]
             },
@@ -468,7 +468,7 @@ const guide = computed<GuideContent>(() => {
                     'API 密钥: env:E2B_API_KEY',
                     '模板: base',
                     '桌面模板: 留空',
-                    '超时时间: 300000',
+                    '超时时间: 5',
                     '保持连接: true'
                 ].join('\n')
             },
@@ -483,7 +483,7 @@ const guide = computed<GuideContent>(() => {
                     'API 密钥: env:E2B_API_KEY',
                     '模板: base',
                     '桌面模板: desktop',
-                    '超时时间: 300000',
+                    '超时时间: 5',
                     '保持连接: true'
                 ].join('\n')
             }

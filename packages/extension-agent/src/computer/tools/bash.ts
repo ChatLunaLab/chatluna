@@ -4,8 +4,10 @@ import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platf
 import z from 'zod'
 import { formatExecuteResult } from '../backends/types'
 import type { ComputerBackgroundJobInfo } from '../../types'
+import { parseAgentCliCommand } from '../../cli/parser'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
+import { Session, User } from 'koishi'
 
 export class BashTool extends ComputerToolBase {
     name = 'bash'
@@ -99,29 +101,26 @@ When to use:
         const action = input.action ?? (input.jobId ? 'status' : 'run')
 
         try {
-            if (
-                action === 'run' &&
-                input.command?.trim().startsWith('agentctl')
-            ) {
+            if (action === 'run' && parseAgentCliCommand(input.command ?? '')) {
                 const cli = this.computer.ctx.chatluna_agent?.cli
                 const conversationId = toolConfig?.configurable?.conversationId
                 if (
                     !cli ||
                     !conversationId ||
                     !session ||
-                    // only admin can use agentctl
-                    (await session.getUser().then((user) => user.authority)) < 3
+                    // only admin can use agentcli
+                    ((session as Session<User.Field>).user?.authority ?? 0) < 3
                 ) {
                     return this.formatResult(
                         false,
-                        'agentctl is unavailable in this tool context'
+                        'agentcli is unavailable in this tool context'
                     )
                 }
 
                 if (input.background) {
                     return this.formatResult(
                         false,
-                        'agentctl does not support background execution'
+                        'agentcli does not support background execution'
                     )
                 }
 

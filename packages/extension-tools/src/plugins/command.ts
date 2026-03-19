@@ -1,13 +1,16 @@
 /* eslint-disable max-len */
 
-import { StructuredTool } from '@langchain/core/tools'
-import { Context, h } from 'koishi'
-import type { Command as CommandType } from '@satorijs/protocol'
-import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Config } from '..'
-import { z } from 'zod'
-import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { mkdir, rm, writeFile } from 'fs/promises'
+import { join } from 'path'
 import { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager'
+import { StructuredTool } from '@langchain/core/tools'
+import type { Command as CommandType } from '@satorijs/protocol'
+import { Context, h } from 'koishi'
+import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import type {} from 'koishi-plugin-chatluna-agent'
+import { z } from 'zod'
+import { Config } from '..'
 
 export async function apply(
     ctx: Context,
@@ -15,6 +18,7 @@ export async function apply(
     plugin: ChatLunaPlugin
 ) {
     if (config.command !== true) {
+        await removeCommandSkill(ctx)
         return
     }
 
@@ -24,26 +28,16 @@ export async function apply(
         config.commandBlacklist
     )
 
-    // Register the command search tool
-    plugin.registerTool('command_search', {
-        description: new CommandSearchTool(ctx, commandList).description,
-        selector(history) {
-            return true
-        },
-        createTool() {
-            return new CommandSearchTool(ctx, commandList)
-        }
-    })
+    await syncCommandSkill(ctx, commandList, config.commandAutoExecute)
 
-    // Register the command execute tool
-    plugin.registerTool('command_execute', {
+    plugin.registerTool('koishi_command_execute', {
         description: new CommandExecuteTool(
             ctx,
             commandList,
             config.commandWithSend,
             config.commandAutoExecute
         ).description,
-        selector(history) {
+        selector() {
             return true
         },
         createTool() {
@@ -57,9 +51,13 @@ export async function apply(
     })
 }
 
-function getDescription(description: string | Record<string, string>): string {
+function getDescription(description?: string | Record<string, string>): string {
     if (typeof description === 'string') {
         return description
+    }
+
+    if (!description) {
+        return 'No description'
     }
 
     return (
@@ -70,6 +68,10 @@ function getDescription(description: string | Record<string, string>): string {
     )
 }
 
+function cleanText(text: string) {
+    return text.replace(/\s+/g, ' ').trim()
+}
+
 function getCommandList(
     ctx: Context,
     rawCommandList: Config['commandList'],
@@ -78,12 +80,10 @@ function getCommandList(
     const commandMap = new Map(
         ctx.$commander._commandList
             .filter((item) => {
-                // Filter out chatluna commands
                 if (item.name.includes('chatluna')) {
                     return false
                 }
 
-                // Filter out blacklisted commands and their sub-commands
                 for (const blocked of blacklist) {
                     if (
                         item.name === blocked ||
@@ -96,18 +96,17 @@ function getCommandList(
                 return true
             })
             .map((cmd) => {
-                const aliases = cmd._aliases ? Object.keys(cmd._aliases) : []
+                const alias = cmd._aliases ? Object.keys(cmd._aliases) : []
                 return [
                     cmd.name,
                     {
                         ...cmd.toJSON(),
-                        alias: aliases
+                        alias
                     }
                 ]
             })
     )
 
-    // If rawCommandList is provided, map based on it
     if (rawCommandList.length > 0) {
         return rawCommandList
             .map((rawCommand) => {
@@ -120,15 +119,10 @@ function getCommandList(
                     return null
                 }
 
-                let description: string | CommandType['description'] =
-                    rawCommand.description
-
-                if (
-                    (rawCommand.description?.length ?? 0) < 1 &&
-                    item.description
-                ) {
-                    description = JSON.stringify(item.description)
-                }
+                const description =
+                    rawCommand.description?.length > 0
+                        ? rawCommand.description
+                        : getDescription(item.description)
 
                 return {
                     ...item,
@@ -140,196 +134,298 @@ function getCommandList(
             .filter((item) => item !== null)
     }
 
-    // Otherwise, return all commands except chatluna
     return Array.from(commandMap.values()).map((item) => ({
         ...item,
         confirm: true,
-        description:
-            typeof item.description === 'string'
-                ? item.description
-                : JSON.stringify(item.description)
+        description: getDescription(item.description)
     }))
 }
 
-/**
- * Advanced matching algorithm that supports partial and fuzzy matching.
- * Examples:
- * - "shot" matches "screenshot" (substring match)
- * - "screen" matches "screenshot" (prefix match)
- * - "screenshot" matches "screenshot" (exact match)
- *
- * @param keyword - The search keyword
- * @param targets - Array of strings to match against (command name, aliases, description)
- * @returns Match score (higher is better, 0 means no match)
- */
-function matchCommand(keyword: string, targets: string[]): number {
-    const lowerKeyword = keyword.toLowerCase()
-    let bestScore = 0
-
-    for (const target of targets) {
-        if (!target) continue
-        const lowerTarget = target.toLowerCase()
-
-        // Exact match (highest priority)
-        if (lowerTarget === lowerKeyword) {
-            bestScore = Math.max(bestScore, 100)
-            continue
+async function removeCommandSkill(ctx: Context) {
+    await rm(
+        join(ctx.baseDir, 'data/chatluna/skills', 'koishi_command_skills'),
+        {
+            recursive: true,
+            force: true
         }
-
-        // Starts with match (high priority)
-        if (lowerTarget.startsWith(lowerKeyword)) {
-            bestScore = Math.max(bestScore, 80)
-            continue
-        }
-
-        // Contains match (medium priority)
-        if (lowerTarget.includes(lowerKeyword)) {
-            bestScore = Math.max(bestScore, 60)
-            continue
-        }
-
-        // Partial word match: keyword appears in any word of the target
-        // Example: "shot" matches "screen-shot" or "take shot"
-        const targetWords = lowerTarget.split(/[\s\-._]/)
-        for (const word of targetWords) {
-            if (word === lowerKeyword) {
-                bestScore = Math.max(bestScore, 90)
-                break
-            }
-            if (word.startsWith(lowerKeyword)) {
-                bestScore = Math.max(bestScore, 70)
-                break
-            }
-            if (word.includes(lowerKeyword)) {
-                bestScore = Math.max(bestScore, 50)
-                break
-            }
-        }
-
-        // Reverse check: target is contained in keyword
-        // Example: "screenshot" contains "shot"
-        if (lowerKeyword.includes(lowerTarget)) {
-            bestScore = Math.max(bestScore, 40)
-        }
-    }
-
-    return bestScore
+    )
 }
 
-/**
- * Tool for searching and listing available Koishi commands.
- * Use this tool when the user or model needs to call a tool and the current
- * tools are insufficient to fully execute the request.
- */
-export class CommandSearchTool extends StructuredTool {
-    name = 'command_search'
+async function syncCommandSkill(
+    ctx: Context,
+    commandList: PickCommandType[],
+    commandAutoExecute: boolean
+) {
+    const tree = buildCommandTree(commandList)
+    const skillDir = join(
+        ctx.baseDir,
+        'data/chatluna/skills',
+        'koishi_command_skills'
+    )
+    const refsDir = join(skillDir, 'references')
+    const refs = tree.map((node, idx) => ({
+        description: cleanText(node.command?.description ?? 'Command group'),
+        file: getReferenceFileName(node.name, idx),
+        node
+    }))
 
-    description = `Search and list available Koishi commands. Use this tool when the user or model needs to execute an action and the current tools are insufficient. This tool helps discover additional commands that can be executed using the command_execute tool.`
+    await rm(skillDir, { recursive: true, force: true })
+    await mkdir(refsDir, { recursive: true })
 
-    schema = z.object({
-        keywords: z
-            .array(z.string())
-            .optional()
-            .describe(
-                'Optional array of keywords to filter commands by name or description. Commands matching ANY keyword will be returned. Leave empty to list all available commands.'
+    await Promise.all([
+        writeFile(
+            join(skillDir, 'SKILL.md'),
+            renderCommandSkill(tree, refs, commandAutoExecute)
+        ),
+        ...refs.map((item) =>
+            writeFile(
+                join(refsDir, item.file),
+                renderCommandReference(item.node, commandAutoExecute)
             )
-    })
+        )
+    ])
+}
 
-    constructor(
-        public ctx: Context,
-        private commandList: PickCommandType[]
-    ) {
-        super()
+function renderCommandSkill(
+    tree: CommandNode[],
+    refs: CommandSkillFile[],
+    commandAutoExecute: boolean
+) {
+    const lines = [
+        '---',
+        'name: koishi_command_skills',
+        'description: >',
+        '  Use this skill when you need to run a Koishi command, inspect the real',
+        '  Koishi command hierarchy, or handle a task that should go through',
+        '  Koishi instead of bash or other shell commands. Read the matching',
+        '  command reference, then execute the final command with',
+        '  koishi_command_execute.',
+        'allowed-tools: koishi_command_execute',
+        '---',
+        '',
+        '# Koishi Command Skills',
+        '',
+        'This skill is auto-generated on startup from the current Koishi command registry.',
+        '',
+        '## When to use this skill',
+        '',
+        '- Use it when the task should be done with a Koishi command instead of `bash`.',
+        '- Use it when you need the real command tree, subcommands, arguments, options, aliases, or help text.',
+        '- After you find the right command, execute the final command string with `koishi_command_execute`.',
+        commandAutoExecute
+            ? '- This instance runs matching commands without the extra confirmation step.'
+            : '- This instance may ask the user to confirm a command before it runs.',
+        '',
+        '## Workflow',
+        '',
+        '1. Match the request to the nearest top-level command below.',
+        '2. Read the linked reference file for that command tree.',
+        '3. If the exact syntax is still unclear, run `help` or `help <command>` with `koishi_command_execute`.',
+        '4. Prefer the deepest subcommand that directly solves the task.',
+        '5. Execute one complete Koishi command string with `koishi_command_execute`.'
+    ]
+
+    if (refs.length < 1) {
+        lines.push(
+            '',
+            '## Available commands',
+            '',
+            'No Koishi commands are available in the current registry.'
+        )
+        return lines.join('\n') + '\n'
     }
 
-    async _call(input: { keywords?: string[] }): Promise<string> {
-        const { keywords } = input
-        let filteredCommands = this.commandList
+    lines.push('', '## Top-level command references', '')
 
-        if (keywords && keywords.length > 0) {
-            // Use the advanced matching algorithm with scoring
-            const commandScores = this.commandList.map((cmd) => {
-                let maxScore = 0
+    for (const item of refs) {
+        lines.push(
+            `- \`${item.node.name}\`: ${item.description}. Read \`references/${item.file}\`.`
+        )
+    }
 
-                // For each keyword, compute the best match score
-                for (const keyword of keywords) {
-                    // Build array of searchable targets: name, aliases, description
-                    const targets = [
-                        cmd.name,
-                        ...(cmd.alias || []),
-                        cmd.description || ''
-                    ]
+    lines.push(
+        '',
+        '## Command tree',
+        '',
+        '```text',
+        ...renderCommandTree(tree),
+        '```'
+    )
 
-                    const score = matchCommand(keyword, targets)
-                    maxScore = Math.max(maxScore, score)
-                }
+    return lines.join('\n') + '\n'
+}
 
-                return { command: cmd, score: maxScore }
-            })
+function renderCommandReference(
+    node: CommandNode,
+    commandAutoExecute: boolean
+) {
+    const lines = [
+        `# \`${node.name}\` command tree`,
+        '',
+        'This file lists the real Koishi hierarchy, descriptions, arguments, options, aliases, and confirmation behavior for this command tree.'
+    ]
 
-            // Filter commands with score > 0 and sort by score (descending)
-            filteredCommands = commandScores
-                .filter((item) => item.score > 0)
-                .sort((a, b) => b.score - a.score)
-                .map((item) => item.command)
+    pushCommandReference(lines, node, 0, commandAutoExecute)
+
+    return lines.join('\n') + '\n'
+}
+
+function pushCommandReference(
+    lines: string[],
+    node: CommandNode,
+    depth: number,
+    commandAutoExecute: boolean
+) {
+    const level = '#'.repeat(Math.min(depth + 2, 6))
+    const cmd = node.command
+
+    lines.push('', `${level} \`${node.name}\``, '')
+
+    if (cmd) {
+        lines.push(
+            `- Description: ${cleanText(cmd.description ?? 'No description')}`
+        )
+        lines.push(`- Syntax: \`${getCommandSyntax(cmd)}\``)
+
+        if (cmd.alias && cmd.alias.length > 0) {
+            lines.push(`- Aliases: ${formatItems(cmd.alias)}`)
         }
 
-        if (filteredCommands.length === 0) {
-            return 'No commands found matching the keywords. Try different search terms or leave keywords empty to see all available commands.'
+        if (cmd.selector && cmd.selector.length > 0) {
+            lines.push(`- Typical intents: ${formatItems(cmd.selector)}`)
         }
 
-        const commandDescriptions = filteredCommands.map((cmd) => {
-            const desc = cmd.description || 'No description available'
+        lines.push(
+            `- Confirmation: ${commandAutoExecute || cmd.confirm === false ? 'No extra confirmation from the tool.' : 'The tool asks the user to confirm before running it.'}`
+        )
+    } else {
+        lines.push(
+            '- This path is a command group that only contains subcommands.'
+        )
+    }
 
-            // Show aliases if they exist
-            const aliasInfo =
-                cmd.alias && cmd.alias.length > 0
-                    ? `\nAliases: ${cmd.alias.join(', ')}`
-                    : ''
+    if (node.children.length > 0) {
+        lines.push(
+            `- Direct subcommands: ${formatItems(node.children.map((item) => item.name))}`
+        )
+    }
 
-            const args = cmd.arguments
-                .map((arg) => {
-                    const argDesc = getDescription(arg.description)
-                    return `  - ${arg.name}${arg.required ? ' (required)' : ' (optional)'}: ${argDesc}`
-                })
-                .join('\n')
+    if (cmd?.arguments.length) {
+        lines.push('', '**Arguments**')
 
-            const opts = cmd.options
-                .filter((opt) => opt.name !== 'help')
-                .map((opt) => {
-                    const optDesc = getDescription(opt.description)
-                    return `  - --${opt.name}${opt.required ? ' (required)' : ' (optional)'}: ${optDesc}`
-                })
-                .join('\n')
+        for (const arg of cmd.arguments) {
+            lines.push(
+                `- \`${arg.name}\`${arg.required ? ' (required)' : ' (optional)'}: ${cleanText(getDescription(arg.description))}`
+            )
+        }
+    }
 
-            let result = `Command: ${cmd.name}${aliasInfo}\nDescription: ${desc}`
-            if (args) {
-                result += `\nArguments:\n${args}`
-            }
-            if (opts) {
-                result += `\nOptions:\n${opts}`
-            }
-            return result
-        })
+    const opts = cmd?.options.filter((item) => item.name !== 'help') ?? []
 
-        return `Available commands (${filteredCommands.length} found):\n\n${commandDescriptions.join('\n\n---\n\n')}\n\nTo execute a command, use the command_execute tool with the full command string (e.g., "help", "echo hello", "command.subcommand --option value").`
+    if (opts.length > 0) {
+        lines.push('', '**Options**')
+
+        for (const opt of opts) {
+            lines.push(
+                `- \`--${opt.name}\`${opt.required ? ' (required)' : ' (optional)'}: ${cleanText(getDescription(opt.description))}`
+            )
+        }
+    }
+
+    for (const child of node.children) {
+        pushCommandReference(lines, child, depth + 1, commandAutoExecute)
     }
 }
 
-/**
- * Tool for executing Koishi commands.
- * Takes a plain text command string following Koishi command syntax.
- */
-export class CommandExecuteTool extends StructuredTool {
-    name = 'command_execute'
+function buildCommandTree(commandList: PickCommandType[]) {
+    const roots: CommandNode[] = []
+    const map = new Map<string, CommandNode>()
 
-    description = `Execute a Koishi command. Input must be a valid command string following Koishi command syntax. Examples: "help", "echo hello world", "command.subcommand arg1 arg2 --option value". Use command_search first to discover available commands and their syntax.`
+    for (const cmd of commandList) {
+        const parts = cmd.name.split('.')
+        let current = ''
+        let parent: CommandNode | undefined
+
+        for (const part of parts) {
+            current = current ? `${current}.${part}` : part
+            let node = map.get(current)
+
+            if (!node) {
+                node = {
+                    name: current,
+                    children: []
+                }
+                map.set(current, node)
+
+                if (parent) {
+                    parent.children.push(node)
+                } else {
+                    roots.push(node)
+                }
+            }
+
+            parent = node
+        }
+
+        if (parent) {
+            parent.command = cmd
+        }
+    }
+
+    sortCommandNodes(roots)
+    return roots
+}
+
+function sortCommandNodes(nodes: CommandNode[]) {
+    nodes.sort((a, b) => a.name.localeCompare(b.name))
+    for (const node of nodes) {
+        sortCommandNodes(node.children)
+    }
+}
+
+function renderCommandTree(nodes: CommandNode[], depth = 0): string[] {
+    const lines: string[] = []
+
+    for (const node of nodes) {
+        lines.push(`${'  '.repeat(depth)}- ${node.name}`)
+        lines.push(...renderCommandTree(node.children, depth + 1))
+    }
+
+    return lines
+}
+
+function getReferenceFileName(name: string, idx: number) {
+    const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+
+    return `${String(idx + 1).padStart(2, '0')}-${slug || 'command'}.md`
+}
+
+function formatItems(values: string[]) {
+    return values.map((item) => `\`${item}\``).join(', ')
+}
+
+function getCommandSyntax(cmd: PickCommandType) {
+    if (cmd.arguments.length < 1) {
+        return cmd.name
+    }
+
+    return `${cmd.name} ${cmd.arguments.map((item) => item.name).join(' ')}`
+}
+
+export class CommandExecuteTool extends StructuredTool {
+    name = 'koishi_command_execute'
+
+    description =
+        'Execute a Koishi command string. Use this instead of bash for Koishi commands.'
 
     schema = z.object({
         command: z
             .string()
             .describe(
-                'The full command string to execute, following Koishi command syntax. Examples: "help", "echo hello", "weather beijing --unit celsius"'
+                'Full Koishi command string, for example "help" or "weather beijing --unit celsius".'
             )
     })
 
@@ -353,12 +449,8 @@ export class CommandExecuteTool extends StructuredTool {
             return 'Error: Command string cannot be empty. Please provide a valid command.'
         }
 
-        // Extract the base command name (first word before space or the entire string)
         const baseCommandName = command.split(/\s+/)[0]
-
-        // Find the matching command configuration
         const matchedCommand = this.commandList.find((cmd) => {
-            // Check if command name matches
             if (
                 cmd.name === baseCommandName ||
                 cmd.name.startsWith(baseCommandName + '.') ||
@@ -367,7 +459,6 @@ export class CommandExecuteTool extends StructuredTool {
                 return true
             }
 
-            // Check if any alias matches
             if (cmd.alias && cmd.alias.length > 0) {
                 return cmd.alias.some(
                     (alias) =>
@@ -382,8 +473,6 @@ export class CommandExecuteTool extends StructuredTool {
 
         const session = config.configurable.session
 
-        // Check if confirmation is required
-        // Skip confirmation if commandAutoExecute is enabled
         if (!this.commandAutoExecute && (matchedCommand?.confirm ?? true)) {
             const validationString = randomString(8)
 
@@ -458,6 +547,18 @@ export function randomString(size: number) {
 
 export function elementToString(elements: h[]) {
     return elements.map((h) => h.toString(true)).join('\n\n')
+}
+
+interface CommandNode {
+    name: string
+    children: CommandNode[]
+    command?: PickCommandType
+}
+
+interface CommandSkillFile {
+    description: string
+    file: string
+    node: CommandNode
 }
 
 type PickCommandType = Omit<CommandType, 'description'> & {

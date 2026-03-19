@@ -6,12 +6,21 @@ import {
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { Context, Session } from 'koishi'
-import { getConfigPath } from '../config/path'
+import { getRemoteSkillsRoot } from '../computer/materialize'
+import {
+    getConfigPath,
+    getSkillsRootPath,
+    getSubAgentsRootPath
+} from '../config/path'
 import type { ChatLunaAgentService } from '../service'
 import { runAgentCliBlock } from './dispatch'
 import { parseAgentCliCommand } from './parser'
 import { renderAgentCliPrompt, renderAgentCliResult } from './render'
-import type { AgentCliOverview, AgentCliSessionState } from './types'
+import {
+    AGENTCLI_SANDBOX_SUBAGENTS_ROOT,
+    type AgentCliOverview,
+    type AgentCliSessionState
+} from './types'
 
 const SKILL_NAME = 'agent-config-admin'
 
@@ -58,7 +67,7 @@ export class ChatLunaAgentCliService {
 
         const block = parseAgentCliCommand(command)
         if (!block) {
-            throw new Error('Command must start with agentctl')
+            throw new Error('Command must start with agentcli')
         }
 
         const state = this.getState(conversationId, session)
@@ -112,10 +121,19 @@ export class ChatLunaAgentCliService {
         return {
             skill: SKILL_NAME,
             configPath: getConfigPath(agent.ctx),
+            localSkillsDir: getSkillsRootPath(agent.ctx),
+            localSubAgentsDir: getSubAgentsRootPath(agent.ctx),
+            sandboxSkillsDir: getRemoteSkillsRoot(),
+            sandboxSubAgentsDir: AGENTCLI_SANDBOX_SUBAGENTS_ROOT,
+            defaultBackend: status.computer.defaultProvider,
             version: agent.args.config.version,
             skills: status.skills.total,
+            visibleSkills: status.skills.visible,
+            modelSkills: status.skills.modelEnabled,
             subAgents: status.subAgent.total,
             tools: status.tool.total,
+            mainTools: status.tool.mainEnabled,
+            subAgentTools: status.tool.subAgentEnabled,
             mcpServers: Object.keys(status.mcp.servers).length,
             mcpTools: Object.keys(status.mcp.tools).length,
             computerBackends: agent.computer.listAvailableBackends()

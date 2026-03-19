@@ -62,6 +62,7 @@
         "@element-plus/icons-vue": "^2.3.2",
         "@langchain/core": "^0.3.80",
         "@modelcontextprotocol/sdk": "^1.23.0",
+        "@types/shell-quote": "^1.7.5",
         "@xterm/addon-fit": "^0.10.0",
         "codemirror": "^6.0.2",
         "e2b": "^2.14.1",
@@ -70,6 +71,7 @@
         "js-yaml": "^4.1.0",
         "micromatch": "^4.0.8",
         "mime-types": "^3.0.1",
+        "shell-quote": "^1.8.3",
         "vue-i18n": "^11.1.12",
         "which": "^5.0.0",
         "xterm": "^5.3.0",
@@ -108,7 +110,7 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna Agent 支持，MCP，Skills，Sub Agent 等，提供 WebUI 一站式管理",
+            "zh": "为 ChatLuna 提供 MCP，Skills，Sub Agent 等支持，WebUI 一站式管理",
             "en": "ChatLuna Agent framework"
         },
         "service": {

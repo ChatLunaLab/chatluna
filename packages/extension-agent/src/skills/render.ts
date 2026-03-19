@@ -8,8 +8,9 @@ import { listSkillResources, ScannedSkill } from './scan'
 export function renderAvailableSkills(
     skills: SkillInfo[],
     active: SkillInfo[],
-    root?: string,
-    cwd?: string
+    dir?: string,
+    cwd?: string,
+    location: 'local' | 'remote' = 'local'
 ) {
     const lines = ['<available_skills>']
 
@@ -24,10 +25,10 @@ export function renderAvailableSkills(
         ''
     )
 
-    if (root) {
+    if (dir) {
         lines.push(
-            `Skills root: ${escapeXml(root)}`,
-            'When a task installs or updates a skill, place it under <skills-root>/<skill-name>/ and keep the entry file at <skill-dir>/SKILL.md.',
+            `Skills dir (${location}): ${escapeXml(dir)}`,
+            'When a task installs or updates a skill, place it under <skills-dir>/<skill-name>/ and keep the entry file at <skill-dir>/SKILL.md.',
             ''
         )
     }

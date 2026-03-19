@@ -471,10 +471,10 @@ function openDiagnostics(item: SkillInfo) {
 }
 
 function formatRequires(item: SkillInfo) {
+    const bins = item.requires?.bins?.filter((bin) => bin !== 'clawhub') ?? []
+
     return [
-        item.requires?.bins?.length
-            ? `bins: ${item.requires.bins.join(', ')}`
-            : '',
+        bins.length ? `bins: ${bins.join(', ')}` : '',
         item.requires?.anyBins?.length
             ? `anyBins: ${item.requires.anyBins.join(', ')}`
             : '',
@@ -492,6 +492,11 @@ function formatRequires(item: SkillInfo) {
 function formatInstall(item: SkillInfo) {
     return (
         item.install
+            ?.filter(
+                (entry) =>
+                    entry.label !== 'Install ClawHub CLI (npm)' &&
+                    entry.id !== 'clawhub'
+            )
             ?.map((entry) => entry.label ?? `${entry.kind}: ${entry.id}`)
             .join('；') ?? ''
     )
@@ -701,6 +706,13 @@ function base64ToBlob(data: string, type: string) {
     line-height: 1.4;
 }
 
+.skill-title {
+    font-size: 18px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .path-copy {
     margin-top: 4px;
 }
@@ -793,6 +805,7 @@ function base64ToBlob(data: string, type: string) {
     justify-content: flex-start;
     gap: 12px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .skill-card.centered .skill-brand {
@@ -801,6 +814,7 @@ function base64ToBlob(data: string, type: string) {
 
 .skill-copy {
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .skill-card.centered .skill-copy {

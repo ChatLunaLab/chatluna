@@ -3,8 +3,7 @@ import {
     ConversationRoom,
     ConversationRoomGroupInfo,
     ConversationRoomMemberInfo,
-    ConversationRoomUserInfo,
-    Message
+    ConversationRoomUserInfo
 } from '../types'
 import { ChatLunaService } from './chat'
 import { BaseMessageChunk } from '@langchain/core/messages'
@@ -58,12 +57,7 @@ export * from '@chatluna/shared-prompt-renderer'
 
 export interface ToolMaskArg {
     session: Session
-    room: ConversationRoom
-    message: Message
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    variables: Record<string, any>
-    requestId: string
-    stream: boolean
+    room?: ConversationRoom
 }
 
 export type ToolMaskResolver = (

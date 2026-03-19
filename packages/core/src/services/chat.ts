@@ -1030,11 +1030,7 @@ class ChatInterfaceWrapper {
                 toolMask ??
                 (await this._service.resolveToolMask({
                     session,
-                    room,
-                    message,
-                    variables,
-                    requestId,
-                    stream
+                    room
                 }))
 
             const chainValues = await chatInterface.chat({

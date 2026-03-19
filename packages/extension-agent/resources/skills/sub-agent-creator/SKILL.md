@@ -1,6 +1,6 @@
 ---
 name: sub-agent-creator
-description: Create, edit, convert, or audit ChatLuna sub-agent markdown files. Use when adding a new sub-agent, refining a sub-agent prompt, choosing a sub-agent's goal and output contract, restricting tools, skills, MCP, or computer permissions, pinning or omitting a model, setting maxTurns, placing agents under data/chatluna/agents, or converting Claude or OpenCode agent files into ChatLuna-compatible sub-agents.
+description: Create, edit, convert, or audit ChatLuna sub-agent markdown files. Use when adding a new sub-agent, refining a sub-agent prompt, choosing a sub-agent's goal and output contract, restricting tools, skills, MCP, or computer permissions, pinning or omitting a model, setting maxTurns, placing agents under local `data/chatluna/agents`, writing them into a remote sandbox before `agentcli sync`, or converting Claude or OpenCode agent files into ChatLuna-compatible sub-agents.
 ---
 
 # Sub-Agent Creator
@@ -12,7 +12,11 @@ clearly calls for Claude or OpenCode compatibility.
 ## Default Decisions
 
 - Default new ChatLuna-native agents to
-  `data/chatluna/agents/<agent-name>/index.md`.
+  local `data/chatluna/agents/<agent-name>/index.md`.
+- If the current computer backend is not `local`, write the new file to the
+  sandbox path `~/.chatluna/agents/<agent-name>/index.md` instead, create the
+  parent folder first if it does not exist, and finish with `agentcli sync
+subagents` so the local ChatLuna path is updated.
 - Preserve the existing format when editing an existing sub-agent file.
 - Use a short, specific agent name. Keep the job narrow.
 - Omit `model` when you do not know the exact installed model name. Let the
@@ -52,6 +56,8 @@ clearly calls for Claude or OpenCode compatibility.
     - Remove placeholders, TODOs, and vague filler.
     - Make sure the description says when the parent should use this agent.
     - Make sure the permissions match the prompt.
+    - If the file was authored in a sandbox, run `agentcli sync subagents` and
+      verify the local file path after sync.
 
 ## What Good Sub-Agents Look Like
 

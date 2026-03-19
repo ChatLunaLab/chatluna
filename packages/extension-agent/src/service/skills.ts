@@ -31,7 +31,7 @@ import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
 import { watchSkillFiles } from '../skills/watch'
 import { SkillTool } from '../skills/tool'
 import { buildSkillCatalog } from '../skills/catalog'
-import { getRemoteSkillDir } from '../computer/materialize'
+import { getRemoteSkillDir, getRemoteSkillsRoot } from '../computer/materialize'
 import { ChatLunaAgentPermissionService } from './permissions'
 
 export class ChatLunaAgentSkillsService implements SkillToolService {
@@ -391,8 +391,11 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     const msg = renderAvailableSkills(
                         skills,
                         active,
-                        remote ? undefined : getSkillsRootPath(this.ctx),
-                        cwd
+                        remote
+                            ? getRemoteSkillsRoot()
+                            : getSkillsRootPath(this.ctx),
+                        cwd,
+                        remote ? 'remote' : 'local'
                     )
                     runtime.result.push(msg)
                     runtime.usedTokens += await countMessageTokens(

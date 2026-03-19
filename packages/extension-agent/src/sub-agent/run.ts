@@ -19,6 +19,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { Context, h, Session } from 'koishi'
+import { getRemoteSkillsRoot } from '../computer/materialize'
 import { getSkillsRootPath } from '../config/path'
 import { ChatLunaAgentPermissionService } from '../service/permissions'
 import { renderAvailableSkills } from '../skills/render'
@@ -117,6 +118,17 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
         llm.modelName
     )
     toolRef.update(input.session, input.task.messages.concat(msg), input.mask)
+    const toolCallMask = await input.permission.createToolCallMask(
+        input.session,
+        input.mask
+    )
+    const subCtx = {
+        ...input.subCtx,
+        toolMask: {
+            ...input.mask,
+            toolCallMask
+        }
+    }
 
     const vars = {
         prompt: getMessageContent(msg.content),
@@ -147,7 +159,7 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
                 session: input.session,
                 conversationId: input.task.conversationId,
                 toolMask: input.mask,
-                subagentContext: input.subCtx
+                subagentContext: subCtx
             }
         },
         {
@@ -160,7 +172,7 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
                 preset: input.info.name,
                 userId: input.session.userId,
                 toolMask: input.mask,
-                subagentContext: input.subCtx,
+                subagentContext: subCtx,
                 onAgentEvent: async (event) => {
                     if (event.type === 'tool-call') {
                         input.run.toolCount += event.actions.length
@@ -256,8 +268,9 @@ async function resolveSkillPrompt(
                 .filter((item) => list.includes(item.name))
                 .map((item) => (remote ? { ...item, dir: '' } : item)),
             [],
-            remote ? undefined : getSkillsRootPath(ctx),
-            cwd
+            remote ? getRemoteSkillsRoot() : getSkillsRootPath(ctx),
+            cwd,
+            remote ? 'remote' : 'local'
         ).content
     )
 }

@@ -6,7 +6,6 @@ import { apply as command } from './plugins/command'
 import { apply as cron } from './plugins/cron'
 import { apply as group } from './plugins/group'
 import { apply as music } from './plugins/music'
-import { apply as openapi } from './plugins/openapi'
 import { apply as request } from './plugins/request'
 import { apply as think } from './plugins/think'
 import { apply as todos } from './plugins/todos' // import end
@@ -24,7 +23,7 @@ export async function plugin(
 
     const middlewares: Plugin[] =
         // middleware start
-        [command, cron, group, music, openapi, request, think, todos] // middleware end
+        [command, cron, group, music, request, think, todos] // middleware end
 
     for (const middleware of middlewares) {
         await middleware(ctx, config, plugin)

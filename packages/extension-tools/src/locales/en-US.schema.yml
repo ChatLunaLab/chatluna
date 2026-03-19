@@ -1,8 +1,6 @@
 $inner:
     - {}
     - $desc: 'Conversation & AI Features'
-      think: 'Enable thinking function (may improve responses)'
-      send: 'Enable pre-message sending'
       todos: 'Enable task decomposition. Can generate multi-step task lists and automatically break down tasks'
       todosNotify: 'Notify user with current task list on every todos tool call'
       chat: 'Enable interactive query. Note: Rebuilds tool chain'
@@ -19,7 +17,6 @@ $inner:
     - $desc: 'Extended Services Features'
       group: 'Enable group management plugin'
       knowledge: 'Enable knowledge base plugin calls'
-      actions: 'Enable OpenAPI tool calls (requires request tool to be enabled)'
 
     - - $desc: 'Request Plugin Configuration'
         requestMaxOutputLength: 'Max output length for request plugin'
@@ -54,13 +51,3 @@ $inner:
 
     - - $desc: 'Music Generation Plugin Configuration'
         musicSelector: 'Keywords to trigger music generation tool. Always selected when empty.'
-
-    - - $desc: 'OpenAPI Tool Call Plugin Configuration'
-        actionsList:
-            $desc: 'List of available OpenAPI tools'
-            $inner:
-                name: 'Tool name. Please use English names only.'
-                description: 'Tool description'
-                headers: Request headers
-                openAPISpec: 'OpenAPI specification content'
-                selector: 'Keywords to trigger the tool'

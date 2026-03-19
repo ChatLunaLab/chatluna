@@ -1,8 +1,6 @@
 $inner:
     - {}
     - $desc: 对话思考功能
-      think: 启用思考功能，可显著提高 Agent 模式的调用质量。
-      send: 启用提前消息发送工具。
       todos: 启用待办事项功能，可让 Agent 生成多步骤的待办事项，自动拆解任务。
       todosNotify: 启用待办事项状态变更通知，每次调用 todos 工具时向用户发送当前任务列表。
       chat: 启用交互询问功能。注意：会导致工具链重建。
@@ -17,7 +15,6 @@ $inner:
     - $desc: 扩展服务功能
       group: 启用群管插件，提供群管理能力。
       knowledge: 启用知识库插件调用功能。(需要安装知识库插件)
-      actions: 启用 OpenAPI 工具调用功能。(需要启用 request 工具才能请求)
 
     - - $desc: request 插件配置
         requestMaxOutputLength: request 插件最大输出长度。
@@ -52,13 +49,3 @@ $inner:
 
     - - $desc: 音乐生成插件配置
         musicSelector: 触发音乐生成工具的关键词。为空时始终选中。
-
-    - - $desc: OpenAPI 工具调用插件配置
-        actionsList:
-            $desc: 可用 OpenAPI 工具列表。
-            $inner:
-                name: 工具名称。请使用纯英文的名称。
-                description: 工具描述。
-                headers: 工具请求头。
-                openAPISpec: OpenAPI 规范文件内容。
-                selector: 触发工具的关键词。

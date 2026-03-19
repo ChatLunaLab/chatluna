@@ -77,6 +77,17 @@ async function executeTools(
                 } as AgentStep
             }
 
+            const callMask =
+                config?.configurable?.['toolMask']?.toolCallMask ??
+                config?.configurable?.['subagentContext']?.['toolMask']
+                    ?.toolCallMask
+            if (callMask && !applyToolMask(action.tool, callMask)) {
+                return {
+                    action,
+                    observation: `You do not have permission to call tool '${action.tool}'. Try another tool.`
+                } as AgentStep
+            }
+
             try {
                 const observation = await tool.invoke(action.toolInput, config)
                 return {

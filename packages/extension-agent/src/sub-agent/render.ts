@@ -5,7 +5,11 @@ import { SubagentContext } from 'koishi-plugin-chatluna/llm-core/agent'
 import { SubAgentInfo } from '../types'
 import { escapeXml } from '../utils/xml'
 
-export function renderAvailableSubAgents(agents: SubAgentInfo[]) {
+export function renderAvailableSubAgents(
+    agents: SubAgentInfo[],
+    dir?: string,
+    location: 'local' | 'remote' = 'local'
+) {
     const lines = [
         '<available_sub_agents>',
         'Delegate focused work to a specialist via the task tool when parallel work or a narrower prompt helps.',
@@ -13,6 +17,14 @@ export function renderAvailableSubAgents(agents: SubAgentInfo[]) {
         'While a background sub-agent is running, you can send more guidance with task action=message.',
         ''
     ]
+
+    if (dir) {
+        lines.push(
+            `Sub-agents dir (${location}): ${escapeXml(dir)}`,
+            'When a task creates or updates a markdown sub-agent, place it under <sub-agents-dir>/<name>/index.md.',
+            ''
+        )
+    }
 
     for (const item of agents) {
         lines.push(

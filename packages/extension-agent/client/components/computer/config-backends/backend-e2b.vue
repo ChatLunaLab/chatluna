@@ -47,12 +47,14 @@
                 </div>
 
                 <div class="form-cell form-cell-full">
-                    <el-form-item label="超时时间（毫秒）">
+                    <el-form-item label="超时时间（分钟）">
                         <el-input-number
-                            :model-value="config.timeoutMs"
-                            :min="1000"
-                            :max="3600000"
-                            :step="1000"
+                            class="timeout-input"
+                            :model-value="config.timeoutMs / 60000"
+                            :min="0.5"
+                            :max="60"
+                            :step="0.5"
+                            :precision="1"
                             controls-position="right"
                             @update:model-value="setTimeout"
                         />
@@ -63,6 +65,7 @@
 
         <el-alert
             type="info"
+            effect="dark"
             :closable="false"
             description="推荐优先把 E2B 作为默认后端；配置会被保存，但实际可用性仍取决于状态检测结果。"
         />
@@ -92,6 +95,12 @@ function set<K extends keyof E2BBackendConfig>(
 
 function setTimeout(value: number | undefined) {
     if (value == null) return
-    set('timeoutMs', value)
+    set('timeoutMs', Math.round(value * 60000))
 }
 </script>
+
+<style scoped>
+:deep(.timeout-input .el-input__inner) {
+    text-align: left;
+}
+</style>

@@ -10,6 +10,21 @@ import {
     ToolItemConfig
 } from '../types'
 
+export function getDefaultToolAuthority(name?: string) {
+    if (
+        name === 'bash' ||
+        name === 'file_edit' ||
+        name === 'file_read' ||
+        name === 'file_write' ||
+        name === 'glob' ||
+        name === 'grep'
+    ) {
+        return 3
+    }
+
+    return 0
+}
+
 export function createPermissionRule(
     mode: PermissionRule['mode'] = 'inherit'
 ): PermissionRule {
@@ -47,12 +62,14 @@ export function createSubAgentItemConfig(
 }
 
 export function createToolItemConfig(
-    input: Partial<ToolItemConfig> = {}
+    input: Partial<ToolItemConfig> = {},
+    name?: string
 ): ToolItemConfig {
     return {
         enabled: input.enabled !== false,
         main: input.main !== false,
-        subAgents: input.subAgents ?? createPermissionRule('all')
+        subAgents: input.subAgents ?? createPermissionRule('all'),
+        authority: input.authority ?? getDefaultToolAuthority(name)
     }
 }
 

@@ -290,6 +290,7 @@ function stateTag(state: SubAgentInfo['state']) {
     justify-content: flex-start;
     gap: 12px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .agent-card.centered .agent-brand {
@@ -298,6 +299,7 @@ function stateTag(state: SubAgentInfo['state']) {
 
 .agent-copy {
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .agent-card.centered .agent-copy {
@@ -307,10 +309,13 @@ function stateTag(state: SubAgentInfo['state']) {
 }
 
 .agent-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--k-text-dark);
     line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .agent-name {

@@ -9,10 +9,19 @@ import type {
 import type { ChatLunaAgentService } from '../service'
 
 export type AgentCliPermission = 'read' | 'write' | 'dangerous'
+export type AgentCliOperator = '&' | '&&' | '|' | '|&' | '||' | ';'
+
+export const AGENTCLI_SANDBOX_SUBAGENTS_ROOT = '~/.chatluna/agents'
+
+export interface AgentCliCall {
+    raw: string
+    argv: string[]
+    join?: AgentCliOperator
+}
 
 export interface AgentCliLine {
     raw: string
-    argv: string[]
+    calls: AgentCliCall[]
 }
 
 export interface AgentCliBlock {
@@ -33,9 +42,9 @@ export interface AgentCliRunResult {
 export interface AgentCliPending {
     id: string
     ownerId: string
-    command: string
+    commands: string[]
     summary: string
-    op: AgentCliMutation
+    ops: AgentCliMutation[]
     createdAt: number
 }
 
@@ -62,6 +71,7 @@ export interface AgentCliCommandContext {
     session: Session
     state: AgentCliSessionState
     line: AgentCliLine
+    call: AgentCliCall
     args: string[]
 }
 
@@ -70,6 +80,15 @@ export interface AgentCliCommand {
     description: string
     permission: AgentCliPermission
     execute: (ctx: AgentCliCommandContext) => Promise<AgentCliCommandResult>
+}
+
+export interface AgentCliSyncFile {
+    kind: 'skill' | 'subagent'
+    path: string
+    sourcePath: string
+    targetPath: string
+    content: string
+    mode: 'create' | 'update'
 }
 
 export type AgentCliMutation =
@@ -118,6 +137,11 @@ export type AgentCliMutation =
           rule: PermissionRule
       }
     | {
+          type: 'set_tool_authority'
+          name: string
+          authority: number
+      }
+    | {
           type: 'set_mcp_tool_enabled'
           name: string
           enabled: boolean
@@ -131,14 +155,28 @@ export type AgentCliMutation =
           type: 'remove_mcp_server'
           name: string
       }
+    | {
+          type: 'sync_sandbox'
+          backend: ComputerBackendType
+          files: AgentCliSyncFile[]
+      }
 
 export interface AgentCliOverview {
     skill: string
     configPath: string
+    localSkillsDir: string
+    localSubAgentsDir: string
+    sandboxSkillsDir: string
+    sandboxSubAgentsDir: string
+    defaultBackend: ComputerBackendType
     version: number
     skills: number
+    visibleSkills: number
+    modelSkills: number
     subAgents: number
     tools: number
+    mainTools: number
+    subAgentTools: number
     mcpServers: number
     mcpTools: number
     computerBackends: ComputerBackendType[]

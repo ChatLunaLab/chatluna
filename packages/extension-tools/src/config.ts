@@ -25,34 +25,22 @@ export interface Config extends ChatLunaPlugin.Config {
         confirm: boolean
     }[]
     chat: boolean
-    think: boolean
     todos: boolean
     todosNotify: boolean
     cron: boolean
     cronScopeSelector: string[]
-    send: boolean
 
     music: boolean
-    actions: boolean
 
     musicSelector: string[]
-    actionsList: {
-        name: string
-        description: string
-        openAPISpec: string
-        headers: Record<string, string>
-        selector: string[]
-    }[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
 
     Schema.object({
-        think: Schema.boolean().default(false),
-        send: Schema.boolean().default(true),
         todos: Schema.boolean().default(true),
-        todosNotify: Schema.boolean().default(true),
+        todosNotify: Schema.boolean().default(false),
         chat: Schema.boolean().default(true)
     }),
 
@@ -66,8 +54,7 @@ export const Config: Schema<Config> = Schema.intersect([
         cron: Schema.boolean().default(true)
     }),
     Schema.object({
-        group: Schema.boolean().default(false),
-        actions: Schema.boolean().default(false)
+        group: Schema.boolean().default(false)
     }),
 
     Schema.union([
@@ -159,23 +146,6 @@ export const Config: Schema<Config> = Schema.intersect([
                     '生成',
                     'generate'
                 ])
-        }),
-        Schema.object({})
-    ]),
-    Schema.union([
-        Schema.object({
-            actions: Schema.const(true).required(),
-            actionsList: Schema.array(
-                Schema.object({
-                    name: Schema.string(),
-                    description: Schema.string(),
-                    headers: Schema.dict(String).default({}).role('table'),
-                    selector: Schema.array(Schema.string())
-                        .default([])
-                        .role('table'),
-                    openAPISpec: Schema.string().role('textarea')
-                })
-            ).role('table')
         }),
         Schema.object({})
     ])
