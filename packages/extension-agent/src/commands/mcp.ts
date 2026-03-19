@@ -1,18 +1,21 @@
 /** @module commands/mcp */
 
-import { Context } from 'koishi'
-import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
+import { Context, Session, SessionError } from 'koishi'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareRunStatus
+} from 'koishi-plugin-chatluna/chains'
 import { getErrorMessage } from '../utils/shell'
 
 function createMcpCommandMiddleware<T>(options: {
     command: string
     parse: (
-        session: any,
-        context: any
+        session: Session,
+        context: ChainMiddlewareContext
     ) => Promise<T | undefined> | T | undefined
     execute: (input: T) => Promise<string> | string
 }) {
-    return async (session: any, context: any) => {
+    return async (session: Session, context: ChainMiddlewareContext) => {
         if (context.command !== options.command) {
             return ChainMiddlewareRunStatus.SKIPPED
         }

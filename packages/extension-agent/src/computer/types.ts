@@ -2,6 +2,8 @@ import type { Readable } from 'node:stream'
 import { Session } from 'koishi'
 import { ComputerBackendType, ComputerCapability } from '../types'
 
+export type FileContent = string | Uint8Array
+
 export interface ComputerSessionApi {
     readonly backend: ComputerBackendType
     readonly sessionId: string
@@ -13,7 +15,7 @@ export interface ComputerSessionApi {
     isConnected(): boolean
 
     readFile(path: string, offset?: number, limit?: number): Promise<string>
-    writeFile(path: string, content: string): Promise<void>
+    writeFile(path: string, content: FileContent): Promise<void>
     editFile(
         path: string,
         oldString: string,

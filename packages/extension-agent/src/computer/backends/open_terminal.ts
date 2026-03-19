@@ -2,14 +2,16 @@
 
 import { randomUUID } from 'crypto'
 import { Buffer } from 'node:buffer'
+import { posix } from 'path'
 import { Readable } from 'node:stream'
 import { Context } from 'koishi'
 import mimeTypes from 'mime-types'
-import { buildPosixBackgroundCommand } from './types'
+import { buildPosixBackgroundCommand, quoteShell } from './types'
 import { OpenTerminalBackendConfig } from '../../types'
 import {
     ComputerSessionApi,
     ExecuteOptions,
+    FileContent,
     ScreenshotResult,
     StreamHandle,
     TerminalHandle,
@@ -64,6 +66,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         )
         const output = formatOpenTerminalOutput(current.data?.output)
         const root = output.stdout.trim() || '/'
+        this._home = root
 
         if (this.options.cwd) {
             try {
@@ -175,7 +178,31 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         return `${resultLines.join('\n')}\n\n(Showing lines ${start}-${start + lines.length - 1} of ${total}. Use offset=${start + lines.length} to continue.)`
     }
 
-    async writeFile(filePath: string, content: string) {
+    async writeFile(filePath: string, content: FileContent) {
+        if (typeof content !== 'string') {
+            const target = this.resolvePath(filePath)
+            const dir = posix.dirname(target)
+            const tmp = `${target}.${randomUUID()}.base64`
+
+            await this.execute(`mkdir -p ${quoteShell(dir)}`)
+            await this.writeFile(tmp, Buffer.from(content).toString('base64'))
+
+            try {
+                const result = await this.execute(
+                    `base64 -d ${quoteShell(tmp)} > ${quoteShell(target)}`
+                )
+                if (result.exitCode !== 0) {
+                    throw new Error(
+                        result.stderr || `Failed to write ${filePath}`
+                    )
+                }
+            } finally {
+                await this.execute(`rm -f ${quoteShell(tmp)}`).catch(() => {})
+            }
+
+            return
+        }
+
         await this.ctx.http.post(
             this.url('/files/write'),
             {
@@ -549,6 +576,22 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
     getScopePath() {
         return this._root
+    }
+
+    private resolvePath(value: string) {
+        if (value === '~') {
+            return this._home
+        }
+
+        if (value.startsWith('~/')) {
+            return `${this._home}/${value.slice(2)}`
+        }
+
+        if (value.startsWith('/')) {
+            return value
+        }
+
+        return `${this._cwd.replace(/[\\/]+$/, '')}/${value}`
     }
 
     private headers() {

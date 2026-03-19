@@ -4,10 +4,11 @@ import fs from 'fs/promises'
 import path from 'path'
 import micromatch from 'micromatch'
 import { LocalBackendConfig } from '../../../types'
+import type { FileContent } from '../../types'
 
 export interface BaseFileStore {
     readFile(filePath: string, offset?: number, limit?: number): Promise<string>
-    writeFile(writePath: string, contents: string): Promise<void>
+    writeFile(writePath: string, contents: FileContent): Promise<void>
     editFile(
         filePath: string,
         oldString: string,
@@ -80,7 +81,7 @@ export class FileStore implements BaseFileStore {
         return `${result}\n\n(Showing lines ${start + 1}-${end} of ${lines.length}. Use offset=${end + 1} to continue.)`
     }
 
-    async writeFile(writePath: string, contents: string) {
+    async writeFile(writePath: string, contents: FileContent) {
         this.assertInScope(writePath)
 
         await fs.mkdir(path.dirname(writePath), { recursive: true })

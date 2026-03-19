@@ -20,7 +20,7 @@ export class ChatLunaAgentComputerProxy {
         }
 
         this._terminalLayer = this.ctx.server.ws(
-            /^\/chatluna\/computer\/terminal\/([^/]+)\/([^/]+)$/,
+            /^\/chatluna\/computer\/terminal\/([^/?]+)\/([^/?]+)(?:\?.*)?$/,
             (socket, request) => {
                 this.acceptTerminal(socket, request).catch((err) => {
                     this.ctx.logger.warn(
@@ -38,7 +38,8 @@ export class ChatLunaAgentComputerProxy {
     }
 
     private async acceptTerminal(socket: WebSocket, request: IncomingMessage) {
-        const match = request.url?.match(
+        const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+        const match = url.pathname.match(
             /^\/chatluna\/computer\/terminal\/([^/]+)\/([^/]+)$/
         )
         if (!match) {
@@ -46,11 +47,12 @@ export class ChatLunaAgentComputerProxy {
             return
         }
 
-        const terminal = this.service.getTerminal(match[1], match[2])
-        if (!terminal) {
+        const item = this.service.getTerminal(match[1], match[2])
+        if (!item || url.searchParams.get('token') !== item.token) {
             socket.close()
             return
         }
+        const terminal = item.terminal
 
         this.service.touchSession(match[1])
 

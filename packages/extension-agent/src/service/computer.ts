@@ -139,7 +139,7 @@ export class ChatLunaAgentComputerService {
     }
 
     getTerminal(sessionId: string, terminalId: string) {
-        return this._terminals.get(sessionId)?.get(terminalId)?.terminal
+        return this._terminals.get(sessionId)?.get(terminalId)
     }
 
     shouldCloseTerminalOnSocketClose(sessionId: string, terminalId: string) {
@@ -242,6 +242,7 @@ export class ChatLunaAgentComputerService {
             terminalId: terminal.info.terminalId,
             backend: session.backend,
             url: terminal.info.url,
+            token: terminal.info.token,
             command,
             cwd,
             state: 'running',
@@ -472,10 +473,11 @@ export class ChatLunaAgentComputerService {
                 await raw.kill()
             }
         }
+        const token = randomUUID()
         const list =
             this._terminals.get(session.sessionId) ??
             new Map<string, ManagedTerminal>()
-        list.set(terminal.id, { terminal, persistent })
+        list.set(terminal.id, { terminal, persistent, token })
         this._terminals.set(session.sessionId, list)
 
         return {
@@ -483,7 +485,8 @@ export class ChatLunaAgentComputerService {
                 sessionId: session.sessionId,
                 terminalId: terminal.id,
                 backend: session.backend,
-                url: `/chatluna/computer/terminal/${session.sessionId}/${terminal.id}`
+                url: `/chatluna/computer/terminal/${session.sessionId}/${terminal.id}`,
+                token
             },
             handle: terminal
         }

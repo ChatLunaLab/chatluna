@@ -1,7 +1,7 @@
 /** @module config/write */
 
 import { Context } from 'koishi'
-import { writeFile, mkdir } from 'fs/promises'
+import { mkdir, writeFile } from 'fs/promises'
 import { dirname } from 'path'
 import { getConfigPath } from './path'
 import { AgentConfig } from '../types'

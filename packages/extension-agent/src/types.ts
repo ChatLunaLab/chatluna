@@ -2,9 +2,9 @@
 
 import type { DataService } from '@koishijs/plugin-console'
 import type {
-    ComputerBackgroundJobInfo,
     ComputerBackendStatus,
     ComputerBackendType,
+    ComputerBackgroundJobInfo,
     ComputerConfig,
     ComputerDesktopState,
     ComputerStatus,

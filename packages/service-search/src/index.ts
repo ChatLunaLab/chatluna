@@ -7,14 +7,14 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaBrowsingChain } from './chain/browsing_chain'
 import {
-    PuppeteerBrowserTool,
-    PUPPETEER_BROWSER_TOOL_DESCRIPTION
+    PUPPETEER_BROWSER_TOOL_DESCRIPTION,
+    PuppeteerBrowserTool
 } from './tools/puppeteerBrowserTool'
 import { apply as configApply } from './config'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { SearchManager } from './provide'
 import { providerPlugin } from './plugin'
-import { SearchTool, SEARCH_TOOL_DESCRIPTION } from './tools/search'
+import { SEARCH_TOOL_DESCRIPTION, SearchTool } from './tools/search'
 import { SummaryType } from './types'
 import { computed } from 'koishi-plugin-chatluna'
 

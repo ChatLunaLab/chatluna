@@ -32,7 +32,7 @@ export class SkillMaterializer {
         await session.writeFile(posix.join(root, 'SKILL.md'), skill.raw)
         for (const file of files) {
             const hostPath = path.join(skill.dir, file)
-            const data = await readFile(hostPath, 'utf-8')
+            const data = await readFile(hostPath)
             await session.writeFile(
                 posix.join(root, normalizeRemotePath(file)),
                 data

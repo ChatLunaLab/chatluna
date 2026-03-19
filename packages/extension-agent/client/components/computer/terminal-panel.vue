@@ -264,7 +264,8 @@ async function openJob(job: ComputerBackgroundJobInfo) {
                 sessionId: job.sessionId,
                 terminalId: job.terminalId,
                 backend: job.backend,
-                url: job.url
+                url: job.url,
+                token: job.token
             })
             tab.connecting = false
             tab.connected = true
@@ -366,7 +367,7 @@ async function connectSocket(
     info: ComputerTerminalInfo
 ) {
     runtime.socket?.close()
-    runtime.socket = new WebSocket(toWsUrl(info.url))
+    runtime.socket = new WebSocket(toWsUrl(info.url, info.token))
 
     await new Promise<void>((resolve, reject) => {
         if (!runtime.socket) {
@@ -479,8 +480,9 @@ function syncTabSize(key: string) {
     )
 }
 
-function toWsUrl(path: string) {
+function toWsUrl(path: string, token: string) {
     const url = new URL(path, window.location.origin)
+    url.searchParams.set('token', token)
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
     return url.toString()
 }

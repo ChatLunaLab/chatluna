@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'crypto'
 import { Buffer } from 'node:buffer'
+import { posix } from 'path'
 import { Readable } from 'node:stream'
 import { CommandHandle, CommandResult, Sandbox as E2BSandbox } from 'e2b'
 import { Sandbox as DesktopSandbox } from '@e2b/desktop'
@@ -13,6 +14,7 @@ import {
     DesktopAction,
     DesktopInfo,
     ExecuteOptions,
+    FileContent,
     ScreenshotResult,
     StreamHandle,
     TerminalHandle,
@@ -175,10 +177,29 @@ export class E2BComputerSession implements ComputerSessionApi {
             .join('\n')
     }
 
-    async writeFile(filePath: string, content: string) {
-        await (
-            await this.ensureSandbox()
-        ).files.write(this.resolvePath(filePath), content)
+    async writeFile(filePath: string, content: FileContent) {
+        const target = this.resolvePath(filePath)
+        if (typeof content === 'string') {
+            await (await this.ensureSandbox()).files.write(target, content)
+            return
+        }
+
+        const dir = posix.dirname(target)
+        const tmp = `${target}.${randomUUID()}.base64`
+
+        await this.execute(`mkdir -p ${quoteShell(dir)}`)
+        await this.writeFile(tmp, Buffer.from(content).toString('base64'))
+
+        try {
+            const result = await this.execute(
+                `base64 -d ${quoteShell(tmp)} > ${quoteShell(target)}`
+            )
+            if (result.exitCode !== 0) {
+                throw new Error(result.stderr || `Failed to write ${filePath}`)
+            }
+        } finally {
+            await this.execute(`rm -f ${quoteShell(tmp)}`).catch(() => {})
+        }
     }
 
     async editFile(

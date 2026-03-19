@@ -8,6 +8,7 @@ import { TerminalHandle } from './types'
 export interface ManagedTerminal {
     terminal: TerminalHandle
     persistent: boolean
+    token: string
 }
 
 export interface BackgroundJob {
@@ -16,6 +17,7 @@ export interface BackgroundJob {
     terminalId: string
     backend: ComputerBackendType
     url: string
+    token: string
     command: string
     cwd: string
     state: ComputerBackgroundJobState
@@ -39,6 +41,7 @@ export function toBackgroundJobInfo(
         terminalId: job.terminalId,
         backend: job.backend,
         url: job.url,
+        token: job.token,
         command: job.command,
         cwd: job.cwd,
         state: job.state,

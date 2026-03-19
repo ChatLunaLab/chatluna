@@ -9,17 +9,17 @@ import {
     MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
-    type UsageMetadata,
     ToolMessage,
-    ToolMessageChunk
+    ToolMessageChunk,
+    type UsageMetadata
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { JsonSchema7Type, zodToJsonSchema } from 'zod-to-json-schema'
 import {
-    ChatCompletionUsage,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
-    ChatCompletionTool
+    ChatCompletionTool,
+    ChatCompletionUsage
 } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {

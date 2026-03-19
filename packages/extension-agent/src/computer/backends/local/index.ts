@@ -11,6 +11,7 @@ import {
     ComputerSessionApi,
     ExecuteOptions,
     ExecuteResult,
+    FileContent,
     TerminalHandle
 } from '../../types'
 import { buildPosixBackgroundCommand } from '../types'
@@ -72,7 +73,7 @@ export class LocalComputerSession implements ComputerSessionApi {
         return this._store.readFile(filePath, offset, limit)
     }
 
-    async writeFile(filePath: string, content: string) {
+    async writeFile(filePath: string, content: FileContent) {
         ensureLocalPathAccess(filePath, this._cfg, 'write')
         await this._store.writeFile(filePath, content)
     }

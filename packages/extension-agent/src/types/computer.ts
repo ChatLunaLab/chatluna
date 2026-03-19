@@ -94,6 +94,7 @@ export interface ComputerTerminalInfo {
     terminalId: string
     backend: ComputerBackendType
     url: string
+    token: string
 }
 
 export type ComputerBackgroundJobState =
@@ -109,6 +110,7 @@ export interface ComputerBackgroundJobInfo {
     terminalId: string
     backend: ComputerBackendType
     url: string
+    token: string
     command: string
     cwd: string
     state: ComputerBackgroundJobState
