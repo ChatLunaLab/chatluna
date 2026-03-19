@@ -1,12 +1,33 @@
 <template>
-    <div class="tool-page" v-loading="loading">
+    <div
+        class="tool-page"
+        :class="{ compact: compactMode }"
+        v-loading="loading"
+    >
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
                     <div class="page-title">工具</div>
                 </div>
 
-                <div class="actions-section"></div>
+                <div class="actions-section">
+                    <el-button
+                        size="small"
+                        :type="compactMode ? 'primary' : 'default'"
+                        plain
+                        @click="compactMode = !compactMode"
+                    >
+                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
+                </div>
             </div>
         </div>
 
@@ -31,12 +52,16 @@
                 </el-input>
             </div>
 
-            <div v-if="filteredTools.length > 0" class="card-list">
+            <div
+                v-if="filteredTools.length > 0"
+                class="card-list"
+                :class="{ compact: compactMode }"
+            >
                 <div
                     v-for="item in filteredTools"
                     :key="item.name"
                     class="tool-card"
-                    :class="{ muted: !item.enabled }"
+                    :class="{ centered: hideDesc, muted: !item.enabled }"
                     @click="openEditor(item.name)"
                 >
                     <div class="tool-top">
@@ -49,7 +74,7 @@
                                 <div class="tool-title">
                                     {{ item.name }}
                                 </div>
-                                <div class="tool-name">
+                                <div v-if="!hideDesc" class="tool-name">
                                     {{ item.source || 'unknown' }}
                                     {{ item.group ? ` / ${item.group}` : '' }}
                                 </div>
@@ -63,7 +88,7 @@
                         />
                     </div>
 
-                    <div class="tool-description">
+                    <div v-if="!hideDesc" class="tool-description">
                         {{ item.description || '这个工具暂时没有说明。' }}
                     </div>
 
@@ -141,6 +166,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Search, Tools } from '@element-plus/icons-vue'
+import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import ToolEditDialog from './tool-edit-dialog.vue'
 import type {
     PermissionRule,
@@ -181,6 +207,8 @@ const emit = defineEmits<{
 }>()
 
 const keyword = ref('')
+const compactMode = useCompactMode('tool')
+const hideDesc = useHideDesc('tool')
 const selectedName = ref('')
 const dialogVisible = ref(false)
 const draft = ref<ToolConfig>(cloneConfig(props.config))
@@ -349,6 +377,10 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     padding-bottom: 56px;
 }
 
+.tool-page.compact {
+    width: min(100%, 1440px);
+}
+
 .toolbar-container {
     position: sticky;
     top: 0;
@@ -381,7 +413,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 .page-title {
-    font-size: 19px;
+    font-size: 24px;
     font-weight: 600;
     color: var(--k-text-dark);
 }
@@ -424,9 +456,14 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 
 .panel-title,
 .tool-title {
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--k-text-dark);
+    line-height: 1.4;
+}
+
+.tool-name {
+    font-size: 14px;
 }
 
 .panel {
@@ -451,6 +488,10 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     flex-wrap: wrap;
     gap: 14px var(--card-gap);
     padding: 16px;
+}
+
+.card-list.compact {
+    --card-cols: 4;
 }
 
 .tool-card {
@@ -490,9 +531,24 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     align-items: flex-start;
 }
 
+.tool-card.centered .tool-top {
+    align-items: center;
+    min-height: 34px;
+}
+
 .tool-brand {
     justify-content: flex-start;
     min-width: 0;
+}
+
+.tool-card.centered .tool-brand {
+    align-items: center;
+}
+
+.tool-card.centered .tool-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .tool-icon {
@@ -514,6 +570,10 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     overflow: hidden;
 }
 
+.card-list.compact .tool-description {
+    -webkit-line-clamp: 2;
+}
+
 .empty-state {
     display: flex;
     align-items: center;
@@ -525,17 +585,29 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     .card-list {
         --card-cols: 4;
     }
+
+    .card-list.compact {
+        --card-cols: 4;
+    }
 }
 
 @media (max-width: 1320px) {
     .card-list {
         --card-cols: 3;
     }
+
+    .card-list.compact {
+        --card-cols: 4;
+    }
 }
 
 @media (max-width: 1080px) {
     .card-list {
         --card-cols: 2;
+    }
+
+    .card-list.compact {
+        --card-cols: 3;
     }
 }
 
@@ -562,6 +634,10 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
         --card-cols: 1;
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .card-list.compact {
+        --card-cols: 1;
     }
 
     .tool-card {

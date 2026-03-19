@@ -41,8 +41,6 @@
                                 :config="computerCfg"
                                 :status="computerStatus"
                                 :loading="loading"
-                                @refresh="refreshData"
-                                @save-computer="saveComputer"
                             />
                         </div>
 
@@ -135,18 +133,6 @@ const saveMcp = async (value: AgentConfig['mcp']) => {
         ElMessage.success('MCP 配置已保存')
     } catch {
         ElMessage.error('保存 MCP 配置失败')
-    } finally {
-        pending.value = false
-    }
-}
-
-const saveComputer = async (value: AgentConfig['computer']) => {
-    try {
-        pending.value = true
-        await send('chatluna-agent/saveComputer', value)
-        ElMessage.success('Computer 配置已保存')
-    } catch {
-        ElMessage.error('保存 Computer 配置失败')
     } finally {
         pending.value = false
     }

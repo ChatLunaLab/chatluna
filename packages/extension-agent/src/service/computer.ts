@@ -113,6 +113,31 @@ export class ChatLunaAgentComputerService {
         return this._sessions.getInfoBySessionId(sessionId)
     }
 
+    getPromptWorkdir(conversationId?: string, backend?: ComputerBackendType) {
+        if (!this._status.enabled) {
+            return undefined
+        }
+
+        const type =
+            backend ??
+            this.resolveProvider() ??
+            this.config.computer.defaultProvider
+        if (conversationId) {
+            const session = this._sessions.get(
+                buildComputerSessionKey({ backend: type, conversationId })
+            )
+            if (session) {
+                return session.cwd
+            }
+        }
+
+        if (type === 'local') {
+            return this.config.computer.local.scopePath || process.cwd()
+        }
+
+        return '~'
+    }
+
     getTerminal(sessionId: string, terminalId: string) {
         return this._terminals.get(sessionId)?.get(terminalId)?.terminal
     }
@@ -156,6 +181,24 @@ export class ChatLunaAgentComputerService {
         return toBackgroundJobInfo(job)
     }
 
+    async removeBackgroundJob(jobId: string) {
+        const job = this._jobs.get(jobId)
+        if (!job) {
+            return undefined
+        }
+
+        if (job.state === 'running') {
+            await this.closeManagedTerminal(
+                job.sessionId,
+                job.terminalId,
+                'killed'
+            )
+        }
+
+        this._jobs.delete(jobId)
+        return toBackgroundJobInfo(job)
+    }
+
     async runBackgroundCommand(
         command: string,
         options: {
@@ -175,7 +218,7 @@ export class ChatLunaAgentComputerService {
             )
         }
 
-        const cwd = options.workdir ?? session.getScopePath()
+        const cwd = options.workdir
         const marker = `__CHATLUNA_BACKGROUND_EXIT__${randomUUID().replaceAll('-', '')}`
         const userSession = options.runConfig?.configurable?.session
         const wrapped = session.prepareBackgroundCommand
@@ -287,6 +330,13 @@ export class ChatLunaAgentComputerService {
             options.allowedBackends
         )
         if (!backend) {
+            if (!options.allowedBackends) {
+                const type =
+                    options.backend ?? this.config.computer.defaultProvider
+                const status = this._status.backends[type]
+                throw new Error(formatBackendUnavailable(status))
+            }
+
             throw new Error('No supported computer backend is available.')
         }
 
@@ -602,30 +652,35 @@ export class ChatLunaAgentComputerService {
     }
 
     async publishFile(
-        filePath: string,
+        filePaths: string[],
         runConfig?: ChatLunaToolRunnable
-    ): Promise<{ url: string; name: string }> {
+    ): Promise<{ url: string; name: string }[]> {
         const storage = this.ctx.chatluna_storage
         if (!storage) {
             throw new Error('chatluna-storage-service is not available.')
         }
 
         const computer = await this.getToolSession(runConfig)
-        if (!computer.isInScope(filePath)) {
-            throw new Error(`Path is outside scope: ${filePath}`)
-        }
+        return await Promise.all(
+            filePaths.map(async (filePath) => {
+                if (!computer.isInScope(filePath)) {
+                    throw new Error(`Path is outside scope: ${filePath}`)
+                }
 
-        const fileName = path.posix.basename(filePath.replaceAll('\\', '/'))
-        const asset = await computer.openAsset(filePath)
-        const file = await storage.createTempFileFromStream(
-            asset.stream,
-            fileName,
-            {
-                mimeType: asset.mimeType,
-                size: asset.size
-            }
+                const fileName = path.posix.basename(
+                    filePath.replaceAll('\\', '/')
+                )
+                const asset = await computer.openAsset(filePath)
+                return await storage.createTempFileFromStream(
+                    asset.stream,
+                    fileName,
+                    {
+                        mimeType: asset.mimeType,
+                        size: asset.size
+                    }
+                )
+            })
         )
-        return file
     }
 
     private async getOrCreateUiSession(
@@ -747,7 +802,7 @@ export class ChatLunaAgentComputerService {
             this.config.computer.local.scopePath &&
             !/^[A-Za-z]:/.test(this.config.computer.local.scopePath)
                 ? this.config.computer.local.scopePath.replaceAll('\\', '/')
-                : '/workspace'
+                : undefined
 
         if (backend === 'local') {
             return new LocalComputerSession(this.config.computer.local)
@@ -779,24 +834,25 @@ export class ChatLunaAgentComputerService {
         preferred?: ComputerBackendType,
         allowedBackends?: ComputerBackendType[]
     ) {
-        const order: (ComputerBackendType | undefined)[] = [
-            preferred ?? this.config.computer.defaultProvider,
-            'e2b',
-            'open-terminal',
-            'local'
-        ]
         const backends = allowedBackends ?? COMPUTER_BACKENDS
-        for (const item of order) {
-            if (!item) {
+        const target = preferred ?? this.config.computer.defaultProvider
+        if (
+            backends.includes(target) &&
+            isAvailableBackend(this._status.backends[target])
+        ) {
+            return target
+        }
+
+        if (preferred || !allowedBackends) {
+            return undefined
+        }
+
+        for (const item of backends) {
+            if (item === target) {
                 continue
             }
 
-            if (!backends.includes(item)) {
-                continue
-            }
-
-            const status = this._status.backends[item]
-            if (isAvailableBackend(status)) {
+            if (isAvailableBackend(this._status.backends[item])) {
                 return item
             }
         }
@@ -969,6 +1025,14 @@ function isAvailableBackend(status: ComputerBackendStatus) {
         status.state === 'connecting' ||
         status.state === 'connected'
     )
+}
+
+function formatBackendUnavailable(status: ComputerBackendStatus) {
+    if (status.error) {
+        return `Computer backend ${status.type} is not available: ${status.error}`
+    }
+
+    return `Computer backend ${status.type} is disabled.`
 }
 
 const BASE_CAPABILITIES: ComputerCapability[] = [

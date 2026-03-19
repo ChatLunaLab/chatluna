@@ -1,21 +1,33 @@
 /** @module service/sub_agent */
 
 import { randomUUID } from 'crypto'
-import { SubagentContext } from 'koishi-plugin-chatluna/llm-core/agent'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import { HumanMessage } from '@langchain/core/messages'
+import { Context } from 'koishi'
+import {
+    MessageQueue,
+    SubagentContext
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
-import { Context, Session } from 'koishi'
 import { buildSubAgentCatalog } from '../sub-agent/catalog'
 import { createManualAgent } from '../sub-agent/manual'
 import { renderAvailableSubAgents } from '../sub-agent/render'
+import {
+    ActiveSubAgentRun,
+    clearDisposers,
+    isRunnable,
+    RunSubAgentOptions
+} from '../sub-agent/runtime'
 import { runSubAgentTurn } from '../sub-agent/run'
 import {
     createTaskSession,
+    formatTaskDetail,
+    formatTaskList,
     formatTaskResult,
+    formatTaskStart,
     SubAgentTaskSession,
     touchTaskSession
 } from '../sub-agent/session'
@@ -36,6 +48,7 @@ export class ChatLunaAgentSubAgentService {
     private _runs = new Map<string, SubAgentRunInfo>()
     private _manual = new Map<string, ManualSubAgentInput>()
     private _tasks = new Map<string, SubAgentTaskSession>()
+    private _active = new Map<string, ActiveSubAgentRun>()
     private _toolDispose?: () => void
     private _promptDispose?: () => void
     private _runDispose = new Map<string, () => void>()
@@ -53,6 +66,11 @@ export class ChatLunaAgentSubAgentService {
     }
 
     async stop() {
+        for (const item of this._active.values()) {
+            item.abort.abort()
+        }
+
+        this._active.clear()
         this._toolDispose?.()
         this._toolDispose = undefined
         this._promptDispose?.()
@@ -106,7 +124,8 @@ export class ChatLunaAgentSubAgentService {
         return [
             'Delegate a focused task to a specialized sub-agent when parallel work, deeper investigation, or a narrower prompt will help.',
             'Use the exact sub-agent name from the injected catalog.',
-            'The tool returns a task_id. Reuse the same agent and task_id to continue that sub-agent session later.'
+            'If delegated work may take a while, set background=true so it can continue beyond the normal tool timeout.',
+            'Use action=list or action=status to inspect background tasks, action=message to send more guidance while they run, and action=run with the same id to continue the same session later.'
         ].join('\n')
     }
 
@@ -158,49 +177,136 @@ export class ChatLunaAgentSubAgentService {
     }
 
     async runTask(
-        input: { agent: string; id?: string; prompt: string; reason?: string },
+        input: {
+            action?: 'run' | 'status' | 'list' | 'message'
+            agent?: string
+            id?: string
+            prompt?: string
+            reason?: string
+            background?: boolean
+            message?: string
+        },
         runConfig?: ChatLunaToolRunnable
     ) {
+        const action = input.action ?? 'run'
         const parent = runConfig?.configurable?.subagentContext
+        const session = runConfig?.configurable?.session
+        const conversationId = runConfig?.configurable?.conversationId
+
+        if (action === 'list') {
+            if (!conversationId) {
+                return 'Sub-agent invocation is missing conversation context.'
+            }
+
+            const tasks = [...this._tasks.values()]
+                .filter((item) => item.parentConversationId === conversationId)
+                .sort((a, b) => b.updatedAt - a.updatedAt)
+
+            if (tasks.length < 1) {
+                return 'No sub-agent tasks in this conversation.'
+            }
+
+            return formatTaskList(tasks, (taskId) =>
+                this.getLatestTaskRun(taskId)
+            )
+        }
+
+        const id = input.id?.trim()
+        const task = id ? this._tasks.get(id) : undefined
+        if (id && !task) {
+            return `Sub-agent task '${input.id}' was not found or expired.`
+        }
+
+        if (task && !conversationId) {
+            return 'Sub-agent invocation is missing conversation context.'
+        }
+
+        if (task && task.parentConversationId !== conversationId) {
+            return `Sub-agent task '${task.id}' belongs to a different conversation.`
+        }
+
+        if (action === 'status') {
+            if (!task) {
+                return 'Sub-agent task id is required for action=status.'
+            }
+
+            touchTaskSession(task)
+            this.scheduleTaskCleanup(task.id)
+            return formatTaskDetail(task, this.getLatestTaskRun(task.id))
+        }
+
+        if (action === 'message') {
+            if (!task) {
+                return 'Sub-agent task id is required for action=message.'
+            }
+
+            if (!task?.activeRunId) {
+                return `Sub-agent task '${task.id}' is not running. Use action=run with the same id to continue it.`
+            }
+
+            const active = this._active.get(task.activeRunId)
+            if (!active) {
+                return `Sub-agent task '${task.id}' is not accepting live messages because it was not started in background.`
+            }
+
+            active.queue.push(new HumanMessage(input.message!.trim()))
+            touchTaskSession(task)
+            this.scheduleTaskCleanup(task.id)
+            await this.ctx.chatluna_agent?.refreshConsoleData()
+
+            return [
+                `task_id: ${task.id}`,
+                `run_id: ${task.activeRunId}`,
+                'state: running',
+                'message: queued',
+                `status_hint: use task with {"action":"status","id":"${task.id}"} to inspect progress.`
+            ].join('\n')
+        }
+
         if (parent && parent.depth >= parent.maxDepth) {
             return `Cannot delegate: maximum nesting depth (${parent.maxDepth}) reached.`
         }
 
-        const info = this.findRunnableAgent(input.agent)
-        if (!info) return `Sub-agent '${input.agent}' is not available.`
-
-        const session = runConfig?.configurable?.session
-        const conversationId = runConfig?.configurable?.conversationId
         if (!session || !conversationId) {
             return 'Sub-agent invocation is missing session context.'
         }
 
-        const task = input.id?.trim()
-            ? this._tasks.get(input.id.trim())
-            : this.createTask(info, conversationId, parent)
-
-        if (!task) {
-            return `Sub-agent task '${input.id}' was not found or expired.`
+        let info = task ? this._catalog.get(task.agentId) : undefined
+        if (input.agent?.trim()) {
+            info = this.findRunnableAgent(input.agent.trim())
+            if (!info) {
+                return `Sub-agent '${input.agent}' is not available.`
+            }
         }
 
-        if (task.agentId !== info.id) {
+        if (!task && !info) {
+            return 'agent is required when starting a new sub-agent task.'
+        }
+
+        if (task && info && task.agentId !== info.id) {
             return `Sub-agent task '${task.id}' belongs to '${task.agentName}', not '${input.agent}'.`
         }
 
-        if (task.parentConversationId !== conversationId) {
-            return `Sub-agent task '${task.id}' belongs to a different conversation.`
+        if (!info || !isRunnable(info)) {
+            return `Sub-agent '${input.agent ?? task?.agentName}' is not available.`
         }
 
-        if (task.activeRunId) {
-            return `Sub-agent task '${task.id}' is already running.`
+        const next = task ?? this.createTask(info, conversationId, parent)
+        if (next.activeRunId) {
+            return `Sub-agent task '${next.id}' is already running. Use action=status to inspect it or action=message to guide it while it runs in background.`
+        }
+
+        const raw = input.prompt?.trim()
+        if (!raw) {
+            return 'Sub-agent prompt is empty.'
         }
 
         const prompt = input.reason?.trim()
-            ? `Reason: ${input.reason.trim()}\n\nTask:\n${input.prompt}`
-            : input.prompt
+            ? `Reason: ${input.reason.trim()}\n\nTask:\n${raw}`
+            : raw
 
-        touchTaskSession(task)
-        this.scheduleTaskCleanup(task.id)
+        touchTaskSession(next)
+        this.scheduleTaskCleanup(next.id)
 
         try {
             return await this.runSubAgent({
@@ -210,16 +316,17 @@ export class ChatLunaAgentSubAgentService {
                 parentConversationId: conversationId,
                 parentSubagentContext: parent,
                 model: runConfig?.configurable?.model,
-                task
+                task: next,
+                background: input.background === true
             })
         } catch (err) {
-            const run = this.getLatestTaskRun(task.id)
+            const run = this.getLatestTaskRun(next.id)
             if (!run) {
                 throw err
             }
 
             return formatTaskResult(
-                task,
+                next,
                 run,
                 err instanceof Error ? err.message : String(err)
             )
@@ -271,52 +378,75 @@ export class ChatLunaAgentSubAgentService {
             parentConversationId: task.parentConversationId,
             depth: task.depth,
             state: 'running',
+            background: options.background,
             startedAt: Date.now(),
             toolCount: 0,
             turnCount: 0
         }
 
+        const abort = options.background ? new AbortController() : undefined
+        const queue = options.background ? new MessageQueue() : undefined
+        const signal = abort?.signal ?? options.signal
+
         task.activeRunId = runId
         this._runs.set(runId, run)
+        if (abort && queue) {
+            this._active.set(runId, { abort, queue })
+        }
         this.scheduleTaskCleanup(task.id)
         await this.ctx.chatluna_agent?.refreshConsoleData()
 
-        try {
-            const result = await runSubAgentTurn({
-                ctx: this.ctx,
-                permission: this.permission,
-                info,
-                prompt: options.prompt,
-                session: options.session,
-                task,
-                subCtx,
-                mask,
-                run,
-                signal: options.signal,
-                model: options.model,
-                refresh: async () => {
-                    await this.ctx.chatluna_agent?.refreshConsoleData()
-                }
-            })
-            run.state = 'completed'
-            run.endedAt = Date.now()
-            delete task.activeRunId
-            touchTaskSession(task)
-            await this.ctx.chatluna_agent?.refreshConsoleData()
-            this.scheduleRunCleanup(runId)
-            this.scheduleTaskCleanup(task.id)
-            return formatTaskResult(task, run, String(result.output ?? ''))
-        } catch (err) {
-            run.state = options.signal?.aborted ? 'aborted' : 'failed'
-            run.error = err instanceof Error ? err.message : String(err)
-            run.endedAt = Date.now()
-            delete task.activeRunId
-            touchTaskSession(task)
-            await this.ctx.chatluna_agent?.refreshConsoleData()
-            this.scheduleRunCleanup(runId)
-            this.scheduleTaskCleanup(task.id)
-            throw err
+        const exec = async () => {
+            try {
+                const result = await runSubAgentTurn({
+                    ctx: this.ctx,
+                    permission: this.permission,
+                    info,
+                    prompt: options.prompt,
+                    session: options.session,
+                    task,
+                    subCtx,
+                    mask,
+                    run,
+                    signal,
+                    model: options.model,
+                    messageQueue: queue,
+                    refresh: async () => {
+                        await this.ctx.chatluna_agent?.refreshConsoleData()
+                    }
+                })
+                run.state = 'completed'
+                run.output = String(result.output ?? '')
+                run.endedAt = Date.now()
+                delete task.activeRunId
+                touchTaskSession(task)
+                await this.ctx.chatluna_agent?.refreshConsoleData()
+                this.scheduleRunCleanup(runId)
+                this.scheduleTaskCleanup(task.id)
+                return formatTaskResult(task, run, run.output)
+            } catch (err) {
+                run.state = signal?.aborted ? 'aborted' : 'failed'
+                run.error = err instanceof Error ? err.message : String(err)
+                run.endedAt = Date.now()
+                delete task.activeRunId
+                touchTaskSession(task)
+                await this.ctx.chatluna_agent?.refreshConsoleData()
+                this.scheduleRunCleanup(runId)
+                this.scheduleTaskCleanup(task.id)
+                throw err
+            } finally {
+                this._active.delete(runId)
+            }
         }
+
+        if (options.background) {
+            exec().catch((err) => {
+                this.ctx.logger.error(err)
+            })
+            return formatTaskStart(task, run)
+        }
+
+        return await exec()
     }
 
     private async refreshCatalog() {
@@ -471,32 +601,4 @@ export class ChatLunaAgentSubAgentService {
         await this.ctx.chatluna_agent?.refreshConsoleData()
         return true
     }
-}
-
-interface RunSubAgentOptions {
-    agentId: string
-    prompt: string
-    session: Session
-    parentConversationId: string
-    parentSubagentContext?: SubagentContext
-    signal?: AbortSignal
-    model?: ChatLunaChatModel
-    task?: SubAgentTaskSession
-}
-
-function isRunnable(info: SubAgentInfo) {
-    return (
-        info.enabled &&
-        info.state === 'ready' &&
-        !info.hidden &&
-        !info.shadowedBy
-    )
-}
-
-function clearDisposers(store: Map<string, () => void>) {
-    for (const dispose of store.values()) {
-        dispose()
-    }
-
-    store.clear()
 }

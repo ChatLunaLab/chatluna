@@ -1,5 +1,5 @@
 <template>
-    <div class="configuration-panel">
+    <div class="configuration-panel" :class="{ compact: props.compactMode }">
         <section class="backend-card">
             <div class="backend-head">
                 <div class="backend-intro">
@@ -24,7 +24,7 @@
                             个活跃会话
                         </el-tag>
                     </div>
-                    <div class="backend-copy">
+                    <div v-if="!props.hideDesc" class="backend-copy">
                         云端隔离沙箱，支持桌面和 GUI，适合需要完整隔离的任务。
                     </div>
                     <div
@@ -98,7 +98,7 @@
                             个活跃会话
                         </el-tag>
                     </div>
-                    <div class="backend-copy">
+                    <div v-if="!props.hideDesc" class="backend-copy">
                         接入已部署的远程执行服务，适合复用现有的执行节点。
                     </div>
                     <div
@@ -175,7 +175,7 @@
                             个活跃会话
                         </el-tag>
                     </div>
-                    <div class="backend-copy">
+                    <div v-if="!props.hideDesc" class="backend-copy">
                         直接在宿主机执行，终端能力风险很高，只建议在完全信任当前模型和工作目录时启用。
                     </div>
                     <div
@@ -217,7 +217,11 @@
             </div>
         </section>
 
-        <StatusPanel :config="props.config" :status="props.status" />
+        <StatusPanel
+            :compact-mode="props.compactMode"
+            :hide-desc="props.hideDesc"
+            :status="props.status"
+        />
 
         <el-dialog
             v-model="guideOpen"
@@ -299,6 +303,8 @@ import type {
 
 const props = defineProps<{
     config: ComputerConfig
+    compactMode?: boolean
+    hideDesc?: boolean
     status: ComputerStatus
     testing: Record<ComputerBackendType, boolean>
 }>()
@@ -569,6 +575,10 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     gap: 20px;
 }
 
+.configuration-panel.compact {
+    gap: 16px;
+}
+
 .backend-card {
     border: 1px solid var(--k-color-divider);
     border-radius: 8px;
@@ -591,6 +601,11 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     gap: 20px;
     padding: 20px 24px;
     border-bottom: 1px solid var(--k-color-divider);
+}
+
+.configuration-panel.compact .backend-head {
+    gap: 16px;
+    padding: 16px 20px;
 }
 
 .backend-title-row {
@@ -637,6 +652,10 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
 
 .backend-body {
     padding: 24px;
+}
+
+.configuration-panel.compact .backend-body {
+    padding: 20px;
 }
 
 .guide-dialog {
@@ -712,10 +731,18 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     gap: 24px;
 }
 
+.configuration-panel.compact :deep(.backend-form) {
+    gap: 20px;
+}
+
 :deep(.backend-form .section) {
     display: flex;
     flex-direction: column;
     gap: 14px;
+}
+
+.configuration-panel.compact :deep(.backend-form .section) {
+    gap: 12px;
 }
 
 :deep(.backend-form .form-grid) {

@@ -176,6 +176,25 @@ async function materializeImportSource(
         const root = join(tmp, stripExt(input.name) || 'archive')
         await mkdir(root, { recursive: true })
         await unzipToDir(Buffer.from(input.data, 'base64'), root)
+
+        const files = await collectFilesRecursive(root, { relative: true })
+        const top = Array.from(
+            new Set(
+                files
+                    .map((file) => file.replaceAll('\\', '/').split('/')[0])
+                    .filter(Boolean)
+            )
+        )
+
+        if (top.length === 1) {
+            const dir = join(root, top[0])
+            const info = await stat(dir).catch(() => undefined)
+
+            if (info?.isDirectory()) {
+                return { root: dir, diagnostics: [] }
+            }
+        }
+
         return { root, diagnostics: [] }
     }
 

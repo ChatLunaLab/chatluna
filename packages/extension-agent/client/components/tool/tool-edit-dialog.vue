@@ -320,6 +320,14 @@ function matchRule(name: string, rule: PermissionRule) {
     line-height: 1.6;
     color: var(--k-text-light);
     word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.tool-description {
+    max-height: 160px;
+    overflow: auto;
+    white-space: pre-wrap;
+    padding-right: 6px;
 }
 
 .switch-card {

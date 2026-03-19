@@ -179,6 +179,13 @@ function registerComputerListeners(ctx: Context, agent: AgentRef) {
     )
 
     ctx.console.addListener(
+        'chatluna-agent/removeComputerBackgroundJob',
+        ok(async (jobId) => {
+            await agent().computer.removeBackgroundJob(jobId)
+        })
+    )
+
+    ctx.console.addListener(
         'chatluna-agent/readComputerFile',
         async function (input) {
             return await agent().computer.readFileForUi(this.id, input)

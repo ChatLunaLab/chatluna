@@ -21,12 +21,16 @@
                 </div>
             </div>
 
-            <div v-if="servers.length > 0" class="card-list server-grid">
+            <div
+                v-if="servers.length > 0"
+                class="card-list server-grid"
+                :class="{ compact: props.compactMode }"
+            >
                 <div
                     v-for="item in servers"
                     :key="item.name"
                     class="server-card"
-                    :class="{ busy: item.updating }"
+                    :class="{ busy: item.updating, centered: props.hideDesc }"
                 >
                     <div class="server-head">
                         <div class="server-brand">
@@ -52,7 +56,7 @@
                                     {{ item.status.title }}
                                 </div>
                                 <div class="server-name">{{ item.name }}</div>
-                                <div class="server-kind">
+                                <div v-if="!props.hideDesc" class="server-kind">
                                     <span>{{ item.kind }}</span>
                                     <span v-if="item.status?.version">
                                         v{{ item.status.version }}
@@ -82,7 +86,7 @@
                         </el-tag>
                     </div>
 
-                    <div class="server-summary">
+                    <div v-if="!props.hideDesc" class="server-summary">
                         {{
                             (item.updating && !item.status?.updating
                                 ? '正在重新连接服务器。'
@@ -113,7 +117,7 @@
                         </el-tag>
                     </div>
 
-                    <div class="server-endpoint">
+                    <div v-if="!props.hideDesc" class="server-endpoint">
                         {{ item.endpoint || '尚未填写入口' }}
                     </div>
 
@@ -167,12 +171,16 @@
                 </div>
             </div>
 
-            <div v-if="tools.length > 0" class="card-list tool-grid">
+            <div
+                v-if="tools.length > 0"
+                class="card-list tool-grid"
+                :class="{ compact: props.compactMode }"
+            >
                 <div
                     v-for="item in tools"
                     :key="item.name"
                     class="tool-card"
-                    :class="{ busy: item.updating }"
+                    :class="{ busy: item.updating, centered: props.hideDesc }"
                 >
                     <div class="tool-top">
                         <div class="tool-brand">
@@ -187,11 +195,13 @@
                                 </el-icon>
                             </div>
 
-                            <div>
+                            <div class="tool-copy">
                                 <div class="tool-title">
                                     {{ item.title || item.name }}
                                 </div>
-                                <div class="tool-name">{{ item.name }}</div>
+                                <div v-if="!props.hideDesc" class="tool-name">
+                                    {{ item.name }}
+                                </div>
                             </div>
                         </div>
 
@@ -205,7 +215,7 @@
                         />
                     </div>
 
-                    <div class="tool-description">
+                    <div v-if="!props.hideDesc" class="tool-description">
                         {{ item.description || '这个工具暂时没有说明。' }}
                     </div>
 
@@ -725,6 +735,8 @@ const props = withDefaults(
     defineProps<{
         config: McpConfig
         status: McpStatus
+        compactMode: boolean
+        hideDesc: boolean
     }>(),
     {
         config: () => ({
@@ -735,7 +747,9 @@ const props = withDefaults(
             connected: false,
             servers: {},
             tools: {}
-        })
+        }),
+        compactMode: false,
+        hideDesc: false
     }
 )
 
@@ -1153,7 +1167,7 @@ async function saveTool() {
 }
 
 .panel-title {
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--k-text-dark);
 }
@@ -1178,6 +1192,10 @@ async function saveTool() {
     padding: 14px 14px 16px;
 }
 
+.card-list.compact {
+    gap: 14px 16px;
+}
+
 .server-card,
 .tool-card {
     flex: 0 0 320px;
@@ -1195,6 +1213,13 @@ async function saveTool() {
     flex-direction: column;
     min-width: 0;
     box-sizing: border-box;
+}
+
+.card-list.compact .server-card,
+.card-list.compact .tool-card {
+    flex-basis: 320px;
+    width: 320px;
+    padding: 14px;
 }
 
 .server-card.busy,
@@ -1215,11 +1240,26 @@ async function saveTool() {
     align-items: flex-start;
 }
 
+.server-card.centered .server-head {
+    align-items: center;
+    min-height: 34px;
+}
+
+.tool-card.centered .tool-top {
+    align-items: center;
+    min-height: 34px;
+}
+
 .server-brand,
 .tool-brand {
     display: flex;
     gap: 10px;
     min-width: 0;
+}
+
+.server-card.centered .server-brand,
+.tool-card.centered .tool-brand {
+    align-items: center;
 }
 
 .server-icon,
@@ -1253,23 +1293,32 @@ async function saveTool() {
     object-fit: cover;
 }
 
-.server-copy {
+.server-copy,
+.tool-copy {
     min-width: 0;
+}
+
+.server-card.centered .server-copy,
+.tool-card.centered .tool-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .server-title,
 .tool-name {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--k-text-light);
 }
 
 .server-name,
 .tool-title {
     margin-top: 2px;
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--k-text-dark);
     word-break: break-word;
+    line-height: 1.4;
 }
 
 .server-kind {
@@ -1295,6 +1344,11 @@ async function saveTool() {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.card-list.compact .server-summary,
+.card-list.compact .tool-description {
+    -webkit-line-clamp: 2;
 }
 
 .meta-grid {

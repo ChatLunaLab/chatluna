@@ -41,7 +41,7 @@ Usage:
     ) {
         const computer = await this.getSession(toolConfig)
 
-        this.computer.ctx.logger.info(`${MSG_READING}: ${input.filePath}`)
+        this.log(computer, `${MSG_READING}: ${input.filePath}`)
 
         try {
             const result = await computer.readFile(
@@ -49,10 +49,14 @@ Usage:
                 input.offset,
                 input.limit ?? 2000
             )
-            this.computer.ctx.logger.info(
+            this.log(
+                computer,
                 `${MSG_DONE}: ${input.filePath} (${result.split('\n').length} 行)`
             )
-            return await this.formatLargeResult(computer, 'file-read', result)
+            return this.withBackend(
+                computer,
+                await this.formatLargeResult(computer, 'file-read', result)
+            )
         } catch (err) {
             if (computer.backend !== 'local') {
                 try {
@@ -63,10 +67,13 @@ Usage:
                             input.offset,
                             input.limit ?? 2000
                         )
-                    return await this.formatLargeResult(
+                    return this.withBackend(
                         computer,
-                        'file-read',
-                        result
+                        await this.formatLargeResult(
+                            computer,
+                            'file-read',
+                            result
+                        )
                     )
                 } catch {}
             }

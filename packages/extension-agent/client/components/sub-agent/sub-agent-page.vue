@@ -1,5 +1,9 @@
 <template>
-    <div class="sub-agent-page" v-loading="loading || busy">
+    <div
+        class="sub-agent-page"
+        :class="{ compact: compactMode }"
+        v-loading="loading || busy"
+    >
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
@@ -7,6 +11,22 @@
                 </div>
 
                 <div class="actions-section">
+                    <el-button
+                        size="small"
+                        :type="compactMode ? 'primary' : 'default'"
+                        plain
+                        @click="compactMode = !compactMode"
+                    >
+                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
                     <input
                         ref="fileInput"
                         type="file"
@@ -53,6 +73,8 @@
                         v-if="listTab === 'catalog'"
                         key="catalog"
                         :agents="agents"
+                        :compact-mode="compactMode"
+                        :hide-desc="hideDesc"
                         @select="openDetail"
                         @toggle="toggleAgent"
                     />
@@ -98,6 +120,7 @@
 import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import SubAgentCatalog from './sub-agent-catalog.vue'
 import SubAgentDetail from './sub-agent-detail.vue'
 import SubAgentRuns from './sub-agent-runs.vue'
@@ -219,6 +242,8 @@ defineEmits<{
 
 const fileInput = ref<HTMLInputElement>()
 const busy = ref(false)
+const compactMode = useCompactMode('subAgent')
+const hideDesc = useHideDesc('subAgent')
 const currentView = ref<'list' | 'detail'>('list')
 const listTab = ref<'catalog' | 'runs' | 'availability'>('catalog')
 const agents = ref<SubAgentInfo[]>([])
@@ -549,6 +574,10 @@ function splitItems(text: string) {
     padding-bottom: 56px;
 }
 
+.sub-agent-page.compact {
+    width: min(100%, 1440px);
+}
+
 .toolbar-container {
     position: sticky;
     top: 0;
@@ -576,7 +605,7 @@ function splitItems(text: string) {
 }
 
 .page-title {
-    font-size: 19px;
+    font-size: 24px;
     font-weight: 600;
     color: var(--k-text-dark);
 }

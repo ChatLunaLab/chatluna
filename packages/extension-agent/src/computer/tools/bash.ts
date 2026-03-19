@@ -18,13 +18,14 @@ Rules:
 - Absolute paths outside the scope path are blocked
 - Certain high-risk commands require explicit user confirmation
 - Commands in the blocked list are always rejected
+- If a command may take a while, keep running, or exceed the normal timeout, prefer background=true and query it later yourself
 
 When to use:
 - File listing, searching (ls, find, grep, rg, fd)
 - Running build tools, tests, scripts
 - Renaming, moving, copying files
 - Any shell operation not covered by the dedicated file tools
-- Long-lived services can be started as managed background jobs and later queried or killed`
+- Long-lived services can be started as managed background jobs and later queried with action=list/status or stopped with action=kill`
 
     schema = z
         .object({
@@ -54,12 +55,18 @@ When to use:
                 .enum(['run', 'status', 'list', 'kill'])
                 .optional()
                 .describe(
-                    'run executes a command, status reads one background job, list shows all background jobs, kill stops one background job.'
+                    'run executes a command, status reads one background job, list shows background jobs, kill stops one background job.'
                 ),
             jobId: z
                 .string()
                 .optional()
-                .describe('Background job ID used with status or kill.')
+                .describe('Background job ID used with status or kill.'),
+            state: z
+                .enum(['running', 'completed', 'failed', 'killed', 'timed_out'])
+                .optional()
+                .describe(
+                    'Optional background job state filter, mainly useful with action list to query only running jobs.'
+                )
         })
         .superRefine((input, ctx) => {
             const action = input.action ?? (input.jobId ? 'status' : 'run')
@@ -89,14 +96,52 @@ When to use:
         toolConfig: ChatLunaToolRunnable
     ) {
         const session = toolConfig?.configurable?.session
-        const computer = await this.getSession(toolConfig)
         const action = input.action ?? (input.jobId ? 'status' : 'run')
 
         try {
+            if (
+                action === 'run' &&
+                input.command?.trim().startsWith('agentctl')
+            ) {
+                const cli = this.computer.ctx.chatluna_agent?.cli
+                const conversationId = toolConfig?.configurable?.conversationId
+                if (
+                    !cli ||
+                    !conversationId ||
+                    !session ||
+                    // only admin can use agentctl
+                    (await session.getUser().then((user) => user.authority)) < 3
+                ) {
+                    return this.formatResult(
+                        false,
+                        'agentctl is unavailable in this tool context'
+                    )
+                }
+
+                if (input.background) {
+                    return this.formatResult(
+                        false,
+                        'agentctl does not support background execution'
+                    )
+                }
+
+                return await cli.executeCommand(
+                    input.command,
+                    conversationId,
+                    session
+                )
+            }
+
+            const computer = await this.getSession(toolConfig)
+
             if (action === 'list') {
-                const jobs = await this.computer.listBackgroundJobs()
+                const jobs = (await this.computer.listBackgroundJobs()).filter(
+                    (job) => (input.state ? job.state === input.state : true)
+                )
                 if (jobs.length < 1) {
-                    return 'No background jobs.'
+                    return input.state
+                        ? `No background jobs in state '${input.state}'.`
+                        : 'No background jobs.'
                 }
 
                 return formatJobList(jobs)
@@ -142,12 +187,12 @@ When to use:
                 input.background === true || backgroundCommand != null
             const command = backgroundCommand ?? raw ?? ''
 
-            this.computer.ctx.logger.info(`执行命令: \`${command}\``)
+            this.log(computer, `执行命令: \`${command}\``)
 
             if (background) {
                 const job = await this.computer.runBackgroundCommand(command, {
                     runConfig: toolConfig,
-                    workdir: input.workdir ?? computer.getScopePath(),
+                    workdir: input.workdir,
                     timeout: input.timeout
                 })
 
@@ -158,13 +203,16 @@ When to use:
                 input.timeout ??
                 this.computer.config.computer.local.commandTimeoutMs
             const result = await computer.execute(command, {
-                workdir: input.workdir ?? computer.getScopePath(),
+                workdir: input.workdir,
                 timeout,
                 session
             })
 
             if (result.timedOut) {
-                return `Command timed out after ${timeout}ms.`
+                return this.withBackend(
+                    computer,
+                    `Command timed out after ${timeout}ms.`
+                )
             }
 
             const output = await this.formatLargeResult(
@@ -174,16 +222,22 @@ When to use:
             )
 
             if (result.signal) {
-                return `Command terminated by signal ${result.signal}:\n${output}`
+                return this.withBackend(
+                    computer,
+                    `Command terminated by signal ${result.signal}:\n${output}`
+                )
             }
 
             if (result.exitCode !== 0) {
-                return `Command exited with code ${result.exitCode}:\n${output}`
+                return this.withBackend(
+                    computer,
+                    `Command exited with code ${result.exitCode}:\n${output}`
+                )
             }
 
-            this.computer.ctx.logger.info(output)
+            this.log(computer, output)
 
-            return output
+            return this.withBackend(computer, output)
         } catch (err) {
             return this.formatResult(
                 false,
@@ -212,7 +266,7 @@ function formatJobStart(job: ComputerBackgroundJobInfo) {
         `Timeout: ${job.timeout == null ? 'none' : `${job.timeout}ms`}`,
         `Command: ${job.command}`,
         `Terminal URL: ${job.url}`,
-        `Use bash with {"action":"status","jobId":"${job.id}"} to inspect it.`
+        `Use bash with {"action":"status","jobId":"${job.id}"} to inspect it or {"action":"list","state":"running"} to query running jobs.`
     ].join('\n')
 }
 

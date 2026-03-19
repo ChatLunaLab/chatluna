@@ -69,12 +69,14 @@ export interface SubAgentRunInfo {
     parentConversationId: string
     depth: number
     state: 'running' | 'completed' | 'failed' | 'aborted'
+    background?: boolean
     startedAt: number
     endedAt?: number
     lastTool?: string
     toolCount: number
     turnCount: number
     error?: string
+    output?: string
 }
 
 export interface SubAgentImportInput {
@@ -115,10 +117,13 @@ export interface SubAgentTaskService {
     buildToolDescription(): string
     runTask(
         input: {
-            agent: string
+            action?: 'run' | 'status' | 'list' | 'message'
+            agent?: string
             id?: string
-            prompt: string
+            prompt?: string
             reason?: string
+            background?: boolean
+            message?: string
         },
         runConfig?: ChatLunaToolRunnable
     ): Promise<string>

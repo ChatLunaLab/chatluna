@@ -31,6 +31,7 @@ import { exportSkillArchive, removeSkillDirectory } from '../skills/manage'
 import { watchSkillFiles } from '../skills/watch'
 import { SkillTool } from '../skills/tool'
 import { buildSkillCatalog } from '../skills/catalog'
+import { getRemoteSkillDir } from '../computer/materialize'
 import { ChatLunaAgentPermissionService } from './permissions'
 
 export class ChatLunaAgentSkillsService implements SkillToolService {
@@ -148,6 +149,24 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         return this._visibleByName.get(name)
     }
 
+    hasActiveSkill(conversationId: string, name: string) {
+        const skill = this._visibleByName.get(name)
+        if (!skill) {
+            return false
+        }
+
+        return this._active.get(conversationId)?.has(skill.id) === true
+    }
+
+    listActiveSkills(conversationId: string) {
+        const active = this._active.get(conversationId)
+        if (!active) {
+            return [] as SkillInfo[]
+        }
+
+        return this._catalog.filter((item) => active.has(item.id))
+    }
+
     async getSkillContent(id: string): Promise<SkillContentResult | undefined> {
         const skill = this._skills.get(id)
         if (!skill) return undefined
@@ -250,7 +269,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         const skill = this._visibleByName.get(name)
         if (!skill?.enabled || skill.state !== 'ready') return undefined
 
-        return await renderSkillContent(skill, this.hasComputer(), loaded)
+        return await renderSkillContent(skill, loaded)
     }
 
     private hasComputer() {
@@ -289,10 +308,8 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 ? await computer?.materializer.materialize(skill, session)
                 : undefined
 
-        return await renderSkillContent(skill, this.hasComputer(), true, {
-            skillDir,
-            needsMaterialization:
-                session != null && session.backend !== 'local' && !skillDir
+        return await renderSkillContent(skill, true, {
+            skillDir
         })
     }
 
@@ -344,19 +361,38 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 if (!conversationId) return next()
 
                 const sub = runtime.configurable?.subagentContext
+                const cwd =
+                    this.ctx.chatluna_agent?.computer.getPromptWorkdir(
+                        conversationId
+                    )
+                const status = this.ctx.chatluna_agent?.computer.getStatus()
+                const remote =
+                    status != null && status.defaultProvider !== 'local'
                 const skills = sub
                     ? []
-                    : this._catalog.filter((s) => s.modelEnabled)
+                    : this._catalog
+                          .filter((s) => s.modelEnabled)
+                          .map((item) => (remote ? { ...item, dir: '' } : item))
                 const current = this._active.get(conversationId)
                 const active = current
-                    ? this._catalog.filter((s) => current.has(s.id))
+                    ? this._catalog
+                          .filter((s) => current.has(s.id))
+                          .map((item) =>
+                              remote
+                                  ? {
+                                        ...item,
+                                        dir: getRemoteSkillDir(item.name)
+                                    }
+                                  : item
+                          )
                     : []
 
                 if (skills.length > 0 || active.length > 0 || !sub) {
                     const msg = renderAvailableSkills(
                         skills,
                         active,
-                        getSkillsRootPath(this.ctx)
+                        remote ? undefined : getSkillsRootPath(this.ctx),
+                        cwd
                     )
                     runtime.result.push(msg)
                     runtime.usedTokens += await countMessageTokens(

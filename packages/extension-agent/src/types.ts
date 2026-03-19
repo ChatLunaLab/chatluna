@@ -107,6 +107,9 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/killComputerBackgroundJob': (
             jobId: string
         ) => Promise<ActionResult>
+        'chatluna-agent/removeComputerBackgroundJob': (
+            jobId: string
+        ) => Promise<ActionResult>
         'chatluna-agent/readComputerFile': (input: {
             path: string
             backend?: ComputerBackendType

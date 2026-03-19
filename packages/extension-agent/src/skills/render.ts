@@ -8,9 +8,21 @@ import { listSkillResources, ScannedSkill } from './scan'
 export function renderAvailableSkills(
     skills: SkillInfo[],
     active: SkillInfo[],
-    root?: string
+    root?: string,
+    cwd?: string
 ) {
     const lines = ['<available_skills>']
+
+    lines.push(
+        ...(cwd
+            ? [
+                  `You may use available computer-use capabilities when the environment provides them. Working directory: ${escapeXml(cwd)}.`
+              ]
+            : [
+                  "By currently, no computer-use capabilities are available. Please don't try run or execute any computer-use capabilities."
+              ]),
+        ''
+    )
 
     if (root) {
         lines.push(
@@ -71,11 +83,9 @@ export function renderAvailableSkills(
 
 export async function renderSkillContent(
     skill: ScannedSkill,
-    hasComputer: boolean,
     loaded = false,
     options: {
         skillDir?: string
-        needsMaterialization?: boolean
     } = {}
 ) {
     const resources = await listSkillResources(skill.dir)
@@ -85,10 +95,8 @@ export async function renderSkillContent(
             ? 'The following skill is now active for the current conversation.'
             : 'The following skill remains active for the current conversation.',
         `Description: ${skill.description}`,
+        ...(options.skillDir ? [`Directory: ${options.skillDir}`] : []),
         ...(skill.homepage ? [`Homepage: ${skill.homepage}`] : []),
-        ...(skill.compatibility
-            ? [`Compatibility: ${skill.compatibility}`]
-            : []),
         ...(skill.requires
             ? [
                   `Requirements: ${[
@@ -117,21 +125,9 @@ export async function renderSkillContent(
         ...(skill.allowedTools && skill.allowedTools.length > 0
             ? [`Allowed tools: ${skill.allowedTools.join(', ')}`]
             : []),
-        ...(hasComputer
-            ? [
-                  'You may use available computer-use capabilities when the environment provides them.'
-              ]
-            : [
-                  "By currently, no computer-use capabilities are available. Please don't try run or execute any computer-use capabilities."
-              ]),
         '',
         skill.body.length > 0 ? skill.body : skill.raw,
         '',
-        ...(options.needsMaterialization
-            ? [
-                  'Skill resources need to be read from the host and written to the execution environment before use.'
-              ]
-            : []),
         ...(resources.length > 0
             ? [
                   '<skill_resources>',

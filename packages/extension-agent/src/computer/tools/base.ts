@@ -22,6 +22,16 @@ export abstract class ComputerToolBase extends StructuredTool {
         return await this.computer.getToolSession(runConfig)
     }
 
+    protected log(session: ComputerSessionApi, message: string) {
+        this.computer.ctx.logger.info(
+            `[computer:${session.backend}] ${message}`
+        )
+    }
+
+    protected withBackend(session: ComputerSessionApi, text: string) {
+        return `Backend: ${session.backend}\n${text}`
+    }
+
     protected async formatLargeResult(
         session: ComputerSessionApi,
         name: string,
@@ -32,7 +42,7 @@ export abstract class ComputerToolBase extends StructuredTool {
             return text
         }
 
-        const base = session.getScopePath() || session.cwd || process.cwd()
+        const base = session.cwd || session.getScopePath() || process.cwd()
         const root = /^[A-Za-z]:[\\/]?$/.test(base)
             ? `${base[0]}:/`
             : base === '/'

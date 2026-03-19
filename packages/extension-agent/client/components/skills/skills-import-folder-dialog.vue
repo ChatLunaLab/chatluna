@@ -1,7 +1,7 @@
 <template>
     <el-dialog
         :model-value="visible"
-        title="从本地文件夹导入 Skill"
+        title="从本地文件导入 Skill"
         width="860px"
         destroy-on-close
         :close-on-click-modal="false"
@@ -9,26 +9,25 @@
     >
         <div class="dialog-body">
             <input
-                ref="folderInput"
+                ref="fileInput"
                 type="file"
                 class="hidden-input"
-                multiple
-                webkitdirectory
+                accept=".zip,.skill,application/zip"
                 @change="handleSelect"
             />
 
             <div class="form-card">
-                <div class="field-label">本地文件夹</div>
+                <div class="field-label">本地文件</div>
                 <div class="field-row">
                     <div class="folder-copy">
                         <div class="folder-name">
-                            {{ name || '尚未选择文件夹' }}
+                            {{ name || '尚未选择文件' }}
                         </div>
                         <div class="field-hint">
                             {{
-                                files.length > 0
-                                    ? `已读取 ${files.length} 个文件，并自动完成预览。`
-                                    : '选择一个本地文件夹后，会先生成预览并校验 Skill 包结构。'
+                                data
+                                    ? '已读取压缩包，并自动完成预览。'
+                                    : '选择一个 .zip 或 .skill 文件后，会先生成预览并校验 Skill 包结构。'
                             }}
                         </div>
                     </div>
@@ -37,7 +36,7 @@
                         :loading="reading || previewing"
                         @click="openPicker"
                     >
-                        选择文件夹
+                        选择 .zip / .skill
                     </el-button>
                 </div>
             </div>
@@ -156,7 +155,7 @@
                             </div>
 
                             <div v-else class="empty-copy">
-                                当前文件夹里没有识别到 Skill 包。
+                                当前压缩包里没有识别到 Skill 包。
                             </div>
                         </el-scrollbar>
                     </div>
@@ -169,7 +168,7 @@
             <el-button
                 type="primary"
                 :loading="importing"
-                :disabled="!preview || !preview.valid || files.length < 1"
+                :disabled="!preview || !preview.valid || !data"
                 @click="importSkills"
             >
                 导入并启用
@@ -183,10 +182,7 @@ import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
 import { Document, FolderOpened } from '@element-plus/icons-vue'
-import type {
-    SkillImportFile,
-    SkillImportPreviewResult
-} from '../../../src/types'
+import type { SkillImportPreviewResult } from '../../../src/types'
 import { buildImportTree } from './import-tree'
 
 const props = defineProps<{
@@ -198,9 +194,9 @@ const emit = defineEmits<{
     refresh: []
 }>()
 
-const folderInput = ref<HTMLInputElement>()
+const fileInput = ref<HTMLInputElement>()
 const name = ref('')
-const files = ref<SkillImportFile[]>([])
+const data = ref('')
 const preview = ref<SkillImportPreviewResult>()
 const reading = ref(false)
 const previewing = ref(false)
@@ -214,7 +210,7 @@ watch(
         }
 
         name.value = ''
-        files.value = []
+        data.value = ''
         preview.value = undefined
     }
 )
@@ -222,47 +218,39 @@ watch(
 const tree = computed(() => buildImportTree(preview.value?.entries ?? []))
 
 function openPicker() {
-    folderInput.value?.click()
+    fileInput.value?.click()
 }
 
 async function handleSelect(event: Event) {
     const input = event.target as HTMLInputElement
-    const selected = [...(input.files ?? [])]
+    const file = input.files?.[0]
     input.value = ''
 
-    if (selected.length < 1) {
+    if (!file) {
+        return
+    }
+
+    if (!/\.(zip|skill)$/i.test(file.name)) {
+        ElMessage.warning('请选择 .zip 或 .skill 文件。')
         return
     }
 
     try {
         reading.value = true
         preview.value = undefined
-        name.value =
-            selected[0].webkitRelativePath.split('/')[0] || selected[0].name
-        files.value = (
-            await Promise.all(
-                selected.map(async (file) => ({
-                    path: normalizeFilePath(
-                        file.webkitRelativePath || file.name,
-                        name.value
-                    ),
-                    data: bufferToBase64(await file.arrayBuffer())
-                }))
-            )
-        )
-            .filter((item) => item.path.length > 0)
-            .sort((a, b) => a.path.localeCompare(b.path))
+        name.value = file.name
+        data.value = bufferToBase64(await file.arrayBuffer())
 
         previewing.value = true
         preview.value = await send('chatluna-agent/previewSkillImport', {
-            type: 'folder',
+            type: 'zip',
             name: name.value,
-            files: files.value
+            data: data.value
         })
     } catch {
-        files.value = []
+        data.value = ''
         preview.value = undefined
-        ElMessage.error('读取文件夹失败，请稍后重试。')
+        ElMessage.error('读取文件失败，请稍后重试。')
     } finally {
         reading.value = false
         previewing.value = false
@@ -270,17 +258,17 @@ async function handleSelect(event: Event) {
 }
 
 async function importSkills() {
-    if (!preview.value?.valid || files.value.length < 1) {
-        ElMessage.warning('当前文件夹预览未通过，暂时不能导入。')
+    if (!preview.value?.valid || !data.value) {
+        ElMessage.warning('当前文件预览未通过，暂时不能导入。')
         return
     }
 
     try {
         importing.value = true
         const result = await send('chatluna-agent/importSkills', {
-            type: 'folder',
+            type: 'zip',
             name: name.value,
-            files: files.value
+            data: data.value
         })
 
         emit('update:visible', false)
@@ -295,15 +283,6 @@ async function importSkills() {
     } finally {
         importing.value = false
     }
-}
-
-function normalizeFilePath(path: string, root: string) {
-    const next = path.replaceAll('\\', '/')
-    if (next.startsWith(`${root}/`)) {
-        return next.slice(root.length + 1)
-    }
-
-    return next
 }
 
 function bufferToBase64(buffer: ArrayBuffer) {

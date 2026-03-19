@@ -1,9 +1,9 @@
 <template>
-    <div class="desktop-panel">
+    <div class="desktop-panel" :class="{ compact: props.compactMode }">
         <div class="toolbar-row">
             <div>
                 <div class="section-title">Desktop</div>
-                <div class="section-copy">
+                <div v-if="!props.hideDesc" class="section-copy">
                     支持桌面能力的 backend
                     会在这里提供截图、点击、输入和滚动操作。
                 </div>
@@ -50,7 +50,7 @@
 
         <div v-else class="placeholder-box">
             <div class="placeholder-title">当前 backend 没有桌面能力</div>
-            <div class="placeholder-copy">
+            <div v-if="!props.hideDesc" class="placeholder-copy">
                 Desktop streaming is only available with desktop-capable
                 providers such as E2B.
             </div>
@@ -70,6 +70,8 @@ import type {
 
 const props = defineProps<{
     config: ComputerConfig
+    compactMode?: boolean
+    hideDesc?: boolean
     status: ComputerStatus
 }>()
 
@@ -216,6 +218,10 @@ async function handleWheel(event: WheelEvent) {
     padding: 18px 0 0;
 }
 
+.desktop-panel.compact {
+    padding-top: 14px;
+}
+
 .toolbar-row {
     display: flex;
     justify-content: space-between;
@@ -251,11 +257,13 @@ async function handleWheel(event: WheelEvent) {
     border-radius: 12px;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 24%);
-    background: color-mix(
-        in srgb,
-        var(--k-page-bg),
-        var(--k-side-bg) 20%
-    );
+    background: color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 20%);
+}
+
+.desktop-panel.compact .desktop-shell,
+.desktop-panel.compact .placeholder-box {
+    margin-top: 14px;
+    padding: 14px;
 }
 
 .desktop-meta {
@@ -271,6 +279,10 @@ async function handleWheel(event: WheelEvent) {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 220px) auto;
     gap: 8px;
     margin-bottom: 14px;
+}
+
+.desktop-panel.compact .desktop-actions {
+    margin-bottom: 12px;
 }
 
 .desktop-stage {

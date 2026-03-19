@@ -32,7 +32,8 @@ export class GlobTool extends ComputerToolBase {
     ) {
         const computer = await this.getSession(toolConfig)
 
-        this.computer.ctx.logger.info(
+        this.log(
+            computer,
             `${MSG_FINDING}: ${input.pattern}${input.path ? ` in ${input.path}` : ''}`
         )
 
@@ -42,13 +43,14 @@ export class GlobTool extends ComputerToolBase {
                 return 'No files matched.'
             }
 
-            this.computer.ctx.logger.info(
-                `${MSG_FOUND} ${results.length} 个文件`
-            )
-            return await this.formatLargeResult(
+            this.log(computer, `${MSG_FOUND} ${results.length} 个文件`)
+            return this.withBackend(
                 computer,
-                'glob',
-                results.join('\n')
+                await this.formatLargeResult(
+                    computer,
+                    'glob',
+                    results.join('\n')
+                )
             )
         } catch (err) {
             return this.formatResult(

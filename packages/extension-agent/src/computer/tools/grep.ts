@@ -42,7 +42,8 @@ export class GrepTool extends ComputerToolBase {
     ) {
         const computer = await this.getSession(toolConfig)
 
-        this.computer.ctx.logger.info(
+        this.log(
+            computer,
             `${MSG_SEARCHING}: ${input.pattern}${input.include ? ` (${input.include})` : ''}${input.path ? ` in ${input.path}` : ''}`
         )
 
@@ -56,13 +57,14 @@ export class GrepTool extends ComputerToolBase {
                 return 'No matches found.'
             }
 
-            this.computer.ctx.logger.info(
-                `${MSG_FOUND} ${results.length} 条匹配`
-            )
-            return await this.formatLargeResult(
+            this.log(computer, `${MSG_FOUND} ${results.length} 条匹配`)
+            return this.withBackend(
                 computer,
-                'grep',
-                results.join('\n')
+                await this.formatLargeResult(
+                    computer,
+                    'grep',
+                    results.join('\n')
+                )
             )
         } catch (err) {
             return this.formatResult(

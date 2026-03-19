@@ -25,7 +25,7 @@ interface SandboxWrapper {
     commands: E2BSandbox['commands']
     pty: E2BSandbox['pty']
     setTimeout(timeoutMs: number): Promise<void>
-    pause(): Promise<void>
+    pause(apiKey?: string): Promise<void>
     kill(): Promise<void>
     desktop?: DesktopSandbox
 }
@@ -36,6 +36,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     readonly capabilities = [...CAPABILITIES]
 
     private _connected = false
+    private _home = '/'
     private _root: string
     private _cwd: string
     private _sandbox?: SandboxWrapper
@@ -47,7 +48,7 @@ export class E2BComputerSession implements ComputerSessionApi {
         id = randomUUID()
     ) {
         this.sessionId = id
-        this._root = options.cwd || '/workspace'
+        this._root = options.cwd || '~'
         this._cwd = this._root
     }
 
@@ -93,6 +94,31 @@ export class E2BComputerSession implements ComputerSessionApi {
 
         this._sandboxId = this._sandbox.sandboxId
         await this._sandbox.setTimeout(this.cfg.timeoutMs)
+        const current = await this._sandbox.commands.run('pwd', {
+            timeoutMs: 5000
+        })
+        this._home = current.stdout.trim() || '/'
+
+        if (this.options.cwd) {
+            const cwd = this.resolvePath(this.options.cwd)
+            const stat = await this._sandbox.commands.run(
+                `if [ -d ${quoteShell(cwd)} ]; then printf __dir__; fi`,
+                {
+                    timeoutMs: 5000
+                }
+            )
+            if (stat.stdout.trim() === '__dir__') {
+                this._root = cwd
+                this._cwd = cwd
+            } else {
+                this._root = this._home
+                this._cwd = this._root
+            }
+        } else {
+            this._root = this._home
+            this._cwd = this._root
+        }
+
         this._connected = true
     }
 
@@ -108,7 +134,7 @@ export class E2BComputerSession implements ComputerSessionApi {
         }
 
         if (this.cfg.keepAlive) {
-            await this._sandbox.pause()
+            await this._sandbox.pause(this.resolveSecret(this.cfg.apiKey))
         } else {
             await this._sandbox.kill()
         }
@@ -121,18 +147,19 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
+        const target = this.resolvePath(filePath)
         const stat = await this.execute(
-            `if [ -d ${quoteShell(filePath)} ]; then printf __dir__; fi`,
+            `if [ -d ${quoteShell(target)} ]; then printf __dir__; fi`,
             { timeout: 5000 }
         )
         if (stat.stdout.trim() === '__dir__') {
             const result = await this.execute(
-                `find ${quoteShell(filePath)} -mindepth 1 -maxdepth 1 \\( -type d -printf '%p/\\n' -o -type f -printf '%p\\n' \\) | sort`
+                `find ${quoteShell(target)} -mindepth 1 -maxdepth 1 \\( -type d -printf '%p/\\n' -o -type f -printf '%p\\n' \\) | sort`
             )
             return result.stdout.trim()
         }
 
-        const raw = await this.ensureSandbox().files.read(filePath)
+        const raw = await (await this.ensureSandbox()).files.read(target)
         const text = String(raw)
         if (offset == null && limit == null) {
             return text
@@ -149,7 +176,9 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async writeFile(filePath: string, content: string) {
-        await this.ensureSandbox().files.write(filePath, content)
+        await (
+            await this.ensureSandbox()
+        ).files.write(this.resolvePath(filePath), content)
     }
 
     async editFile(
@@ -204,7 +233,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        const dir = searchPath || this._root
+        const dir = searchPath ? this.resolvePath(searchPath) : this._root
         const cmd = include
             ? `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(include)} | xargs -r grep -nE ${quoteShell(pattern)}`
             : `grep -R -nE ${quoteShell(pattern)} ${quoteShell(dir)}`
@@ -217,7 +246,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async glob(pattern: string, searchPath?: string) {
-        const dir = searchPath || this._root
+        const dir = searchPath ? this.resolvePath(searchPath) : this._root
         const result = await this.execute(
             `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(pattern)}`
         )
@@ -229,25 +258,32 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
-        const result = await this.ensureSandbox().commands.run(command, {
-            cwd: options.workdir || this._cwd,
+        const cwd = options.workdir
+            ? this.resolvePath(options.workdir)
+            : this._cwd
+        const result = await (
+            await this.ensureSandbox()
+        ).commands.run(command, {
+            cwd,
             timeoutMs: options.timeout,
             envs: options.env
         })
-        this._cwd = options.workdir || this._cwd
+        this._cwd = cwd
         return mapCommandResult(result)
     }
 
     async readAsset(filePath: string) {
         const result = await this.execute(
-            `base64 ${quoteShell(filePath)} | tr -d '\n'`
+            `base64 ${quoteShell(this.resolvePath(filePath))} | tr -d '\n'`
         )
         return result.stdout.trim()
     }
 
     async openAsset(filePath: string) {
-        const info = await this.ensureSandbox().files.getInfo(filePath)
-        const stream = await this.ensureSandbox().files.read(filePath, {
+        const sandbox = await this.ensureSandbox()
+        const target = this.resolvePath(filePath)
+        const info = await sandbox.files.getInfo(target)
+        const stream = await sandbox.files.read(target, {
             format: 'stream'
         })
         const mimeType = mimeTypes.lookup(filePath)
@@ -261,12 +297,13 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async createTerminal(options: TerminalOptions = {}) {
-        const sandbox = this.ensureSandbox()
+        const sandbox = await this.ensureSandbox()
         const callbacks = new Set<(data: string) => void>()
+        const cwd = options.cwd ? this.resolvePath(options.cwd) : this._cwd
         const handle = await sandbox.pty.create({
             cols: options.cols ?? 80,
             rows: options.rows ?? 24,
-            cwd: options.cwd || this._cwd,
+            cwd,
             timeoutMs: this.cfg.timeoutMs,
             onData: (data) => {
                 const text = Buffer.from(data).toString('utf8')
@@ -408,9 +445,9 @@ export class E2BComputerSession implements ComputerSessionApi {
         return this._root
     }
 
-    private ensureSandbox() {
+    private async ensureSandbox() {
         if (!this._sandbox) {
-            throw new Error('E2B sandbox is not connected.')
+            await this.connect()
         }
 
         return this._sandbox
@@ -422,6 +459,22 @@ export class E2BComputerSession implements ComputerSessionApi {
 
     private usesDesktop() {
         return this.cfg.desktopTemplate.length > 0
+    }
+
+    private resolvePath(value: string) {
+        if (value === '~') {
+            return this._home
+        }
+
+        if (value.startsWith('~/')) {
+            return `${this._home}/${value.slice(2)}`
+        }
+
+        if (value.startsWith('/')) {
+            return value
+        }
+
+        return `${this._cwd.replace(/[\\/]+$/, '')}/${value}`
     }
 
     private resolveSecret(value: string) {
@@ -450,8 +503,8 @@ function wrapSandbox(sandbox: E2BSandbox | DesktopSandbox): SandboxWrapper {
         commands: sandbox.commands,
         pty: sandbox.pty,
         setTimeout: (timeoutMs) => sandbox.setTimeout(timeoutMs),
-        pause: async () => {
-            await sandbox.pause()
+        pause: async (apiKey) => {
+            await sandbox.pause(apiKey ? { apiKey } : undefined)
         },
         kill: () => sandbox.kill(),
         desktop: sandbox instanceof DesktopSandbox ? sandbox : undefined

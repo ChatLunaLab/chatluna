@@ -10,14 +10,17 @@ const MSG_PUBLISHING = '发布文件'
 export class PublishFileTool extends ComputerToolBase {
     name = 'file_publish'
 
-    description = `Publish a file generated in the computer environment so Koishi can send it to the user.
+    description = `Publish files generated in the computer environment so Koishi can send them to the user.
 
 Usage:
 - Use this after bash creates an artifact like a zip, image, audio file, or report
-- The file must already exist in the current computer backend`
+- Every file must already exist in the current computer backend`
 
     schema = z.object({
-        path: z.string().describe('Absolute file path to publish to the user.')
+        paths: z
+            .array(z.string())
+            .min(1)
+            .describe('Absolute file paths to publish to the user.')
     })
 
     async _call(
@@ -25,15 +28,24 @@ Usage:
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        this.computer.ctx.logger.info(`${MSG_PUBLISHING}: ${input.path}`)
+        const computer = await this.getSession(toolConfig)
+        this.log(computer, `${MSG_PUBLISHING}: ${input.paths.join(', ')}`)
 
         try {
-            const file = await this.computer.publishFile(input.path, toolConfig)
-            return `Published file: ${file.url}`
+            const files = await this.computer.publishFile(
+                input.paths,
+                toolConfig
+            )
+            return this.withBackend(
+                computer,
+                `Published files:\n${files
+                    .map((file) => `- ${file.name}: ${file.url}`)
+                    .join('\n')}`
+            )
         } catch (err) {
             return this.formatResult(
                 false,
-                `File publish failed (Check your path first): ${getErrorMessage(err)}`
+                `File publish failed (Check your paths first): ${getErrorMessage(err)}`
             )
         }
     }

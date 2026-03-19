@@ -20,12 +20,17 @@
             </el-input>
         </div>
 
-        <div v-if="filteredAgents.length > 0" class="card-list">
+        <div
+            v-if="filteredAgents.length > 0"
+            class="card-list"
+            :class="{ compact: props.compactMode }"
+        >
             <div
                 v-for="item in filteredAgents"
                 :key="item.id"
                 class="agent-card"
                 :class="{
+                    centered: props.hideDesc,
                     muted: !!item.shadowedBy,
                     invalid: item.state !== 'ready'
                 }"
@@ -39,7 +44,7 @@
 
                         <div class="agent-copy">
                             <div class="agent-title">{{ item.name }}</div>
-                            <div class="agent-name">
+                            <div v-if="!props.hideDesc" class="agent-name">
                                 {{ item.source
                                 }}{{ item.format ? ` / ${item.format}` : '' }}
                             </div>
@@ -53,11 +58,11 @@
                     />
                 </div>
 
-                <div class="agent-desc">
+                <div v-if="!props.hideDesc" class="agent-desc">
                     {{ item.description || '这个 agent 暂时没有说明。' }}
                 </div>
 
-                <div class="agent-meta">
+                <div v-if="!props.hideDesc" class="agent-meta">
                     <div class="agent-path">
                         {{ item.path || item.preset || '内置定义' }}
                     </div>
@@ -117,6 +122,8 @@ import type { SubAgentInfo } from '../../../src/types'
 
 const props = defineProps<{
     agents: SubAgentInfo[]
+    compactMode: boolean
+    hideDesc: boolean
 }>()
 
 defineEmits<{
@@ -184,7 +191,7 @@ function stateTag(state: SubAgentInfo['state']) {
 }
 
 .panel-title {
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--k-text-dark);
 }
@@ -208,6 +215,10 @@ function stateTag(state: SubAgentInfo['state']) {
     overflow: hidden;
 }
 
+.card-list.compact .agent-desc {
+    -webkit-line-clamp: 2;
+}
+
 .search-input {
     width: min(360px, 100%);
 }
@@ -219,6 +230,10 @@ function stateTag(state: SubAgentInfo['state']) {
     flex-wrap: wrap;
     gap: 14px var(--card-gap);
     padding: 16px;
+}
+
+.card-list.compact {
+    --card-cols: 4;
 }
 
 .agent-card {
@@ -265,6 +280,11 @@ function stateTag(state: SubAgentInfo['state']) {
     align-items: flex-start;
 }
 
+.agent-card.centered .agent-top {
+    align-items: center;
+    min-height: 34px;
+}
+
 .agent-brand {
     display: flex;
     justify-content: flex-start;
@@ -272,14 +292,29 @@ function stateTag(state: SubAgentInfo['state']) {
     min-width: 0;
 }
 
+.agent-card.centered .agent-brand {
+    align-items: center;
+}
+
 .agent-copy {
     min-width: 0;
 }
 
+.agent-card.centered .agent-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 .agent-title {
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--k-text-dark);
+    line-height: 1.4;
+}
+
+.agent-name {
+    font-size: 14px;
 }
 
 .agent-icon {
@@ -328,17 +363,29 @@ function stateTag(state: SubAgentInfo['state']) {
     .card-list {
         --card-cols: 4;
     }
+
+    .card-list.compact {
+        --card-cols: 4;
+    }
 }
 
 @media (max-width: 1320px) {
     .card-list {
         --card-cols: 3;
     }
+
+    .card-list.compact {
+        --card-cols: 4;
+    }
 }
 
 @media (max-width: 980px) {
     .card-list {
         --card-cols: 2;
+    }
+
+    .card-list.compact {
+        --card-cols: 3;
     }
 }
 
@@ -356,6 +403,10 @@ function stateTag(state: SubAgentInfo['state']) {
         --card-cols: 1;
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .card-list.compact {
+        --card-cols: 1;
     }
 
     .agent-card {

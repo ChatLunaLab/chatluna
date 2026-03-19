@@ -1,10 +1,10 @@
 <template>
-    <div class="panel">
+    <div class="panel" :class="{ compact: props.compactMode }">
         <div class="panel-header">
             <div>
                 <div class="panel-title">后端状态</div>
-                <div class="panel-description">
-                    查看可用性、会话数量和能力矩阵。
+                <div v-if="!props.hideDesc" class="panel-description">
+                    查看可用性和会话数量。
                 </div>
             </div>
         </div>
@@ -18,7 +18,10 @@
                 >
                     <div>
                         <div class="row-title">{{ item.label }}</div>
-                        <div class="row-description">
+                        <div
+                            v-if="!props.hideDesc || item.status.error"
+                            class="row-description"
+                        >
                             {{
                                 item.status.error ||
                                 stateLabel(item.status.state)
@@ -40,57 +43,19 @@
                     </div>
                 </div>
             </div>
-
-            <div class="matrix-wrap">
-                <table class="matrix-table">
-                    <thead>
-                        <tr>
-                            <th>Capability</th>
-                            <th>E2B</th>
-                            <th>open-terminal</th>
-                            <th>Local</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="cap in capabilities" :key="cap">
-                            <td>{{ cap }}</td>
-                            <td>{{ supports('e2b', cap) }}</td>
-                            <td>{{ supports('open-terminal', cap) }}</td>
-                            <td>{{ supports('local', cap) }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type {
-    ComputerBackendType,
-    ComputerCapability,
-    ComputerConfig,
-    ComputerStatus
-} from '../../../src/types'
+import type { ComputerStatus } from '../../../src/types'
 
 const props = defineProps<{
-    config: ComputerConfig
+    compactMode?: boolean
+    hideDesc?: boolean
     status: ComputerStatus
 }>()
-
-const capabilities: ComputerCapability[] = [
-    'file_read',
-    'file_write',
-    'file_edit',
-    'grep',
-    'glob',
-    'bash',
-    'terminal_pty',
-    'desktop_stream',
-    'desktop_screenshot',
-    'desktop_action'
-]
 
 const backends = computed(() => [
     { key: 'e2b', label: 'E2B', status: props.status.backends.e2b },
@@ -105,15 +70,6 @@ const backends = computed(() => [
         status: props.status.backends.local
     }
 ])
-
-function supports(type: ComputerBackendType, cap: ComputerCapability) {
-    const backend = props.status.backends[type]
-    if (backend.state === 'unsupported') {
-        return '-'
-    }
-
-    return backend.capabilities.includes(cap) ? '支持' : ''
-}
 
 function stateLabel(state: ComputerStatus['backends']['local']['state']) {
     if (state === 'connected') return '已连接'
@@ -138,6 +94,10 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
+}
+
+.panel.compact .panel-header {
+    padding: 14px 16px;
 }
 
 .panel-header {
@@ -168,10 +128,19 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     padding: 18px;
 }
 
+.panel.compact .panel-body {
+    gap: 14px;
+    padding: 16px;
+}
+
 .backend-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.panel.compact .backend-list {
+    gap: 10px;
 }
 
 .backend-row {
@@ -193,33 +162,6 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;
-}
-
-.matrix-wrap {
-    overflow-x: auto;
-}
-
-.matrix-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-}
-
-.matrix-table th,
-.matrix-table td {
-    text-align: left;
-    padding: 10px 8px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 24%);
-}
-
-.matrix-table th {
-    font-weight: 600;
-    color: var(--k-text-dark);
-}
-
-.matrix-table td {
-    color: var(--k-text-light);
 }
 
 @media (max-width: 768px) {

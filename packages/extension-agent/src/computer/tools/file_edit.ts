@@ -42,9 +42,7 @@ Usage:
     ) {
         const computer = await this.getSession(toolConfig)
 
-        toolConfig.configurable.this.computer.ctx.logger.info(
-            `${MSG_EDITING}: ${input.filePath}`
-        )
+        this.log(computer, `${MSG_EDITING}: ${input.filePath}`)
 
         try {
             const result = await computer.editFile(
@@ -58,10 +56,14 @@ Usage:
                 return `oldString not found in ${input.filePath}`
             }
 
-            toolConfig.configurable.this.computer.ctx.logger.info(
+            this.log(
+                computer,
                 `${MSG_DONE}: ${input.filePath} (替换 ${result.replacements} 处)`
             )
-            return `Replaced ${result.replacements} occurrence(s) in ${input.filePath}\n\nContext (> marks modified lines):\n${result.context}`
+            return this.withBackend(
+                computer,
+                `Replaced ${result.replacements} occurrence(s) in ${input.filePath}\n\nContext (> marks modified lines):\n${result.context}`
+            )
         } catch (err) {
             return this.formatResult(
                 false,

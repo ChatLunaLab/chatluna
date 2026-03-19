@@ -1,5 +1,9 @@
 <template>
-    <div class="skills-page" v-loading="loading">
+    <div
+        class="skills-page"
+        :class="{ compact: compactMode }"
+        v-loading="loading"
+    >
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
@@ -7,11 +11,27 @@
                 </div>
 
                 <div class="actions-section">
+                    <el-button
+                        size="small"
+                        :type="compactMode ? 'primary' : 'default'"
+                        plain
+                        @click="compactMode = !compactMode"
+                    >
+                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
                     <el-button @click="showGithubDialog = true">
                         从 Github 导入
                     </el-button>
                     <el-button @click="showFolderDialog = true">
-                        从本地文件夹导入
+                        从本地文件导入
                     </el-button>
                     <el-button @click="showSettingsDialog = true">
                         管理设置
@@ -43,12 +63,17 @@
                 </div>
             </div>
 
-            <div v-if="filteredSkills.length > 0" class="card-list">
+            <div
+                v-if="filteredSkills.length > 0"
+                class="card-list"
+                :class="{ compact: compactMode }"
+            >
                 <div
                     v-for="item in filteredSkills"
                     :key="item.id"
                     class="skill-card"
                     :class="{
+                        centered: hideDesc,
                         muted: !item.visible,
                         invalid: item.state !== 'ready',
                         readonly: isReadonly(item)
@@ -68,7 +93,7 @@
                                             : item.name
                                     }}
                                 </div>
-                                <div class="skill-name">
+                                <div v-if="!hideDesc" class="skill-name">
                                     {{ `${item.source} / ${item.scope}` }}
                                 </div>
                             </div>
@@ -84,11 +109,11 @@
                         />
                     </div>
 
-                    <div class="skill-description">
+                    <div v-if="!hideDesc" class="skill-description">
                         {{ item.description || '这个技能暂时没有说明。' }}
                     </div>
 
-                    <div class="skill-path">
+                    <div v-if="!hideDesc" class="skill-path">
                         {{ item.path || '当前没有可用路径' }}
                     </div>
 
@@ -114,30 +139,32 @@
                             </el-tag>
                         </div>
 
-                        <div v-if="item.homepage" class="skill-meta">
+                        <div
+                            v-if="!hideDesc && item.homepage"
+                            class="skill-meta"
+                        >
                             主页：{{ item.homepage }}
                         </div>
 
-                        <div v-if="item.compatibility" class="skill-meta">
+                        <div
+                            v-if="!hideDesc && item.compatibility"
+                            class="skill-meta"
+                        >
                             兼容性：{{ item.compatibility }}
                         </div>
 
-                        <div v-if="formatRequires(item)" class="skill-meta">
+                        <div
+                            v-if="!hideDesc && formatRequires(item)"
+                            class="skill-meta"
+                        >
                             依赖要求：{{ formatRequires(item) }}
                         </div>
 
-                        <div v-if="formatInstall(item)" class="skill-meta">
-                            安装方式：{{ formatInstall(item) }}
-                        </div>
-
                         <div
-                            v-if="
-                                item.allowedTools &&
-                                item.allowedTools.length > 0
-                            "
+                            v-if="!hideDesc && formatInstall(item)"
                             class="skill-meta"
                         >
-                            允许使用的工具：{{ item.allowedTools.join(', ') }}
+                            安装方式：{{ formatInstall(item) }}
                         </div>
 
                         <div class="skill-actions">
@@ -238,6 +265,7 @@ import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
 import { MagicStick, Search } from '@element-plus/icons-vue'
 import CodeEditor from '../shared/code-editor.vue'
+import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import SkillsDiagnosticsDialog from './skills-diagnostics-dialog.vue'
 import SkillsImportFolderDialog from './skills-import-folder-dialog.vue'
 import SkillsImportGithubDialog from './skills-import-github-dialog.vue'
@@ -286,6 +314,8 @@ defineEmits<{
 }>()
 
 const filterText = ref('')
+const compactMode = useCompactMode('skills')
+const hideDesc = useHideDesc('skills')
 const skillState = ref<Record<string, boolean>>({})
 const skillBusy = ref<Record<string, boolean>>({})
 
@@ -504,6 +534,10 @@ function base64ToBlob(data: string, type: string) {
     padding-bottom: 56px;
 }
 
+.skills-page.compact {
+    width: min(100%, 1440px);
+}
+
 .toolbar-container {
     position: sticky;
     top: 0;
@@ -531,7 +565,7 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .page-title {
-    font-size: 19px;
+    font-size: 24px;
     font-weight: 600;
     letter-spacing: 0.01em;
     color: var(--k-text-dark);
@@ -541,6 +575,7 @@ function base64ToBlob(data: string, type: string) {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .panel {
@@ -562,7 +597,7 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .panel-title {
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--k-text-dark);
 }
@@ -593,6 +628,10 @@ function base64ToBlob(data: string, type: string) {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.card-list.compact .skill-description {
+    -webkit-line-clamp: 2;
 }
 
 .dir-list {
@@ -656,9 +695,10 @@ function base64ToBlob(data: string, type: string) {
 
 .setting-title,
 .skill-title {
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--k-text-dark);
+    line-height: 1.4;
 }
 
 .path-copy {
@@ -697,6 +737,10 @@ function base64ToBlob(data: string, type: string) {
     flex-wrap: wrap;
     gap: 14px var(--card-gap);
     padding: 14px 14px 16px;
+}
+
+.card-list.compact {
+    --card-cols: 4;
 }
 
 .skill-card {
@@ -739,6 +783,11 @@ function base64ToBlob(data: string, type: string) {
     align-items: flex-start;
 }
 
+.skill-card.centered .skill-top {
+    align-items: center;
+    min-height: 34px;
+}
+
 .skill-brand {
     display: flex;
     justify-content: flex-start;
@@ -746,12 +795,23 @@ function base64ToBlob(data: string, type: string) {
     min-width: 0;
 }
 
+.skill-card.centered .skill-brand {
+    align-items: center;
+}
+
 .skill-copy {
     min-width: 0;
 }
 
+.skill-card.centered .skill-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 .skill-name {
     margin-top: 4px;
+    font-size: 14px;
 }
 
 .skill-icon {
@@ -792,17 +852,29 @@ function base64ToBlob(data: string, type: string) {
     .card-list {
         --card-cols: 4;
     }
+
+    .card-list.compact {
+        --card-cols: 4;
+    }
 }
 
 @media (max-width: 1320px) {
     .card-list {
         --card-cols: 3;
     }
+
+    .card-list.compact {
+        --card-cols: 4;
+    }
 }
 
 @media (max-width: 1080px) {
     .card-list {
         --card-cols: 2;
+    }
+
+    .card-list.compact {
+        --card-cols: 3;
     }
 }
 
@@ -832,6 +904,10 @@ function base64ToBlob(data: string, type: string) {
         --card-cols: 1;
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .card-list.compact {
+        --card-cols: 1;
     }
 
     .skill-card {

@@ -4,8 +4,8 @@ import { mkdir, rm, stat, writeFile } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { ChatLunaAgentCliService } from '../cli/service'
 import { createSubAgentItemConfig } from '../config/defaults'
-import { migrateFromOldConfig } from '../config/migrate'
 import { getSkillsRootPath, getSubAgentsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import { writeConfig } from '../config/write'
@@ -35,6 +35,7 @@ import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 
 export class ChatLunaAgentService extends Service {
+    public cli: ChatLunaAgentCliService
     public computer: ChatLunaAgentComputerService
     public mcp: ChatLunaAgentMcpService
     public permission: ChatLunaAgentPermissionService
@@ -49,6 +50,7 @@ export class ChatLunaAgentService extends Service {
         const { config, plugin } = args
 
         this.permission = new ChatLunaAgentPermissionService(ctx, config)
+        this.cli = new ChatLunaAgentCliService(ctx, () => this)
         this.computer = new ChatLunaAgentComputerService(ctx, config)
         this.mcp = new ChatLunaAgentMcpService(ctx, config, plugin)
         this.skills = new ChatLunaAgentSkillsService(
@@ -66,6 +68,7 @@ export class ChatLunaAgentService extends Service {
     async start() {
         await Promise.all([
             this.permission.start(),
+            this.cli.start(),
             this.computer.start(),
             this.skills.start(),
             this.subAgent.start(),
@@ -79,6 +82,7 @@ export class ChatLunaAgentService extends Service {
         await this.mcp.stop()
         await this.skills.stop()
         await this.computer.stop()
+        await this.cli.stop()
         await this.permission.stop()
     }
 
@@ -128,7 +132,7 @@ export class ChatLunaAgentService extends Service {
     }
 
     async saveConfig(cfg: AgentConfig) {
-        const next = migrateFromOldConfig(structuredClone(cfg))
+        const next = structuredClone(cfg)
         await writeConfig(this.ctx, next)
         this._setConfig(next)
         await this.reload(next)
@@ -152,6 +156,10 @@ export class ChatLunaAgentService extends Service {
             await this.computer.reload()
             await this.skills.reload()
         })
+    }
+
+    async saveToolConfig(tool: AgentConfig['tool']) {
+        await this.updateConfig('tool', tool)
     }
 
     async saveSubAgentConfig(subAgent: SubAgentConfig) {
@@ -413,9 +421,7 @@ export class ChatLunaAgentService extends Service {
         afterSave?: (cfg: AgentConfig) => Promise<void>
     ) {
         const next = structuredClone(this.args.config)
-        next[section] = migrateFromOldConfig({ [section]: patch } as never)[
-            section
-        ] as AgentConfig[K]
+        next[section] = structuredClone(patch)
         await writeConfig(this.ctx, next)
         this._setConfig(next)
         await afterSave?.(next)

@@ -8,9 +8,18 @@ import { ComputerSessionApi } from './types'
 export class SkillMaterializer {
     private _items = new Map<string, Map<string, string>>()
 
-    async materialize(skill: ScannedSkill, session: ComputerSessionApi) {
+    getPath(skill: ScannedSkill, session: ComputerSessionApi) {
         if (session.backend === 'local') {
             return skill.dir
+        }
+
+        return getRemoteSkillDir(skill.name)
+    }
+
+    async materialize(skill: ScannedSkill, session: ComputerSessionApi) {
+        const root = this.getPath(skill, session)
+        if (session.backend === 'local') {
+            return root
         }
 
         const current = this._items.get(session.sessionId)?.get(skill.id)
@@ -18,12 +27,6 @@ export class SkillMaterializer {
             return current
         }
 
-        const root = posix.join(
-            normalizeRemotePath(session.cwd),
-            '.chatluna',
-            'skills',
-            skill.name
-        )
         const files = await listSkillResources(skill.dir)
 
         await session.writeFile(posix.join(root, 'SKILL.md'), skill.raw)
@@ -58,6 +61,16 @@ export class SkillMaterializer {
     }
 }
 
+export function getRemoteSkillsRoot() {
+    return REMOTE_SKILLS_ROOT
+}
+
+export function getRemoteSkillDir(name: string) {
+    return posix.join(REMOTE_SKILLS_ROOT, name)
+}
+
 function normalizeRemotePath(value: string) {
     return value.replaceAll('\\', '/')
 }
+
+const REMOTE_SKILLS_ROOT = '~/.chatluna/skills'

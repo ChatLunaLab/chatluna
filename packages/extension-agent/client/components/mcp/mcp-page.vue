@@ -1,12 +1,29 @@
 <template>
-    <div class="mcp-page" v-loading="loading">
+    <div class="mcp-page" :class="{ compact: compactMode }" v-loading="loading">
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
                     <div class="page-title">MCP</div>
                 </div>
 
-                <div class="actions-section"></div>
+                <div class="actions-section">
+                    <el-button
+                        size="small"
+                        :type="compactMode ? 'primary' : 'default'"
+                        plain
+                        @click="compactMode = !compactMode"
+                    >
+                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
+                </div>
             </div>
         </div>
 
@@ -29,7 +46,9 @@
             <mcp-servers-view
                 v-if="currentTab === 'servers'"
                 :config="config"
+                :compact-mode="compactMode"
                 :status="status"
+                :hide-desc="hideDesc"
                 @refresh="$emit('refresh')"
             />
             <mcp-json-view
@@ -44,6 +63,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import McpServersView from './mcp-servers-view.vue'
 import McpJsonView from './mcp-json-view.vue'
 import type { McpConfig, McpStatus } from '../../../src/types'
@@ -74,6 +94,8 @@ defineEmits<{
 }>()
 
 const currentTab = ref('servers')
+const compactMode = useCompactMode('mcp')
+const hideDesc = useHideDesc('mcp')
 </script>
 
 <style scoped>
@@ -82,6 +104,10 @@ const currentTab = ref('servers')
     width: min(100%, 1800px);
     margin: 0 auto;
     padding-bottom: 56px;
+}
+
+.mcp-page.compact {
+    width: min(100%, 1440px);
 }
 
 .toolbar-container {
@@ -111,7 +137,7 @@ const currentTab = ref('servers')
 }
 
 .page-title {
-    font-size: 19px;
+    font-size: 24px;
     font-weight: 600;
     letter-spacing: 0.01em;
     color: var(--k-text-dark);

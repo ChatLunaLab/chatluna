@@ -3,9 +3,9 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { computed, ComputedRef } from 'koishi-plugin-chatluna'
 import {
-    AgentExecutorOutput,
     createAgentExecutor,
     createToolsRef,
+    MessageQueue,
     SubagentContext,
     ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -155,6 +155,7 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
             configurable: {
                 session: input.session,
                 model: llm,
+                messageQueue: input.messageQueue,
                 conversationId: input.task.conversationId,
                 preset: input.info.name,
                 userId: input.session.userId,
@@ -245,12 +246,18 @@ async function resolveSkillPrompt(
         info,
         skills.map((item) => item.name)
     )
+    const cwd = ctx.chatluna_agent?.computer.getPromptWorkdir()
+    const status = ctx.chatluna_agent?.computer.getStatus()
+    const remote = status != null && status.defaultProvider !== 'local'
 
     return getMessageContent(
         renderAvailableSkills(
-            skills.filter((item) => list.includes(item.name)),
+            skills
+                .filter((item) => list.includes(item.name))
+                .map((item) => (remote ? { ...item, dir: '' } : item)),
             [],
-            getSkillsRootPath(ctx)
+            remote ? undefined : getSkillsRootPath(ctx),
+            cwd
         ).content
     )
 }
@@ -292,4 +299,5 @@ export interface RunSubAgentTurnOptions {
     refresh: () => Promise<void>
     signal?: AbortSignal
     model?: ChatLunaChatModel
+    messageQueue?: MessageQueue
 }

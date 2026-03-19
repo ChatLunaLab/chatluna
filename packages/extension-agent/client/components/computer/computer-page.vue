@@ -1,13 +1,53 @@
 <template>
-    <div class="computer-page" v-loading="loading">
+    <div
+        class="computer-page"
+        :class="{ compact: compactMode }"
+        v-loading="busy"
+    >
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
-                    <div class="page-title">Computer</div>
+                    <div class="page-title-row">
+                        <div class="page-title">Computer</div>
+                        <el-tag
+                            v-if="dirty"
+                            size="small"
+                            type="warning"
+                            effect="plain"
+                        >
+                            未保存
+                        </el-tag>
+                    </div>
                 </div>
 
                 <div class="actions-section">
-                    <el-button @click="reloadComputer">重新加载</el-button>
+                    <el-button
+                        size="small"
+                        :type="compactMode ? 'primary' : 'default'"
+                        plain
+                        @click="compactMode = !compactMode"
+                    >
+                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
+                    <el-button
+                        type="primary"
+                        :loading="saving"
+                        :disabled="!dirty || reloading"
+                        @click="saveComputer"
+                    >
+                        保存
+                    </el-button>
+                    <el-button :loading="reloading" @click="reloadComputer">
+                        重新加载
+                    </el-button>
                 </div>
             </div>
         </div>
@@ -16,7 +56,7 @@
             <div class="provider-item">
                 <div>
                     <div class="row-title">默认电脑能力后端</div>
-                    <div class="row-description">
+                    <div v-if="!hideDesc" class="row-description">
                         Agent
                         会优先使用这里选择的执行环境，建议优先启用隔离后端，
                         Local 仅在明确知道风险时再打开。
@@ -35,7 +75,7 @@
             <div class="provider-item">
                 <div>
                     <div class="row-title">会话自动关闭</div>
-                    <div class="row-description">
+                    <div v-if="!hideDesc" class="row-description">
                         当会话的空闲时间超过此时间后会自动关闭。
                     </div>
                 </div>
@@ -68,6 +108,12 @@
                 终端
             </div>
             <div
+                :class="['tab', { active: activeTab === 'jobs' }]"
+                @click="activeTab = 'jobs'"
+            >
+                后台任务
+            </div>
+            <div
                 :class="['tab', { active: activeTab === 'files' }]"
                 @click="activeTab = 'files'"
             >
@@ -86,6 +132,8 @@
                 <div v-if="activeTab === 'config'" key="config">
                     <configuration-panel
                         :config="draft"
+                        :compact-mode="compactMode"
+                        :hide-desc="hideDesc"
                         :status="status"
                         :testing="testing"
                         @update:config="updateConfig"
@@ -94,7 +142,20 @@
                 </div>
 
                 <div v-else-if="activeTab === 'terminal'" key="terminal">
-                    <terminal-panel :config="draft" :status="status" />
+                    <terminal-panel
+                        :config="draft"
+                        :status="status"
+                        :job="pendingJob"
+                        @job-handled="pendingJob = undefined"
+                    />
+                </div>
+
+                <div v-else-if="activeTab === 'jobs'" key="jobs">
+                    <background-jobs-panel
+                        :compact-mode="compactMode"
+                        :hide-desc="hideDesc"
+                        @open="openJob"
+                    />
                 </div>
 
                 <div v-else-if="activeTab === 'files'" key="files">
@@ -102,7 +163,12 @@
                 </div>
 
                 <div v-else key="desktop">
-                    <desktop-panel :config="draft" :status="status" />
+                    <desktop-panel
+                        :config="draft"
+                        :compact-mode="compactMode"
+                        :hide-desc="hideDesc"
+                        :status="status"
+                    />
                 </div>
             </Transition>
         </div>
@@ -113,11 +179,14 @@
 import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
+import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import ConfigurationPanel from './configuration-panel.vue'
+import BackgroundJobsPanel from './background-jobs-panel.vue'
 import TerminalPanel from './terminal-panel.vue'
 import FilesPanel from './files-panel.vue'
 import DesktopPanel from './desktop-panel.vue'
 import type {
+    ComputerBackgroundJobInfo,
     ComputerBackendType,
     ComputerConfig,
     ComputerStatus
@@ -221,13 +290,13 @@ const props = withDefaults(
     }
 )
 
-const emit = defineEmits<{
-    refresh: []
-    'save-computer': [value: ComputerConfig]
-}>()
-
 const activeTab = ref('config')
+const compactMode = useCompactMode('computer')
 const draft = ref<ComputerConfig>(cloneConfig(props.config))
+const hideDesc = useHideDesc('computer')
+const pendingJob = ref<ComputerBackgroundJobInfo>()
+const saving = ref(false)
+const reloading = ref(false)
 const testing = ref<Record<ComputerBackendType, boolean>>({
     local: false,
     e2b: false,
@@ -261,9 +330,13 @@ const dirty = computed(() => {
     return JSON.stringify(draft.value) !== JSON.stringify(props.config)
 })
 
+const busy = computed(() => {
+    return props.loading || saving.value || reloading.value
+})
+
 function updateConfig(value: ComputerConfig) {
     draft.value = cloneConfig(value)
-    scheduleComputerSave()
+    localDirty.value = dirty.value
 }
 
 function updateProvider(value: ComputerBackendType) {
@@ -271,7 +344,7 @@ function updateProvider(value: ComputerBackendType) {
         ...draft.value,
         defaultProvider: value
     }
-    scheduleComputerSave()
+    localDirty.value = dirty.value
 }
 
 function updateIdleTimeout(value: number | undefined) {
@@ -280,16 +353,58 @@ function updateIdleTimeout(value: number | undefined) {
         ...draft.value,
         idleTimeoutMs: value * 60000
     }
-    scheduleComputerSave()
+    localDirty.value = dirty.value
 }
 
-function scheduleComputerSave() {
-    if (!dirty.value) return
-    localDirty.value = true
-    emit('save-computer', cloneConfig(draft.value))
+async function saveDraft() {
+    if (!dirty.value) {
+        return false
+    }
+
+    await send('chatluna-agent/saveComputer', cloneConfig(draft.value))
+    localDirty.value = false
+    return true
+}
+
+async function saveBeforeAction() {
+    if (!dirty.value) {
+        return true
+    }
+
+    saving.value = true
+    try {
+        await saveDraft()
+        return true
+    } catch {
+        ElMessage.error('保存 Computer 配置失败')
+        return false
+    } finally {
+        saving.value = false
+    }
+}
+
+async function saveComputer() {
+    if (!dirty.value) {
+        return
+    }
+
+    saving.value = true
+    try {
+        await saveDraft()
+        ElMessage.success('Computer 配置已保存')
+    } catch {
+        ElMessage.error('保存 Computer 配置失败')
+    } finally {
+        saving.value = false
+    }
 }
 
 async function testBackend(type: ComputerBackendType) {
+    const ok = await saveBeforeAction()
+    if (!ok) {
+        return
+    }
+
     try {
         testing.value[type] = true
         const result = await send('chatluna-agent/testBackend', type)
@@ -307,13 +422,25 @@ async function testBackend(type: ComputerBackendType) {
 }
 
 async function reloadComputer() {
+    const ok = await saveBeforeAction()
+    if (!ok) {
+        return
+    }
+
+    reloading.value = true
     try {
         await send('chatluna-agent/reloadComputer')
         ElMessage.success('Computer 配置已重新加载')
-        emit('refresh')
     } catch {
         ElMessage.error('重新加载 Computer 配置失败')
+    } finally {
+        reloading.value = false
     }
+}
+
+function openJob(job: ComputerBackgroundJobInfo) {
+    pendingJob.value = job
+    activeTab.value = 'terminal'
 }
 
 function label(type: ComputerBackendType) {
@@ -333,6 +460,10 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     width: min(100%, 1800px);
     margin: 0 auto;
     padding-bottom: 56px;
+}
+
+.computer-page.compact {
+    width: min(100%, 1440px);
 }
 
 .toolbar-container {
@@ -361,6 +492,12 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     min-width: 0;
 }
 
+.page-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .page-title {
     font-size: 19px;
     font-weight: 600;
@@ -372,6 +509,20 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.computer-page.compact .provider-row {
+    gap: 12px;
+    margin-top: 14px;
+    margin-bottom: 14px;
+}
+
+.computer-page.compact .provider-item {
+    padding: 14px 16px;
+}
+
+.computer-page.compact .tabs {
+    margin-bottom: 18px;
 }
 
 .provider-row {

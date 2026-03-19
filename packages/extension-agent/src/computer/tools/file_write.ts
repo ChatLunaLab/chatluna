@@ -34,12 +34,15 @@ Usage:
     ) {
         const computer = await this.getSession(toolConfig)
 
-        this.computer.ctx.logger.info(`${MSG_WRITING}: ${input.filePath}`)
+        this.log(computer, `${MSG_WRITING}: ${input.filePath}`)
 
         try {
             await computer.writeFile(input.filePath, input.content)
-            this.computer.ctx.logger.info(`${MSG_DONE}: ${input.filePath}`)
-            return this.formatResult(true, `Wrote ${input.filePath}`)
+            this.log(computer, `${MSG_DONE}: ${input.filePath}`)
+            return this.withBackend(
+                computer,
+                this.formatResult(true, `Wrote ${input.filePath}`)
+            )
         } catch (err) {
             return this.formatResult(
                 false,
