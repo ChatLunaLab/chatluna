@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-agent",
     "description": "Agent framework for ChatLuna",
-    "version": "1.0.1",
+    "version": "1.0.4",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -49,9 +49,7 @@
         "agent"
     ],
     "dependencies": {
-        "@koishijs/plugin-console": "^5.30.11",
         "@codemirror/commands": "^6.10.2",
-        "koishi-plugin-chatluna-storage-service": "^1.0.6",
         "@codemirror/lang-javascript": "^6.2.5",
         "@codemirror/lang-json": "^6.0.2",
         "@codemirror/lang-markdown": "^6.5.0",
@@ -60,17 +58,18 @@
         "@codemirror/language": "^6.12.2",
         "@codemirror/state": "^6.5.4",
         "@codemirror/view": "^6.39.17",
-        "@e2b/desktop": "^2.2.2",
         "@element-plus/icons-vue": "^2.3.2",
+        "@koishijs/plugin-console": "^5.30.11",
         "@langchain/core": "^0.3.80",
         "@modelcontextprotocol/sdk": "^1.23.0",
         "@types/shell-quote": "^1.7.5",
         "@xterm/addon-fit": "^0.10.0",
         "codemirror": "^6.0.2",
-        "e2b": "^2.14.1",
+        "e2b": "2.2.1",
         "fflate": "^0.8.2",
         "highlight.js": "^11.11.1",
         "js-yaml": "^4.1.0",
+        "koishi-plugin-chatluna-storage-service": "^1.0.6",
         "micromatch": "^4.0.8",
         "mime-types": "^3.0.1",
         "shell-quote": "^1.8.3",
@@ -102,11 +101,17 @@
     },
     "overrides": {
         "@langchain/core": "^0.3.80",
+        "e2b": {
+            "chalk": "4.1.2"
+        },
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
     },
     "pnpm": {
         "overrides": {
             "@langchain/core": "^0.3.80",
+            "e2b": {
+                "chalk": "4.1.2"
+            },
             "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21"
         }
     },
