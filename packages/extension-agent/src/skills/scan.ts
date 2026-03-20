@@ -4,9 +4,10 @@ import { execFile } from 'child_process'
 import { mkdir, readdir, readFile, stat } from 'fs/promises'
 import { load } from 'js-yaml'
 import { Context } from 'koishi'
-import { basename, dirname, join } from 'path'
+import { basename, dirname, join, posix } from 'path'
 import { promisify } from 'util'
 import { DEFAULT_SKILL_DIRS, getSkillsRootPath } from '../config/path'
+import { ComputerSessionApi } from '../computer/types'
 import {
     AgentConfig,
     SkillInstallAction,
@@ -19,8 +20,10 @@ import { collectFilesRecursive } from '../utils/fs'
 import { extractFrontmatter } from '../utils/frontmatter'
 import { createHashId } from '../utils/id'
 import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
+import { quoteShellPath } from '../utils/shell'
 
 const execFileAsync = promisify(execFile)
+export const REMOTE_SKILLS_ROOT = '~/.chatluna/skills'
 
 export interface ScannedSkill {
     id: string
@@ -28,6 +31,7 @@ export interface ScannedSkill {
     description: string
     path: string
     dir: string
+    remote: boolean
     source: SkillSource
     scope: SkillScope
     state: SkillState
@@ -56,6 +60,7 @@ interface ScanTarget {
     source: SkillSource
     scope: SkillScope
     priority: number
+    remote: boolean
 }
 
 interface OpenClawMetadata {
@@ -92,6 +97,57 @@ export async function scanSkills(
     )
 }
 
+export async function scanRemoteSkills(
+    session: ComputerSessionApi,
+    ctx: Context,
+    cfg: AgentConfig
+): Promise<ScannedSkill[]> {
+    const targets = getRemoteScanTargets(session, cfg.skills)
+    const bins = new Map<string, boolean>()
+    const seen = new Set<string>()
+    const skills = (
+        await Promise.all(
+            targets.map(async (target) => {
+                const files = await listRemoteSkillFiles(session, target.root)
+                return await Promise.all(
+                    files.map(async (file) => {
+                        if (seen.has(file)) {
+                            return undefined
+                        }
+
+                        seen.add(file)
+                        const dir = posix.dirname(file)
+                        const raw = await session.readFile(file).catch(() => '')
+                        const extra = await session
+                            .readFile(posix.join(dir, 'agents', 'openai.yaml'))
+                            .catch(() => undefined)
+
+                        return await parseSkillText({
+                            file,
+                            dir,
+                            target,
+                            cfg: cfg.skills,
+                            agentCfg: cfg,
+                            bins,
+                            ctx,
+                            raw,
+                            extra
+                        })
+                    })
+                )
+            })
+        )
+    )
+        .flat(2)
+        .filter((item): item is ScannedSkill => item != null)
+
+    return skills.sort((a, b) =>
+        a.priority !== b.priority
+            ? a.priority - b.priority
+            : a.path.localeCompare(b.path)
+    )
+}
+
 export async function getSkillRoots(ctx: Context, cfg: AgentConfig['skills']) {
     return (await getScanTargets(ctx, cfg)).map((t) => t.root)
 }
@@ -118,7 +174,8 @@ export async function scanSkillRoot(
                     root,
                     source: 'custom',
                     scope: 'project',
-                    priority: 0
+                    priority: 0,
+                    remote: false
                 },
                 {
                     dirs: [],
@@ -138,6 +195,28 @@ export async function listSkillResources(dir: string): Promise<string[]> {
         excludeNames: ['SKILL.md'],
         relative: true
     })
+}
+
+export async function listRemoteSkillResources(
+    session: ComputerSessionApi,
+    dir: string
+) {
+    const result = await session.execute(
+        `[ -d ${quoteShellPath(dir)} ] && find ${quoteShellPath(dir)} -type f ! -name SKILL.md -printf '%P\n' || true`,
+        {
+            timeout: 10000
+        }
+    )
+
+    if (result.stderr.trim()) {
+        throw new Error(result.stderr.trim())
+    }
+
+    return result.stdout
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
 }
 
 async function scanTarget(
@@ -170,33 +249,61 @@ async function parseSkill(
     bins = new Map<string, boolean>(),
     ctx?: Context
 ): Promise<ScannedSkill> {
-    const diagnostics: string[] = []
     const dir = dirname(file)
-    const fallbackName = basename(dir)
     const raw = await readFile(file, 'utf-8').catch(() => '')
 
-    if (!raw) {
+    return await parseSkillText({
+        file,
+        dir,
+        target,
+        cfg,
+        agentCfg,
+        bins,
+        ctx,
+        raw,
+        extra: await readFile(
+            join(dir, 'agents', 'openai.yaml'),
+            'utf-8'
+        ).catch(() => undefined)
+    })
+}
+
+async function parseSkillText(input: {
+    file: string
+    dir: string
+    target: ScanTarget
+    cfg: AgentConfig['skills']
+    agentCfg?: AgentConfig
+    bins: Map<string, boolean>
+    ctx?: Context
+    raw: string
+    extra?: string
+}): Promise<ScannedSkill> {
+    const diagnostics: string[] = []
+    const fallbackName = basename(input.dir)
+
+    if (!input.raw) {
         return createInvalidSkill({
-            file,
-            dir,
-            target,
-            cfg,
+            file: input.file,
+            dir: input.dir,
+            target: input.target,
+            cfg: input.cfg,
             diagnostics: ['Failed to read SKILL.md or file is empty'],
-            raw,
+            raw: input.raw,
             body: ''
         })
     }
 
-    const parsed = extractFrontmatter(raw)
+    const parsed = extractFrontmatter(input.raw)
     if (!parsed) {
         return createInvalidSkill({
-            file,
-            dir,
-            target,
-            cfg,
+            file: input.file,
+            dir: input.dir,
+            target: input.target,
+            cfg: input.cfg,
             diagnostics: ['SKILL.md is missing valid YAML frontmatter'],
-            raw,
-            body: raw.trim()
+            raw: input.raw,
+            body: input.raw.trim()
         })
     }
 
@@ -211,17 +318,17 @@ async function parseSkill(
         )
 
         return createInvalidSkill({
-            file,
-            dir,
-            target,
-            cfg,
+            file: input.file,
+            dir: input.dir,
+            target: input.target,
+            cfg: input.cfg,
             diagnostics,
-            raw,
+            raw: input.raw,
             body: parsed.body
         })
     }
 
-    const extra = await readExtraMetadata(dir)
+    const extra = parseExtraMetadata(input.extra)
     diagnostics.push(...extra.diagnostics)
     const openclaw = parseOpenClawMetadata(frontmatter.metadata)
 
@@ -250,17 +357,17 @@ async function parseSkill(
     const allowedTools = parseAllowedTools(frontmatter['allowed-tools'])
     const availableResult = await checkAvailability(
         openclaw,
-        agentCfg,
-        bins,
-        ctx
+        input.agentCfg,
+        input.bins,
+        input.ctx
     )
     const implicitInvocation =
         frontmatter['disable-model-invocation'] === true
             ? false
             : extra.allowImplicitInvocation !== false
     const userInvocable = frontmatter['user-invocable'] !== false
-    const id = createSkillId(file)
-    const enabled = cfg.items[id]?.enabled !== false
+    const id = createSkillId(input.file)
+    const enabled = input.cfg.items[id]?.enabled !== false
     const state: SkillState = description ? 'ready' : 'invalid'
 
     diagnostics.push(...availableResult.diagnostics)
@@ -269,10 +376,11 @@ async function parseSkill(
         id,
         name,
         description,
-        path: file,
-        dir,
-        source: target.source,
-        scope: target.scope,
+        path: input.file,
+        dir: input.dir,
+        source: input.target.source,
+        scope: input.target.scope,
+        remote: input.target.remote,
         state,
         enabled,
         available: availableResult.available,
@@ -299,8 +407,8 @@ async function parseSkill(
         allowedTools,
         diagnostics,
         body: parsed.body,
-        raw,
-        priority: target.priority
+        raw: input.raw,
+        priority: input.target.priority
     }
 }
 
@@ -323,6 +431,7 @@ function createInvalidSkill(input: {
         dir: input.dir,
         source: input.target.source,
         scope: input.target.scope,
+        remote: input.target.remote,
         state: 'invalid',
         enabled: input.cfg.items[id]?.enabled !== false,
         available: false,
@@ -335,15 +444,11 @@ function createInvalidSkill(input: {
     }
 }
 
-async function readExtraMetadata(dir: string): Promise<{
+function parseExtraMetadata(content?: string): {
     allowImplicitInvocation?: boolean
     diagnostics: string[]
-}> {
+} {
     const diagnostics: string[] = []
-    const content = await readFile(
-        join(dir, 'agents', 'openai.yaml'),
-        'utf-8'
-    ).catch(() => undefined)
 
     if (!content) return { diagnostics }
 
@@ -363,6 +468,26 @@ async function readExtraMetadata(dir: string): Promise<{
         return { diagnostics }
     }
 }
+
+async function listRemoteSkillFiles(session: ComputerSessionApi, root: string) {
+    const result = await session.execute(
+        `[ -d ${quoteShellPath(root)} ] && find ${quoteShellPath(root)} -type f -name SKILL.md -print || true`,
+        {
+            timeout: 10000
+        }
+    )
+
+    if (result.stderr.trim()) {
+        throw new Error(result.stderr.trim())
+    }
+
+    return result.stdout
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+}
+
 function parseAllowedTools(value: unknown) {
     if (typeof value !== 'string' || !value.trim()) return undefined
 
@@ -601,7 +726,13 @@ async function getScanTargets(
     const dirs = [...DEFAULT_SKILL_DIRS, ...cfg.dirs]
     const seen = new Set([toPathKey(root)])
     const targets: ScanTarget[] = [
-        { root, source: 'chatluna', scope: 'data', priority: 0 }
+        {
+            root,
+            source: 'chatluna',
+            scope: 'data',
+            priority: 0,
+            remote: false
+        }
     ]
 
     for (let idx = 0; idx < dirs.length; idx++) {
@@ -617,7 +748,50 @@ async function getScanTargets(
             root: dir,
             source: detectSkillSource(item, dir),
             scope: detectSkillScope(ctx, dir),
-            priority: 100 + idx
+            priority: 100 + idx,
+            remote: false
+        })
+    }
+
+    return targets
+}
+
+function getRemoteScanTargets(
+    session: ComputerSessionApi,
+    cfg: AgentConfig['skills']
+) {
+    const scope = normalizeRemoteBase(session.getScopePath())
+    const dirs = [...DEFAULT_SKILL_DIRS, ...cfg.dirs]
+    const seen = new Set([normalizeRemoteKey(REMOTE_SKILLS_ROOT)])
+    const targets: ScanTarget[] = [
+        {
+            root: REMOTE_SKILLS_ROOT,
+            source: 'chatluna',
+            scope: 'data',
+            priority: 0,
+            remote: true
+        }
+    ]
+
+    for (let idx = 0; idx < dirs.length; idx++) {
+        const item = dirs[idx].trim()
+        if (!item) {
+            continue
+        }
+
+        const dir = resolveRemoteDir(scope, item)
+        const key = normalizeRemoteKey(dir)
+        if (seen.has(key)) {
+            continue
+        }
+
+        seen.add(key)
+        targets.push({
+            root: dir,
+            source: detectSkillSource(item, dir),
+            scope: detectRemoteSkillScope(scope, dir),
+            priority: 100 + idx,
+            remote: true
         })
     }
 
@@ -656,6 +830,65 @@ function detectSkillScope(ctx: Context, dir: string): SkillScope {
     if (isPathInside(dir, ctx.baseDir)) return 'project'
     return 'user'
 }
+
+function detectRemoteSkillScope(scope: string, dir: string): SkillScope {
+    if (isRemotePathInside(dir, REMOTE_SKILLS_ROOT)) return 'data'
+    if (isRemotePathInside(dir, scope)) return 'project'
+    return 'user'
+}
+
 function createSkillId(file: string) {
     return createHashId(file)
+}
+
+function resolveRemoteDir(scope: string, dir: string) {
+    const value = dir.replaceAll('\\', '/').trim()
+    if (value === '~' || value.startsWith('~/')) {
+        return value
+    }
+
+    if (value.startsWith('/')) {
+        return posix.normalize(value)
+    }
+
+    if (
+        [
+            '.agents/',
+            '.openclaw/',
+            '.codex/',
+            '.claude/',
+            '.config/opencode/'
+        ].some((item) => value.startsWith(item))
+    ) {
+        return `~/${value}`
+    }
+
+    if (scope === '~') {
+        return `~/${trimRemotePrefix(value)}`
+    }
+
+    if (scope.startsWith('~/')) {
+        return `${scope.replace(/\/+$/, '')}/${trimRemotePrefix(value)}`
+    }
+
+    return posix.resolve(scope || '/', value)
+}
+
+function trimRemotePrefix(value: string) {
+    return value.replace(/^\.\//, '').replace(/^\//, '')
+}
+
+function normalizeRemoteBase(value: string) {
+    const next = value.replaceAll('\\', '/').trim()
+    return next || '~'
+}
+
+function normalizeRemoteKey(value: string) {
+    return value.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
+}
+
+function isRemotePathInside(path: string, root: string) {
+    const target = normalizeRemoteKey(path)
+    const base = normalizeRemoteKey(root)
+    return target === base || target.startsWith(`${base}/`)
 }

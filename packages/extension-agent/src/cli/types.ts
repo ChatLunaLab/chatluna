@@ -11,6 +11,9 @@ import type { ChatLunaAgentService } from '../service'
 export type AgentCliPermission = 'read' | 'write' | 'dangerous'
 export type AgentCliOperator = '&' | '&&' | '|' | '|&' | '||' | ';'
 
+export const AGENTCLI_TOOL_NAME = 'agentcli'
+export const AGENTCLI_SKILL_NAME = 'agent-config-admin'
+export const AGENTCLI_PROMPT_MARKER = '[agentcli session]'
 export const AGENTCLI_SANDBOX_SUBAGENTS_ROOT = '~/.chatluna/agents'
 
 export interface AgentCliCall {

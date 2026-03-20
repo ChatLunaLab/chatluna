@@ -13,6 +13,7 @@ import { DEFAULT_SKILL_DIRS } from './path'
 
 export function getDefaultToolAuthority(name?: string) {
     if (
+        name === 'agentcli' ||
         name === 'bash' ||
         name === 'file_edit' ||
         name === 'file_read' ||

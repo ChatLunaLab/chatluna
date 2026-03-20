@@ -1,10 +1,11 @@
 /** @module cli/render */
 
 import type { PermissionRule } from '../types'
-import type {
-    AgentCliOverview,
-    AgentCliRunResult,
-    AgentCliSessionState
+import {
+    AGENTCLI_PROMPT_MARKER,
+    type AgentCliOverview,
+    type AgentCliRunResult,
+    type AgentCliSessionState
 } from './types'
 
 export function renderAgentCliPrompt(
@@ -13,7 +14,7 @@ export function renderAgentCliPrompt(
 ) {
     const backend = info.defaultBackend
     const lines = [
-        '[agentcli session]',
+        AGENTCLI_PROMPT_MARKER,
         ...indentCli(
             renderCliPairs([
                 ['skill', info.skill],
@@ -71,7 +72,7 @@ export function renderAgentCliPrompt(
         '',
         'Workflow',
         ...indentCli([
-            'Use the bash tool and run commands that start with `agentcli`.',
+            'Use the `agentcli` tool and pass full commands that start with `agentcli`.',
             'For create, update, or config work on skills, sub-agents, tools, or MCP, run the activation sweep first.',
             'Activation sweep: `agentcli show skills`, `agentcli show subagents`, `agentcli show tools`, `agentcli show mcp servers`, `agentcli show mcp tools`.',
             'Use local ChatLuna paths as the source of truth. Do not replace them with your own machine paths.',
@@ -81,12 +82,12 @@ export function renderAgentCliPrompt(
             'Then inspect the exact target with `agentcli show ...`.',
             'Stage changes with `agentcli preview ...`; repeated preview commands append until apply or cancel, many named preview commands accept multiple targets in one call, and tool authority uses Koishi levels 0-5.',
             'Load `skill-creator` or `sub-agent-creator` before authoring those files because `agentcli` cannot create them directly.',
-            'Command chains support `&`, `&&`, `|`, `|&`, `||`, and `;`. Pipe operators only separate agentcli calls; they do not stream stdin.',
+            'Command chains support `&`, `&&`, `|`, `|&`, `||`, and `;` inside the `command` string. Pipe operators only separate agentcli calls; they do not stream stdin.',
             'Use `agentcli sync` to bring sandbox skills and sub-agents back to local paths.',
             'If a sync preview shows overwrites, wait for the user to confirm before `agentcli apply last`.',
             'Commit with `agentcli apply last` or discard with `agentcli cancel pending`.',
             'Use `agentcli --help` or `agentcli <command> --help` when needed.',
-            'If bash is unavailable, say so instead of inventing results.'
+            'If the `agentcli` tool is unavailable in this conversation, say so instead of inventing results.'
         ])
     )
 

@@ -186,12 +186,24 @@
                                     导出 ZIP
                                 </el-button>
                                 <el-button
+                                    class="danger-soft"
                                     size="small"
                                     plain
-                                    :disabled="!item.path"
-                                    @click="copyPath(item.path)"
+                                    type="danger"
+                                    :loading="skillBusy[item.id] === true"
+                                    :disabled="!canRemove(item)"
+                                    @click="removeSkill(item)"
                                 >
-                                    复制路径
+                                    删除
+                                </el-button>
+                                <el-button
+                                    v-if="hasDiagnostics(item)"
+                                    size="small"
+                                    plain
+                                    type="warning"
+                                    @click="openDiagnostics(item)"
+                                >
+                                    错误信息
                                 </el-button>
                                 <el-button
                                     v-if="item.homepage"
@@ -202,17 +214,6 @@
                                     打开主页
                                 </el-button>
                             </div>
-
-                            <el-button
-                                v-if="hasDiagnostics(item)"
-                                class="skill-action-error"
-                                size="small"
-                                plain
-                                type="warning"
-                                @click="openDiagnostics(item)"
-                            >
-                                错误信息
-                            </el-button>
                         </div>
                     </div>
                 </div>
@@ -266,7 +267,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { MagicStick, Search } from '@element-plus/icons-vue'
 import CodeEditor from '../shared/code-editor.vue'
 import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
@@ -313,7 +314,7 @@ const props = withDefaults(
     }
 )
 
-defineEmits<{
+const emit = defineEmits<{
     refresh: []
 }>()
 
@@ -448,17 +449,51 @@ async function exportSkill(item: SkillInfo) {
     }
 }
 
-async function copyPath(path: string) {
+async function removeSkill(item: SkillInfo) {
     try {
-        await navigator.clipboard.writeText(path)
-        ElMessage.success('已复制路径。')
-    } catch {
-        ElMessage.error('复制失败，请手动复制。')
+        await ElMessageBox.confirm(
+            item.state === 'missing'
+                ? `确定要移除这个残留的 skill 配置项吗？\n\n${item.id}`
+                : `删除"${item.name}"后需要重新导入，确定继续吗？`,
+            '删除 Skill',
+            {
+                confirmButtonText: '删除',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }
+        )
+
+        skillBusy.value[item.id] = true
+        await send('chatluna-agent/removeSkill', item.id)
+        emit('refresh')
+        ElMessage.success(
+            item.state === 'missing'
+                ? '已移除残留的 skill 配置。'
+                : '已删除该 skill。'
+        )
+    } catch (error) {
+        if (error !== 'cancel' && error !== 'close') {
+            ElMessage.error('删除失败，请稍后重试。')
+        }
+    } finally {
+        skillBusy.value[item.id] = false
     }
 }
 
 function canExport(item: SkillInfo) {
-    return item.path.length > 0 && item.state !== 'missing'
+    return item.path.length > 0 && item.state !== 'missing' && !item.remote
+}
+
+function canRemove(item: SkillInfo) {
+    if (item.state === 'missing') {
+        return true
+    }
+
+    if (item.remote) {
+        return true
+    }
+
+    return item.source === 'chatluna' && item.scope === 'data'
 }
 
 function hasDiagnostics(item: SkillInfo) {
@@ -538,13 +573,10 @@ function base64ToBlob(data: string, type: string) {
 <style scoped>
 .skills-page {
     min-height: 100%;
-    width: min(100%, 1800px);
+    width: 100%;
+    min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
-}
-
-.skills-page.compact {
-    width: min(100%, 1440px);
 }
 
 .toolbar-container {
@@ -675,11 +707,59 @@ function base64ToBlob(data: string, type: string) {
     gap: 8px;
 }
 
-.skill-actions-main :deep(.el-button),
-.skill-action-error {
+.skill-actions-main :deep(.el-button) {
     width: 100%;
     min-width: 0;
     margin: 0;
+}
+
+.skill-actions-main :deep(.danger-soft.el-button) {
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 92%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 68%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--k-text-dark) 22%
+    );
+    --el-button-hover-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 86%
+    );
+    --el-button-hover-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 52%
+    );
+    --el-button-hover-text-color: var(--el-color-danger);
+    --el-button-active-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 82%
+    );
+    --el-button-active-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 44%
+    );
+    --el-button-disabled-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 95%
+    );
+    --el-button-disabled-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 82%
+    );
 }
 
 .skill-footer {

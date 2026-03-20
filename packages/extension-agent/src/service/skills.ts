@@ -20,7 +20,12 @@ import {
     SkillToolService
 } from '../types'
 import { syncBundledSkills } from '../skills/builtin'
-import { ensureSkillsRoot, ScannedSkill, scanSkills } from '../skills/scan'
+import {
+    ensureSkillsRoot,
+    listRemoteSkillResources,
+    ScannedSkill,
+    scanSkills
+} from '../skills/scan'
 import { renderAvailableSkills, renderSkillContent } from '../skills/render'
 import { getSlashSkillName, stripSlashSkillName } from '../skills/slash'
 import {
@@ -102,7 +107,13 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async reload() {
         await syncBundledSkills(this.ctx)
-        const scanned = await scanSkills(this.ctx, this.config)
+        const local = await scanSkills(this.ctx, this.config)
+        const remote = this.ctx.chatluna_agent
+            ? await this.ctx.chatluna_agent.computer
+                  .scanRemoteSkills()
+                  .catch(() => [])
+            : []
+        const scanned = [...local, ...(remote ?? [])]
         this._skills = new Map(scanned.map((s) => [s.id, s]))
         this._catalog = buildSkillCatalog(scanned, this.config.skills.items)
         this._visibleByName = new Map(
@@ -118,21 +129,22 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     }
 
     getStatus(): SkillsStatus {
+        const catalog = this.getDisplayCatalog()
         return {
             enabled: true,
             root: getSkillsRootPath(this.ctx),
-            total: this._catalog.length,
-            visible: this._catalog.filter((s) => s.visible).length,
-            modelEnabled: this._catalog.filter((s) => s.modelEnabled).length,
+            total: catalog.length,
+            visible: catalog.filter((s) => s.visible).length,
+            modelEnabled: catalog.filter((s) => s.modelEnabled).length,
             activeConversations: Array.from(this._active.values()).filter(
                 (s) => s.size > 0
             ).length,
-            catalog: Object.fromEntries(this._catalog.map((s) => [s.id, s]))
+            catalog: Object.fromEntries(catalog.map((s) => [s.id, s]))
         }
     }
 
     listSkills() {
-        return [...this._catalog]
+        return this.getDisplayCatalog()
     }
 
     listVisibleSkills() {
@@ -185,13 +197,18 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async exportSkill(id: string): Promise<SkillExportResult | undefined> {
         const skill = this._skills.get(id)
-        if (!skill?.path) return undefined
+        if (!skill?.path || skill.remote) return undefined
         return await exportSkillArchive(id, skill.dir)
     }
 
     async removeSkill(id: string): Promise<string | undefined> {
         const skill = this._skills.get(id)
         if (!skill) return undefined
+
+        if (skill.remote) {
+            await this.ctx.chatluna_agent?.computer.removeRemoteSkill(skill.dir)
+            return skill.name
+        }
 
         if (skill.source !== 'chatluna' || skill.scope !== 'data') {
             throw new Error('Only imported local skills can be removed here')
@@ -307,10 +324,65 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             session != null
                 ? await computer?.materializer.materialize(skill, session)
                 : undefined
+        const resources =
+            session != null && skill.remote
+                ? await listRemoteSkillResources(session, skillDir ?? skill.dir)
+                : undefined
 
         return await renderSkillContent(skill, true, {
-            skillDir
+            skillDir,
+            resources
         })
+    }
+
+    private async getPromptActiveSkills(
+        conversationId: string,
+        remote: boolean
+    ) {
+        const current = this._active.get(conversationId)
+        if (!current) {
+            return [] as SkillInfo[]
+        }
+
+        const items = this._catalog.filter((s) => current.has(s.id))
+        if (!remote) {
+            return items
+        }
+
+        const computer = this.ctx.chatluna_agent?.computer
+        const session = await computer
+            ?.getOrCreateSession({ conversationId })
+            .catch(() => undefined)
+
+        return await Promise.all(
+            items.map(async (item) => {
+                if (item.remote || !session || !computer) {
+                    return {
+                        ...item,
+                        dir: item.remote
+                            ? item.dir
+                            : getRemoteSkillDir(item.name)
+                    }
+                }
+
+                const skill = this._skills.get(item.id)
+                if (!skill) {
+                    return {
+                        ...item,
+                        dir: getRemoteSkillDir(item.name)
+                    }
+                }
+
+                const dir = await computer.materializer
+                    .materialize(skill, session)
+                    .catch(() => getRemoteSkillDir(item.name))
+
+                return {
+                    ...item,
+                    dir
+                }
+            })
+        )
     }
 
     private pruneActiveSkills() {
@@ -331,6 +403,10 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 this._active.delete(conversationId)
             }
         }
+    }
+
+    private getDisplayCatalog() {
+        return this._catalog.filter((item) => !item.shadowedBy)
     }
 
     private syncTool() {
@@ -373,19 +449,10 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     : this._catalog
                           .filter((s) => s.modelEnabled)
                           .map((item) => (remote ? { ...item, dir: '' } : item))
-                const current = this._active.get(conversationId)
-                const active = current
-                    ? this._catalog
-                          .filter((s) => current.has(s.id))
-                          .map((item) =>
-                              remote
-                                  ? {
-                                        ...item,
-                                        dir: getRemoteSkillDir(item.name)
-                                    }
-                                  : item
-                          )
-                    : []
+                const active = await this.getPromptActiveSkills(
+                    conversationId,
+                    remote
+                )
 
                 if (skills.length > 0 || active.length > 0 || !sub) {
                     const msg = renderAvailableSkills(

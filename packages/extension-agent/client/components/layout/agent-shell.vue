@@ -178,8 +178,9 @@ const saveSection = async (
 
 .content-wrapper {
     padding: 28px 96px 120px 28px;
-    width: min(100%, 1920px);
-    max-width: 1920px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     margin: 0 auto;
 }
 

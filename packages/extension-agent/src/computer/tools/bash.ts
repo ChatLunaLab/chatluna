@@ -7,7 +7,6 @@ import type { ComputerBackgroundJobInfo } from '../../types'
 import { parseAgentCliCommand } from '../../cli/parser'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
-import { Session, User } from 'koishi'
 
 export class BashTool extends ComputerToolBase {
     name = 'bash'
@@ -21,6 +20,7 @@ Rules:
 - Certain high-risk commands require explicit user confirmation
 - Commands in the blocked list are always rejected
 - If a command may take a while, keep running, or exceed the normal timeout, prefer background=true and query it later yourself
+- Do not use this tool for agentcli commands; there is a dedicated agentcli tool
 
 When to use:
 - File listing, searching (ls, find, grep, rg, fd)
@@ -102,32 +102,9 @@ When to use:
 
         try {
             if (action === 'run' && parseAgentCliCommand(input.command ?? '')) {
-                const cli = this.computer.ctx.chatluna_agent?.cli
-                const conversationId = toolConfig?.configurable?.conversationId
-                if (
-                    !cli ||
-                    !conversationId ||
-                    !session ||
-                    // only admin can use agentcli
-                    ((session as Session<User.Field>).user?.authority ?? 0) < 3
-                ) {
-                    return this.formatResult(
-                        false,
-                        'agentcli is unavailable in this tool context'
-                    )
-                }
-
-                if (input.background) {
-                    return this.formatResult(
-                        false,
-                        'agentcli does not support background execution'
-                    )
-                }
-
-                return await cli.executeCommand(
-                    input.command,
-                    conversationId,
-                    session
+                return this.formatResult(
+                    false,
+                    'Use the dedicated agentcli tool for commands that start with `agentcli`.'
                 )
             }
 

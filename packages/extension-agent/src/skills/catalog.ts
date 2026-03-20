@@ -23,6 +23,7 @@ export function buildSkillCatalog(
             description: skill.description,
             path: skill.path,
             dir: skill.dir,
+            remote: skill.remote,
             source: skill.source,
             scope: skill.scope,
             state: skill.state,
@@ -49,6 +50,10 @@ export function buildSkillCatalog(
 
     for (const [id, item] of Object.entries(configItems)) {
         if (skillMap.has(id)) {
+            continue
+        }
+
+        if (/^[a-f0-9]{16}$/i.test(id)) {
             continue
         }
 

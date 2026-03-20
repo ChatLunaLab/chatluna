@@ -52,6 +52,7 @@ export interface SkillInfo {
     description: string
     path: string
     dir: string
+    remote?: boolean
     source: SkillSource
     scope: SkillScope
     state: SkillState

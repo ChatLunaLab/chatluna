@@ -51,7 +51,9 @@ import { PublishFileTool } from '../computer/tools/publish_file'
 import { GrepTool } from '../computer/tools/grep'
 import { GlobTool } from '../computer/tools/glob'
 import { BashTool } from '../computer/tools/bash'
-import { quoteShell } from '../utils/shell'
+import { scanRemoteSkills as scanRemoteSkillCatalog } from '../skills/scan'
+import { scanRemoteMarkdownAgents as scanRemoteSubAgentCatalog } from '../sub-agent/scan'
+import { quoteShell, quoteShellPath } from '../utils/shell'
 
 export class ChatLunaAgentComputerService {
     private _sessions = new ComputerSessionStore()
@@ -641,6 +643,32 @@ export class ChatLunaAgentComputerService {
         return await session.glob(input.pattern, input.path)
     }
 
+    async scanRemoteSkills() {
+        const session = await this.getRemoteScanSession()
+        if (!session) {
+            return []
+        }
+
+        return await scanRemoteSkillCatalog(session, this.ctx, this.config)
+    }
+
+    async scanRemoteSubAgents() {
+        const session = await this.getRemoteScanSession()
+        if (!session) {
+            return []
+        }
+
+        return await scanRemoteSubAgentCatalog(session, this.config.subAgent)
+    }
+
+    async removeRemoteSkill(dir: string) {
+        await this.removeRemoteEntry(dir)
+    }
+
+    async removeRemoteSubAgent(path: string) {
+        await this.removeRemoteEntry(path)
+    }
+
     async readMaterializedSkillFile(
         session: ComputerSessionApi,
         filePath: string,
@@ -773,6 +801,49 @@ export class ChatLunaAgentComputerService {
         })
     }
 
+    private async getRemoteScanSession() {
+        const backend = this.resolveProvider(
+            this.config.computer.defaultProvider
+        )
+        if (!backend || backend === 'local') {
+            return undefined
+        }
+
+        return await this.getOrCreateSession({
+            backend,
+            conversationId: `console:remote-scan:${backend}`,
+            userId: `console:remote-scan:${backend}`
+        })
+    }
+
+    private async removeRemoteEntry(path: string) {
+        const session = await this.getRemoteScanSession()
+        if (!session) {
+            throw new Error('Remote computer backend is not available.')
+        }
+
+        const target = path.replaceAll('\\', '/')
+        if (
+            target.length < 2 ||
+            target === '/' ||
+            target === '~' ||
+            /^~?\/?\.?$/.test(target)
+        ) {
+            throw new Error(`Refusing to remove unsafe path: ${path}`)
+        }
+
+        const result = await session.execute(
+            `if [ -d ${quoteShellPath(target)} ]; then rm -rf ${quoteShellPath(target)}; elif [ -e ${quoteShellPath(target)} ]; then rm -f ${quoteShellPath(target)}; fi`,
+            {
+                timeout: 15000
+            }
+        )
+
+        if (result.exitCode !== 0) {
+            throw new Error(result.stderr.trim() || `Failed to remove ${path}`)
+        }
+    }
+
     private resolveSessionInput(
         runConfig?: ChatLunaToolRunnable,
         backend?: ComputerBackendType
@@ -901,6 +972,7 @@ export class ChatLunaAgentComputerService {
         }
 
         return new E2BComputerSession(
+            this.ctx,
             {
                 ...this.config.computer.e2b,
                 apiKey: this.resolveSecret(this.config.computer.e2b.apiKey)

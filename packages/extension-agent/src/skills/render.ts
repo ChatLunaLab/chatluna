@@ -87,9 +87,12 @@ export async function renderSkillContent(
     loaded = false,
     options: {
         skillDir?: string
+        resources?: string[]
     } = {}
 ) {
-    const resources = await listSkillResources(skill.dir)
+    const resources =
+        options.resources ??
+        (await listSkillResources(skill.dir).catch(() => [] as string[]))
     const lines = [
         `<skill_content name="${escapeXml(skill.name)}">`,
         loaded

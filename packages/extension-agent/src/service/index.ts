@@ -378,6 +378,16 @@ export class ChatLunaAgentService extends Service {
                 throw new Error('Sub-agent path is missing')
             }
 
+            if (info.remote) {
+                await this.computer.removeRemoteSubAgent(info.path)
+                const subAgent = structuredClone(this.args.config.subAgent)
+                delete subAgent.items[id]
+                await this.updateConfig('subAgent', subAgent, async () => {
+                    await this.subAgent.reload()
+                })
+                return
+            }
+
             const root = resolve(getSubAgentsRootPath(this.ctx))
             const file = resolve(info.path)
             if (!file.startsWith(root)) {
