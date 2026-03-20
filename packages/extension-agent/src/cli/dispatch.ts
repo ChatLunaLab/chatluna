@@ -11,11 +11,13 @@ import { logger } from '..'
 import type { ComputerSessionApi } from '../computer/types'
 import { getRemoteSkillsRoot } from '../computer/materialize'
 import {
+    DEFAULT_SKILL_DIRS,
     getConfigPath,
     getSkillsRootPath,
     getSubAgentsRootPath
 } from '../config/path'
 import type { McpServerConfig, PermissionRule, SubAgentInfo } from '../types'
+import { resolveTildeDir } from '../utils/path'
 import { normalizeAgentCliArgv } from './parser'
 import {
     AGENTCLI_SANDBOX_SUBAGENTS_ROOT,
@@ -1708,7 +1710,28 @@ async function buildSyncPlan(
     session: ComputerSessionApi,
     target: 'all' | 'skills' | 'subagents'
 ) {
-    const skillRoot = getSkillsRootPath(ctx.agent.ctx)
+    const skillRoots =
+        target === 'subagents'
+            ? []
+            : Array.from(
+                  new Map(
+                      [
+                          getSkillsRootPath(ctx.agent.ctx),
+                          ...DEFAULT_SKILL_DIRS.map((item) =>
+                              resolveTildeDir(ctx.agent.ctx.baseDir, item)
+                          ),
+                          ...ctx.agent.args.config.skills.dirs
+                              .map((item) => item.trim())
+                              .filter(Boolean)
+                              .map((item) =>
+                                  resolveTildeDir(ctx.agent.ctx.baseDir, item)
+                              )
+                      ].map((item) => [
+                          item.replaceAll('\\', '/').toLowerCase(),
+                          item
+                      ])
+                  ).values()
+              )
     const subAgentRoot = getSubAgentsRootPath(ctx.agent.ctx)
     const skill =
         target === 'subagents'
@@ -1717,7 +1740,7 @@ async function buildSyncPlan(
                   session,
                   'skill',
                   getRemoteSkillsRoot(),
-                  skillRoot
+                  skillRoots
               )
     const subagent =
         target === 'skills'
@@ -1726,17 +1749,19 @@ async function buildSyncPlan(
                   session,
                   'subagent',
                   AGENTCLI_SANDBOX_SUBAGENTS_ROOT,
-                  subAgentRoot
+                  [subAgentRoot]
               )
     const files = [...skill.files, ...subagent.files]
     const created = files.filter((item) => item.mode === 'create').length
     const updated = files.length - created
     const unchanged = skill.unchanged + subagent.unchanged
     const rows: [string, string][] = [['backend', session.backend]]
+    const info = ['Sync sandbox']
 
     if (target !== 'subagents') {
         rows.push(['skills.sandbox', getRemoteSkillsRoot()])
-        rows.push(['skills.local', skillRoot])
+        rows.push(['skills.primary', getSkillsRootPath(ctx.agent.ctx)])
+        rows.push(['skills.targets', String(skillRoots.length)])
     }
 
     if (target !== 'skills') {
@@ -1748,10 +1773,20 @@ async function buildSyncPlan(
     rows.push(['overwrite', String(updated)])
     rows.push(['unchanged', String(unchanged)])
 
+    info.push(...indentCli(renderCliPairs(rows)))
+
+    if (target !== 'subagents' && skillRoots.length > 0) {
+        info.push(
+            '',
+            'Skill targets',
+            ...indentCli(skillRoots.map((item) => item.replaceAll('\\', '/')))
+        )
+    }
+
     return {
         files,
         summary: `sync sandbox from ${session.backend}: ${created} new, ${updated} overwrite`,
-        info: ['Sync sandbox', ...indentCli(renderCliPairs(rows))],
+        info,
         preview:
             files.length > 12
                 ? [
@@ -1759,13 +1794,13 @@ async function buildSyncPlan(
                           .slice(0, 12)
                           .map(
                               (item) =>
-                                  `${item.mode} ${item.kind} ${item.path.replaceAll('\\', '/')}`
+                                  `${item.mode} ${item.kind} ${item.targetPath.replaceAll('\\', '/')}`
                           ),
                       `... ${files.length - 12} more`
                   ]
                 : files.map(
                       (item) =>
-                          `${item.mode} ${item.kind} ${item.path.replaceAll('\\', '/')}`
+                          `${item.mode} ${item.kind} ${item.targetPath.replaceAll('\\', '/')}`
                   )
     }
 }
@@ -1774,32 +1809,41 @@ async function collectSyncFiles(
     session: ComputerSessionApi,
     kind: AgentCliSyncFile['kind'],
     remoteRoot: string,
-    localRoot: string
+    localRoots: string[]
 ) {
     const files: AgentCliSyncFile[] = []
     let unchanged = 0
 
     for (const file of await listRemoteFiles(session, remoteRoot)) {
         const sourcePath = posix.join(remoteRoot, file)
-        const targetPath = join(localRoot, ...file.split('/'))
         const content = await session.readFile(sourcePath)
-        const current = await readFile(targetPath, 'utf-8').catch(
-            () => undefined
-        )
 
-        if (current === content) {
-            unchanged += 1
-            continue
+        for (const localRoot of localRoots) {
+            const targetPath = join(localRoot, ...file.split('/'))
+            const current = await readFile(targetPath, 'utf-8').catch(
+                (err: NodeJS.ErrnoException) => {
+                    if (err.code === 'ENOENT') {
+                        return undefined
+                    }
+
+                    throw err
+                }
+            )
+
+            if (current === content) {
+                unchanged += 1
+                continue
+            }
+
+            files.push({
+                kind,
+                path: file,
+                sourcePath,
+                targetPath,
+                content,
+                mode: current == null ? 'create' : 'update'
+            })
         }
-
-        files.push({
-            kind,
-            path: file,
-            sourcePath,
-            targetPath,
-            content,
-            mode: current == null ? 'create' : 'update'
-        })
     }
 
     return { files, unchanged }
@@ -1937,10 +1981,11 @@ function helpLines(args: string[] = []) {
     if (topic === 'sync') {
         return renderHelp({
             title: 'agentcli sync',
-            about: 'Stage sandbox skills or sub-agents so they can be written back to local storage.',
+            about: 'Stage sandbox skills or sub-agents so they can be written back to local storage and compatibility roots.',
             usage: ['agentcli sync [skills|subagents|all]'],
             notes: [
                 'Sync reads files from the current remote computer session.',
+                'Skill sync fans out to ChatLuna and compatibility directories such as .agents/skills, .openclaw/skills, .codex/skills, .claude/skills, and OpenCode skill roots.',
                 'Files are staged as a preview first; use `agentcli apply last` to write them locally.',
                 'If the preview shows overwrites, confirm with the user before applying it.'
             ],

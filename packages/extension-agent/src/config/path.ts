@@ -3,6 +3,19 @@
 import { Context } from 'koishi'
 import { resolve } from 'path'
 
+export const DEFAULT_SKILL_DIRS = [
+    './.agents/skills',
+    './.openclaw/skills',
+    './.codex/skills',
+    './.claude/skills',
+    './.opencode/skills',
+    '~/.agents/skills',
+    '~/.openclaw/skills',
+    '~/.codex/skills',
+    '~/.claude/skills',
+    '~/.config/opencode/skills'
+]
+
 export function getConfigPath(ctx: Context): string {
     return resolve(ctx.baseDir, 'data/chatluna/agent/config.json')
 }

@@ -9,10 +9,12 @@ export interface SkillsConfig {
 
 export interface SkillConfig {
     enabled: boolean
+    remote?: boolean
 }
 
 export type SkillSource =
     | 'chatluna'
+    | 'openclaw'
     | 'codex'
     | 'universal'
     | 'claude'
@@ -51,6 +53,7 @@ export interface SkillInfo {
     description: string
     path: string
     dir: string
+    remote?: boolean
     source: SkillSource
     scope: SkillScope
     state: SkillState

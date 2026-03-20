@@ -5,6 +5,7 @@ import {
     countMessageTokens,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { Context, Session } from 'koishi'
 import { getRemoteSkillsRoot } from '../computer/materialize'
 import {
@@ -16,16 +17,19 @@ import type { ChatLunaAgentService } from '../service'
 import { runAgentCliBlock } from './dispatch'
 import { parseAgentCliCommand } from './parser'
 import { renderAgentCliPrompt, renderAgentCliResult } from './render'
+import { AgentCliTool } from './tool'
 import {
+    AGENTCLI_PROMPT_MARKER,
     AGENTCLI_SANDBOX_SUBAGENTS_ROOT,
+    AGENTCLI_SKILL_NAME,
+    AGENTCLI_TOOL_NAME,
     type AgentCliOverview,
     type AgentCliSessionState
 } from './types'
 
-const SKILL_NAME = 'agent-config-admin'
-
 export class ChatLunaAgentCliService {
     private _promptDispose?: () => void
+    private _toolDispose?: () => void
     private _sessions = new Map<string, AgentCliSessionState>()
 
     constructor(
@@ -43,17 +47,23 @@ export class ChatLunaAgentCliService {
     }
 
     async start() {
+        this.syncTool()
         this.syncPrompt()
     }
 
     async stop() {
+        this._toolDispose?.()
+        this._toolDispose = undefined
         this._promptDispose?.()
         this._promptDispose = undefined
         this._sessions.clear()
     }
 
     isActive(conversationId: string) {
-        return this.getAgent().skills.hasActiveSkill(conversationId, SKILL_NAME)
+        return this.getAgent().skills.hasActiveSkill(
+            conversationId,
+            AGENTCLI_SKILL_NAME
+        )
     }
 
     async executeCommand(
@@ -62,7 +72,9 @@ export class ChatLunaAgentCliService {
         session: Session
     ) {
         if (!this.isActive(conversationId)) {
-            throw new Error(`${SKILL_NAME} is not active in this conversation`)
+            throw new Error(
+                `${AGENTCLI_SKILL_NAME} is not active in this conversation`
+            )
         }
 
         const block = parseAgentCliCommand(command)
@@ -81,6 +93,32 @@ export class ChatLunaAgentCliService {
             block
         )
         return renderAgentCliResult(result)
+    }
+
+    private syncTool() {
+        this._toolDispose?.()
+        this._toolDispose = undefined
+
+        const tool = new AgentCliTool(this)
+        this._toolDispose = this.ctx.chatluna.platform.registerTool(
+            AGENTCLI_TOOL_NAME,
+            {
+                description: tool.description,
+                createTool: () => new AgentCliTool(this),
+                selector: (history) => {
+                    return history.some((msg) =>
+                        getMessageContent(msg.content).startsWith(
+                            AGENTCLI_PROMPT_MARKER
+                        )
+                    )
+                },
+                meta: {
+                    source: 'extension',
+                    group: 'agent',
+                    tags: ['config']
+                }
+            }
+        )
     }
 
     private syncPrompt() {
@@ -119,7 +157,7 @@ export class ChatLunaAgentCliService {
         const agent = this.getAgent()
         const status = agent.getStatus()
         return {
-            skill: SKILL_NAME,
+            skill: AGENTCLI_SKILL_NAME,
             configPath: getConfigPath(agent.ctx),
             localSkillsDir: getSkillsRootPath(agent.ctx),
             localSubAgentsDir: getSubAgentsRootPath(agent.ctx),

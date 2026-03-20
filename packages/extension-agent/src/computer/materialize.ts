@@ -2,7 +2,11 @@
 
 import { readFile } from 'fs/promises'
 import path, { posix } from 'path'
-import { listSkillResources, ScannedSkill } from '../skills/scan'
+import {
+    listSkillResources,
+    REMOTE_SKILLS_ROOT,
+    ScannedSkill
+} from '../skills/scan'
 import { ComputerSessionApi } from './types'
 
 export class SkillMaterializer {
@@ -13,12 +17,24 @@ export class SkillMaterializer {
             return skill.dir
         }
 
+        if (skill.remote) {
+            return skill.dir
+        }
+
         return getRemoteSkillDir(skill.name)
     }
 
     async materialize(skill: ScannedSkill, session: ComputerSessionApi) {
         const root = this.getPath(skill, session)
         if (session.backend === 'local') {
+            return root
+        }
+
+        if (skill.remote) {
+            const map =
+                this._items.get(session.sessionId) ?? new Map<string, string>()
+            map.set(skill.id, root)
+            this._items.set(session.sessionId, map)
             return root
         }
 
@@ -72,5 +88,3 @@ export function getRemoteSkillDir(name: string) {
 function normalizeRemotePath(value: string) {
     return value.replaceAll('\\', '/')
 }
-
-const REMOTE_SKILLS_ROOT = '~/.chatluna/skills'

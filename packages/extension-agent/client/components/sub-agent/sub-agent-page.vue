@@ -75,8 +75,10 @@
                         :agents="agents"
                         :compact-mode="compactMode"
                         :hide-desc="hideDesc"
+                        :removable-ids="removableIds"
                         @select="openDetail"
                         @toggle="toggleAgent"
+                        @remove="removeAgent"
                     />
                     <sub-agent-runs
                         v-else-if="listTab === 'runs'"
@@ -311,10 +313,12 @@ watch(
 const canRemoveSelected = computed(() => {
     const item = selectedAgent.value
     if (!item) return false
-    return (
-        item.source === 'preset' ||
-        (item.source === 'markdown' && item.scope === 'data')
-    )
+    return canRemoveAgent(item)
+})
+const removableIds = computed(() => {
+    return agents.value
+        .filter((item) => canRemoveAgent(item))
+        .map((item) => item.id)
 })
 const skillOptions = computed(() => {
     return Object.values(props.skills ?? {})
@@ -459,6 +463,12 @@ async function removeSelected() {
     const item = selectedAgent.value
     if (!item) return
 
+    await removeAgent(item)
+}
+
+async function removeAgent(item: SubAgentInfo) {
+    const selected = selectedId.value === item.id
+
     try {
         await ElMessageBox.confirm(
             `删除"${item.name}"后需要手动重新导入或重新创建，确定继续吗？`,
@@ -471,11 +481,13 @@ async function removeSelected() {
         )
 
         await send('chatluna-agent/removeSubAgent', item.id)
-        currentView.value = 'list'
+        if (selected) {
+            currentView.value = 'list'
+        }
         await loadExtraData()
         ElMessage.success('已删除该 sub-agent。')
     } catch (error) {
-        if (error !== 'cancel') {
+        if (error !== 'cancel' && error !== 'close') {
             ElMessage.error('删除失败，请稍后重试。')
         }
     }
@@ -564,18 +576,23 @@ function splitItems(text: string) {
             (item, idx, list) => item.length > 0 && list.indexOf(item) === idx
         )
 }
+
+function canRemoveAgent(item: SubAgentInfo) {
+    if (item.source === 'preset' || item.source === 'manual') {
+        return true
+    }
+
+    return item.source === 'markdown' && (item.scope === 'data' || item.remote)
+}
 </script>
 
 <style scoped>
 .sub-agent-page {
     min-height: 100%;
-    width: min(100%, 1800px);
+    width: 100%;
+    min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
-}
-
-.sub-agent-page.compact {
-    width: min(100%, 1440px);
 }
 
 .toolbar-container {

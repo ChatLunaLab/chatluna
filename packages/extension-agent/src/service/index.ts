@@ -190,7 +190,7 @@ export class ChatLunaAgentService extends Service {
                 createHashId(
                     join(getSkillsRootPath(this.ctx), name, 'SKILL.md')
                 )
-            ] = { enabled: true }
+            ] = { enabled: true, remote: false }
         }
 
         await this.updateConfig('skills', skills, async () => {
@@ -251,7 +251,11 @@ export class ChatLunaAgentService extends Service {
             dirs: [...this.args.config.skills.dirs],
             items: { ...this.args.config.skills.items }
         }
-        skills.items[id] = { enabled }
+        const info = this.skills.listSkills().find((item) => item.id === id)
+        skills.items[id] = {
+            enabled,
+            remote: info?.remote === true || skills.items[id]?.remote === true
+        }
         await this.updateConfig('skills', skills, async () => {
             await this.skills.reload()
         })
@@ -376,6 +380,16 @@ export class ChatLunaAgentService extends Service {
         if (info.source === 'markdown') {
             if (!info.path) {
                 throw new Error('Sub-agent path is missing')
+            }
+
+            if (info.remote) {
+                await this.computer.removeRemoteSubAgent(info.path)
+                const subAgent = structuredClone(this.args.config.subAgent)
+                delete subAgent.items[id]
+                await this.updateConfig('subAgent', subAgent, async () => {
+                    await this.subAgent.reload()
+                })
+                return
             }
 
             const root = resolve(getSubAgentsRootPath(this.ctx))

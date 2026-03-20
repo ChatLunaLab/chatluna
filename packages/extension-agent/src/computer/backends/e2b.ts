@@ -8,11 +8,14 @@ import {
     CommandHandle,
     CommandResult,
     CommandStartOpts,
-    Sandbox as E2BSandbox
+    Sandbox as E2BSandbox,
+    NotFoundError
 } from 'e2b'
 import mimeTypes from 'mime-types'
+import { Context } from 'koishi'
 import { buildPosixBackgroundCommand, quoteShell } from './types'
 import { E2BBackendConfig } from '../../types'
+import { getErrorMessage } from '../../utils/shell'
 import {
     ComputerSessionApi,
     DesktopAction,
@@ -27,6 +30,7 @@ import {
 
 interface SandboxWrapper {
     sandboxId: string
+    internal: E2BSandbox
     files: E2BSandbox['files']
     commands: E2BSandbox['commands']
     pty: E2BSandbox['pty']
@@ -42,6 +46,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     readonly capabilities = [...CAPABILITIES]
 
     private _connected = false
+    private _connecting?: Promise<void>
     private _home = '/'
     private _root: string
     private _cwd: string
@@ -49,6 +54,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     private _sandboxId?: string
 
     constructor(
+        private ctx: Context,
         private cfg: E2BBackendConfig,
         private options: { cwd?: string },
         id = randomUUID()
@@ -63,62 +69,113 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async connect() {
-        if (!this.cfg.enabled) {
-            throw new Error('E2B backend is disabled.')
+        if (this._connecting) {
+            await this._connecting
+            return
         }
 
-        const apiKey = this.resolveSecret(this.cfg.apiKey)
-        if (!apiKey) {
-            throw new Error('E2B apiKey is empty.')
-        }
-
-        if (this._sandboxId && this.cfg.keepAlive) {
-            this._sandbox = wrapSandbox(
-                await E2BSandbox.connect(this._sandboxId, {
-                    apiKey,
-                    timeoutMs: this.cfg.timeoutMs
-                })
-            )
-        } else {
-            this._sandbox = wrapSandbox(
-                await E2BSandbox.create(this.cfg.template, {
-                    apiKey,
-                    timeoutMs: this.cfg.timeoutMs
-                })
-            )
-        }
-
-        this._sandboxId = this._sandbox.sandboxId
-        await this._sandbox.setTimeout(this.cfg.timeoutMs)
-        const current = await this._sandbox.commands.run('pwd', {
-            timeoutMs: 5000
-        } as CommandStartOpts)
-        this._home = current.stdout.trim() || '/'
-
-        if (this.options.cwd) {
-            const cwd = this.resolvePath(this.options.cwd)
-            const stat = await this._sandbox.commands.run(
-                `if [ -d ${quoteShell(cwd)} ]; then printf __dir__; fi`,
-                {
-                    timeoutMs: 5000
-                } as CommandStartOpts
-            )
-            if (stat.stdout.trim() === '__dir__') {
-                this._root = cwd
-                this._cwd = cwd
-            } else {
-                this._root = this._home
-                this._cwd = this._root
+        const task = (async () => {
+            if (!this.cfg.enabled) {
+                throw new Error('E2B backend is disabled.')
             }
-        } else {
-            this._root = this._home
-            this._cwd = this._root
-        }
 
-        this._connected = true
+            const apiKey = this.resolveSecret(this.cfg.apiKey)
+            if (!apiKey) {
+                throw new Error('E2B apiKey is empty.')
+            }
+
+            let sandbox: SandboxWrapper | undefined
+            let created = false
+
+            try {
+                if (this._sandboxId && this.cfg.keepAlive) {
+                    try {
+                        sandbox = wrapSandbox(
+                            await E2BSandbox.connect(this._sandboxId, {
+                                apiKey,
+                                timeoutMs: this.cfg.timeoutMs
+                            })
+                        )
+                    } catch (err) {
+                        if (!isMissingSandboxError(err)) {
+                            throw err
+                        }
+
+                        sandbox = wrapSandbox(
+                            await E2BSandbox.create(this.cfg.template, {
+                                apiKey,
+                                timeoutMs: this.cfg.timeoutMs
+                            })
+                        )
+                        created = true
+                    }
+                } else {
+                    sandbox = wrapSandbox(
+                        await E2BSandbox.create(this.cfg.template, {
+                            apiKey,
+                            timeoutMs: this.cfg.timeoutMs
+                        })
+                    )
+                    created = true
+                }
+
+                await sandbox.setTimeout(this.cfg.timeoutMs)
+                const current = await this.run(
+                    'pwd',
+                    {
+                        timeoutMs: 5000
+                    } as CommandStartOpts,
+                    sandbox
+                )
+                this._home = current.stdout.trim() || '/'
+
+                if (this.options.cwd) {
+                    const cwd = this.resolvePath(this.options.cwd)
+                    const stat = await this.run(
+                        `if [ -d ${quoteShell(cwd)} ]; then printf __dir__; fi`,
+                        {
+                            timeoutMs: 5000
+                        } as CommandStartOpts,
+                        sandbox
+                    )
+                    if (stat.stdout.trim() === '__dir__') {
+                        this._root = cwd
+                        this._cwd = cwd
+                    } else {
+                        this._root = this._home
+                        this._cwd = this._root
+                    }
+                } else {
+                    this._root = this._home
+                    this._cwd = this._root
+                }
+
+                this._sandbox = sandbox
+                this._sandboxId = sandbox.sandboxId
+                this._connected = true
+            } catch (err) {
+                this._sandbox = undefined
+                this._connected = false
+                if (created && sandbox) {
+                    await sandbox.kill().catch(() => undefined)
+                }
+                throw err
+            }
+        })()
+
+        this._connecting = task
+        try {
+            await task
+        } finally {
+            if (this._connecting === task) {
+                this._connecting = undefined
+            }
+        }
     }
 
     async disconnect() {
+        await this._connecting?.catch(() => undefined)
+
         if (!this._sandbox) {
             this._connected = false
             return
@@ -129,13 +186,23 @@ export class E2BComputerSession implements ComputerSessionApi {
             await desktop.stream.stop().catch(() => undefined)
         }
 
-        if (this.cfg.keepAlive) {
-            await this._sandbox.pause(this.resolveSecret(this.cfg.apiKey))
-        } else {
-            await this._sandbox.kill()
-        }
+        try {
+            if (this.cfg.keepAlive) {
+                await this._sandbox.pause(this.resolveSecret(this.cfg.apiKey))
+            } else {
+                await this._sandbox.kill()
+                this._sandboxId = undefined
+            }
+        } catch (err) {
+            if (!isMissingSandboxError(err)) {
+                throw err
+            }
 
-        this._connected = false
+            this._sandboxId = undefined
+        } finally {
+            this._sandbox = undefined
+            this._connected = false
+        }
     }
 
     isConnected() {
@@ -143,56 +210,75 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
-        const target = this.resolvePath(filePath)
-        const stat = await this.execute(
-            `if [ -d ${quoteShell(target)} ]; then printf __dir__; fi`,
-            { timeout: 5000 }
-        )
-        if (stat.stdout.trim() === '__dir__') {
-            const result = await this.execute(
-                `find ${quoteShell(target)} -mindepth 1 -maxdepth 1 \\( -type d -printf '%p/\\n' -o -type f -printf '%p\\n' \\) | sort`
+        try {
+            const target = this.resolvePath(filePath)
+            const stat = await this.execute(
+                `if [ -d ${quoteShell(target)} ]; then printf __dir__; fi`,
+                { timeout: 5000 }
             )
-            return result.stdout.trim()
-        }
+            if (stat.stdout.trim() === '__dir__') {
+                const result = await this.execute(
+                    `find ${quoteShell(target)} -mindepth 1 -maxdepth 1 \\( -type d -printf '%p/\\n' -o -type f -printf '%p\\n' \\) | sort`
+                )
+                return result.stdout.trim()
+            }
 
-        const raw = await (await this.ensureSandbox()).files.read(target)
-        const text = String(raw)
-        if (offset == null && limit == null) {
-            return text
-        }
+            const raw = await (await this.ensureSandbox()).files.read(target)
+            const text = String(raw)
+            if (offset == null && limit == null) {
+                return text
+            }
 
-        const lines = text.split('\n')
-        const start = offset != null ? Math.max(0, offset - 1) : 0
-        const end =
-            limit != null ? Math.min(lines.length, start + limit) : lines.length
-        return lines
-            .slice(start, end)
-            .map((line, idx) => `${start + idx + 1}: ${line}`)
-            .join('\n')
+            const lines = text.split('\n')
+            const start = offset != null ? Math.max(0, offset - 1) : 0
+            const end = limit != null ? start + limit : lines.length
+            return lines
+                .slice(start, end)
+                .map((line, idx) => `${start + idx + 1}: ${line}`)
+                .join('\n')
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(
+                `Failed to read ${filePath}: ${getErrorMessage(err)}`
+            )
+        }
     }
 
     async writeFile(filePath: string, content: FileContent) {
-        const target = this.resolvePath(filePath)
-        if (typeof content === 'string') {
-            await (await this.ensureSandbox()).files.write(target, content)
-            return
-        }
-
-        const dir = posix.dirname(target)
-        const tmp = `${target}.${randomUUID()}.base64`
-
-        await this.execute(`mkdir -p ${quoteShell(dir)}`)
-        await this.writeFile(tmp, Buffer.from(content).toString('base64'))
-
         try {
-            const result = await this.execute(
-                `base64 -d ${quoteShell(tmp)} > ${quoteShell(target)}`
-            )
-            if (result.exitCode !== 0) {
-                throw new Error(result.stderr || `Failed to write ${filePath}`)
+            const target = this.resolvePath(filePath)
+            const sandbox = await this.ensureSandbox()
+            if (typeof content === 'string') {
+                await sandbox.files.write(target, content)
+                return
             }
-        } finally {
-            await this.execute(`rm -f ${quoteShell(tmp)}`).catch(() => {})
+
+            const dir = posix.dirname(target)
+            const tmp = `${target}.${randomUUID()}.base64`
+
+            await this.execute(`mkdir -p ${quoteShell(dir)}`)
+            await sandbox.files.write(
+                tmp,
+                Buffer.from(content).toString('base64')
+            )
+
+            try {
+                const result = await this.execute(
+                    `base64 -d ${quoteShell(tmp)} > ${quoteShell(target)}`
+                )
+                if (result.exitCode !== 0) {
+                    throw new Error(
+                        result.stderr || `Failed to write ${filePath}`
+                    )
+                }
+            } finally {
+                await this.execute(`rm -f ${quoteShell(tmp)}`).catch(() => {})
+            }
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(
+                `Failed to write ${filePath}: ${getErrorMessage(err)}`
+            )
         }
     }
 
@@ -248,37 +334,45 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        const dir = searchPath ? this.resolvePath(searchPath) : this._root
-        const cmd = include
-            ? `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(include)} | xargs -r grep -nE ${quoteShell(pattern)}`
-            : `grep -R -nE ${quoteShell(pattern)} ${quoteShell(dir)}`
-        const result = await this.execute(cmd)
-        return [result.stdout, result.stderr]
-            .filter(Boolean)
-            .join('\n')
-            .split('\n')
-            .filter(Boolean)
+        try {
+            const dir = searchPath ? this.resolvePath(searchPath) : this._root
+            const cmd = include
+                ? `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(include)} | xargs -r grep -nE ${quoteShell(pattern)}`
+                : `grep -R -nE ${quoteShell(pattern)} ${quoteShell(dir)}`
+            const result = await this.execute(cmd)
+            return [result.stdout, result.stderr]
+                .filter(Boolean)
+                .join('\n')
+                .split('\n')
+                .filter(Boolean)
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(`Failed to grep: ${getErrorMessage(err)}`)
+        }
     }
 
     async glob(pattern: string, searchPath?: string) {
-        const dir = searchPath ? this.resolvePath(searchPath) : this._root
-        const result = await this.execute(
-            `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(pattern)}`
-        )
-        return [result.stdout, result.stderr]
-            .filter(Boolean)
-            .join('\n')
-            .split('\n')
-            .filter(Boolean)
+        try {
+            const dir = searchPath ? this.resolvePath(searchPath) : this._root
+            const result = await this.execute(
+                `find ${quoteShell(dir)} -type f | grep -E ${quoteShell(pattern)}`
+            )
+            return [result.stdout, result.stderr]
+                .filter(Boolean)
+                .join('\n')
+                .split('\n')
+                .filter(Boolean)
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(`Failed to glob: ${getErrorMessage(err)}`)
+        }
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
         const cwd = options.workdir
             ? this.resolvePath(options.workdir)
             : this._cwd
-        const result = await (
-            await this.ensureSandbox()
-        ).commands.run(command, {
+        const result = await this.run(command, {
             cwd,
             timeoutMs: options.timeout,
             envs: options.env
@@ -288,67 +382,110 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async readAsset(filePath: string) {
-        const result = await this.execute(
-            `base64 ${quoteShell(this.resolvePath(filePath))} | tr -d '\n'`
-        )
-        return result.stdout.trim()
+        try {
+            const result = await this.execute(
+                `base64 ${quoteShell(this.resolvePath(filePath))} | tr -d '\n'`
+            )
+            return result.stdout.trim()
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(
+                `Failed to read asset ${filePath}: ${getErrorMessage(err)}`
+            )
+        }
     }
 
     async openAsset(filePath: string) {
-        const sandbox = await this.ensureSandbox()
-        const target = this.resolvePath(filePath)
-        const info = await sandbox.files.getInfo(target)
-        const stream = await sandbox.files.read(target, {
-            format: 'stream'
-        })
-        const mimeType = mimeTypes.lookup(filePath)
-        return {
-            stream: Readable.fromWeb(
-                stream as unknown as globalThis.ReadableStream<Uint8Array>
-            ),
-            size: info.size,
-            mimeType: mimeType === false ? undefined : mimeType
+        try {
+            const sandbox = await this.ensureSandbox()
+            const target = this.resolvePath(filePath)
+            const info = await sandbox.files.getInfo(target)
+            const stream = await sandbox.files.read(target, {
+                format: 'stream'
+            })
+            const mimeType = mimeTypes.lookup(filePath)
+            return {
+                stream: Readable.fromWeb(
+                    stream as unknown as globalThis.ReadableStream<Uint8Array>
+                ),
+                size: info.size,
+                mimeType: mimeType === false ? undefined : mimeType
+            }
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(
+                `Failed to open asset ${filePath}: ${getErrorMessage(err)}`
+            )
         }
     }
 
     async createTerminal(options: TerminalOptions = {}) {
-        const sandbox = await this.ensureSandbox()
-        const callbacks = new Set<(data: string) => void>()
-        const cwd = options.cwd ? this.resolvePath(options.cwd) : this._cwd
-        const handle = await sandbox.pty.create({
-            cols: options.cols ?? 80,
-            rows: options.rows ?? 24,
-            cwd,
-            timeoutMs: this.cfg.timeoutMs,
-            onData: (data) => {
-                const text = Buffer.from(data).toString('utf8')
-                for (const callback of callbacks) {
-                    callback(text)
+        try {
+            const sandbox = await this.ensureSandbox()
+            const callbacks = new Set<(data: string) => void>()
+            const cwd = options.cwd ? this.resolvePath(options.cwd) : this._cwd
+            const handle = await sandbox.pty.create({
+                cols: options.cols ?? 80,
+                rows: options.rows ?? 24,
+                cwd,
+                timeoutMs: this.cfg.timeoutMs,
+                onData: (data) => {
+                    const text = Buffer.from(data).toString('utf8')
+                    for (const callback of callbacks) {
+                        callback(text)
+                    }
                 }
-            }
-        })
+            })
+            const ctx = this.ctx
 
-        return {
-            id: String(handle.pid),
-            async onData(callback) {
-                callbacks.add(callback)
-                return () => {
-                    callbacks.delete(callback)
+            return {
+                id: String(handle.pid),
+                async onData(callback) {
+                    callbacks.add(callback)
+                    return () => {
+                        callbacks.delete(callback)
+                    }
+                },
+                async sendInput(data) {
+                    try {
+                        await sandbox.pty.sendInput(
+                            handle.pid,
+                            Buffer.from(data, 'utf8')
+                        )
+                    } catch (err) {
+                        ctx.logger.error(err)
+                        throw new Error(
+                            `Failed to send terminal input: ${getErrorMessage(err)}`
+                        )
+                    }
+                },
+                async resize(cols, rows) {
+                    try {
+                        await sandbox.pty.resize(handle.pid, { cols, rows })
+                    } catch (err) {
+                        ctx.logger.error(err)
+                        throw new Error(
+                            `Failed to resize terminal: ${getErrorMessage(err)}`
+                        )
+                    }
+                },
+                async kill() {
+                    try {
+                        await handle.kill()
+                    } catch (err) {
+                        ctx.logger.error(err)
+                        throw new Error(
+                            `Failed to kill terminal: ${getErrorMessage(err)}`
+                        )
+                    }
                 }
-            },
-            async sendInput(data) {
-                await sandbox.pty.sendInput(
-                    handle.pid,
-                    Buffer.from(data, 'utf8')
-                )
-            },
-            async resize(cols, rows) {
-                await sandbox.pty.resize(handle.pid, { cols, rows })
-            },
-            async kill() {
-                await handle.kill()
-            }
-        } satisfies TerminalHandle
+            } satisfies TerminalHandle
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(
+                `Failed to create terminal: ${getErrorMessage(err)}`
+            )
+        }
     }
 
     async prepareBackgroundCommand(
@@ -445,12 +582,30 @@ export class E2BComputerSession implements ComputerSessionApi {
             return undefined
         }
 
-        await desktop.stream.start()
-        return {
-            url: desktop.stream.getUrl({ autoConnect: true, resize: 'scale' }),
-            async stop() {
-                await desktop.stream.stop()
+        try {
+            await desktop.stream.start()
+            const ctx = this.ctx
+            return {
+                url: desktop.stream.getUrl({
+                    autoConnect: true,
+                    resize: 'scale'
+                }),
+                async stop() {
+                    try {
+                        await desktop.stream.stop()
+                    } catch (err) {
+                        ctx.logger.error(err)
+                        throw new Error(
+                            `Failed to stop desktop stream: ${getErrorMessage(err)}`
+                        )
+                    }
+                }
             }
+        } catch (err) {
+            this.ctx.logger.error(err)
+            throw new Error(
+                `Failed to start desktop stream: ${getErrorMessage(err)}`
+            )
         }
     }
 
@@ -465,9 +620,51 @@ export class E2BComputerSession implements ComputerSessionApi {
     private async ensureSandbox() {
         if (!this._sandbox) {
             await this.connect()
+            return this._sandbox
         }
 
+        try {
+            if (await this._sandbox.internal.isRunning()) {
+                return this._sandbox
+            }
+        } catch (err) {
+            this.ctx.logger.error(err)
+        }
+
+        this._connected = false
+        await this.connect()
+
         return this._sandbox
+    }
+
+    private async run(
+        command: string,
+        options?: CommandStartOpts,
+        sandbox?: SandboxWrapper
+    ) {
+        const current = sandbox ?? (await this.ensureSandbox())
+        let result: Awaited<ReturnType<SandboxWrapper['commands']['run']>>
+        let runErr: unknown
+
+        try {
+            result = await current.commands.run(command, options)
+        } catch (err) {
+            runErr = err
+        }
+
+        try {
+            await current.setTimeout(this.cfg.timeoutMs)
+        } catch (err) {
+            if (!runErr && !isMissingSandboxError(err)) {
+                throw err
+            }
+        }
+
+        if (runErr) {
+            throw runErr
+        }
+
+        return result
     }
 
     private ensureDesktopSandbox() {
@@ -513,6 +710,18 @@ function mapCommandResult(result: CommandResult | CommandHandle) {
     }
 }
 
+function isMissingSandboxError(err: unknown) {
+    if (err instanceof NotFoundError) {
+        return true
+    }
+
+    if (!(err instanceof Error)) {
+        return false
+    }
+
+    return err.name === 'NotFoundError'
+}
+
 function wrapSandbox(sandbox: E2BSandbox): SandboxWrapper {
     return {
         sandboxId: sandbox.sandboxId,
@@ -523,7 +732,8 @@ function wrapSandbox(sandbox: E2BSandbox): SandboxWrapper {
         pause: async (apiKey) => {
             await sandbox.betaPause(apiKey ? { apiKey } : undefined)
         },
-        kill: () => sandbox.kill()
+        kill: () => sandbox.kill(),
+        internal: sandbox
         // desktop: sandbox instanceof DesktopSandbox ? sandbox : undefined
     }
 }

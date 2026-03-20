@@ -457,13 +457,10 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 <style scoped>
 .computer-page {
     min-height: 100%;
-    width: min(100%, 1800px);
+    width: 100%;
+    min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
-}
-
-.computer-page.compact {
-    width: min(100%, 1440px);
 }
 
 .toolbar-container {

@@ -1,7 +1,7 @@
 /** @module sub-agent/catalog */
 
 import { Context } from 'koishi'
-import { AgentConfig, ManualSubAgentInput } from '../types'
+import { AgentConfig, ManualSubAgentInput, SubAgentInfo } from '../types'
 import { ChatLunaAgentPermissionService } from '../service/permissions'
 import { applyShadowing } from '../utils/shadow'
 import { createManualAgent } from './manual'
@@ -12,12 +12,14 @@ export async function buildSubAgentCatalog(
     ctx: Context,
     cfg: AgentConfig['subAgent'],
     permission: ChatLunaAgentPermissionService,
-    manual: Iterable<ManualSubAgentInput>
+    manual: Iterable<ManualSubAgentInput>,
+    extra: SubAgentInfo[] = []
 ) {
     const items = [
         ...[...manual].map((item) => createManualAgent(ctx, item)),
         ...getBuiltinAgents(cfg),
         ...(await scanMarkdownAgents(ctx, cfg)),
+        ...extra,
         ...getPresetAgents(ctx, cfg)
     ].map((item) => ({
         ...item,

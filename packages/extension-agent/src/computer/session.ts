@@ -14,6 +14,8 @@ export class ComputerSessionStore {
         }
     >()
 
+    private _creating = new Map<string, Promise<ComputerSessionApi>>()
+
     list() {
         return Array.from(this._items.values()).map((item) => ({
             ...item.info
@@ -48,24 +50,43 @@ export class ComputerSessionStore {
             return current.session
         }
 
-        const session = await create()
-        const now = Date.now()
+        const pending = this._creating.get(key)
+        if (pending) {
+            const session = await pending
+            const item = this._items.get(key)
+            if (item) {
+                item.info.lastActiveAt = Date.now()
+                item.info.cwd = item.session.cwd
+            }
+            return session
+        }
 
-        this._items.set(key, {
-            info: {
-                id: session.sessionId,
-                backend: session.backend,
-                userId: input.userId,
-                conversationId: input.conversationId,
-                createdAt: now,
-                lastActiveAt: now,
-                cwd: session.cwd
-            },
-            session,
-            active: 0
-        })
+        const task = create()
+            .then((session) => {
+                const now = Date.now()
 
-        return session
+                this._items.set(key, {
+                    info: {
+                        id: session.sessionId,
+                        backend: session.backend,
+                        userId: input.userId,
+                        conversationId: input.conversationId,
+                        createdAt: now,
+                        lastActiveAt: now,
+                        cwd: session.cwd
+                    },
+                    session,
+                    active: 0
+                })
+
+                return session
+            })
+            .finally(() => {
+                this._creating.delete(key)
+            })
+
+        this._creating.set(key, task)
+        return task
     }
 
     touchBySessionId(sessionId: string) {

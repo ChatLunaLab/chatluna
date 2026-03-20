@@ -23,6 +23,7 @@ export function buildSkillCatalog(
             description: skill.description,
             path: skill.path,
             dir: skill.dir,
+            remote: skill.remote,
             source: skill.source,
             scope: skill.scope,
             state: skill.state,
@@ -52,12 +53,17 @@ export function buildSkillCatalog(
             continue
         }
 
+        if (item.remote) {
+            continue
+        }
+
         catalog.push({
             id,
             name: id,
             description: '',
             path: '',
             dir: '',
+            remote: false,
             source: 'chatluna',
             scope: 'data',
             state: 'missing',

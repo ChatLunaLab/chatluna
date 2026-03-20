@@ -36,6 +36,7 @@ export async function previewSkillsImport(
         const source = await materializeImportSource(ctx, input, tmp)
 
         return await previewMaterializedSource(
+            ctx,
             source.root,
             input.type,
             input.name,
@@ -61,6 +62,7 @@ export async function importSkills(
     try {
         const source = await materializeImportSource(ctx, input, tmp)
         const preview = await previewMaterializedSource(
+            ctx,
             source.root,
             input.type,
             input.type === 'zip'
@@ -120,13 +122,14 @@ export async function importSkills(
 }
 
 async function previewMaterializedSource(
+    ctx: Context,
     root: string,
     source: SkillImportInput['type'],
     target: string,
     diagnostics: string[]
 ): Promise<SkillImportPreviewResult> {
     const entries = await collectPreviewEntries(root)
-    const scanned = await scanSkillRoot(root)
+    const scanned = await scanSkillRoot(root, ctx)
     const skills = scanned.map((item): SkillImportPreviewItem => {
         const dir = item.dir
             .slice(root.length)
@@ -323,7 +326,7 @@ async function previewGithub(ctx: Context, url: string) {
         const target = info.subpath
             ? `${info.owner}/${info.repo}/${info.subpath}`
             : `${info.owner}/${info.repo}`
-        const scanned = await scanSkillRoot(tmp)
+        const scanned = await scanSkillRoot(tmp, ctx)
         const skills = scanned.map(
             (item): SkillImportPreviewItem => ({
                 dir:

@@ -1,7 +1,7 @@
 ---
 name: agent-config-admin
 description: >-
-    Use this for agent admin work done through the virtual `agentcli` CLI:
+    Use this for agent admin work done through the dedicated `agentcli` tool:
     inspect or change its own skills, sub-agents, tools, MCP servers, MCP
     tools, permissions, routing, or sandbox-to-local sync. Also use it when a
     task needs to create or edit a skill or sub-agent together with config
@@ -17,9 +17,9 @@ storage.
 ## Core protocol
 
 - Do not guess config, paths, or effective permissions.
-- Use the `bash` tool for commands that start with `agentcli`.
-- Treat `agentcli` as a virtual CLI, not a real shell binary.
-- Do not mix `agentcli` with normal shell commands in the same bash call.
+- Use the `agentcli` tool for commands that start with `agentcli`.
+- Treat `agentcli` as a dedicated tool that accepts the same CLI syntax.
+- Do not mix `agentcli` work with normal shell commands in the same tool call.
 - Use `agentcli --help` or `agentcli <command> --help` when you need the exact command shape.
 - Before create, update, remove, or config work on skills, sub-agents, tools, or MCP, run the full activation sweep.
 - After the activation sweep, inspect the exact target with `agentcli show ...`.
@@ -54,7 +54,7 @@ storage.
 - If a preview shows the wrong target, do not apply it.
 - When changing permissions, always verify the result with `agentcli show subagent <selector> effective` or another matching `show` command.
 - When the task authors new skill or sub-agent files, verify both the file result and the admin result before saying the task is done.
-- If bash is unavailable, say so instead of inventing results.
+- If the `agentcli` tool is unavailable, say so instead of inventing results.
 
 ## Activation sweep
 
@@ -120,7 +120,7 @@ agentcli cancel pending
 ## Command chaining
 
 - `agentcli` command lines may contain `&`, `&&`, `|`, `|&`, `||`, and `;`.
-- Treat `|` and `|&` as command separators for multiple `agentcli` calls on one line. They do not provide stdin piping between virtual CLI commands.
+- Treat `|` and `|&` as command separators for multiple `agentcli` calls on one line. They do not provide stdin piping between `agentcli` tool commands.
 - Named preview commands accept multiple targets when the syntax uses `<name...>` or `<selector...>`.
 - `agentcli preview enable tool` and `agentcli preview disable tool` accept multiple tool names before `--main`.
 - `agentcli preview set tool <name...> authority <0-5>` updates required Koishi authority for one or more tools.

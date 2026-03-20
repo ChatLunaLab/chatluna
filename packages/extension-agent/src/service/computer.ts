@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
+import which from 'which'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
@@ -25,6 +26,7 @@ import {
     ComputerSessionStore
 } from '../computer/session'
 import { LocalComputerSession } from '../computer/backends/local'
+import { findGitBash, findPowerShell } from '../computer/backends/local/shell'
 import { OpenTerminalComputerSession } from '../computer/backends/open_terminal'
 import { E2BComputerSession } from '../computer/backends/e2b'
 import {
@@ -49,6 +51,9 @@ import { PublishFileTool } from '../computer/tools/publish_file'
 import { GrepTool } from '../computer/tools/grep'
 import { GlobTool } from '../computer/tools/glob'
 import { BashTool } from '../computer/tools/bash'
+import { scanRemoteSkills as scanRemoteSkillCatalog } from '../skills/scan'
+import { scanRemoteMarkdownAgents as scanRemoteSubAgentCatalog } from '../sub-agent/scan'
+import { quoteShell, quoteShellPath } from '../utils/shell'
 
 export class ChatLunaAgentComputerService {
     private _sessions = new ComputerSessionStore()
@@ -407,6 +412,79 @@ export class ChatLunaAgentComputerService {
         )
     }
 
+    async hasBin(name: string, backend?: ComputerBackendType) {
+        const type = backend ?? this.resolveProvider()
+        if (!type || !isAvailableBackend(this._status.backends[type])) {
+            return false
+        }
+
+        if (type === 'local') {
+            if (!this.config.computer.local.dangerouslySkipPermissions) {
+                if (
+                    this.config.computer.local.blockedCommands.some(
+                        (item) => item.toLowerCase() === name.toLowerCase()
+                    )
+                ) {
+                    return false
+                }
+
+                if (
+                    this.config.computer.local.allowedCommands.length > 0 &&
+                    !this.config.computer.local.allowedCommands.some(
+                        (item) => item.toLowerCase() === name.toLowerCase()
+                    )
+                ) {
+                    return false
+                }
+            }
+
+            if (process.platform === 'win32') {
+                const bin = name.toLowerCase()
+                if (
+                    bin === 'bash' ||
+                    bin === 'bash.exe' ||
+                    bin === 'sh' ||
+                    bin === 'sh.exe'
+                ) {
+                    return (await findGitBash()) != null
+                }
+
+                if (
+                    bin === 'pwsh' ||
+                    bin === 'pwsh.exe' ||
+                    bin === 'powershell' ||
+                    bin === 'powershell.exe'
+                ) {
+                    return findPowerShell() != null
+                }
+
+                if (bin === 'cmd' || bin === 'cmd.exe') {
+                    return true
+                }
+            }
+
+            return which.sync(name, { nothrow: true }) != null
+        }
+
+        const session = await this.getOrCreateSession({ backend: type }).catch(
+            () => undefined
+        )
+        if (!session) {
+            return false
+        }
+
+        const result = await session
+            .execute(
+                `sh -lc ${quoteShell(`command -v ${name} >/dev/null 2>&1`)}`,
+                {
+                    timeout: 5000
+                }
+            )
+            .catch(() => undefined)
+
+        return result?.exitCode === 0
+    }
+
     listAvailableBackends(): ComputerBackendType[] {
         return Object.values(this._status.backends)
             .filter((item) => isAvailableBackend(item))
@@ -565,6 +643,32 @@ export class ChatLunaAgentComputerService {
         return await session.glob(input.pattern, input.path)
     }
 
+    async scanRemoteSkills() {
+        const session = await this.getRemoteScanSession()
+        if (!session) {
+            return []
+        }
+
+        return await scanRemoteSkillCatalog(session, this.ctx, this.config)
+    }
+
+    async scanRemoteSubAgents() {
+        const session = await this.getRemoteScanSession()
+        if (!session) {
+            return []
+        }
+
+        return await scanRemoteSubAgentCatalog(session, this.config.subAgent)
+    }
+
+    async removeRemoteSkill(dir: string) {
+        await this.removeRemoteEntry(dir)
+    }
+
+    async removeRemoteSubAgent(path: string) {
+        await this.removeRemoteEntry(path)
+    }
+
     async readMaterializedSkillFile(
         session: ComputerSessionApi,
         filePath: string,
@@ -697,6 +801,49 @@ export class ChatLunaAgentComputerService {
         })
     }
 
+    private async getRemoteScanSession() {
+        const backend = this.resolveProvider(
+            this.config.computer.defaultProvider
+        )
+        if (!backend || backend === 'local') {
+            return undefined
+        }
+
+        return await this.getOrCreateSession({
+            backend,
+            conversationId: `console:remote-scan:${backend}`,
+            userId: `console:remote-scan:${backend}`
+        })
+    }
+
+    private async removeRemoteEntry(path: string) {
+        const session = await this.getRemoteScanSession()
+        if (!session) {
+            throw new Error('Remote computer backend is not available.')
+        }
+
+        const target = path.replaceAll('\\', '/')
+        if (
+            target.length < 2 ||
+            target === '/' ||
+            target === '~' ||
+            /^~?\/?\.?$/.test(target)
+        ) {
+            throw new Error(`Refusing to remove unsafe path: ${path}`)
+        }
+
+        const result = await session.execute(
+            `if [ -d ${quoteShellPath(target)} ]; then rm -rf ${quoteShellPath(target)}; elif [ -e ${quoteShellPath(target)} ]; then rm -f ${quoteShellPath(target)}; fi`,
+            {
+                timeout: 15000
+            }
+        )
+
+        if (result.exitCode !== 0) {
+            throw new Error(result.stderr.trim() || `Failed to remove ${path}`)
+        }
+    }
+
     private resolveSessionInput(
         runConfig?: ChatLunaToolRunnable,
         backend?: ComputerBackendType
@@ -825,6 +972,7 @@ export class ChatLunaAgentComputerService {
         }
 
         return new E2BComputerSession(
+            this.ctx,
             {
                 ...this.config.computer.e2b,
                 apiKey: this.resolveSecret(this.config.computer.e2b.apiKey)

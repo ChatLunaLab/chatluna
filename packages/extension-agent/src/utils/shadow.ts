@@ -7,10 +7,14 @@ export function applyShadowing<
     T extends {
         name: string
         id: string
-        enabled: boolean
-        state: string
+        enabled?: boolean
+        disabled?: boolean
+        hidden?: boolean
+        invalid?: boolean
+        state?: string
         available?: boolean
         priority: number
+        remote?: boolean
     }
 >(items: T[]): (T & { shadowedBy?: string })[] {
     const groups = new Map<string, T[]>()
@@ -23,13 +27,23 @@ export function applyShadowing<
 
     const result: (T & { shadowedBy?: string })[] = []
     for (const list of groups.values()) {
-        list.sort((a, b) => a.priority - b.priority)
-        const winner = list.find(
-            (item) =>
-                item.enabled &&
-                item.state === 'ready' &&
-                item.available !== false
-        )
+        const candidates = list.filter((item) => {
+            if (item.enabled === false) return false
+            if (item.disabled === true) return false
+            if (item.hidden === true) return false
+            if (item.invalid === true) return false
+            if (item.state != null && item.state !== 'ready') return false
+            return item.available !== false
+        })
+
+        candidates.sort((a, b) => {
+            if ((a.remote === true) !== (b.remote === true)) {
+                return a.remote === true ? 1 : -1
+            }
+
+            return a.priority - b.priority
+        })
+        const winner = candidates[0]
 
         for (const item of list) {
             result.push({

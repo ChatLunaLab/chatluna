@@ -46,6 +46,7 @@ export interface SubAgentInfo {
     state: 'ready' | 'invalid' | 'missing'
     enabled: boolean
     hidden: boolean
+    remote?: boolean
     path?: string
     scope?: 'data' | 'project' | 'user'
     priority: number

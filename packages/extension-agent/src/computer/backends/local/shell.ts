@@ -142,7 +142,7 @@ function buildWindowsPowerShellCommand(command: string) {
     ].join('; ')
 }
 
-function findPowerShell(): string | undefined {
+export function findPowerShell(): string | undefined {
     return (
         which.sync('pwsh.exe', { nothrow: true }) ??
         which.sync('pwsh', { nothrow: true }) ??
@@ -160,7 +160,7 @@ function buildUtf8Env(
     }
 }
 
-async function findGitBash(): Promise<string | null> {
+export async function findGitBash(): Promise<string | null> {
     if (process.platform !== 'win32') {
         return null
     }

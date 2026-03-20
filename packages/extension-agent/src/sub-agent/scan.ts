@@ -5,19 +5,24 @@ import { Context } from 'koishi'
 import { basename } from 'path'
 import { createSubAgentItemConfig } from '../config/defaults'
 import { getSubAgentsRootPath } from '../config/path'
+import { ComputerSessionApi } from '../computer/types'
 import { AgentConfig, SubAgentInfo } from '../types'
 import { collectFilesRecursive } from '../utils/fs'
 import { createHashId } from '../utils/id'
 import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
+import { computeRemoteDir, isRemotePathInside } from '../utils/remote_path'
+import { quoteShellPath } from '../utils/shell'
 import { parseAgentFrontmatter } from './parse'
 
 export { getBuiltinAgents } from './builtin'
+export const REMOTE_SUBAGENTS_ROOT = '~/.chatluna/agents'
 
 interface ScanTarget {
     root: string
     scope: 'data' | 'project' | 'user'
     priority: number
     hint?: 'chatluna' | 'claude' | 'opencode'
+    remote: boolean
 }
 
 export const WRITE_TOOL_PATTERNS = [
@@ -54,6 +59,45 @@ export async function scanMarkdownAgents(
     })
 }
 
+export async function scanRemoteMarkdownAgents(
+    session: ComputerSessionApi,
+    cfg: AgentConfig['subAgent']
+) {
+    const targets = getRemoteScanTargets(session, cfg)
+    const seen = new Set<string>()
+    const list = (
+        await Promise.all(
+            targets.map(async (target) => {
+                const files = await listRemoteMarkdownFiles(
+                    session,
+                    target.root
+                )
+                return await Promise.all(
+                    files.map(async (file) => {
+                        if (seen.has(file)) {
+                            return undefined
+                        }
+
+                        seen.add(file)
+                        const raw = await session.readFile(file).catch(() => '')
+                        return parseMarkdownAgentText(file, raw, target, cfg)
+                    })
+                )
+            })
+        )
+    )
+        .flat(2)
+        .filter((item) => item != null) as SubAgentInfo[]
+
+    return list.sort((a, b) => {
+        if (a.priority !== b.priority) {
+            return a.priority - b.priority
+        }
+
+        return (a.path ?? '').localeCompare(b.path ?? '')
+    })
+}
+
 function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
     const root = getSubAgentsRootPath(ctx)
     const seen = new Set([toPathKey(root)])
@@ -62,7 +106,8 @@ function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
             root,
             scope: 'data',
             priority: 0,
-            hint: 'chatluna'
+            hint: 'chatluna',
+            remote: false
         }
     ]
 
@@ -83,7 +128,51 @@ function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
             root: dir,
             scope: detectScope(ctx, dir),
             priority: 100 + idx,
-            hint: detectHint(item, dir)
+            hint: detectHint(item, dir),
+            remote: false
+        })
+    }
+
+    return targets
+}
+
+function getRemoteScanTargets(
+    session: ComputerSessionApi,
+    cfg: AgentConfig['subAgent']
+) {
+    const scope = session.getScopePath().replaceAll('\\', '/').trim() || '~'
+    const seen = new Set([
+        REMOTE_SUBAGENTS_ROOT.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
+    ])
+    const targets: ScanTarget[] = [
+        {
+            root: REMOTE_SUBAGENTS_ROOT,
+            scope: 'data',
+            priority: 0,
+            hint: 'chatluna',
+            remote: true
+        }
+    ]
+
+    for (let idx = 0; idx < cfg.dirs.length; idx++) {
+        const item = cfg.dirs[idx]?.trim()
+        if (!item) {
+            continue
+        }
+
+        const dir = computeRemoteDir(scope, item)
+        const key = dir.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
+        if (seen.has(key)) {
+            continue
+        }
+
+        seen.add(key)
+        targets.push({
+            root: dir,
+            scope: detectRemoteScope(scope, dir),
+            priority: 100 + idx,
+            hint: detectHint(item, dir),
+            remote: true
         })
     }
 
@@ -109,6 +198,16 @@ async function parseMarkdownAgent(
     cfg: AgentConfig['subAgent']
 ) {
     const raw = await readFile(file, 'utf-8').catch(() => '')
+
+    return parseMarkdownAgentText(file, raw, target, cfg)
+}
+
+function parseMarkdownAgentText(
+    file: string,
+    raw: string,
+    target: ScanTarget,
+    cfg: AgentConfig['subAgent']
+) {
     const id = createAgentId(file)
     const parsed = parseAgentFrontmatter(
         raw,
@@ -155,6 +254,7 @@ async function parseMarkdownAgent(
         state: parsed.state,
         enabled: item.enabled,
         hidden: item.hidden ?? false,
+        remote: target.remote,
         path: file,
         scope: target.scope,
         priority: target.priority,
@@ -186,6 +286,18 @@ function detectScope(ctx: Context, dir: string) {
     return 'user'
 }
 
+function detectRemoteScope(scope: string, dir: string) {
+    if (isRemotePathInside(dir, REMOTE_SUBAGENTS_ROOT)) {
+        return 'data' as const
+    }
+
+    if (isRemotePathInside(dir, scope)) {
+        return 'project' as const
+    }
+
+    return 'user' as const
+}
+
 function detectHint(raw: string, dir: string) {
     const value = `${raw}\n${dir}`.replaceAll('\\', '/').toLowerCase()
     if (value.includes('/.claude/agents') || value.endsWith('/claude/agents')) {
@@ -204,4 +316,26 @@ function detectHint(raw: string, dir: string) {
 
 function createAgentId(file: string) {
     return createHashId(file)
+}
+
+async function listRemoteMarkdownFiles(
+    session: ComputerSessionApi,
+    root: string
+) {
+    const result = await session.execute(
+        `[ -d ${quoteShellPath(root)} ] && find ${quoteShellPath(root)} -type f -name '*.md' -print || true`,
+        {
+            timeout: 10000
+        }
+    )
+
+    if (result.stderr.trim()) {
+        throw new Error(result.stderr.trim())
+    }
+
+    return result.stdout
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
 }

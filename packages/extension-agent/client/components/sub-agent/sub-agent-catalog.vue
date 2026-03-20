@@ -94,6 +94,18 @@
                         </el-tag>
                     </div>
 
+                    <div v-if="canRemove(item)" class="agent-actions">
+                        <el-button
+                            class="danger-soft"
+                            size="small"
+                            plain
+                            type="danger"
+                            @click.stop="$emit('remove', item)"
+                        >
+                            删除
+                        </el-button>
+                    </div>
+
                     <div
                         v-if="item.diagnostics.length > 0"
                         class="diagnostic-box"
@@ -124,11 +136,13 @@ const props = defineProps<{
     agents: SubAgentInfo[]
     compactMode: boolean
     hideDesc: boolean
+    removableIds: string[]
 }>()
 
 defineEmits<{
     select: [id: string]
     toggle: [item: SubAgentInfo, enabled: boolean]
+    remove: [item: SubAgentInfo]
 }>()
 
 const keyword = ref('')
@@ -166,6 +180,10 @@ function stateTag(state: SubAgentInfo['state']) {
     if (state === 'ready') return 'success'
     if (state === 'invalid') return 'warning'
     return 'info'
+}
+
+function canRemove(item: SubAgentInfo) {
+    return props.removableIds.includes(item.id)
 }
 </script>
 
@@ -349,6 +367,40 @@ function stateTag(state: SubAgentInfo['state']) {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.agent-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.agent-actions :deep(.danger-soft.el-button) {
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 92%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 68%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--k-text-dark) 22%
+    );
+    --el-button-hover-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 86%
+    );
+    --el-button-hover-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 52%
+    );
+    --el-button-hover-text-color: var(--el-color-danger);
 }
 
 .diagnostic-box {

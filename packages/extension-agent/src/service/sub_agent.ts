@@ -32,7 +32,7 @@ import {
     SubAgentTaskSession,
     touchTaskSession
 } from '../sub-agent/session'
-import { ensureSubAgentsRoot } from '../sub-agent/scan'
+import { ensureSubAgentsRoot, REMOTE_SUBAGENTS_ROOT } from '../sub-agent/scan'
 import { TaskTool } from '../sub-agent/tool'
 import {
     AgentConfig,
@@ -451,11 +451,17 @@ export class ChatLunaAgentSubAgentService {
     }
 
     private async refreshCatalog() {
+        const remote = this.ctx.chatluna_agent
+            ? await this.ctx.chatluna_agent.computer
+                  .scanRemoteSubAgents()
+                  .catch(() => [])
+            : []
         const items = await buildSubAgentCatalog(
             this.ctx,
             this.config.subAgent,
             this.permission,
-            this._manual.values()
+            this._manual.values(),
+            remote
         )
         this._catalog = new Map(items.map((item) => [item.id, item]))
         this.syncTool()
@@ -534,7 +540,7 @@ export class ChatLunaAgentSubAgentService {
                 const msg = renderAvailableSubAgents(
                     agents,
                     remote
-                        ? '~/.chatluna/agents'
+                        ? REMOTE_SUBAGENTS_ROOT
                         : getSubAgentsRootPath(this.ctx),
                     remote ? 'remote' : 'local'
                 )

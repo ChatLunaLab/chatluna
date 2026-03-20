@@ -4,9 +4,10 @@ import { execFile } from 'child_process'
 import { mkdir, readdir, readFile, stat } from 'fs/promises'
 import { load } from 'js-yaml'
 import { Context } from 'koishi'
-import { basename, dirname, join } from 'path'
+import { basename, dirname, join, posix } from 'path'
 import { promisify } from 'util'
-import { getSkillsRootPath } from '../config/path'
+import { DEFAULT_SKILL_DIRS, getSkillsRootPath } from '../config/path'
+import { ComputerSessionApi } from '../computer/types'
 import {
     AgentConfig,
     SkillInstallAction,
@@ -19,8 +20,11 @@ import { collectFilesRecursive } from '../utils/fs'
 import { extractFrontmatter } from '../utils/frontmatter'
 import { createHashId } from '../utils/id'
 import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
+import { computeRemoteDir, isRemotePathInside } from '../utils/remote_path'
+import { quoteShellPath } from '../utils/shell'
 
 const execFileAsync = promisify(execFile)
+export const REMOTE_SKILLS_ROOT = '~/.chatluna/skills'
 
 export interface ScannedSkill {
     id: string
@@ -28,6 +32,7 @@ export interface ScannedSkill {
     description: string
     path: string
     dir: string
+    remote: boolean
     source: SkillSource
     scope: SkillScope
     state: SkillState
@@ -56,6 +61,7 @@ interface ScanTarget {
     source: SkillSource
     scope: SkillScope
     priority: number
+    remote: boolean
 }
 
 interface OpenClawMetadata {
@@ -81,9 +87,60 @@ export async function scanSkills(
     const bins = new Map<string, boolean>()
     const skills = (
         await Promise.all(
-            targets.map((target) => scanTarget(target, cfg, bins))
+            targets.map((target) => scanTarget(ctx, target, cfg, bins))
         )
     ).flat()
+
+    return skills.sort((a, b) =>
+        a.priority !== b.priority
+            ? a.priority - b.priority
+            : a.path.localeCompare(b.path)
+    )
+}
+
+export async function scanRemoteSkills(
+    session: ComputerSessionApi,
+    ctx: Context,
+    cfg: AgentConfig
+): Promise<ScannedSkill[]> {
+    const targets = getRemoteScanTargets(session, cfg.skills)
+    const bins = new Map<string, boolean>()
+    const seen = new Set<string>()
+    const skills = (
+        await Promise.all(
+            targets.map(async (target) => {
+                const files = await listRemoteSkillFiles(session, target.root)
+                return await Promise.all(
+                    files.map(async (file) => {
+                        if (seen.has(file)) {
+                            return undefined
+                        }
+
+                        seen.add(file)
+                        const dir = posix.dirname(file)
+                        const raw = await session.readFile(file).catch(() => '')
+                        const extra = await session
+                            .readFile(posix.join(dir, 'agents', 'openai.yaml'))
+                            .catch(() => undefined)
+
+                        return await parseSkillText({
+                            file,
+                            dir,
+                            target,
+                            cfg: cfg.skills,
+                            agentCfg: cfg,
+                            bins,
+                            ctx,
+                            raw,
+                            extra
+                        })
+                    })
+                )
+            })
+        )
+    )
+        .flat(2)
+        .filter((item): item is ScannedSkill => item != null)
 
     return skills.sort((a, b) =>
         a.priority !== b.priority
@@ -96,7 +153,10 @@ export async function getSkillRoots(ctx: Context, cfg: AgentConfig['skills']) {
     return (await getScanTargets(ctx, cfg)).map((t) => t.root)
 }
 
-export async function scanSkillRoot(root: string): Promise<ScannedSkill[]> {
+export async function scanSkillRoot(
+    root: string,
+    ctx?: Context
+): Promise<ScannedSkill[]> {
     const bins = new Map<string, boolean>()
     const files = await collectFilesRecursive(root)
     const dirs = Array.from(
@@ -115,14 +175,16 @@ export async function scanSkillRoot(root: string): Promise<ScannedSkill[]> {
                     root,
                     source: 'custom',
                     scope: 'project',
-                    priority: 0
+                    priority: 0,
+                    remote: false
                 },
                 {
                     dirs: [],
                     items: {}
                 },
                 undefined,
-                bins
+                bins,
+                ctx
             )
         )
     )
@@ -136,7 +198,30 @@ export async function listSkillResources(dir: string): Promise<string[]> {
     })
 }
 
+export async function listRemoteSkillResources(
+    session: ComputerSessionApi,
+    dir: string
+) {
+    const result = await session.execute(
+        `root=${quoteShellPath(dir)} && [ -d "$root" ] && find "$root" -type f ! -name SKILL.md -print | awk -v root="$root" 'index($0, root "/") == 1 { print substr($0, length(root) + 2) }' || true`,
+        {
+            timeout: 10000
+        }
+    )
+
+    if (result.stderr.trim()) {
+        throw new Error(result.stderr.trim())
+    }
+
+    return result.stdout
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+}
+
 async function scanTarget(
+    ctx: Context,
     target: ScanTarget,
     cfg: AgentConfig,
     bins: Map<string, boolean>
@@ -150,7 +235,7 @@ async function scanTarget(
             const file = join(target.root, entry.name, 'SKILL.md')
             const info = await stat(file).catch(() => undefined)
             if (!info?.isFile()) return undefined
-            return parseSkill(file, target, cfg.skills, cfg, bins)
+            return parseSkill(file, target, cfg.skills, cfg, bins, ctx)
         })
     )
 
@@ -162,35 +247,64 @@ async function parseSkill(
     target: ScanTarget,
     cfg: AgentConfig['skills'],
     agentCfg?: AgentConfig,
-    bins = new Map<string, boolean>()
+    bins = new Map<string, boolean>(),
+    ctx?: Context
 ): Promise<ScannedSkill> {
-    const diagnostics: string[] = []
     const dir = dirname(file)
-    const fallbackName = basename(dir)
     const raw = await readFile(file, 'utf-8').catch(() => '')
 
-    if (!raw) {
+    return await parseSkillText({
+        file,
+        dir,
+        target,
+        cfg,
+        agentCfg,
+        bins,
+        ctx,
+        raw,
+        extra: await readFile(
+            join(dir, 'agents', 'openai.yaml'),
+            'utf-8'
+        ).catch(() => undefined)
+    })
+}
+
+async function parseSkillText(input: {
+    file: string
+    dir: string
+    target: ScanTarget
+    cfg: AgentConfig['skills']
+    agentCfg?: AgentConfig
+    bins: Map<string, boolean>
+    ctx?: Context
+    raw: string
+    extra?: string
+}): Promise<ScannedSkill> {
+    const diagnostics: string[] = []
+    const fallbackName = basename(input.dir)
+
+    if (!input.raw) {
         return createInvalidSkill({
-            file,
-            dir,
-            target,
-            cfg,
+            file: input.file,
+            dir: input.dir,
+            target: input.target,
+            cfg: input.cfg,
             diagnostics: ['Failed to read SKILL.md or file is empty'],
-            raw,
+            raw: input.raw,
             body: ''
         })
     }
 
-    const parsed = extractFrontmatter(raw)
+    const parsed = extractFrontmatter(input.raw)
     if (!parsed) {
         return createInvalidSkill({
-            file,
-            dir,
-            target,
-            cfg,
+            file: input.file,
+            dir: input.dir,
+            target: input.target,
+            cfg: input.cfg,
             diagnostics: ['SKILL.md is missing valid YAML frontmatter'],
-            raw,
-            body: raw.trim()
+            raw: input.raw,
+            body: input.raw.trim()
         })
     }
 
@@ -205,17 +319,17 @@ async function parseSkill(
         )
 
         return createInvalidSkill({
-            file,
-            dir,
-            target,
-            cfg,
+            file: input.file,
+            dir: input.dir,
+            target: input.target,
+            cfg: input.cfg,
             diagnostics,
-            raw,
+            raw: input.raw,
             body: parsed.body
         })
     }
 
-    const extra = await readExtraMetadata(dir)
+    const extra = parseExtraMetadata(input.extra)
     diagnostics.push(...extra.diagnostics)
     const openclaw = parseOpenClawMetadata(frontmatter.metadata)
 
@@ -227,12 +341,6 @@ async function parseSkill(
         typeof frontmatter.description === 'string'
             ? frontmatter.description.trim()
             : ''
-
-    if (name.toLowerCase() !== fallbackName.toLowerCase()) {
-        diagnostics.push(
-            `Frontmatter name '${name}' does not match directory '${fallbackName}'`
-        )
-    }
 
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) {
         diagnostics.push('Skill name should match ^[a-z0-9]+(-[a-z0-9]+)*$')
@@ -248,14 +356,19 @@ async function parseSkill(
 
     const metadata = pickMetadata(frontmatter.metadata)
     const allowedTools = parseAllowedTools(frontmatter['allowed-tools'])
-    const availableResult = await checkAvailability(openclaw, agentCfg, bins)
+    const availableResult = await checkAvailability(
+        openclaw,
+        input.agentCfg,
+        input.bins,
+        input.ctx
+    )
     const implicitInvocation =
         frontmatter['disable-model-invocation'] === true
             ? false
             : extra.allowImplicitInvocation !== false
     const userInvocable = frontmatter['user-invocable'] !== false
-    const id = createSkillId(file)
-    const enabled = cfg.items[id]?.enabled !== false
+    const id = createSkillId(input.file)
+    const enabled = input.cfg.items[id]?.enabled !== false
     const state: SkillState = description ? 'ready' : 'invalid'
 
     diagnostics.push(...availableResult.diagnostics)
@@ -264,10 +377,11 @@ async function parseSkill(
         id,
         name,
         description,
-        path: file,
-        dir,
-        source: target.source,
-        scope: target.scope,
+        path: input.file,
+        dir: input.dir,
+        source: input.target.source,
+        scope: input.target.scope,
+        remote: input.target.remote,
         state,
         enabled,
         available: availableResult.available,
@@ -294,8 +408,8 @@ async function parseSkill(
         allowedTools,
         diagnostics,
         body: parsed.body,
-        raw,
-        priority: target.priority
+        raw: input.raw,
+        priority: input.target.priority
     }
 }
 
@@ -318,6 +432,7 @@ function createInvalidSkill(input: {
         dir: input.dir,
         source: input.target.source,
         scope: input.target.scope,
+        remote: input.target.remote,
         state: 'invalid',
         enabled: input.cfg.items[id]?.enabled !== false,
         available: false,
@@ -330,15 +445,11 @@ function createInvalidSkill(input: {
     }
 }
 
-async function readExtraMetadata(dir: string): Promise<{
+function parseExtraMetadata(content?: string): {
     allowImplicitInvocation?: boolean
     diagnostics: string[]
-}> {
+} {
     const diagnostics: string[] = []
-    const content = await readFile(
-        join(dir, 'agents', 'openai.yaml'),
-        'utf-8'
-    ).catch(() => undefined)
 
     if (!content) return { diagnostics }
 
@@ -358,6 +469,26 @@ async function readExtraMetadata(dir: string): Promise<{
         return { diagnostics }
     }
 }
+
+async function listRemoteSkillFiles(session: ComputerSessionApi, root: string) {
+    const result = await session.execute(
+        `[ -d ${quoteShellPath(root)} ] && find ${quoteShellPath(root)} -type f -name SKILL.md -print || true`,
+        {
+            timeout: 10000
+        }
+    )
+
+    if (result.stderr.trim()) {
+        throw new Error(result.stderr.trim())
+    }
+
+    return result.stdout
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+}
+
 function parseAllowedTools(value: unknown) {
     if (typeof value !== 'string' || !value.trim()) return undefined
 
@@ -471,7 +602,8 @@ function parseStringList(value: unknown) {
 async function checkAvailability(
     metadata: OpenClawMetadata,
     cfg?: AgentConfig,
-    bins = new Map<string, boolean>()
+    bins = new Map<string, boolean>(),
+    ctx?: Context
 ) {
     const diagnostics: string[] = []
     const install = metadata.install?.filter(
@@ -491,7 +623,7 @@ async function checkAvailability(
     if (metadata.requires?.bins?.length) {
         const missing: string[] = []
         for (const bin of metadata.requires.bins) {
-            if (!(await hasBin(bin, bins))) missing.push(bin)
+            if (!(await hasBin(bin, bins, ctx))) missing.push(bin)
         }
         if (missing.length) {
             diagnostics.push(`Missing required binaries: ${missing.join(', ')}`)
@@ -501,7 +633,7 @@ async function checkAvailability(
     if (metadata.requires?.anyBins?.length) {
         let matched = false
         for (const bin of metadata.requires.anyBins) {
-            if (await hasBin(bin, bins)) {
+            if (await hasBin(bin, bins, ctx)) {
                 matched = true
                 break
             }
@@ -544,7 +676,22 @@ async function checkAvailability(
     }
 }
 
-async function hasBin(name: string, cache: Map<string, boolean>) {
+async function hasBin(
+    name: string,
+    cache: Map<string, boolean>,
+    ctx?: Context
+) {
+    const computer = ctx?.chatluna_agent?.computer
+    if (computer) {
+        const key = `computer:${name}`
+        const cached = cache.get(key)
+        if (cached != null) return cached
+
+        const ok = await computer.hasBin(name).catch(() => false)
+        cache.set(key, ok)
+        return ok
+    }
+
     const key = `${process.platform}:${name}`
     const cached = cache.get(key)
     if (cached != null) return cached
@@ -577,13 +724,20 @@ async function getScanTargets(
     cfg: AgentConfig['skills']
 ): Promise<ScanTarget[]> {
     const root = getSkillsRootPath(ctx)
+    const dirs = [...DEFAULT_SKILL_DIRS, ...cfg.dirs]
     const seen = new Set([toPathKey(root)])
     const targets: ScanTarget[] = [
-        { root, source: 'chatluna', scope: 'data', priority: 0 }
+        {
+            root,
+            source: 'chatluna',
+            scope: 'data',
+            priority: 0,
+            remote: false
+        }
     ]
 
-    for (let idx = 0; idx < cfg.dirs.length; idx++) {
-        const item = cfg.dirs[idx].trim()
+    for (let idx = 0; idx < dirs.length; idx++) {
+        const item = dirs[idx].trim()
         if (!item) continue
 
         const dir = resolveTildeDir(ctx.baseDir, item)
@@ -595,7 +749,52 @@ async function getScanTargets(
             root: dir,
             source: detectSkillSource(item, dir),
             scope: detectSkillScope(ctx, dir),
-            priority: 100 + idx
+            priority: 100 + idx,
+            remote: false
+        })
+    }
+
+    return targets
+}
+
+function getRemoteScanTargets(
+    session: ComputerSessionApi,
+    cfg: AgentConfig['skills']
+) {
+    const scope = session.getScopePath().replaceAll('\\', '/').trim() || '~'
+    const dirs = [...DEFAULT_SKILL_DIRS, ...cfg.dirs]
+    const seen = new Set([
+        REMOTE_SKILLS_ROOT.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
+    ])
+    const targets: ScanTarget[] = [
+        {
+            root: REMOTE_SKILLS_ROOT,
+            source: 'chatluna',
+            scope: 'data',
+            priority: 0,
+            remote: true
+        }
+    ]
+
+    for (let idx = 0; idx < dirs.length; idx++) {
+        const item = dirs[idx].trim()
+        if (!item) {
+            continue
+        }
+
+        const dir = computeRemoteDir(scope, item)
+        const key = dir.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
+        if (seen.has(key)) {
+            continue
+        }
+
+        seen.add(key)
+        targets.push({
+            root: dir,
+            source: detectSkillSource(item, dir),
+            scope: detectRemoteSkillScope(scope, dir),
+            priority: 100 + idx,
+            remote: true
         })
     }
 
@@ -607,6 +806,12 @@ function detectSkillSource(raw: string, dir: string): SkillSource {
 
     if (value.includes('/.claude/skills') || value.endsWith('/claude/skills')) {
         return 'claude'
+    }
+    if (
+        value.includes('/.openclaw/skills') ||
+        value.endsWith('/openclaw/skills')
+    ) {
+        return 'openclaw'
     }
     if (value.includes('/.agents/skills') || value.endsWith('/agents/skills')) {
         return 'universal'
@@ -628,6 +833,13 @@ function detectSkillScope(ctx: Context, dir: string): SkillScope {
     if (isPathInside(dir, ctx.baseDir)) return 'project'
     return 'user'
 }
+
+function detectRemoteSkillScope(scope: string, dir: string): SkillScope {
+    if (isRemotePathInside(dir, REMOTE_SKILLS_ROOT)) return 'data'
+    if (isRemotePathInside(dir, scope)) return 'project'
+    return 'user'
+}
+
 function createSkillId(file: string) {
     return createHashId(file)
 }

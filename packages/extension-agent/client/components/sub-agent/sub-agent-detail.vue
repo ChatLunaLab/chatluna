@@ -15,6 +15,7 @@
                 <div class="editor-actions">
                     <el-button
                         v-if="canRemove"
+                        class="danger-soft"
                         type="danger"
                         plain
                         @click="$emit('remove')"
@@ -276,6 +277,35 @@ const toolOptions = computed(() => {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.editor-actions :deep(.danger-soft.el-button) {
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 92%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 68%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--k-text-dark) 22%
+    );
+    --el-button-hover-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 86%
+    );
+    --el-button-hover-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 52%
+    );
+    --el-button-hover-text-color: var(--el-color-danger);
 }
 
 .editor-body {
