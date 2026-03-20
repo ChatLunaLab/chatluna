@@ -53,7 +53,7 @@ export function buildSkillCatalog(
             continue
         }
 
-        if (/^[a-f0-9]{16}$/i.test(id)) {
+        if (item.remote) {
             continue
         }
 
@@ -63,6 +63,7 @@ export function buildSkillCatalog(
             description: '',
             path: '',
             dir: '',
+            remote: false,
             source: 'chatluna',
             scope: 'data',
             state: 'missing',

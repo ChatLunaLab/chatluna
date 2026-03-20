@@ -2,7 +2,7 @@
 
 import { mkdir, readFile, stat } from 'fs/promises'
 import { Context } from 'koishi'
-import { basename, posix } from 'path'
+import { basename } from 'path'
 import { createSubAgentItemConfig } from '../config/defaults'
 import { getSubAgentsRootPath } from '../config/path'
 import { ComputerSessionApi } from '../computer/types'
@@ -10,6 +10,7 @@ import { AgentConfig, SubAgentInfo } from '../types'
 import { collectFilesRecursive } from '../utils/fs'
 import { createHashId } from '../utils/id'
 import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
+import { computeRemoteDir, isRemotePathInside } from '../utils/remote_path'
 import { quoteShellPath } from '../utils/shell'
 import { parseAgentFrontmatter } from './parse'
 
@@ -139,8 +140,10 @@ function getRemoteScanTargets(
     session: ComputerSessionApi,
     cfg: AgentConfig['subAgent']
 ) {
-    const scope = normalizeRemoteBase(session.getScopePath())
-    const seen = new Set([normalizeRemoteKey(REMOTE_SUBAGENTS_ROOT)])
+    const scope = session.getScopePath().replaceAll('\\', '/').trim() || '~'
+    const seen = new Set([
+        REMOTE_SUBAGENTS_ROOT.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
+    ])
     const targets: ScanTarget[] = [
         {
             root: REMOTE_SUBAGENTS_ROOT,
@@ -157,8 +160,8 @@ function getRemoteScanTargets(
             continue
         }
 
-        const dir = resolveRemoteDir(scope, item)
-        const key = normalizeRemoteKey(dir)
+        const dir = computeRemoteDir(scope, item)
+        const key = dir.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
         if (seen.has(key)) {
             continue
         }
@@ -335,52 +338,4 @@ async function listRemoteMarkdownFiles(
         .map((item) => item.trim())
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b))
-}
-
-function resolveRemoteDir(scope: string, dir: string) {
-    const value = dir.replaceAll('\\', '/').trim()
-    if (value === '~' || value.startsWith('~/')) {
-        return value
-    }
-
-    if (value.startsWith('/')) {
-        return posix.normalize(value)
-    }
-
-    if (
-        ['.agents/', '.codex/', '.claude/', '.config/opencode/'].some((item) =>
-            value.startsWith(item)
-        )
-    ) {
-        return `~/${value}`
-    }
-
-    if (scope === '~') {
-        return `~/${trimRemotePrefix(value)}`
-    }
-
-    if (scope.startsWith('~/')) {
-        return `${scope.replace(/\/+$/, '')}/${trimRemotePrefix(value)}`
-    }
-
-    return posix.resolve(scope || '/', value)
-}
-
-function trimRemotePrefix(value: string) {
-    return value.replace(/^\.\//, '').replace(/^\//, '')
-}
-
-function normalizeRemoteBase(value: string) {
-    const next = value.replaceAll('\\', '/').trim()
-    return next || '~'
-}
-
-function normalizeRemoteKey(value: string) {
-    return value.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
-}
-
-function isRemotePathInside(path: string, root: string) {
-    const target = normalizeRemoteKey(path)
-    const base = normalizeRemoteKey(root)
-    return target === base || target.startsWith(`${base}/`)
 }

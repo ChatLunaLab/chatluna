@@ -20,6 +20,7 @@ import { collectFilesRecursive } from '../utils/fs'
 import { extractFrontmatter } from '../utils/frontmatter'
 import { createHashId } from '../utils/id'
 import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
+import { computeRemoteDir, isRemotePathInside } from '../utils/remote_path'
 import { quoteShellPath } from '../utils/shell'
 
 const execFileAsync = promisify(execFile)
@@ -202,7 +203,7 @@ export async function listRemoteSkillResources(
     dir: string
 ) {
     const result = await session.execute(
-        `[ -d ${quoteShellPath(dir)} ] && find ${quoteShellPath(dir)} -type f ! -name SKILL.md -printf '%P\n' || true`,
+        `root=${quoteShellPath(dir)} && [ -d "$root" ] && find "$root" -type f ! -name SKILL.md -print | awk -v root="$root" 'index($0, root "/") == 1 { print substr($0, length(root) + 2) }' || true`,
         {
             timeout: 10000
         }
@@ -760,9 +761,11 @@ function getRemoteScanTargets(
     session: ComputerSessionApi,
     cfg: AgentConfig['skills']
 ) {
-    const scope = normalizeRemoteBase(session.getScopePath())
+    const scope = session.getScopePath().replaceAll('\\', '/').trim() || '~'
     const dirs = [...DEFAULT_SKILL_DIRS, ...cfg.dirs]
-    const seen = new Set([normalizeRemoteKey(REMOTE_SKILLS_ROOT)])
+    const seen = new Set([
+        REMOTE_SKILLS_ROOT.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
+    ])
     const targets: ScanTarget[] = [
         {
             root: REMOTE_SKILLS_ROOT,
@@ -779,8 +782,8 @@ function getRemoteScanTargets(
             continue
         }
 
-        const dir = resolveRemoteDir(scope, item)
-        const key = normalizeRemoteKey(dir)
+        const dir = computeRemoteDir(scope, item)
+        const key = dir.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
         if (seen.has(key)) {
             continue
         }
@@ -839,56 +842,4 @@ function detectRemoteSkillScope(scope: string, dir: string): SkillScope {
 
 function createSkillId(file: string) {
     return createHashId(file)
-}
-
-function resolveRemoteDir(scope: string, dir: string) {
-    const value = dir.replaceAll('\\', '/').trim()
-    if (value === '~' || value.startsWith('~/')) {
-        return value
-    }
-
-    if (value.startsWith('/')) {
-        return posix.normalize(value)
-    }
-
-    if (
-        [
-            '.agents/',
-            '.openclaw/',
-            '.codex/',
-            '.claude/',
-            '.config/opencode/'
-        ].some((item) => value.startsWith(item))
-    ) {
-        return `~/${value}`
-    }
-
-    if (scope === '~') {
-        return `~/${trimRemotePrefix(value)}`
-    }
-
-    if (scope.startsWith('~/')) {
-        return `${scope.replace(/\/+$/, '')}/${trimRemotePrefix(value)}`
-    }
-
-    return posix.resolve(scope || '/', value)
-}
-
-function trimRemotePrefix(value: string) {
-    return value.replace(/^\.\//, '').replace(/^\//, '')
-}
-
-function normalizeRemoteBase(value: string) {
-    const next = value.replaceAll('\\', '/').trim()
-    return next || '~'
-}
-
-function normalizeRemoteKey(value: string) {
-    return value.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
-}
-
-function isRemotePathInside(path: string, root: string) {
-    const target = normalizeRemoteKey(path)
-    const base = normalizeRemoteKey(root)
-    return target === base || target.startsWith(`${base}/`)
 }

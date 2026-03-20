@@ -643,18 +643,28 @@ export class E2BComputerSession implements ComputerSessionApi {
         sandbox?: SandboxWrapper
     ) {
         const current = sandbox ?? (await this.ensureSandbox())
+        let result: Awaited<ReturnType<SandboxWrapper['commands']['run']>>
+        let runErr: unknown
 
         try {
-            return await current.commands.run(command, options)
-        } finally {
-            try {
-                await current.setTimeout(this.cfg.timeoutMs)
-            } catch (err) {
-                if (!isMissingSandboxError(err)) {
-                    throw err
-                }
+            result = await current.commands.run(command, options)
+        } catch (err) {
+            runErr = err
+        }
+
+        try {
+            await current.setTimeout(this.cfg.timeoutMs)
+        } catch (err) {
+            if (!runErr && !isMissingSandboxError(err)) {
+                throw err
             }
         }
+
+        if (runErr) {
+            throw runErr
+        }
+
+        return result
     }
 
     private ensureDesktopSandbox() {
@@ -709,16 +719,7 @@ function isMissingSandboxError(err: unknown) {
         return false
     }
 
-    if (err.name === 'NotFoundError') {
-        return true
-    }
-
-    const msg = err.message.toLowerCase()
-    return (
-        msg.includes('not found') ||
-        msg.includes('not running anymore') ||
-        msg.includes('terminated')
-    )
+    return err.name === 'NotFoundError'
 }
 
 function wrapSandbox(sandbox: E2BSandbox): SandboxWrapper {

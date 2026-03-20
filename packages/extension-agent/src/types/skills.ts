@@ -9,6 +9,7 @@ export interface SkillsConfig {
 
 export interface SkillConfig {
     enabled: boolean
+    remote?: boolean
 }
 
 export type SkillSource =

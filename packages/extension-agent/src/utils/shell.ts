@@ -10,7 +10,7 @@ export function quoteShell(value: string): string {
 
 export function quoteShellPath(value: string): string {
     if (value === '~') {
-        return '$HOME'
+        return '"$HOME"'
     }
 
     if (value.startsWith('~/')) {

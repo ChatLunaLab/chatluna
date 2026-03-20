@@ -190,7 +190,7 @@ export class ChatLunaAgentService extends Service {
                 createHashId(
                     join(getSkillsRootPath(this.ctx), name, 'SKILL.md')
                 )
-            ] = { enabled: true }
+            ] = { enabled: true, remote: false }
         }
 
         await this.updateConfig('skills', skills, async () => {
@@ -251,7 +251,11 @@ export class ChatLunaAgentService extends Service {
             dirs: [...this.args.config.skills.dirs],
             items: { ...this.args.config.skills.items }
         }
-        skills.items[id] = { enabled }
+        const info = this.skills.listSkills().find((item) => item.id === id)
+        skills.items[id] = {
+            enabled,
+            remote: info?.remote === true || skills.items[id]?.remote === true
+        }
         await this.updateConfig('skills', skills, async () => {
             await this.skills.reload()
         })

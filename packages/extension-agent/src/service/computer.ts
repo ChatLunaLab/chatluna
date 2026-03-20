@@ -475,7 +475,7 @@ export class ChatLunaAgentComputerService {
 
         const result = await session
             .execute(
-                `sh -lc ${quoteShell(`command -v ${quoteShell(name)} >/dev/null 2>&1`)}`,
+                `sh -lc ${quoteShell(`command -v ${name} >/dev/null 2>&1`)}`,
                 {
                     timeout: 5000
                 }

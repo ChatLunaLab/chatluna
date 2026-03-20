@@ -1821,7 +1821,13 @@ async function collectSyncFiles(
         for (const localRoot of localRoots) {
             const targetPath = join(localRoot, ...file.split('/'))
             const current = await readFile(targetPath, 'utf-8').catch(
-                () => undefined
+                (err: NodeJS.ErrnoException) => {
+                    if (err.code === 'ENOENT') {
+                        return undefined
+                    }
+
+                    throw err
+                }
             )
 
             if (current === content) {
