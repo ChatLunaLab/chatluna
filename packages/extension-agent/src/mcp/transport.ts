@@ -19,14 +19,15 @@ export function createTransport(
     const type = config.type ?? 'stdio'
     const requestInit =
         (config as StreamableHTTPClientTransportOptions).requestInit ?? {}
+    const headers = new Headers(requestInit.headers)
+    for (const [k, v] of Object.entries(config.headers ?? {})) {
+        headers.set(k, v)
+    }
     const transportConfig = {
         ...config,
         requestInit: {
             ...requestInit,
-            headers: {
-                ...(requestInit.headers as Record<string, string>),
-                ...(config.headers ?? {})
-            }
+            headers
         }
     }
 
