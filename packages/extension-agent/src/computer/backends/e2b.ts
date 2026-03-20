@@ -8,6 +8,7 @@ import {
     CommandHandle,
     CommandResult,
     CommandStartOpts,
+    NotFoundError,
     Sandbox as E2BSandbox
 } from 'e2b'
 import mimeTypes from 'mime-types'
@@ -83,7 +84,11 @@ export class E2BComputerSession implements ComputerSessionApi {
                         timeoutMs: this.cfg.timeoutMs
                     })
                 )
-            } catch {
+            } catch (err) {
+                if (!isMissingSandboxError(err)) {
+                    throw err
+                }
+
                 sandbox = wrapSandbox(
                     await E2BSandbox.create(this.cfg.template, {
                         apiKey,
@@ -147,13 +152,23 @@ export class E2BComputerSession implements ComputerSessionApi {
             await desktop.stream.stop().catch(() => undefined)
         }
 
-        if (this.cfg.keepAlive) {
-            await this._sandbox.pause(this.resolveSecret(this.cfg.apiKey))
-        } else {
-            await this._sandbox.kill()
-        }
+        try {
+            if (this.cfg.keepAlive) {
+                await this._sandbox.pause(this.resolveSecret(this.cfg.apiKey))
+            } else {
+                await this._sandbox.kill()
+                this._sandboxId = undefined
+            }
+        } catch (err) {
+            if (!isMissingSandboxError(err)) {
+                throw err
+            }
 
-        this._connected = false
+            this._sandboxId = undefined
+        } finally {
+            this._sandbox = undefined
+            this._connected = false
+        }
     }
 
     isConnected() {
@@ -488,7 +503,11 @@ export class E2BComputerSession implements ComputerSessionApi {
             if (await this._sandbox.internal.isRunning()) {
                 return this._sandbox
             }
-        } catch {}
+        } catch (err) {
+            if (!isMissingSandboxError(err)) {
+                throw err
+            }
+        }
 
         this._connected = false
         await this.connect()
@@ -506,7 +525,13 @@ export class E2BComputerSession implements ComputerSessionApi {
         try {
             return await current.commands.run(command, options)
         } finally {
-            await current.setTimeout(SANDBOX_COMMAND_TIMEOUT).catch(() => {})
+            try {
+                await current.setTimeout(this.cfg.timeoutMs)
+            } catch (err) {
+                if (!isMissingSandboxError(err)) {
+                    throw err
+                }
+            }
         }
     }
 
@@ -553,6 +578,27 @@ function mapCommandResult(result: CommandResult | CommandHandle) {
     }
 }
 
+function isMissingSandboxError(err: unknown) {
+    if (err instanceof NotFoundError) {
+        return true
+    }
+
+    if (!(err instanceof Error)) {
+        return false
+    }
+
+    if (err.name === 'NotFoundError') {
+        return true
+    }
+
+    const msg = err.message.toLowerCase()
+    return (
+        msg.includes('not found') ||
+        msg.includes('not running anymore') ||
+        msg.includes('terminated')
+    )
+}
+
 function wrapSandbox(sandbox: E2BSandbox): SandboxWrapper {
     return {
         sandboxId: sandbox.sandboxId,
@@ -582,5 +628,3 @@ const CAPABILITIES = [
     'desktop_screenshot',
     'desktop_action'
 ] as const
-
-const SANDBOX_COMMAND_TIMEOUT = 30_000

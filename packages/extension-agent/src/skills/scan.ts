@@ -6,7 +6,7 @@ import { load } from 'js-yaml'
 import { Context } from 'koishi'
 import { basename, dirname, join } from 'path'
 import { promisify } from 'util'
-import { getSkillsRootPath } from '../config/path'
+import { DEFAULT_SKILL_DIRS, getSkillsRootPath } from '../config/path'
 import {
     AgentConfig,
     SkillInstallAction,
@@ -233,12 +233,6 @@ async function parseSkill(
         typeof frontmatter.description === 'string'
             ? frontmatter.description.trim()
             : ''
-
-    if (name.toLowerCase() !== fallbackName.toLowerCase()) {
-        diagnostics.push(
-            `Frontmatter name '${name}' does not match directory '${fallbackName}'`
-        )
-    }
 
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) {
         diagnostics.push('Skill name should match ^[a-z0-9]+(-[a-z0-9]+)*$')
@@ -604,13 +598,14 @@ async function getScanTargets(
     cfg: AgentConfig['skills']
 ): Promise<ScanTarget[]> {
     const root = getSkillsRootPath(ctx)
+    const dirs = [...DEFAULT_SKILL_DIRS, ...cfg.dirs]
     const seen = new Set([toPathKey(root)])
     const targets: ScanTarget[] = [
         { root, source: 'chatluna', scope: 'data', priority: 0 }
     ]
 
-    for (let idx = 0; idx < cfg.dirs.length; idx++) {
-        const item = cfg.dirs[idx].trim()
+    for (let idx = 0; idx < dirs.length; idx++) {
+        const item = dirs[idx].trim()
         if (!item) continue
 
         const dir = resolveTildeDir(ctx.baseDir, item)
@@ -634,6 +629,12 @@ function detectSkillSource(raw: string, dir: string): SkillSource {
 
     if (value.includes('/.claude/skills') || value.endsWith('/claude/skills')) {
         return 'claude'
+    }
+    if (
+        value.includes('/.openclaw/skills') ||
+        value.endsWith('/openclaw/skills')
+    ) {
+        return 'openclaw'
     }
     if (value.includes('/.agents/skills') || value.endsWith('/agents/skills')) {
         return 'universal'

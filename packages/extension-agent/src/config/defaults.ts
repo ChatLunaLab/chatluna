@@ -9,6 +9,7 @@ import {
     ToolConfig,
     ToolItemConfig
 } from '../types'
+import { DEFAULT_SKILL_DIRS } from './path'
 
 export function getDefaultToolAuthority(name?: string) {
     if (
@@ -181,12 +182,7 @@ export function getDefaultConfig(): AgentConfig {
             tools: {}
         },
         skills: {
-            dirs: [
-                '~/.agents/skills',
-                '~/.codex/skills',
-                '~/.claude/skills',
-                '~/.config/opencode/skills'
-            ],
+            dirs: [...DEFAULT_SKILL_DIRS],
             items: {}
         },
         computer: createDefaultComputerConfig(),

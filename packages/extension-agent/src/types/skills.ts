@@ -13,6 +13,7 @@ export interface SkillConfig {
 
 export type SkillSource =
     | 'chatluna'
+    | 'openclaw'
     | 'codex'
     | 'universal'
     | 'claude'

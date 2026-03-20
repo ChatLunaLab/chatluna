@@ -36,6 +36,7 @@ export async function previewSkillsImport(
         const source = await materializeImportSource(ctx, input, tmp)
 
         return await previewMaterializedSource(
+            ctx,
             source.root,
             input.type,
             input.name,
@@ -61,6 +62,7 @@ export async function importSkills(
     try {
         const source = await materializeImportSource(ctx, input, tmp)
         const preview = await previewMaterializedSource(
+            ctx,
             source.root,
             input.type,
             input.type === 'zip'
@@ -120,6 +122,7 @@ export async function importSkills(
 }
 
 async function previewMaterializedSource(
+    ctx: Context,
     root: string,
     source: SkillImportInput['type'],
     target: string,
