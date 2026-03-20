@@ -46,6 +46,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     readonly capabilities = [...CAPABILITIES]
 
     private _connected = false
+    private _connecting?: Promise<void>
     private _home = '/'
     private _root: string
     private _cwd: string
@@ -68,83 +69,113 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async connect() {
-        if (!this.cfg.enabled) {
-            throw new Error('E2B backend is disabled.')
+        if (this._connecting) {
+            await this._connecting
+            return
         }
 
-        const apiKey = this.resolveSecret(this.cfg.apiKey)
-        if (!apiKey) {
-            throw new Error('E2B apiKey is empty.')
-        }
+        const task = (async () => {
+            if (!this.cfg.enabled) {
+                throw new Error('E2B backend is disabled.')
+            }
 
-        let sandbox: SandboxWrapper
+            const apiKey = this.resolveSecret(this.cfg.apiKey)
+            if (!apiKey) {
+                throw new Error('E2B apiKey is empty.')
+            }
 
-        if (this._sandboxId && this.cfg.keepAlive) {
+            let sandbox: SandboxWrapper | undefined
+            let created = false
+
             try {
-                sandbox = wrapSandbox(
-                    await E2BSandbox.connect(this._sandboxId, {
-                        apiKey,
-                        timeoutMs: this.cfg.timeoutMs
-                    })
-                )
-            } catch (err) {
-                if (!isMissingSandboxError(err)) {
-                    throw err
+                if (this._sandboxId && this.cfg.keepAlive) {
+                    try {
+                        sandbox = wrapSandbox(
+                            await E2BSandbox.connect(this._sandboxId, {
+                                apiKey,
+                                timeoutMs: this.cfg.timeoutMs
+                            })
+                        )
+                    } catch (err) {
+                        if (!isMissingSandboxError(err)) {
+                            throw err
+                        }
+
+                        sandbox = wrapSandbox(
+                            await E2BSandbox.create(this.cfg.template, {
+                                apiKey,
+                                timeoutMs: this.cfg.timeoutMs
+                            })
+                        )
+                        created = true
+                    }
+                } else {
+                    sandbox = wrapSandbox(
+                        await E2BSandbox.create(this.cfg.template, {
+                            apiKey,
+                            timeoutMs: this.cfg.timeoutMs
+                        })
+                    )
+                    created = true
                 }
 
-                sandbox = wrapSandbox(
-                    await E2BSandbox.create(this.cfg.template, {
-                        apiKey,
-                        timeoutMs: this.cfg.timeoutMs
-                    })
+                await sandbox.setTimeout(this.cfg.timeoutMs)
+                const current = await this.run(
+                    'pwd',
+                    {
+                        timeoutMs: 5000
+                    } as CommandStartOpts,
+                    sandbox
                 )
+                this._home = current.stdout.trim() || '/'
+
+                if (this.options.cwd) {
+                    const cwd = this.resolvePath(this.options.cwd)
+                    const stat = await this.run(
+                        `if [ -d ${quoteShell(cwd)} ]; then printf __dir__; fi`,
+                        {
+                            timeoutMs: 5000
+                        } as CommandStartOpts,
+                        sandbox
+                    )
+                    if (stat.stdout.trim() === '__dir__') {
+                        this._root = cwd
+                        this._cwd = cwd
+                    } else {
+                        this._root = this._home
+                        this._cwd = this._root
+                    }
+                } else {
+                    this._root = this._home
+                    this._cwd = this._root
+                }
+
+                this._sandbox = sandbox
+                this._sandboxId = sandbox.sandboxId
+                this._connected = true
+            } catch (err) {
+                this._sandbox = undefined
+                this._connected = false
+                if (created && sandbox) {
+                    await sandbox.kill().catch(() => undefined)
+                }
+                throw err
             }
-        } else {
-            sandbox = wrapSandbox(
-                await E2BSandbox.create(this.cfg.template, {
-                    apiKey,
-                    timeoutMs: this.cfg.timeoutMs
-                })
-            )
-        }
+        })()
 
-        this._sandbox = sandbox
-        this._sandboxId = sandbox.sandboxId
-        await sandbox.setTimeout(this.cfg.timeoutMs)
-        const current = await this.run(
-            'pwd',
-            {
-                timeoutMs: 5000
-            } as CommandStartOpts,
-            sandbox
-        )
-        this._home = current.stdout.trim() || '/'
-
-        if (this.options.cwd) {
-            const cwd = this.resolvePath(this.options.cwd)
-            const stat = await this.run(
-                `if [ -d ${quoteShell(cwd)} ]; then printf __dir__; fi`,
-                {
-                    timeoutMs: 5000
-                } as CommandStartOpts,
-                sandbox
-            )
-            if (stat.stdout.trim() === '__dir__') {
-                this._root = cwd
-                this._cwd = cwd
-            } else {
-                this._root = this._home
-                this._cwd = this._root
+        this._connecting = task
+        try {
+            await task
+        } finally {
+            if (this._connecting === task) {
+                this._connecting = undefined
             }
-        } else {
-            this._root = this._home
-            this._cwd = this._root
         }
-
-        this._connected = true
     }
 
     async disconnect() {
+        await this._connecting?.catch(() => undefined)
+
         if (!this._sandbox) {
             this._connected = false
             return
