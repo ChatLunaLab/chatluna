@@ -81,7 +81,7 @@ export async function scanSkills(
     const bins = new Map<string, boolean>()
     const skills = (
         await Promise.all(
-            targets.map((target) => scanTarget(target, cfg, bins))
+            targets.map((target) => scanTarget(ctx, target, cfg, bins))
         )
     ).flat()
 
@@ -96,7 +96,10 @@ export async function getSkillRoots(ctx: Context, cfg: AgentConfig['skills']) {
     return (await getScanTargets(ctx, cfg)).map((t) => t.root)
 }
 
-export async function scanSkillRoot(root: string): Promise<ScannedSkill[]> {
+export async function scanSkillRoot(
+    root: string,
+    ctx?: Context
+): Promise<ScannedSkill[]> {
     const bins = new Map<string, boolean>()
     const files = await collectFilesRecursive(root)
     const dirs = Array.from(
@@ -122,7 +125,8 @@ export async function scanSkillRoot(root: string): Promise<ScannedSkill[]> {
                     items: {}
                 },
                 undefined,
-                bins
+                bins,
+                ctx
             )
         )
     )
@@ -137,6 +141,7 @@ export async function listSkillResources(dir: string): Promise<string[]> {
 }
 
 async function scanTarget(
+    ctx: Context,
     target: ScanTarget,
     cfg: AgentConfig,
     bins: Map<string, boolean>
@@ -150,7 +155,7 @@ async function scanTarget(
             const file = join(target.root, entry.name, 'SKILL.md')
             const info = await stat(file).catch(() => undefined)
             if (!info?.isFile()) return undefined
-            return parseSkill(file, target, cfg.skills, cfg, bins)
+            return parseSkill(file, target, cfg.skills, cfg, bins, ctx)
         })
     )
 
@@ -162,7 +167,8 @@ async function parseSkill(
     target: ScanTarget,
     cfg: AgentConfig['skills'],
     agentCfg?: AgentConfig,
-    bins = new Map<string, boolean>()
+    bins = new Map<string, boolean>(),
+    ctx?: Context
 ): Promise<ScannedSkill> {
     const diagnostics: string[] = []
     const dir = dirname(file)
@@ -248,7 +254,12 @@ async function parseSkill(
 
     const metadata = pickMetadata(frontmatter.metadata)
     const allowedTools = parseAllowedTools(frontmatter['allowed-tools'])
-    const availableResult = await checkAvailability(openclaw, agentCfg, bins)
+    const availableResult = await checkAvailability(
+        openclaw,
+        agentCfg,
+        bins,
+        ctx
+    )
     const implicitInvocation =
         frontmatter['disable-model-invocation'] === true
             ? false
@@ -471,7 +482,8 @@ function parseStringList(value: unknown) {
 async function checkAvailability(
     metadata: OpenClawMetadata,
     cfg?: AgentConfig,
-    bins = new Map<string, boolean>()
+    bins = new Map<string, boolean>(),
+    ctx?: Context
 ) {
     const diagnostics: string[] = []
     const install = metadata.install?.filter(
@@ -491,7 +503,7 @@ async function checkAvailability(
     if (metadata.requires?.bins?.length) {
         const missing: string[] = []
         for (const bin of metadata.requires.bins) {
-            if (!(await hasBin(bin, bins))) missing.push(bin)
+            if (!(await hasBin(bin, bins, ctx))) missing.push(bin)
         }
         if (missing.length) {
             diagnostics.push(`Missing required binaries: ${missing.join(', ')}`)
@@ -501,7 +513,7 @@ async function checkAvailability(
     if (metadata.requires?.anyBins?.length) {
         let matched = false
         for (const bin of metadata.requires.anyBins) {
-            if (await hasBin(bin, bins)) {
+            if (await hasBin(bin, bins, ctx)) {
                 matched = true
                 break
             }
@@ -544,7 +556,22 @@ async function checkAvailability(
     }
 }
 
-async function hasBin(name: string, cache: Map<string, boolean>) {
+async function hasBin(
+    name: string,
+    cache: Map<string, boolean>,
+    ctx?: Context
+) {
+    const computer = ctx?.chatluna_agent?.computer
+    if (computer) {
+        const key = `computer:${name}`
+        const cached = cache.get(key)
+        if (cached != null) return cached
+
+        const ok = await computer.hasBin(name).catch(() => false)
+        cache.set(key, ok)
+        return ok
+    }
+
     const key = `${process.platform}:${name}`
     const cached = cache.get(key)
     if (cached != null) return cached

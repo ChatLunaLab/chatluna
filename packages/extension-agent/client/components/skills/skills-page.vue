@@ -168,46 +168,50 @@
                         </div>
 
                         <div class="skill-actions">
+                            <div class="skill-actions-main">
+                                <el-button
+                                    size="small"
+                                    plain
+                                    :disabled="!item.path"
+                                    @click="previewSkill(item)"
+                                >
+                                    查看内容
+                                </el-button>
+                                <el-button
+                                    size="small"
+                                    plain
+                                    :disabled="!canExport(item)"
+                                    @click="exportSkill(item)"
+                                >
+                                    导出 ZIP
+                                </el-button>
+                                <el-button
+                                    size="small"
+                                    plain
+                                    :disabled="!item.path"
+                                    @click="copyPath(item.path)"
+                                >
+                                    复制路径
+                                </el-button>
+                                <el-button
+                                    v-if="item.homepage"
+                                    size="small"
+                                    plain
+                                    @click="openLink(item.homepage)"
+                                >
+                                    打开主页
+                                </el-button>
+                            </div>
+
                             <el-button
                                 v-if="hasDiagnostics(item)"
+                                class="skill-action-error"
                                 size="small"
                                 plain
                                 type="warning"
                                 @click="openDiagnostics(item)"
                             >
                                 错误信息
-                            </el-button>
-                            <el-button
-                                size="small"
-                                plain
-                                :disabled="!item.path"
-                                @click="previewSkill(item)"
-                            >
-                                查看内容
-                            </el-button>
-                            <el-button
-                                size="small"
-                                plain
-                                :disabled="!canExport(item)"
-                                @click="exportSkill(item)"
-                            >
-                                导出 ZIP
-                            </el-button>
-                            <el-button
-                                size="small"
-                                plain
-                                :disabled="!item.path"
-                                @click="copyPath(item.path)"
-                            >
-                                复制路径
-                            </el-button>
-                            <el-button
-                                v-if="item.homepage"
-                                size="small"
-                                plain
-                                @click="openLink(item.homepage)"
-                            >
-                                打开主页
                             </el-button>
                         </div>
                     </div>
@@ -652,12 +656,30 @@ function base64ToBlob(data: string, type: string) {
     gap: 10px;
 }
 
-.settings-actions,
-.skill-actions {
+.settings-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.skill-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skill-actions-main {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+    gap: 8px;
+}
+
+.skill-actions-main :deep(.el-button),
+.skill-action-error {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
 }
 
 .skill-footer {

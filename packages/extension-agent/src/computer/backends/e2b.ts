@@ -27,6 +27,7 @@ import {
 
 interface SandboxWrapper {
     sandboxId: string
+    internal: E2BSandbox
     files: E2BSandbox['files']
     commands: E2BSandbox['commands']
     pty: E2BSandbox['pty']
@@ -72,15 +73,26 @@ export class E2BComputerSession implements ComputerSessionApi {
             throw new Error('E2B apiKey is empty.')
         }
 
+        let sandbox: SandboxWrapper
+
         if (this._sandboxId && this.cfg.keepAlive) {
-            this._sandbox = wrapSandbox(
-                await E2BSandbox.connect(this._sandboxId, {
-                    apiKey,
-                    timeoutMs: this.cfg.timeoutMs
-                })
-            )
+            try {
+                sandbox = wrapSandbox(
+                    await E2BSandbox.connect(this._sandboxId, {
+                        apiKey,
+                        timeoutMs: this.cfg.timeoutMs
+                    })
+                )
+            } catch {
+                sandbox = wrapSandbox(
+                    await E2BSandbox.create(this.cfg.template, {
+                        apiKey,
+                        timeoutMs: this.cfg.timeoutMs
+                    })
+                )
+            }
         } else {
-            this._sandbox = wrapSandbox(
+            sandbox = wrapSandbox(
                 await E2BSandbox.create(this.cfg.template, {
                     apiKey,
                     timeoutMs: this.cfg.timeoutMs
@@ -88,20 +100,26 @@ export class E2BComputerSession implements ComputerSessionApi {
             )
         }
 
-        this._sandboxId = this._sandbox.sandboxId
-        await this._sandbox.setTimeout(this.cfg.timeoutMs)
-        const current = await this._sandbox.commands.run('pwd', {
-            timeoutMs: 5000
-        } as CommandStartOpts)
+        this._sandbox = sandbox
+        this._sandboxId = sandbox.sandboxId
+        await sandbox.setTimeout(this.cfg.timeoutMs)
+        const current = await this.run(
+            'pwd',
+            {
+                timeoutMs: 5000
+            } as CommandStartOpts,
+            sandbox
+        )
         this._home = current.stdout.trim() || '/'
 
         if (this.options.cwd) {
             const cwd = this.resolvePath(this.options.cwd)
-            const stat = await this._sandbox.commands.run(
+            const stat = await this.run(
                 `if [ -d ${quoteShell(cwd)} ]; then printf __dir__; fi`,
                 {
                     timeoutMs: 5000
-                } as CommandStartOpts
+                } as CommandStartOpts,
+                sandbox
             )
             if (stat.stdout.trim() === '__dir__') {
                 this._root = cwd
@@ -276,9 +294,7 @@ export class E2BComputerSession implements ComputerSessionApi {
         const cwd = options.workdir
             ? this.resolvePath(options.workdir)
             : this._cwd
-        const result = await (
-            await this.ensureSandbox()
-        ).commands.run(command, {
+        const result = await this.run(command, {
             cwd,
             timeoutMs: options.timeout,
             envs: options.env
@@ -465,9 +481,33 @@ export class E2BComputerSession implements ComputerSessionApi {
     private async ensureSandbox() {
         if (!this._sandbox) {
             await this.connect()
+            return this._sandbox
         }
 
+        try {
+            if (await this._sandbox.internal.isRunning()) {
+                return this._sandbox
+            }
+        } catch {}
+
+        this._connected = false
+        await this.connect()
+
         return this._sandbox
+    }
+
+    private async run(
+        command: string,
+        options?: CommandStartOpts,
+        sandbox?: SandboxWrapper
+    ) {
+        const current = sandbox ?? (await this.ensureSandbox())
+
+        try {
+            return await current.commands.run(command, options)
+        } finally {
+            await current.setTimeout(SANDBOX_COMMAND_TIMEOUT).catch(() => {})
+        }
     }
 
     private ensureDesktopSandbox() {
@@ -523,7 +563,8 @@ function wrapSandbox(sandbox: E2BSandbox): SandboxWrapper {
         pause: async (apiKey) => {
             await sandbox.betaPause(apiKey ? { apiKey } : undefined)
         },
-        kill: () => sandbox.kill()
+        kill: () => sandbox.kill(),
+        internal: sandbox
         // desktop: sandbox instanceof DesktopSandbox ? sandbox : undefined
     }
 }
@@ -541,3 +582,5 @@ const CAPABILITIES = [
     'desktop_screenshot',
     'desktop_action'
 ] as const
+
+const SANDBOX_COMMAND_TIMEOUT = 30_000

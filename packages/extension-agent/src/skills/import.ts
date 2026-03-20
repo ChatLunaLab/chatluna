@@ -126,7 +126,7 @@ async function previewMaterializedSource(
     diagnostics: string[]
 ): Promise<SkillImportPreviewResult> {
     const entries = await collectPreviewEntries(root)
-    const scanned = await scanSkillRoot(root)
+    const scanned = await scanSkillRoot(root, ctx)
     const skills = scanned.map((item): SkillImportPreviewItem => {
         const dir = item.dir
             .slice(root.length)
@@ -323,7 +323,7 @@ async function previewGithub(ctx: Context, url: string) {
         const target = info.subpath
             ? `${info.owner}/${info.repo}/${info.subpath}`
             : `${info.owner}/${info.repo}`
-        const scanned = await scanSkillRoot(tmp)
+        const scanned = await scanSkillRoot(tmp, ctx)
         const skills = scanned.map(
             (item): SkillImportPreviewItem => ({
                 dir:

@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
+import which from 'which'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
@@ -25,6 +26,7 @@ import {
     ComputerSessionStore
 } from '../computer/session'
 import { LocalComputerSession } from '../computer/backends/local'
+import { findGitBash, findPowerShell } from '../computer/backends/local/shell'
 import { OpenTerminalComputerSession } from '../computer/backends/open_terminal'
 import { E2BComputerSession } from '../computer/backends/e2b'
 import {
@@ -49,6 +51,7 @@ import { PublishFileTool } from '../computer/tools/publish_file'
 import { GrepTool } from '../computer/tools/grep'
 import { GlobTool } from '../computer/tools/glob'
 import { BashTool } from '../computer/tools/bash'
+import { quoteShell } from '../utils/shell'
 
 export class ChatLunaAgentComputerService {
     private _sessions = new ComputerSessionStore()
@@ -405,6 +408,79 @@ export class ChatLunaAgentComputerService {
                 )
             )
         )
+    }
+
+    async hasBin(name: string, backend?: ComputerBackendType) {
+        const type = backend ?? this.resolveProvider()
+        if (!type || !isAvailableBackend(this._status.backends[type])) {
+            return false
+        }
+
+        if (type === 'local') {
+            if (!this.config.computer.local.dangerouslySkipPermissions) {
+                if (
+                    this.config.computer.local.blockedCommands.some(
+                        (item) => item.toLowerCase() === name.toLowerCase()
+                    )
+                ) {
+                    return false
+                }
+
+                if (
+                    this.config.computer.local.allowedCommands.length > 0 &&
+                    !this.config.computer.local.allowedCommands.some(
+                        (item) => item.toLowerCase() === name.toLowerCase()
+                    )
+                ) {
+                    return false
+                }
+            }
+
+            if (process.platform === 'win32') {
+                const bin = name.toLowerCase()
+                if (
+                    bin === 'bash' ||
+                    bin === 'bash.exe' ||
+                    bin === 'sh' ||
+                    bin === 'sh.exe'
+                ) {
+                    return (await findGitBash()) != null
+                }
+
+                if (
+                    bin === 'pwsh' ||
+                    bin === 'pwsh.exe' ||
+                    bin === 'powershell' ||
+                    bin === 'powershell.exe'
+                ) {
+                    return findPowerShell() != null
+                }
+
+                if (bin === 'cmd' || bin === 'cmd.exe') {
+                    return true
+                }
+            }
+
+            return which.sync(name, { nothrow: true }) != null
+        }
+
+        const session = await this.getOrCreateSession({ backend: type }).catch(
+            () => undefined
+        )
+        if (!session) {
+            return false
+        }
+
+        const result = await session
+            .execute(
+                `sh -lc ${quoteShell(`command -v ${quoteShell(name)} >/dev/null 2>&1`)}`,
+                {
+                    timeout: 5000
+                }
+            )
+            .catch(() => undefined)
+
+        return result?.exitCode === 0
     }
 
     listAvailableBackends(): ComputerBackendType[] {
