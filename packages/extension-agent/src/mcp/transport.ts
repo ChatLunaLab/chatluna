@@ -17,6 +17,18 @@ export function createTransport(
     config: McpServerConfig
 ): Transport {
     const type = config.type ?? 'stdio'
+    const requestInit =
+        (config as StreamableHTTPClientTransportOptions).requestInit ?? {}
+    const transportConfig = {
+        ...config,
+        requestInit: {
+            ...requestInit,
+            headers: {
+                ...(requestInit.headers as Record<string, string>),
+                ...(config.headers ?? {})
+            }
+        }
+    }
 
     if (type === 'stdio') {
         return new StdioClientTransport({
@@ -31,14 +43,14 @@ export function createTransport(
     if (type === 'sse') {
         return new SSEClientTransport(
             new URL(config.url),
-            config as SSEClientTransportOptions
+            transportConfig as SSEClientTransportOptions
         )
     }
 
     if (type === 'http' || type === 'streamable_http') {
         return new StreamableHTTPClientTransport(
             new URL(config.url),
-            config as StreamableHTTPClientTransportOptions
+            transportConfig as StreamableHTTPClientTransportOptions
         )
     }
 
