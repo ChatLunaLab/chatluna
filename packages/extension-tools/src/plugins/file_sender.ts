@@ -19,6 +19,9 @@ export async function apply(
         selector() {
             return true
         },
+        authorization(session) {
+            return session.platform === 'onebot'
+        },
         createTool() {
             return new SendFileTool(config)
         }
@@ -171,6 +174,22 @@ class SendFileTool extends StructuredTool {
 
         for (const item of queue) {
             const file = item.file
+            const validateError = validateFile(file)
+            if (validateError) {
+                result.push({
+                    file: item.file,
+                    name: item.name,
+                    fileId: '',
+                    targetType: session.isDirect ? 'private' : 'group',
+                    targetId: String(
+                        session.isDirect
+                            ? session.userId
+                            : session.guildId ?? session.channelId
+                    ),
+                    error: validateError
+                })
+                continue
+            }
 
             if (session.isDirect) {
                 try {
@@ -242,7 +261,7 @@ class SendFileTool extends StructuredTool {
 
         return JSON.stringify(
             {
-                ok: true,
+                ok: result.every((item) => item.error === undefined),
                 count: result.length,
                 files: result
             },
@@ -270,6 +289,10 @@ function getName(file: string, name?: string) {
         return input
     }
 
+    if (file.startsWith('base64://')) {
+        return 'file'
+    }
+
     try {
         const url = new URL(file)
         const part = decodeURIComponent(url.pathname.split('/').pop() ?? '')
@@ -284,6 +307,36 @@ function getName(file: string, name?: string) {
     }
 
     return 'file'
+}
+
+function validateFile(file: string) {
+    if (file.startsWith('base64://')) {
+        return ''
+    }
+
+    try {
+        const url = new URL(file)
+        if (url.protocol === 'file:') {
+            return '不允许 file:// 来源。'
+        }
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return '仅支持 http/https/base64 来源。'
+        }
+        const host = url.hostname.toLowerCase()
+        if (
+            host === 'localhost' ||
+            host === '127.0.0.1' ||
+            host === '::1' ||
+            host.startsWith('10.') ||
+            host.startsWith('192.168.') ||
+            /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+        ) {
+            return '不允许访问内网或本地地址。'
+        }
+        return ''
+    } catch {
+        return '仅支持 http/https/base64 来源。'
+    }
 }
 
 async function requestOnebot(

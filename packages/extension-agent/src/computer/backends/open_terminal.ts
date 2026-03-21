@@ -496,7 +496,19 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         this._cwd = cwd
 
         const open = new Promise<void>((resolve, reject) => {
+            let settled = false
+            const fail = (reason: string) => {
+                if (settled) {
+                    return
+                }
+                settled = true
+                reject(new Error(reason))
+            }
             ws.addEventListener('open', () => {
+                if (settled) {
+                    return
+                }
+                settled = true
                 const token = this.resolveSecret(this.cfg.apiKey)
                 if (token) {
                     ws.send(
@@ -513,18 +525,21 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 queue.length = 0
                 resolve()
             })
-            ws.addEventListener('error', reject)
+            ws.addEventListener('error', () => {
+                fail('Failed to open terminal websocket.')
+            })
+            ws.addEventListener('close', () => {
+                fail('Terminal websocket closed before ready.')
+            })
         })
 
         ws.addEventListener('message', (event) => {
             const chunk = event.data
-            if (typeof chunk === 'string') {
-                return
-            }
-
             const text =
-                chunk instanceof Blob
-                    ? ''
+                typeof chunk === 'string'
+                    ? chunk
+                    : chunk instanceof Blob
+                      ? ''
                     : Array.isArray(chunk)
                       ? Buffer.concat(chunk).toString('utf8')
                       : Buffer.from(chunk).toString('utf8')
