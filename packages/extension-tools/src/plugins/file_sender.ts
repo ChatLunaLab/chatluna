@@ -34,6 +34,15 @@ type OneBotResponse = {
     }
 }
 
+type SendFileResult = {
+    file: string
+    name: string
+    fileId: string
+    targetType: 'group' | 'private'
+    targetId: string
+    error?: string
+}
+
 type OneBotInternal = {
     _get?: (
         action: string,
@@ -136,23 +145,50 @@ class SendFileTool extends StructuredTool {
             return '没有可上传的文件。'
         }
 
-        const result: {
-            file: string
-            name: string
-            fileId: string
-            targetType: 'group' | 'private'
-            targetId: string
-        }[] = []
+        const result: SendFileResult[] = []
 
         for (const item of queue) {
             const file = item.file
 
             if (session.isDirect) {
+                try {
+                    const data = await requestOnebot(
+                        internal,
+                        'upload_private_file',
+                        {
+                            user_id: Number(session.userId),
+                            file,
+                            name: item.name
+                        },
+                        this.config.fileSenderTimeout
+                    )
+
+                    result.push({
+                        file: item.file,
+                        name: item.name,
+                        fileId: getFileId(data, item.file),
+                        targetType: 'private',
+                        targetId: String(session.userId)
+                    })
+                } catch (err) {
+                    result.push({
+                        file: item.file,
+                        name: item.name,
+                        fileId: '',
+                        targetType: 'private',
+                        targetId: String(session.userId),
+                        error: String(err)
+                    })
+                }
+                continue
+            }
+
+            try {
                 const data = await requestOnebot(
                     internal,
-                    'upload_private_file',
+                    'upload_group_file',
                     {
-                        user_id: Number(session.userId),
+                        group_id: Number(session.guildId ?? session.channelId),
                         file,
                         name: item.name
                     },
@@ -162,36 +198,20 @@ class SendFileTool extends StructuredTool {
                 result.push({
                     file: item.file,
                     name: item.name,
-                    fileId:
-                        String(
-                            data?.file_id ?? data?.data?.file_id ?? ''
-                        ).trim() || item.file,
-                    targetType: 'private',
-                    targetId: String(session.userId)
+                    fileId: getFileId(data, item.file),
+                    targetType: 'group',
+                    targetId: String(session.guildId ?? session.channelId)
                 })
-                continue
+            } catch (err) {
+                result.push({
+                    file: item.file,
+                    name: item.name,
+                    fileId: '',
+                    targetType: 'group',
+                    targetId: String(session.guildId ?? session.channelId),
+                    error: String(err)
+                })
             }
-
-            const data = await requestOnebot(
-                internal,
-                'upload_group_file',
-                {
-                    group_id: Number(session.guildId ?? session.channelId),
-                    file,
-                    name: item.name
-                },
-                this.config.fileSenderTimeout
-            )
-
-            result.push({
-                file: item.file,
-                name: item.name,
-                fileId:
-                    String(data?.file_id ?? data?.data?.file_id ?? '').trim() ||
-                    item.file,
-                targetType: 'group',
-                targetId: String(session.guildId ?? session.channelId)
-            })
         }
 
         return JSON.stringify(
@@ -240,6 +260,10 @@ function getName(file: string, name?: string) {
     return 'file'
 }
 
+function getFileId(data: OneBotResponse, fallback: string) {
+    return String(data?.file_id ?? data?.data?.file_id ?? '').trim() || fallback
+}
+
 async function requestOnebot(
     internal: OneBotInternal,
     action: string,
@@ -267,8 +291,9 @@ async function requestOnebot(
         )
     }
 
+    const task = run()
     return await Promise.race<OneBotResponse>([
-        run(),
+        task,
         new Promise<OneBotResponse>((_resolve, reject) => {
             setTimeout(() => {
                 reject(new Error(`${action} 请求超时，已超过 ${timeoutMs}ms。`))

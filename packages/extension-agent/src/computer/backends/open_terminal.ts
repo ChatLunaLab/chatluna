@@ -810,18 +810,7 @@ function formatOpenTerminalOutput(output: unknown): {
 
     if (output && typeof output === 'object' && !Array.isArray(output)) {
         const row = output as Record<string, unknown>
-        const direct =
-            typeof row.data === 'string'
-                ? row.data
-                : typeof row.text === 'string'
-                  ? row.text
-                  : typeof row.message === 'string'
-                    ? row.message
-                    : typeof row.output === 'string'
-                      ? row.output
-                      : typeof row.content === 'string'
-                        ? row.content
-                        : ''
+        const direct = readOpenTerminalRow(row)
         const stdout = typeof row.stdout === 'string' ? row.stdout : direct
         const stderr = typeof row.stderr === 'string' ? row.stderr : ''
         return { stdout, stderr }
@@ -841,18 +830,7 @@ function formatOpenTerminalOutput(output: unknown): {
         }
 
         const row = item as Record<string, unknown>
-        const data =
-            typeof row.data === 'string'
-                ? row.data
-                : typeof row.text === 'string'
-                  ? row.text
-                  : typeof row.message === 'string'
-                    ? row.message
-                    : typeof row.output === 'string'
-                      ? row.output
-                      : typeof row.content === 'string'
-                        ? row.content
-                        : ''
+        const data = readOpenTerminalRow(row)
         if (!data) {
             continue
         }
@@ -870,6 +848,20 @@ function formatOpenTerminalOutput(output: unknown): {
         stdout: stdout.join(''),
         stderr: stderr.join('')
     }
+}
+
+function readOpenTerminalRow(row: Record<string, unknown>) {
+    return typeof row.data === 'string'
+        ? row.data
+        : typeof row.text === 'string'
+          ? row.text
+          : typeof row.message === 'string'
+            ? row.message
+            : typeof row.output === 'string'
+              ? row.output
+              : typeof row.content === 'string'
+                ? row.content
+                : ''
 }
 
 async function readOpenTerminalAsset(stream: Readable) {
