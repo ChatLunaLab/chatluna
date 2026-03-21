@@ -273,7 +273,7 @@ class SendFileTool extends StructuredTool {
     description = `发送 OneBot 文件消息，自动按当前会话上下文决定群聊或私聊。
 
 参数：
-- file: 单文件地址（URL、file://、base64://）
+- file: 单文件地址（http/https URL、base64://）
 - name: 单文件名称（可选）
 - files: 多文件列表，支持字符串或 { file, name }
 

@@ -492,8 +492,6 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const deleteUrl = this.url(`/api/terminals/${data.id}`)
         const requestHeaders = this.headers()
         let closed = false
-        const queue: Buffer[] = []
-        this._cwd = cwd
 
         const open = new Promise<void>((resolve, reject) => {
             let settled = false
@@ -519,10 +517,6 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                     )
                 }
                 ws.send(Buffer.from(`cd ${quoteShell(cwd)}\n`, 'utf8'))
-                for (const item of queue) {
-                    ws.send(item)
-                }
-                queue.length = 0
                 resolve()
             })
             ws.addEventListener('error', () => {
@@ -559,6 +553,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         })
 
         await open
+        this._cwd = cwd
 
         return {
             id: data.id,
@@ -569,15 +564,11 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }
             },
             async sendInput(data) {
-                if (closed) {
+                if (closed || ws.readyState !== 1) {
                     return
                 }
                 const text = Buffer.from(data, 'utf8')
-                if (ws.readyState === 1) {
-                    ws.send(text)
-                    return
-                }
-                queue.push(text)
+                ws.send(text)
             },
             async resize(cols, rows) {
                 if (closed || ws.readyState !== 1) {
@@ -879,8 +870,20 @@ function formatOpenTerminalOutput(output: unknown): {
     if (output && typeof output === 'object' && !Array.isArray(output)) {
         const row = output as Record<string, unknown>
         const direct = readOpenTerminalRow(row)
-        const stdout = typeof row.stdout === 'string' ? row.stdout : direct
-        const stderr = typeof row.stderr === 'string' ? row.stderr : ''
+        const type = typeof row.type === 'string' ? row.type.toLowerCase() : ''
+        const isErr = type.includes('stderr') || type.includes('error')
+        let stdout = direct
+        let stderr = ''
+        if (typeof row.stdout === 'string') {
+            stdout = row.stdout
+        } else if (isErr) {
+            stdout = ''
+        }
+        if (typeof row.stderr === 'string') {
+            stderr = row.stderr
+        } else if (isErr) {
+            stderr = direct
+        }
         return { stdout, stderr }
     }
 
