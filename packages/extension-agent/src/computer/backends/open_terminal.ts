@@ -64,7 +64,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }
             }
         )
-        const currentData = (current as any).data ?? current
+        const currentData =
+            (current as unknown as OpenTerminalResponse).data ??
+            (current as unknown as OpenTerminalData)
         const output = formatOpenTerminalOutput(
             currentData?.output ?? currentData
         )
@@ -385,7 +387,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         )
 
         this._cwd = cwd
-        const data = (result as any).data ?? result
+        const data =
+            (result as unknown as OpenTerminalResponse).data ??
+            (result as unknown as OpenTerminalData)
 
         if (data?.status !== 'running') {
             const output = formatOpenTerminalOutput(data?.output ?? data)
@@ -481,7 +485,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             }
         )
 
-        const data = (result as any).data ?? result
+        const data =
+            (result as unknown as OpenTerminalResponse).data ??
+            (result as unknown as OpenTerminalData)
 
         if (typeof data?.id !== 'string') {
             const output = formatOpenTerminalOutput(data?.output ?? data)
@@ -644,6 +650,10 @@ type OpenTerminalData = {
     signal?: string
 }
 
+type OpenTerminalResponse = {
+    data?: OpenTerminalData
+}
+
 function createOpenTerminalPoller(
     ctx: Context,
     url: (pathname: string) => string,
@@ -679,7 +689,9 @@ function createOpenTerminalPoller(
             }
         })
 
-        data = (status as any).data ?? status
+        data =
+            (status as unknown as OpenTerminalResponse).data ??
+            (status as unknown as OpenTerminalData)
         if (typeof data.next_offset === 'number') {
             nextOffset = data.next_offset
         }

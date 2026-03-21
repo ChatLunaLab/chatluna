@@ -27,6 +27,32 @@ export async function apply(
     })
 }
 
+type OneBotResponse = {
+    file_id?: string
+    data?: {
+        file_id?: string
+    }
+}
+
+type OneBotInternal = {
+    _get?: (
+        action: string,
+        params: Record<string, unknown>
+    ) => Promise<OneBotResponse>
+    request?: (
+        action: string,
+        params: Record<string, unknown>
+    ) => Promise<OneBotResponse>
+    callAction?: (
+        action: string,
+        params: Record<string, unknown>
+    ) => Promise<OneBotResponse>
+    sendAction?: (
+        action: string,
+        params: Record<string, unknown>
+    ) => Promise<OneBotResponse>
+}
+
 class SendFileTool extends StructuredTool {
     name = 'send_file'
 
@@ -69,7 +95,7 @@ class SendFileTool extends StructuredTool {
             return '当前仅支持 OneBot 会话。'
         }
 
-        const internal = (session.bot as any).internal
+        const internal = (session.bot as { internal?: OneBotInternal }).internal
         if (!internal) {
             return '缺少 OneBot internal API 实例。'
         }
@@ -119,7 +145,7 @@ class SendFileTool extends StructuredTool {
         }[] = []
 
         for (const item of queue) {
-            let file = item.file
+            const file = item.file
 
             if (session.isDirect) {
                 const data = await requestOnebot(
@@ -215,9 +241,9 @@ function getName(file: string, name?: string) {
 }
 
 async function requestOnebot(
-    internal: any,
+    internal: OneBotInternal,
     action: string,
-    params: Record<string, any>,
+    params: Record<string, unknown>,
     timeoutSeconds: number
 ) {
     const timeoutMs = timeoutSeconds * 1000
@@ -241,9 +267,9 @@ async function requestOnebot(
         )
     }
 
-    return await Promise.race([
+    return await Promise.race<OneBotResponse>([
         run(),
-        new Promise((_, reject) => {
+        new Promise<OneBotResponse>((_resolve, reject) => {
             setTimeout(() => {
                 reject(new Error(`${action} 请求超时，已超过 ${timeoutMs}ms。`))
             }, timeoutMs)
