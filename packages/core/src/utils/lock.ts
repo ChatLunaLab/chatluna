@@ -1,5 +1,5 @@
-import { Time } from 'koishi'
-import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
+const TIME_MINUTE = 60 * 1000
+import { withResolver } from './promise'
 
 export class ObjectLock {
     private _lock: boolean = false
@@ -10,7 +10,7 @@ export class ObjectLock {
 
     private readonly _timeout: number
 
-    constructor(timeout = Time.minute * 3) {
+    constructor(timeout = TIME_MINUTE * 3) {
         this._timeout = timeout
     }
 

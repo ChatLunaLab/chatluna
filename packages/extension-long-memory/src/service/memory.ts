@@ -40,12 +40,25 @@ export class ChatLunaLongMemoryService extends Service {
 
         this.defaultLayerTypes.push(...mapped)
 
-        ctx.on(
-            'chatluna/clear-chat-history',
-            async (conversationId, _chatInterface) => {
-                delete this._memoryLayerNamespaces[conversationId]
-            }
-        )
+        const clear = (conversationId: string) => {
+            delete this._memoryLayerNamespaces[conversationId]
+        }
+
+        ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
+            clear(payload.conversation.id)
+        })
+        ctx.on('chatluna/conversation-after-cache-clear', async (payload) => {
+            clear(payload.conversation.id)
+        })
+        ctx.on('chatluna/conversation-after-archive', async (payload) => {
+            clear(payload.conversation.id)
+        })
+        ctx.on('chatluna/conversation-after-restore', async (payload) => {
+            clear(payload.conversation.id)
+        })
+        ctx.on('chatluna/conversation-after-delete', async (payload) => {
+            clear(payload.conversation.id)
+        })
 
         // 定期清理过期记忆
         ctx.setInterval(

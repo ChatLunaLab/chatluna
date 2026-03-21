@@ -65,22 +65,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const roomList = await ctx.database.get('chathub_room', {
-                preset: presetName
-            })
-
-            for (const room of roomList) {
-                room.preset = defaultPreset.triggerKeyword[0]
-            }
-
-            await ctx.database.upsert('chathub_room', roomList)
-
             context.message = session.text('.success', [presetName])
 
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
-        .before('lifecycle-request_model')
+        .before('lifecycle-request_conversation')
 }
 
 declare module '../../chains/chain' {

@@ -225,7 +225,8 @@
         "url": "https://github.com/ChatLunaLab/chatluna/issues"
     },
     "scripts": {
-        "build": "atsc -b"
+        "build": "atsc -b",
+        "test": "node --import tsx --test test/**/*.test.ts"
     },
     "engines": {
         "node": ">=18.0.0"

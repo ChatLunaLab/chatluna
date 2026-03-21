@@ -1,10 +1,7 @@
-import { Time } from 'koishi'
-import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/utils/error'
-import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
-import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
+import { ChatLunaError, ChatLunaErrorCode } from './error'
+import { ObjectLock } from './lock'
+import { withResolver } from './promise'
+const TIME_MINUTE = 60 * 1000
 
 interface QueueItem {
     requestId: string
@@ -22,9 +19,10 @@ export class RequestIdQueue {
     private readonly _maxQueueSize = 50
     private readonly _queueTimeout: number
 
-    constructor(queueTimeout = Time.minute * 3) {
+    constructor(queueTimeout = TIME_MINUTE * 3) {
         this._queueTimeout = queueTimeout
-        setInterval(() => this.cleanup(), queueTimeout)
+        const timer = setInterval(() => this.cleanup(), queueTimeout)
+        timer.unref?.()
     }
 
     public async add(key: string, requestId: string) {

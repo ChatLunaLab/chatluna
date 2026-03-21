@@ -2,6 +2,7 @@
 import { Context, h } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import { parsePresetLaneInput } from '../../utils/message_content'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -80,8 +81,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            // 房间名称匹配检查
-            if (config.allowChatWithRoomName) {
+            // 会话标题前缀匹配检查
+            if (
+                parsePresetLaneInput(
+                    content,
+                    ctx.chatluna.preset
+                        .getAllPreset(true)
+                        .value.flatMap((entry) =>
+                            entry.split(',').map((item) => item.trim())
+                        )
+                ) != null
+            ) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            if (config.allowConversationTriggerPrefix) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 

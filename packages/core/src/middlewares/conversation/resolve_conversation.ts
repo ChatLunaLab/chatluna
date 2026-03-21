@@ -1,0 +1,86 @@
+import { Context } from 'koishi'
+import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import { Config } from '../../config'
+import type {
+    ConversationRecord,
+    ResolvedConversationContext
+} from '../../services/conversation_types'
+
+function getPresetLane(
+    context: import('../../chains/chain').ChainMiddlewareContext
+) {
+    return (
+        context.options.conversation_manage?.presetLane ??
+        context.options.presetLane
+    )
+}
+
+function getTargetConversation(
+    context: import('../../chains/chain').ChainMiddlewareContext
+) {
+    return (
+        context.options.conversation_manage?.targetConversation ??
+        context.options.targetConversation
+    )
+}
+
+export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    chain
+        .middleware('resolve_conversation', async (session, context) => {
+            const presetLane = getPresetLane(context)
+            const targetConversation = getTargetConversation(context)
+
+            context.options.presetLane = presetLane
+
+            if (
+                context.options.conversationId == null &&
+                targetConversation != null
+            ) {
+                const conversation =
+                    await ctx.chatluna.conversation.resolveCommandConversation(
+                        session,
+                        {
+                            targetConversation,
+                            presetLane
+                        }
+                    )
+
+                if (conversation == null) {
+                    context.message = session.text(
+                        'commands.chatluna.chat.messages.conversation_not_exist'
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                context.options.conversationId = conversation.id
+                context.options.resolvedConversation = conversation
+            }
+
+            const resolved = await ctx.chatluna.conversation.resolveContext(
+                session,
+                {
+                    conversationId: context.options.conversationId,
+                    presetLane
+                }
+            )
+
+            context.options.resolvedConversation =
+                context.options.resolvedConversation ?? resolved.conversation
+            context.options.resolvedConversationContext = resolved
+
+            return ChainMiddlewareRunStatus.CONTINUE
+        })
+        .after('read_chat_message')
+        .before('resolve_model')
+}
+
+declare module '../../chains/chain' {
+    interface ChainMiddlewareName {
+        resolve_conversation: never
+    }
+
+    interface ChainMiddlewareContextOptions {
+        resolvedConversation?: ConversationRecord | null
+        resolvedConversationContext?: ResolvedConversationContext
+    }
+}

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Context, Logger, Time, User } from 'koishi'
+import fs from 'fs/promises'
 import { ChatLunaService } from 'koishi-plugin-chatluna/services/chat'
 import { forkScopeToDisposable } from 'koishi-plugin-chatluna/utils/koishi'
 import {
@@ -15,9 +16,9 @@ import { Config } from './config'
 import { defaultFactory } from './llm-core/chat/default'
 import { apply as loreBook } from './llm-core/memory/lore_book'
 import { apply as authorsNote } from './llm-core/memory/authors_note'
+import { ensureMigrationValidated } from './migration/room_to_conversation'
 import { middleware } from './middleware'
-import { deleteConversationRoom } from 'koishi-plugin-chatluna/chains'
-import { ConversationRoom } from './types'
+import { purgeArchivedConversation } from './utils/archive'
 
 export * from './config'
 export * from './render'
@@ -101,11 +102,13 @@ function setupEntryPoint(
 }
 
 async function initializeComponents(ctx: Context, config: Config) {
+    await ensureMigrationValidated(ctx, config)
     await defaultFactory(ctx, ctx.chatluna.platform)
     await middleware(ctx, config)
     await command(ctx, config)
     await ctx.chatluna.preset.init()
-    await setupAutoDelete(ctx, config)
+    await setupAutoArchive(ctx, config)
+    await setupAutoPurgeArchive(ctx, config)
     loreBook(ctx, config)
     authorsNote(ctx, config)
 }
@@ -187,8 +190,8 @@ function setupPermissions(ctx: Context, disposables: PromiseLikeDisposable[]) {
     })
 }
 
-async function setupAutoDelete(ctx: Context, config: Config) {
-    if (!config.autoDelete) {
+async function setupAutoArchive(ctx: Context, config: Config) {
+    if (!config.autoArchive) {
         return
     }
 
@@ -196,33 +199,36 @@ async function setupAutoDelete(ctx: Context, config: Config) {
         if (!ctx.scope.isActive) {
             return
         }
-        const rooms = await ctx.database.get('chathub_room', {
-            updatedTime: {
-                $lt: new Date(Date.now() - config.autoDeleteTimeout * 1000)
-            }
+        const conversations = await ctx.database.get('chatluna_conversation', {
+            updatedAt: {
+                $lt: new Date(Date.now() - config.autoArchiveTimeout * 1000)
+            },
+            status: 'active'
         })
 
-        if (rooms.length === 0) {
+        if (conversations.length === 0) {
             return
         }
 
-        logger.info('Auto delete task running')
+        logger.info('Auto archive task running')
 
-        const success: ConversationRoom[] = []
+        const success: string[] = []
 
-        for (const room of rooms) {
+        for (const conversation of conversations) {
             try {
-                await deleteConversationRoom(ctx, room)
-                success.push(room)
+                await ctx.chatluna.conversation.archiveConversationById(
+                    conversation.id
+                )
+                success.push(conversation.title)
             } catch (e) {
                 logger.error(e)
             }
         }
 
         logger.success(
-            `Successfully deleted %d rooms: %s`,
-            rooms.length,
-            success.map((room) => room.roomName).join(',')
+            `Successfully archived %d conversations: %s`,
+            success.length,
+            success.join(',')
         )
     }
 
@@ -231,4 +237,54 @@ async function setupAutoDelete(ctx: Context, config: Config) {
     ctx.setInterval(async () => {
         await execute()
     }, Time.minute * 5)
+}
+
+async function setupAutoPurgeArchive(ctx: Context, config: Config) {
+    if (!config.autoPurgeArchive) {
+        return
+    }
+
+    async function execute() {
+        if (!ctx.scope.isActive) {
+            return
+        }
+
+        const conversations = await ctx.database.get('chatluna_conversation', {
+            archivedAt: {
+                $lt: new Date(
+                    Date.now() - config.autoPurgeArchiveTimeout * 1000
+                )
+            },
+            status: 'archived'
+        })
+
+        if (conversations.length === 0) {
+            return
+        }
+
+        logger.info('Auto purge archive task running')
+
+        const success: string[] = []
+
+        for (const conversation of conversations) {
+            try {
+                await purgeArchivedConversation(ctx, conversation)
+                success.push(conversation.title)
+            } catch (e) {
+                logger.error(e)
+            }
+        }
+
+        logger.success(
+            `Successfully purged %d archived conversations: %s`,
+            success.length,
+            success.join(',')
+        )
+    }
+
+    await execute()
+
+    ctx.setInterval(async () => {
+        await execute()
+    }, Time.minute * 10)
 }

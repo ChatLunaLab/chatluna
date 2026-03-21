@@ -4,13 +4,12 @@ $inner:
       isNickname: Allow matching bot nickname at the beginning of a message to trigger a conversation.
       isNickNameWithContent: Allow matching bot nickname anywhere in the message content to trigger a conversation.
 
-
     - $desc: Conversation Behavior
       allowPrivate: Enable private chat conversations.
       allowAtReply: Enable @mention triggering.
       allowQuoteReply: Enable quote triggering.
       privateChatWithoutCommand: Enable direct conversation in private chats without commands.
-      allowChatWithRoomName: 'Enable room name prefix triggering. Note: May impact performance significantly. Recommended for use with filters in specific groups only.'
+      allowConversationTriggerPrefix: 'Enable conversation title prefix triggering. Note: May impact performance significantly. Recommended for use with filters in specific groups only.'
       randomReplyFrequency: Set random reply frequency (0-100, where 0 means never and 100 means always).
       includeQuoteReply: Include quoted message content in requests sent to the model.
       attachForwardMsgIdToContext: Attach forward message record IDs to context. When enabled, a "[聊天记录]" marker message will be appended if forward records are detected.
@@ -27,7 +26,7 @@ $inner:
       thinkingMessage: Customize waiting message content.
       msgCooldown: Set global message cooldown (seconds) to limit adapter calls.
       messageQueue: Enable message queue. When enabled, if multiple messages are sent and the model has not responded to the initial message, the messages will be cached and merged into one message, and will be sent after waiting for the model response.
-      messageQueueDelay:  Set message queue delay time (seconds). Set to 0 to disable delay. When delay is enabled, the system will wait for the specified time before sending messages to the model. If there are unprocessed messages during this period, they will be cached and merged into multiple messages to send to the model.
+      messageQueueDelay: Set message queue delay time (seconds). Set to 0 to disable delay. When delay is enabled, the system will wait for the specified time before sending messages to the model. If there are unprocessed messages during this period, they will be cached and merged into multiple messages to send to the model.
       showThoughtMessage: Display thinking message in plugin mode or reasoner model.
 
     - $desc: Message Rendering
@@ -45,24 +44,24 @@ $inner:
     - $desc: History Management
       infiniteContext: Enable automatic Infinite Context compression when history nears the model limit. Preserves critical topics and instructions while discarding noise.
       infiniteContextThreshold: Set the threshold (percentage) for triggering Infinite Context compression. Compression will be triggered when the token count of conversation history reaches this percentage of the model's context limit.
-      autoDelete: Enable automatic deletion of inactive rooms.
-      autoDeleteTimeout: Set inactivity threshold for room deletion (seconds).
+      autoArchive: Enable automatic archiving of inactive conversations instead of keeping legacy room state alive.
+      autoArchiveTimeout: Set inactivity threshold for conversation archiving in seconds.
+      autoPurgeArchive: Enable automatic deletion of archived conversations after the purge timeout.
+      autoPurgeArchiveTimeout: Set how long archived conversations are retained before automatic purge in seconds.
 
     - $desc: Model Configuration
       defaultEmbeddings: Set default embedding model.
       defaultVectorStore: Set default vector database.
 
-    - $desc: Template Room Configuration
-      autoCreateRoomFromUser: Enable automatic room creation per user.
+    - $desc: Conversation Routing Defaults
+      defaultGroupRouteMode:
+          $desc: Set the default conversation route mode for group chats. This controls whether group members share one conversation route or get personal routes, including preset-lane routes.
+          $inner:
+              - Shared group conversation
+              - Personal conversation per member
       defaultChatMode: Set default chat mode.
       defaultModel: Set default chat model.
       defaultPreset: Set default chat preset.
-      autoUpdateRoomMode:
-          $desc: Automatic room configuration update mode. When triggered, room settings will follow template room configuration.
-          $inner:
-              - Update all rooms
-              - Update auto-created rooms only
-              - Disable updates
 
     - $desc: Miscellaneous
       authSystem:

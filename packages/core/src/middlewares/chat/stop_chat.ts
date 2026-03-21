@@ -1,8 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import { getAllJoinedConversationRoom } from '../../chains/rooms'
-import { getRequestId } from '../model/request_model'
+import { getRequestId } from '../../utils/chat_request'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -11,39 +10,59 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'stop_chat') return ChainMiddlewareRunStatus.SKIPPED
 
-            let room = context.options.room
+            const resolved =
+                context.options.resolvedConversation !== undefined
+                    ? {
+                          conversation: context.options.resolvedConversation
+                      }
+                    : context.options.conversationId != null ||
+                        context.options.targetConversation != null
+                      ? {
+                            conversation:
+                                await ctx.chatluna.conversation.resolveCommandConversation(
+                                    session,
+                                    {
+                                        conversationId:
+                                            context.options.conversationId,
+                                        targetConversation:
+                                            context.options.targetConversation,
+                                        presetLane: context.options.presetLane,
+                                        permission: 'manage'
+                                    }
+                                )
+                        }
+                      : await ctx.chatluna.conversation.getCurrentConversation(
+                            session
+                        )
+            const conversation = resolved.conversation
 
-            if (room == null && context.options.room_resolve != null) {
-                // 尝试完整搜索一次
-
-                const rooms = await getAllJoinedConversationRoom(
-                    ctx,
-                    session,
-                    true
-                )
-
-                const roomId = parseInt(context.options.room_resolve?.name)
-
-                room = rooms.find(
-                    (room) =>
-                        room.roomName === context.options.room_resolve?.name ||
-                        room.roomId === roomId
-                )
-            }
-
-            if (room == null) {
-                context.message = session.text('.room_not_found')
+            if (conversation == null) {
+                context.message = session.text('.no_active_chat')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const requestId = getRequestId(session, room)
+            if (
+                (
+                    await ctx.chatluna.conversation.resolveContext(session, {
+                        conversationId: conversation.id,
+                        presetLane: context.options.presetLane
+                    })
+                ).constraint.lockConversation
+            ) {
+                context.message = session.text('.stop_failed')
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            context.options.conversationId = conversation.id
+            const requestId = getRequestId(session, conversation.id)
 
             if (requestId == null) {
                 context.message = session.text('.no_active_chat')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const status = await ctx.chatluna.stopChat(room, requestId)
+            const status =
+                await ctx.chatluna.conversationRuntime.stopRequest(requestId)
 
             if (status === null) {
                 context.message = session.text('.no_active_chat')
@@ -54,7 +73,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
-        .before('lifecycle-request_model')
+        .before('lifecycle-request_conversation')
 }
 
 declare module '../../chains/chain' {

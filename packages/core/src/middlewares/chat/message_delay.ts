@@ -1,7 +1,7 @@
 /* eslint-disable operator-linebreak */
 import { Context, Disposable, Logger, Session } from 'koishi'
 import { Config } from '../../config'
-import { ConversationRoom, Message } from '../../types'
+import { Message } from '../../types'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import {
     ChainMiddlewareContext,
@@ -10,6 +10,7 @@ import {
 } from '../../chains/chain'
 import { randomUUID } from 'crypto'
 import { HumanMessage, MessageContentComplex } from '@langchain/core/messages'
+import type { ConversationRecord } from '../../services/conversation_types'
 
 let logger: Logger
 
@@ -45,17 +46,33 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.options.messageId = randomUUID()
 
-            const { room, inputMessage } = context.options
-            const conversationId = room.conversationId
+            const { inputMessage } = context.options
+            const conversationId = context.options.conversationId
+
+            if (conversationId == null) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            const resolved = await ctx.chatluna.conversation.resolveContext(
+                session,
+                {
+                    conversationId
+                }
+            )
+            const resolvedConversation = resolved.conversation
             const userName = inputMessage.name || 'unknown'
             const messageId = context.options.messageId
 
             if (
-                room.chatMode === 'plugin' &&
-                (await ctx.chatluna.appendPendingMessage(
+                resolvedConversation?.chatMode === 'plugin' &&
+                (await ctx.chatluna.conversationRuntime.appendPendingMessage(
                     conversationId,
-                    createPendingMessage(session, room, inputMessage),
-                    room.chatMode
+                    createPendingMessage(
+                        session,
+                        resolvedConversation,
+                        inputMessage
+                    ),
+                    resolvedConversation.chatMode
                 ))
             ) {
                 logger.debug(
@@ -110,7 +127,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             tryStartHeadTurn(conversationId, conversation)
             return await statusPromise
         })
-        .after('check_room')
         .after('read_chat_message')
         .before('lifecycle-handle_command')
 
@@ -151,7 +167,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         completeTurn(conversationId)
     )
 
-    ctx.on('chatluna/clear-chat-history', async (conversationId) => {
+    const clearTurn = async (conversationId: string) => {
         const conversation = queues.get(conversationId)
         if (conversation) {
             const stoppedWaiters = conversation.turns.filter(
@@ -174,7 +190,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             queues.delete(conversationId)
         }
-    })
+    }
+
+    ctx.on('chatluna/conversation-after-clear-history', async (payload) =>
+        clearTurn(payload.conversation.id)
+    )
+    ctx.on('chatluna/conversation-after-cache-clear', async (payload) =>
+        clearTurn(payload.conversation.id)
+    )
+    ctx.on('chatluna/conversation-after-archive', async (payload) =>
+        clearTurn(payload.conversation.id)
+    )
+    ctx.on('chatluna/conversation-after-restore', async (payload) =>
+        clearTurn(payload.conversation.id)
+    )
+    ctx.on('chatluna/conversation-after-delete', async (payload) =>
+        clearTurn(payload.conversation.id)
+    )
 }
 
 function awaitTurnStart(
@@ -302,7 +334,7 @@ function mergeMessages(messages: Message[]): Message {
 
 function createPendingMessage(
     session: Session,
-    room: ConversationRoom,
+    conversation: Pick<ConversationRecord, 'preset'>,
     inputMessage: Message
 ) {
     return new HumanMessage({
@@ -315,7 +347,7 @@ function createPendingMessage(
         id: session.userId,
         additional_kwargs: {
             ...inputMessage.additional_kwargs,
-            preset: room.preset
+            preset: conversation.preset
         }
     })
 }

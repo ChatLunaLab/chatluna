@@ -25,17 +25,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
         .after('render_message')
 
-    //  .before("lifecycle-request_model")
+    //  .before("lifecycle-request_conversation")
 
     async function oldChatLimitSave(
         session: Session,
         context: ChainMiddlewareContext
     ) {
-        const {
-            chatLimit,
-            chatLimitCache,
-            room: { conversationId }
-        } = context.options
+        const { chatLimit, chatLimitCache } = context.options
+        const conversationId = context.options.conversationId
+
+        if (conversationId == null || chatLimit == null || chatLimitCache == null) {
+            return ChainMiddlewareRunStatus.CONTINUE
+        }
 
         /*   console.log(
             await ctx.chatluna_auth._selectCurrentAuthGroup(

@@ -55,7 +55,7 @@ export function apply(ctx: Context, _: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
-        .before('lifecycle-request_model')
+        .before('lifecycle-request_conversation')
 }
 
 declare module '../../chains/chain' {

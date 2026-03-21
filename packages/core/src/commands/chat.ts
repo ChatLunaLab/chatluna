@@ -1,9 +1,63 @@
-import { Context, h } from 'koishi'
+import { Command, Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
 
+function normalizeTarget(value?: string | null) {
+    return value == null || value.trim().length < 1 ? undefined : value.trim()
+}
+
+function setOptionChoices(cmd: Command, name: string, values: string[]) {
+    if (cmd._options[name] != null) {
+        cmd._options[name].type = values
+    }
+}
+
+async function completeConversationTarget(
+    ctx: Context,
+    session: import('koishi').Session,
+    target?: string,
+    presetLane?: string,
+    includeArchived = true
+) {
+    const value = normalizeTarget(target)
+    if (value == null) {
+        return undefined
+    }
+
+    const conversations = await ctx.chatluna.conversation.listConversations(
+        session,
+        {
+            presetLane,
+            includeArchived
+        }
+    )
+    const expect = Array.from(
+        new Set(
+            conversations.flatMap((conversation) => [
+                conversation.id,
+                String(conversation.seq ?? ''),
+                conversation.title
+            ])
+        )
+    ).filter((item) => item.length > 0)
+
+    if (expect.length === 0) {
+        return value
+    }
+
+    return session.suggest({
+        actual: value,
+        expect,
+        suffix: session.text('commands.chatluna.chat.text.options.conversation')
+    })
+}
+
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
+    const presets = ctx.chatluna.preset
+        .getAllPreset(true)
+        .value.flatMap((entry) => entry.split(',').map((item) => item.trim()))
+
     ctx.command('chatluna', {
         authority: 1
     }).alias('chatluna')
@@ -12,11 +66,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         authority: 1
     })
 
-    ctx.command('chatluna.chat.text <message:text>')
-        .option('room', '-r <room:string>')
+    const chatCommand = ctx
+        .command('chatluna.chat <message:text>')
+        .alias('chatluna.chat.text')
+        .option('conversation', '-c <conversation:string>')
+        .option('preset', '-p <preset:string>')
         .option('type', '-t <type: string>')
         .action(async ({ options, session }, message) => {
             const renderType = options.type ?? config.outputMode
+            const presetLane = normalizeTarget(options.preset)
 
             if (
                 !ctx.chatluna.renderer.rendererTypeList.some(
@@ -32,9 +90,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 '',
                 {
                     message: elements,
-                    room_resolve: {
-                        name: options.room
-                    },
+                    targetConversation: await completeConversationTarget(
+                        ctx,
+                        session,
+                        options.conversation,
+                        presetLane,
+                        false
+                    ),
+                    presetLane,
                     renderOptions: {
                         session,
                         split: config.splitMessage,
@@ -44,9 +107,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
+    setOptionChoices(chatCommand, 'preset', presets)
 
     ctx.command('chatluna.chat.rollback [message:text]')
-        .option('room', '-r <room:string>')
+        .option('conversation', '-c <conversation:string>')
         .option('i', '-i <i: string>')
         .action(async ({ options, session }, message) => {
             const elements = message ? h.parse(message) : undefined
@@ -55,9 +119,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'rollback',
                 {
                     message: elements,
-                    room_resolve: {
-                        name: options.room
-                    },
+                    targetConversation: await completeConversationTarget(
+                        ctx,
+                        session,
+                        options.conversation,
+                        undefined,
+                        false
+                    ),
                     renderOptions: {
                         session,
                         split: config.splitMessage,
@@ -70,39 +138,50 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
 
     ctx.command('chatluna.chat.stop')
-        .option('room', '-r <room:string>')
-        .action(async ({ options, session }, message) => {
+        .option('conversation', '-c <conversation:string>')
+        .action(async ({ options, session }) => {
             await chain.receiveCommand(
                 session,
                 'stop_chat',
                 {
-                    room_resolve: {
-                        name: options.room
-                    }
+                    targetConversation: await completeConversationTarget(
+                        ctx,
+                        session,
+                        options.conversation,
+                        undefined,
+                        false
+                    )
                 },
                 ctx
             )
         })
 
     ctx.command('chatluna.chat.compress')
-        .option('room', '-r <room:string>')
+        .option('conversation', '-c <conversation:string>')
         .action(async ({ options, session }) => {
             await chain.receiveCommand(
                 session,
-                'compress_room',
+                'conversation_compress',
                 {
                     force: true,
-                    i18n_base: 'commands.chatluna.chat.compress.messages',
-                    room_resolve: {
-                        name: options.room
-                    }
+                    conversation_manage: {
+                        targetConversation: await completeConversationTarget(
+                            ctx,
+                            session,
+                            options.conversation,
+                            undefined,
+                            false
+                        )
+                    },
+                    i18n_base: 'commands.chatluna.chat.compress.messages'
                 },
                 ctx
             )
         })
 
-    ctx.command('chatluna.chat.voice <message:text>')
-        .option('room', '-r <room:string>')
+    const voiceCommand = ctx
+        .command('chatluna.chat.voice <message:text>')
+        .option('conversation', '-c <conversation:string>')
         .option('speaker', '-s <speakerId:number>', { authority: 1 })
         .action(async ({ options, session }, message) => {
             const elements = message ? h.parse(message) : undefined
@@ -111,6 +190,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 '',
                 {
                     message: elements,
+                    targetConversation: await completeConversationTarget(
+                        ctx,
+                        session,
+                        options.conversation,
+                        undefined,
+                        false
+                    ),
                     renderOptions: {
                         split: config.splitMessage,
                         type: 'voice',
@@ -118,9 +204,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             speakerId: options.speaker
                         },
                         session
-                    },
-                    room_resolve: {
-                        name: options.room
                     }
                 },
                 ctx
@@ -133,6 +216,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
+    ctx.command('chatluna.admin.purge-legacy', { authority: 3 }).action(
+        async ({ session }) => {
+            await chain.receiveCommand(session, 'purge_legacy')
+        }
+    )
+
     ctx.command('chatluna.restart').action(async ({ options, session }) => {
         await chain.receiveCommand(session, 'restart')
     })
@@ -141,5 +230,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 declare module '../chains/chain' {
     interface ChainMiddlewareContextOptions {
         message?: h[]
+        conversationId?: string
+        targetConversation?: string
+        presetLane?: string
     }
 }

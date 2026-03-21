@@ -12,7 +12,7 @@ import {
     ChatChain
 } from 'koishi-plugin-chatluna/chains'
 import { Config } from '../../config'
-import { ConversationRoom, Message } from '../../types'
+import { Message } from '../../types'
 import { renderMessage } from '../chat/render_message'
 import {
     formatToolCall,
@@ -21,7 +21,7 @@ import {
     getSystemPromptVariables,
     PresetPostHandler
 } from 'koishi-plugin-chatluna/utils/string'
-import { updateChatTime } from '../../chains/rooms'
+import type { ConversationRecord } from '../../services/conversation_types'
 import {
     MessageEditQueue,
     sendInitialMessage,
@@ -32,27 +32,38 @@ import {
     MessageContent,
     MessageContentComplex
 } from '@langchain/core/messages'
-import { randomUUID } from 'crypto'
+import { createRequestId } from '../../utils/chat_request'
 import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
 
 let logger: Logger
 
-const requestIdCache = new Map<string, string>()
-
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
     chain
-        .middleware('request_model', async (session, context) => {
-            const { room, inputMessage } = context.options
+        .middleware('request_conversation', async (session, context) => {
+            const { inputMessage } = context.options
+            const resolved =
+                await ctx.chatluna.conversation.ensureActiveConversation(
+                    session,
+                    {
+                        conversationId: context.options.conversationId,
+                        presetLane: context.options.presetLane
+                    }
+                )
+            const conversation = resolved.conversation
+
+            context.options.conversationId = conversation.id
+            context.options.resolvedConversation = conversation
+            context.options.resolvedConversationContext = resolved
 
             const presetTemplate = ctx.chatluna.preset.getPreset(
-                room.preset
+                conversation.preset
             ).value
 
             if (presetTemplate == null) {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.PRESET_NOT_FOUND,
-                    new Error(`Preset ${room.preset} not found`)
+                    new Error(`Preset ${conversation.preset} not found`)
                 )
             }
 
@@ -64,7 +75,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     presetTemplate,
                     session,
                     inputMessage.content,
-                    room
+                    conversation
                 )
             }
 
@@ -108,13 +119,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             let responseMessage: Message
 
-            inputMessage.conversationId = room.conversationId
+            inputMessage.conversationId = conversation.id
             inputMessage.name =
                 session.author?.name ?? session.author?.id ?? session.username
 
             const requestId = createRequestId(
                 session,
-                room,
+                conversation.id,
                 context.options.messageId
             )
 
@@ -122,20 +133,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context,
                 session,
                 config,
-                bufferText
+                bufferText,
+                conversation
             )
 
             try {
                 ;[responseMessage] = await Promise.all([
-                    ctx.chatluna.chat(
+                    ctx.chatluna.conversationRuntime.chat(
                         session,
-                        room,
+                        conversation,
                         inputMessage,
                         chatCallbacks,
                         config.streamResponse,
                         {
                             prompt: getMessageContent(originContent),
-                            ...getSystemPromptVariables(session, config, room)
+                            ...getSystemPromptVariables(
+                                session,
+                                config,
+                                conversation
+                            )
                         },
                         postHandler,
                         requestId
@@ -159,46 +175,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.message = null
             }
 
-            await updateChatTime(ctx, room)
+            await ctx.chatluna.conversation.touchConversation(conversation.id, {
+                lastChatAt: new Date()
+            })
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
-        .after('lifecycle-request_model')
-}
-
-export function getRequestId(session: Session, room: ConversationRoom) {
-    const userKey =
-        session.userId +
-        '-' +
-        (session.guildId ?? '') +
-        '-' +
-        room.conversationId
-
-    return requestIdCache.get(userKey)
-}
-
-export function createRequestId(
-    session: Session,
-    room: ConversationRoom,
-    requestId: string = randomUUID()
-) {
-    const userKey =
-        session.userId +
-        '-' +
-        (session.guildId ?? '') +
-        '-' +
-        room.conversationId
-
-    requestIdCache.set(userKey, requestId)
-
-    return requestId
+        .after('lifecycle-request_conversation')
 }
 
 function createChatCallbacks(
     context: ChainMiddlewareContext,
     session: Session,
     config: Config,
-    bufferText: StreamingBufferText
+    bufferText: StreamingBufferText,
+    conversation: Pick<ConversationRecord, 'model'>
 ) {
     return {
         'llm-new-chunk': createChunkHandler(context, bufferText),
@@ -207,7 +198,8 @@ function createChatCallbacks(
         'llm-used-token-count': createTokenCountHandler(
             context,
             session,
-            config
+            config,
+            conversation
         )
     }
 }
@@ -288,7 +280,8 @@ function createToolCallHandler(
 function createTokenCountHandler(
     context: ChainMiddlewareContext,
     session: Session,
-    config: Config
+    config: Config,
+    conversation: Pick<ConversationRecord, 'model'>
 ) {
     return async (tokens: number) => {
         if (config.authSystem !== true) {
@@ -297,7 +290,7 @@ function createTokenCountHandler(
 
         const balance = await context.ctx.chatluna_auth.calculateBalance(
             session,
-            parseRawModelName(context.options.room.model)[0],
+            parseRawModelName(conversation.model)[0],
             tokens
         )
 
@@ -310,7 +303,10 @@ async function processUserPrompt(
     presetTemplate: PresetTemplate,
     session: Session,
     originContent: MessageContent,
-    room: ConversationRoom
+    conversation: Pick<
+        ConversationRecord,
+        'preset' | 'id' | 'updatedAt' | 'lastChatAt'
+    >
 ) {
     if (typeof originContent === 'string') {
         return await formatUserPromptString(
@@ -318,7 +314,7 @@ async function processUserPrompt(
             presetTemplate,
             session,
             originContent,
-            room
+            conversation
         ).then((result) => result.text)
     }
 
@@ -333,7 +329,7 @@ async function processUserPrompt(
                           presetTemplate,
                           session,
                           message.text,
-                          room
+                          conversation
                       ).then((result) => result.text)
                   }
                 : message
@@ -358,7 +354,6 @@ function setupRegularMessageStream(
     config: Config,
     textStream: ReadableStream<Element>
 ) {
-    // eslint-disable-next-line no-async-promise-executor
     return new Promise<void>(async (resolve) => {
         const reader = textStream.getReader()
         try {
@@ -384,7 +379,6 @@ function setupEditMessageStream(
     bufferText: StreamingBufferText
 ) {
     const cachedStream = bufferText.getCached()
-    // eslint-disable-next-line no-async-promise-executor
     return new Promise<void>(async (resolve) => {
         const { ctx } = context
         let messageId: string | null = null
@@ -488,7 +482,7 @@ async function sendRenderedMessage(
 
 declare module '../../chains/chain' {
     interface ChainMiddlewareName {
-        request_model: never
+        request_conversation: never
     }
 
     interface ChainMiddlewareContextOptions {

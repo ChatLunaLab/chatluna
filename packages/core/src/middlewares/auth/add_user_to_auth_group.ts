@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import { checkAdmin } from '../../chains/rooms'
+import { checkAdmin } from '../../utils/koishi'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -32,7 +32,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
-        .before('lifecycle-request_model')
+        .before('lifecycle-request_conversation')
 }
 
 declare module '../../chains/chain' {

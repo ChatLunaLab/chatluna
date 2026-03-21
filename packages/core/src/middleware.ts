@@ -8,7 +8,6 @@ import { apply as black_list } from './middlewares/auth/black_list'
 import { apply as create_auth_group } from './middlewares/auth/create_auth_group'
 import { apply as kick_user_form_auth_group } from './middlewares/auth/kick_user_form_auth_group'
 import { apply as list_auth_group } from './middlewares/auth/list_auth_group'
-import { apply as mute_user } from './middlewares/auth/mute_user'
 import { apply as set_auth_group } from './middlewares/auth/set_auth_group'
 import { apply as allow_reply } from './middlewares/chat/allow_reply'
 import { apply as censor } from './middlewares/chat/censor'
@@ -22,11 +21,12 @@ import { apply as rollback_chat } from './middlewares/chat/rollback_chat'
 import { apply as stop_chat } from './middlewares/chat/stop_chat'
 import { apply as thinking_message_recall } from './middlewares/chat/thinking_message_recall'
 import { apply as thinking_message_send } from './middlewares/chat/thinking_message_send'
+import { apply as request_conversation } from './middlewares/conversation/request_conversation'
+import { apply as resolve_conversation } from './middlewares/conversation/resolve_conversation'
 import { apply as list_all_embeddings } from './middlewares/model/list_all_embeddings'
 import { apply as list_all_model } from './middlewares/model/list_all_model'
 import { apply as list_all_tool } from './middlewares/model/list_all_tool'
 import { apply as list_all_vectorstore } from './middlewares/model/list_all_vectorstore'
-import { apply as request_model } from './middlewares/model/request_model'
 import { apply as resolve_model } from './middlewares/model/resolve_model'
 import { apply as search_model } from './middlewares/model/search_model'
 import { apply as set_default_embeddings } from './middlewares/model/set_default_embeddings'
@@ -37,23 +37,7 @@ import { apply as clone_preset } from './middlewares/preset/clone_preset'
 import { apply as delete_preset } from './middlewares/preset/delete_preset'
 import { apply as list_all_preset } from './middlewares/preset/list_all_preset'
 import { apply as set_preset } from './middlewares/preset/set_preset'
-import { apply as check_room } from './middlewares/room/check_room'
-import { apply as clear_room } from './middlewares/room/clear_room'
-import { apply as compress_room } from './middlewares/room/compress_room'
-import { apply as create_room } from './middlewares/room/create_room'
-import { apply as delete_room } from './middlewares/room/delete_room'
-import { apply as invite_room } from './middlewares/room/invite_room'
-import { apply as join_room } from './middlewares/room/join_room'
-import { apply as kick_member } from './middlewares/room/kick_member'
-import { apply as leave_room } from './middlewares/room/leave_room'
-import { apply as list_room } from './middlewares/room/list_room'
-import { apply as resolve_room } from './middlewares/room/resolve_room'
-import { apply as room_info } from './middlewares/room/room_info'
-import { apply as room_permission } from './middlewares/room/room_permission'
-import { apply as set_auto_update_room } from './middlewares/room/set_auto_update_room'
-import { apply as set_room } from './middlewares/room/set_room'
-import { apply as switch_room } from './middlewares/room/switch_room'
-import { apply as transfer_room } from './middlewares/room/transfer_room'
+import { apply as conversation_manage } from './middlewares/system/conversation_manage'
 import { apply as clear_balance } from './middlewares/system/clear_balance'
 import { apply as lifecycle } from './middlewares/system/lifecycle'
 import { apply as query_balance } from './middlewares/system/query_balance'
@@ -76,7 +60,6 @@ export async function middleware(ctx: Context, config: Config) {
             create_auth_group,
             kick_user_form_auth_group,
             list_auth_group,
-            mute_user,
             set_auth_group,
             allow_reply,
             censor,
@@ -90,11 +73,12 @@ export async function middleware(ctx: Context, config: Config) {
             stop_chat,
             thinking_message_recall,
             thinking_message_send,
+            request_conversation,
+            resolve_conversation,
             list_all_embeddings,
             list_all_model,
             list_all_tool,
             list_all_vectorstore,
-            request_model,
             resolve_model,
             search_model,
             set_default_embeddings,
@@ -105,23 +89,7 @@ export async function middleware(ctx: Context, config: Config) {
             delete_preset,
             list_all_preset,
             set_preset,
-            check_room,
-            clear_room,
-            compress_room,
-            create_room,
-            delete_room,
-            invite_room,
-            join_room,
-            kick_member,
-            leave_room,
-            list_room,
-            resolve_room,
-            room_info,
-            room_permission,
-            set_auto_update_room,
-            set_room,
-            switch_room,
-            transfer_room,
+            conversation_manage,
             clear_balance,
             lifecycle,
             query_balance,

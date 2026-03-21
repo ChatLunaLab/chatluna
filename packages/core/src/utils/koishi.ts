@@ -1,4 +1,4 @@
-import { ForkScope, h } from 'koishi'
+import { ForkScope, h, Session, User } from 'koishi'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { Marked, Token } from 'marked'
 import type { MessageContent } from '@langchain/core/messages'
@@ -26,6 +26,20 @@ export function forkScopeToDisposable(scope: ForkScope): PromiseLikeDisposable {
     return () => {
         scope.dispose()
     }
+}
+
+export async function checkAdmin(session: Session) {
+    const tested = await session.app.permissions.test('chatluna:admin', session)
+
+    if (tested) {
+        return true
+    }
+
+    const user = await session.getUser<User.Field>(session.userId, [
+        'authority'
+    ])
+
+    return user?.authority >= 3
 }
 
 const tagRegExp = /<(\/?)([^!\s>/]+)([^>]*?)\s*(\/?)>/

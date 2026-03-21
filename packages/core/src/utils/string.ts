@@ -2,7 +2,8 @@ import { BaseMessage } from '@langchain/core/messages'
 import type { HandlerResult, PostHandler } from './types'
 import { Context, h, Session } from 'koishi'
 import type {} from '@koishijs/censor'
-import { Config, ConversationRoom } from 'koishi-plugin-chatluna'
+import type { Config } from 'koishi-plugin-chatluna'
+import type { ConversationRecord } from '../services/conversation_types'
 import { gunzip, gzip } from 'zlib'
 import { promisify } from 'util'
 import { chatLunaFetch } from 'koishi-plugin-chatluna/utils/request'
@@ -489,8 +490,13 @@ export async function hashString(
 export function getSystemPromptVariables(
     session: Session,
     config: Config,
-    room: ConversationRoom
+    conversation: Pick<
+        ConversationRecord,
+        'preset' | 'id' | 'updatedAt' | 'lastChatAt'
+    >
 ) {
+    const lastActiveAt = conversation.lastChatAt ?? conversation.updatedAt
+
     return {
         name: config.botNames[0],
         date: new Date().toLocaleString(),
@@ -512,16 +518,16 @@ export function getSystemPromptVariables(
             session.username
         ),
         built: {
-            preset: room.preset,
+            preset: conversation.preset,
             platform: session.platform,
-            conversationId: room.conversationId
+            conversationId: conversation.id
         },
         noop: '',
         time: new Date().toLocaleTimeString(),
         weekday: getCurrentWeekday(),
         idle_duration: getTimeDiffFormat(
             new Date().getTime(),
-            room.updatedTime.getTime()
+            lastActiveAt.getTime()
         )
     }
 }
@@ -548,7 +554,10 @@ export async function formatUserPromptString(
     presetTemplate: PresetTemplate,
     session: Session,
     prompt: string,
-    room: ConversationRoom
+    conversation: Pick<
+        ConversationRecord,
+        'preset' | 'id' | 'updatedAt' | 'lastChatAt'
+    >
 ) {
     return await session.app.chatluna.promptRenderer.renderTemplate(
         presetTemplate.formatUserPromptString,
@@ -563,7 +572,7 @@ export async function formatUserPromptString(
                 session.username
             ),
             prompt,
-            ...getSystemPromptVariables(session, config, room)
+            ...getSystemPromptVariables(session, config, conversation)
         },
         {
             configurable: {

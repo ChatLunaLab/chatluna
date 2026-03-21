@@ -7,7 +7,7 @@ export interface Config {
     allowPrivate: boolean
     isForwardMsg: boolean
     forwardMsgMinLength: number
-    allowChatWithRoomName: boolean
+    allowConversationTriggerPrefix: boolean
     msgCooldown: number
     randomReplyFrequency: Computed<Awaitable<number>>
     includeQuoteReply: boolean
@@ -26,14 +26,16 @@ export interface Config {
     splitMessage: boolean
     blackList: Computed<Awaitable<number>>
     censor: boolean
-    autoDelete: boolean
-    autoDeleteTimeout: number
+    autoArchive: boolean
+    autoArchiveTimeout: number
+    autoPurgeArchive: boolean
+    autoPurgeArchiveTimeout: number
     messageQueue: boolean
     messageQueueDelay: number
     infiniteContext: boolean
     infiniteContextThreshold: number
     rawOnCensor: boolean
-    autoUpdateRoomMode: 'disable' | 'all' | 'manual'
+    defaultGroupRouteMode: 'shared' | 'personal'
 
     privateChatWithoutCommand: boolean
     allowAtReply: boolean
@@ -45,8 +47,6 @@ export interface Config {
     defaultChatMode: string
     defaultModel: string
     defaultPreset: string
-
-    autoCreateRoomFromUser: boolean
 
     authUserDefaultGroup: Computed<Awaitable<[number, number, string]>>
     authSystem: boolean
@@ -68,7 +68,7 @@ export const Config: Schema<Config> = Schema.intersect([
         allowAtReply: Schema.boolean().default(true),
         allowQuoteReply: Schema.boolean().default(false),
         privateChatWithoutCommand: Schema.boolean().default(true),
-        allowChatWithRoomName: Schema.boolean().default(false),
+        allowConversationTriggerPrefix: Schema.boolean().default(false),
         includeQuoteReply: Schema.boolean().default(true),
         randomReplyFrequency: Schema.percent()
             .min(0)
@@ -150,9 +150,13 @@ export const Config: Schema<Config> = Schema.intersect([
             .max(0.95)
             .step(0.01)
             .default(0.85),
-        autoDelete: Schema.boolean().default(false),
-        autoDeleteTimeout: Schema.number()
+        autoArchive: Schema.boolean().default(false),
+        autoArchiveTimeout: Schema.number()
             .default((Time.day * 10) / Time.second)
+            .min(Time.hour / Time.second),
+        autoPurgeArchive: Schema.boolean().default(false),
+        autoPurgeArchiveTimeout: Schema.number()
+            .default((Time.day * 30) / Time.second)
             .min(Time.hour / Time.second)
     }),
 
@@ -162,15 +166,13 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        autoCreateRoomFromUser: Schema.boolean().default(false),
+        defaultGroupRouteMode: Schema.union([
+            Schema.const('shared'),
+            Schema.const('personal')
+        ]).default('shared'),
         defaultChatMode: Schema.dynamic('chat-mode').default('plugin'),
         defaultModel: Schema.dynamic('model').default('无'),
-        defaultPreset: Schema.dynamic('preset').default('sydney'),
-        autoUpdateRoomMode: Schema.union([
-            Schema.const('all'),
-            Schema.const('manual'),
-            Schema.const('disable')
-        ]).default('manual')
+        defaultPreset: Schema.dynamic('preset').default('sydney')
     }),
 
     Schema.object({

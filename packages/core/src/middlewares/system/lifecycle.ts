@@ -16,23 +16,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('lifecycle-handle_command', async (session, context) => 0)
         .after('lifecycle-prepare')
-        .before('lifecycle-request_model')
+        .before('lifecycle-request_conversation')
 
     chain
-        .middleware('lifecycle-request_model', async (session, context) => 0)
+        .middleware('lifecycle-request_conversation', async (session, context) => 0)
         .after('lifecycle-handle_command')
         .before('lifecycle-send')
 
     chain
         .middleware('lifecycle-send', async (session, context) => 0)
-        .after('lifecycle-request_model')
+        .after('lifecycle-request_conversation')
 }
 
 export const lifecycleNames = [
     'lifecycle-check',
     'lifecycle-prepare',
     'lifecycle-handle_command',
-    'lifecycle-request_model',
+    'lifecycle-request_conversation',
     'lifecycle-send'
 ]
 
@@ -49,7 +49,7 @@ declare module '../../chains/chain' {
         /**
          * lifecycle of the middleware execution, it mean the middleware will be request to the model
          */
-        'lifecycle-request_model': never
+        'lifecycle-request_conversation': never
         /**
          * lifecycle of the middleware execution, it mean the middleware will be send message
          */

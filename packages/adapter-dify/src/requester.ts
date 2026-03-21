@@ -91,7 +91,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 config
             )
         } else {
-            iter = this._workflowStream(params, config)
+            iter = this._workflowStream(params, conversationId, config)
         }
 
         for await (const chunk of iter) {
@@ -148,7 +148,12 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         } = {
             query,
             response_mode: 'streaming',
-            inputs: this.buildInputs(params, lastMessage, chatlunaMultimodal),
+            inputs: this.buildInputs(
+                params,
+                conversationId,
+                lastMessage,
+                chatlunaMultimodal
+            ),
             user: difyUser,
             conversation_id:
                 difyConversationId == null ? '' : difyConversationId
@@ -229,6 +234,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
 
     private async *_workflowStream(
         params: ModelRequestParams,
+        conversationId: string | undefined,
         config: { apiKey: string; workflowName: string; workflowType: string }
     ): AsyncGenerator<ChatGenerationChunk> {
         const lastMessage = params.input[params.input.length - 1] as
@@ -249,7 +255,12 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             files?: InputFileObject[]
         } = {
             response_mode: 'streaming',
-            inputs: this.buildInputs(params, lastMessage, chatlunaMultimodal),
+            inputs: this.buildInputs(
+                params,
+                conversationId,
+                lastMessage,
+                chatlunaMultimodal
+            ),
             user: difyUser
         }
 
@@ -316,13 +327,14 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
 
     private buildInputs(
         params: ModelRequestParams,
+        conversationId: string | undefined,
         lastMessage?: BaseMessage,
         chatlunaMultimodal?: string
     ): Record<string, unknown> {
         const inputs = {
             input: getMessageContent(lastMessage?.content ?? ''),
             chatluna_history: this.buildChatlunaHistory(params.input ?? []),
-            chatluna_conversation_id: params.id,
+            chatluna_conversation_id: conversationId,
             ...Object.keys(params.variables ?? {}).reduce((acc, key) => {
                 acc[`chatluna_${key}`] = params.variables?.[key]
                 return acc
@@ -397,15 +409,11 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     }
 
     private resolveDifyUser(params: ModelRequestParams): string {
-        if (this.ctx.chatluna.config.autoCreateRoomFromUser === true) {
-            return (
-                (params.variables?.['user_id'] as string) ||
-                (params.variables?.['user'] as string) ||
-                'chatluna'
-            )
-        } else {
-            return 'chatluna'
-        }
+        return (
+            (params.variables?.['user_id'] as string) ||
+            (params.variables?.['user'] as string) ||
+            'chatluna'
+        )
     }
 
     private async prepareFiles(

@@ -17,12 +17,13 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { randomUUID } from 'crypto'
 import type { AgentStep } from '../../agent/types'
+import type { MessageRecord } from '../../../services/conversation_types'
 
 async function serializeMessage(
     message: BaseMessage,
     conversationId: string,
-    parent?: string | null
-): Promise<ChatLunaMessage> {
+    parentId?: string | null
+): Promise<MessageRecord> {
     let additionalArgs = Object.assign({}, message.additional_kwargs)
 
     delete additionalArgs['preset']
@@ -38,7 +39,7 @@ async function serializeMessage(
         content: await gzipEncode(JSON.stringify(message.content)).then((buf) =>
             bufferToArrayBuffer(buf)
         ),
-        parent: parent ?? null,
+        parentId: parentId ?? null,
         role: message.getType(),
         name: message.name,
         tool_calls: message['tool_calls'],
@@ -50,7 +51,8 @@ async function serializeMessage(
                   )
                 : null,
         rawId: message.id ?? null,
-        conversation: conversationId
+        conversationId,
+        createdAt: new Date()
     }
 }
 
@@ -86,7 +88,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
     private _ctx: Context
     private _latestId: string | null
-    private _serializedChatHistory: ChatLunaMessage[]
+    private _serializedChatHistory: MessageRecord[]
     private _chatHistory: BaseMessage[]
     // eslint-disable-next-line @typescript-eslint/naming-convention
     private _additional_kwargs: Record<string, string>
@@ -144,20 +146,20 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
         await this.loadConversation()
 
-        const serializedMessages: ChatLunaMessage[] = []
-        let parent = this._latestId
+        const serializedMessages: MessageRecord[] = []
+        let parentId = this._latestId
 
         for (const message of messages) {
             const serializedMessage = await serializeMessage(
                 message,
                 this.conversationId,
-                parent
+                parentId
             )
             serializedMessages.push(serializedMessage)
-            parent = serializedMessage.id
+            parentId = serializedMessage.id
         }
 
-        await this._ctx.database.upsert('chathub_message', serializedMessages)
+        await this._ctx.database.upsert('chatluna_message', serializedMessages)
 
         this._serializedChatHistory.push(...serializedMessages)
         this._chatHistory.push(...messages)
@@ -181,14 +183,15 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     }
 
     async clear(): Promise<void> {
-        await this._ctx.database.remove('chathub_message', {
-            conversation: this.conversationId
+        await this._ctx.database.remove('chatluna_message', {
+            conversationId: this.conversationId
         })
 
-        await this._ctx.database.upsert('chathub_conversation', [
+        await this._ctx.database.upsert('chatluna_conversation', [
             {
                 id: this.conversationId,
-                latestId: null
+                latestMessageId: null,
+                updatedAt: new Date()
             }
         ])
 
@@ -198,7 +201,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     }
 
     async delete(): Promise<void> {
-        await this._ctx.database.remove('chathub_conversation', {
+        await this._ctx.database.remove('chatluna_conversation', {
             id: this.conversationId
         })
     }
@@ -239,7 +242,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
         const messageIds = toolAndFunctionMessages.map((msg) => msg.id)
 
-        await this._ctx.database.remove('chathub_message', {
+        await this._ctx.database.remove('chatluna_message', {
             id: messageIds
         })
 
@@ -251,20 +254,16 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             const currentMsg = this._serializedChatHistory[i]
             const prevMsg = this._serializedChatHistory[i - 1]
 
-            if (prevMsg) {
-                currentMsg.parent = prevMsg.id
-            } else {
-                currentMsg.parent = null
-            }
+            currentMsg.parentId = prevMsg?.id ?? null
         }
 
         if (this._serializedChatHistory.length > 0) {
             const updatedMessages = this._serializedChatHistory.map((msg) => ({
                 id: msg.id,
-                parent: msg.parent,
+                parentId: msg.parentId,
                 content: msg.content,
                 role: msg.role,
-                conversation: msg.conversation,
+                conversationId: msg.conversationId,
                 name: msg.name,
                 tool_call_id: msg.tool_call_id,
                 tool_calls: msg.tool_calls,
@@ -272,7 +271,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 rawId: msg.rawId
             }))
 
-            await this._ctx.database.upsert('chathub_message', updatedMessages)
+            await this._ctx.database.upsert('chatluna_message', updatedMessages)
 
             this._latestId =
                 this._serializedChatHistory[
@@ -297,7 +296,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     private async getLatestUpdateTime(): Promise<Date> {
         const conversation = (
             await this._ctx.database.get(
-                'chathub_conversation',
+                'chatluna_conversation',
                 {
                     id: this.conversationId
                 },
@@ -309,11 +308,11 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     }
 
     private async _loadMessages(): Promise<BaseMessage[]> {
-        const queried = await this._ctx.database.get('chathub_message', {
-            conversation: this.conversationId
+        const queried = await this._ctx.database.get('chatluna_message', {
+            conversationId: this.conversationId
         })
 
-        const sorted: ChatLunaMessage[] = []
+        const sorted: MessageRecord[] = []
 
         let currentMessageId = this._latestId
 
@@ -335,7 +334,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
             sorted.unshift(currentMessage)
 
-            currentMessageId = currentMessage.parent
+            currentMessageId = currentMessage.parentId
         }
 
         if (isBad) {
@@ -382,7 +381,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 content,
                 id: item.rawId ?? undefined,
                 name: item.name ?? undefined,
-                tool_calls: item.tool_calls ?? undefined,
+                tool_calls: (item.tool_calls as AIMessage['tool_calls']) ?? undefined,
                 tool_call_id: item.tool_call_id ?? undefined,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 additional_kwargs: args as any
@@ -407,20 +406,36 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
 
     private async _loadConversation() {
         const conversation = (
-            await this._ctx.database.get('chathub_conversation', {
+            await this._ctx.database.get('chatluna_conversation', {
                 id: this.conversationId
             })
         )?.[0]
 
         if (conversation) {
-            this._latestId = conversation.latestId
+            this._latestId = conversation.latestMessageId ?? null
             this._additional_kwargs =
                 conversation.additional_kwargs != null
                     ? JSON.parse(conversation.additional_kwargs)
                     : {}
         } else {
-            await this._ctx.database.create('chathub_conversation', {
-                id: this.conversationId
+            await this._ctx.database.create('chatluna_conversation', {
+                id: this.conversationId,
+                bindingKey: this.conversationId,
+                title: 'Conversation',
+                model: '',
+                preset: '',
+                chatMode: '',
+                createdBy: 'system',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                status: 'active',
+                latestMessageId: null,
+                additional_kwargs: null,
+                compression: null,
+                archivedAt: null,
+                archiveId: null,
+                legacyRoomId: null,
+                legacyMeta: null
             })
         }
 
@@ -456,7 +471,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 }
             }
 
-            await this._ctx.database.remove('chathub_message', {
+            await this._ctx.database.remove('chatluna_message', {
                 id: toDeleted.map((item) => item.id)
             })
 
@@ -467,9 +482,9 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 ]?.id ?? null
 
             if (firstMessage) {
-                firstMessage.parent = null
+                firstMessage.parentId = null
 
-                await this._ctx.database.upsert('chathub_message', [
+                await this._ctx.database.upsert('chatluna_message', [
                     firstMessage
                 ])
             }
@@ -483,10 +498,10 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             this._additional_kwargs &&
             Object.keys(this._additional_kwargs).length > 0
 
-        await this._ctx.database.upsert('chathub_conversation', [
+        await this._ctx.database.upsert('chatluna_conversation', [
             {
                 id: this.conversationId,
-                latestId: this._latestId,
+                latestMessageId: this._latestId,
                 additional_kwargs: hasKwargs
                     ? JSON.stringify(this._additional_kwargs)
                     : null,
@@ -494,33 +509,4 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             }
         ])
     }
-}
-
-declare module 'koishi' {
-    interface Tables {
-        chathub_conversation: ChatLunaConversation
-        chathub_message: ChatLunaMessage
-    }
-}
-
-export interface ChatLunaMessage {
-    text?: MessageContent
-    content?: ArrayBuffer
-    id: string
-    rawId?: string
-    role: MessageType
-    conversation: string
-    name?: string
-    tool_call_id?: string
-    tool_calls?: AIMessage['tool_calls']
-    additional_kwargs?: string
-    additional_kwargs_binary?: ArrayBuffer
-    parent?: string
-}
-
-export interface ChatLunaConversation {
-    id: string
-    latestId?: string
-    additional_kwargs?: string
-    updatedAt?: Date
 }

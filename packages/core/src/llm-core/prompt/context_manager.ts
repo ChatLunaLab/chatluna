@@ -294,9 +294,22 @@ export class ChatLunaContextManagerService {
     }
 
     constructor(ctx: Context) {
-        ctx.on('chatluna/clear-chat-history', async (conversationId) => {
+        const clear = (conversationId: string) => {
             this.clearConversation(conversationId)
-        })
+        }
+
+        ctx.on('chatluna/conversation-after-clear-history', async (payload) =>
+            clear(payload.conversation.id)
+        )
+        ctx.on('chatluna/conversation-after-archive', async (payload) =>
+            clear(payload.conversation.id)
+        )
+        ctx.on('chatluna/conversation-after-restore', async (payload) =>
+            clear(payload.conversation.id)
+        )
+        ctx.on('chatluna/conversation-after-delete', async (payload) =>
+            clear(payload.conversation.id)
+        )
     }
 
     // -----------------------------------------------------------------------

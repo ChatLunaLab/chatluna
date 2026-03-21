@@ -23,9 +23,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return await oldChatLimitCheck(session, context)
             }
 
-            const {
-                room: { model }
-            } = context.options
+            const target = await resolveConversationTarget(session, context)
+
+            if (target == null) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            const { model } = target
 
             // check account balance
             const authUser = await authService.getUser(session)
@@ -98,19 +102,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .after('resolve_model')
-        .before('request_model')
+        .before('lifecycle-request_conversation')
 
     async function oldChatLimitCheck(
         session: Session,
         context: ChainMiddlewareContext
     ) {
-        if (context.options.room == null) {
+        const target = await resolveConversationTarget(session, context)
+
+        if (target == null) {
             return
         }
 
-        const {
-            room: { model, conversationId }
-        } = context.options
+        const { model, conversationId } = target
 
         // 为什么会是无
 
@@ -198,6 +202,33 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context.options.chatLimitCache = chatLimitCache
 
         return ChainMiddlewareRunStatus.CONTINUE
+    }
+
+    async function resolveConversationTarget(
+        session: Session,
+        context: ChainMiddlewareContext
+    ) {
+        const conversationId = context.options.conversationId
+
+        if (conversationId == null) {
+            return null
+        }
+
+        const resolved = await ctx.chatluna.conversation.resolveContext(
+            session,
+            {
+                conversationId
+            }
+        )
+
+        if (resolved.conversation == null) {
+            return null
+        }
+
+        return {
+            model: resolved.effectiveModel ?? resolved.conversation.model,
+            conversationId: resolved.conversation.id
+        }
     }
 }
 
