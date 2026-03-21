@@ -16,6 +16,7 @@ $inner:
       cron: 'Enable scheduled reminders. '
     - $desc: 'Extended Services Features'
       group: 'Enable group management plugin'
+      fileSender: 'Enable file sender plugin and inject send_file tool for main plugin'
       knowledge: 'Enable knowledge base plugin calls'
 
     - - $desc: 'Request Plugin Configuration'
@@ -44,6 +45,10 @@ $inner:
             $desc: 'Member IDs allowed to use group management functions'
         groupWhitelist:
             $desc: 'Group ID whitelist for using group management functions. Available in all groups when empty.'
+
+    - - $desc: 'File Sender Plugin Configuration'
+        fileSenderToolName: 'Native file tool name (default: send_file).'
+        fileSenderTimeout: 'File upload request timeout in seconds.'
 
     - - $desc: 'Cron Task Plugin Configuration'
         cronScopeSelector:

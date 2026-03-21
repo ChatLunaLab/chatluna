@@ -64,7 +64,10 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }
             }
         )
-        const output = formatOpenTerminalOutput(current.data?.output)
+        const currentData = (current as any).data ?? current
+        const output = formatOpenTerminalOutput(
+            currentData?.output ?? currentData
+        )
         const root = output.stdout.trim() || '/'
         this._home = root
 
@@ -382,10 +385,10 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         )
 
         this._cwd = cwd
-        const data = result.data
+        const data = (result as any).data ?? result
 
         if (data?.status !== 'running') {
-            const output = formatOpenTerminalOutput(data?.output)
+            const output = formatOpenTerminalOutput(data?.output ?? data)
             return {
                 exitCode: data?.exitCode ?? data?.code ?? data?.exit_code ?? 0,
                 stdout: output.stdout,
@@ -478,8 +481,10 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             }
         )
 
-        if (typeof result.data?.id !== 'string') {
-            const output = formatOpenTerminalOutput(result.data?.output)
+        const data = (result as any).data ?? result
+
+        if (typeof data?.id !== 'string') {
+            const output = formatOpenTerminalOutput(data?.output ?? data)
             throw new Error(
                 output.stderr || output.stdout || 'Failed to create terminal.'
             )
@@ -489,7 +494,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             this.ctx,
             (pathname) => this.url(pathname),
             this.headers(),
-            result.data
+            data
         )
         const callbacks = new Set<(data: string) => void>()
         const url = this.url(`/execute/${run.id}`)
@@ -497,7 +502,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         let buffer = ''
         this._cwd = cwd
 
-        const output = formatOpenTerminalOutput(result.data?.output)
+        const output = formatOpenTerminalOutput(data?.output ?? data)
         buffer = `${output.stdout}${output.stderr}`
 
         const emit = (data: string) => {
@@ -674,7 +679,7 @@ function createOpenTerminalPoller(
             }
         })
 
-        data = status.data
+        data = (status as any).data ?? status
         if (typeof data.next_offset === 'number') {
             nextOffset = data.next_offset
         }
@@ -702,7 +707,7 @@ function createOpenTerminalPoller(
 
                 try {
                     const data = await read()
-                    const output = formatOpenTerminalOutput(data.output)
+                    const output = formatOpenTerminalOutput(data.output ?? data)
                     onData(`${output.stdout}${output.stderr}`)
                 } catch {
                     closed = true
@@ -726,7 +731,7 @@ function createOpenTerminalPoller(
             const stderr: string[] = []
 
             const append = (data: OpenTerminalData) => {
-                const output = formatOpenTerminalOutput(data.output)
+                const output = formatOpenTerminalOutput(data.output ?? data)
                 if (output.stdout) {
                     stdout.push(output.stdout)
                 }
@@ -783,7 +788,33 @@ function joinPath(dir: string, path: string) {
     return `${dir.replace(/\/$/, '')}/${path}`
 }
 
-function formatOpenTerminalOutput(output: unknown) {
+function formatOpenTerminalOutput(output: unknown): {
+    stdout: string
+    stderr: string
+} {
+    if (typeof output === 'string') {
+        return { stdout: output, stderr: '' }
+    }
+
+    if (output && typeof output === 'object' && !Array.isArray(output)) {
+        const row = output as Record<string, unknown>
+        const direct =
+            typeof row.data === 'string'
+                ? row.data
+                : typeof row.text === 'string'
+                  ? row.text
+                  : typeof row.message === 'string'
+                    ? row.message
+                    : typeof row.output === 'string'
+                      ? row.output
+                      : typeof row.content === 'string'
+                        ? row.content
+                        : ''
+        const stdout = typeof row.stdout === 'string' ? row.stdout : direct
+        const stderr = typeof row.stderr === 'string' ? row.stderr : ''
+        return { stdout, stderr }
+    }
+
     const stdout: string[] = []
     const stderr: string[] = []
 
@@ -792,12 +823,30 @@ function formatOpenTerminalOutput(output: unknown) {
     }
 
     for (const item of output) {
-        const data = typeof item?.data === 'string' ? item.data : ''
+        if (typeof item === 'string') {
+            stdout.push(item)
+            continue
+        }
+
+        const row = item as Record<string, unknown>
+        const data =
+            typeof row.data === 'string'
+                ? row.data
+                : typeof row.text === 'string'
+                  ? row.text
+                  : typeof row.message === 'string'
+                    ? row.message
+                    : typeof row.output === 'string'
+                      ? row.output
+                      : typeof row.content === 'string'
+                        ? row.content
+                        : ''
         if (!data) {
             continue
         }
 
-        if (item?.type === 'stderr') {
+        const type = typeof row.type === 'string' ? row.type.toLowerCase() : ''
+        if (type.includes('stderr') || type.includes('error')) {
             stderr.push(data)
             continue
         }

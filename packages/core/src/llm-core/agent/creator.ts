@@ -34,6 +34,7 @@ export interface CreateAgentExecutorOptions {
     tools: ComputedRef<StructuredTool[]>
     prompt: ChatLunaChatPrompt
     agentMode: 'react' | 'tool-calling'
+    maxIterations?: number
     returnIntermediateSteps?: boolean
     handleParsingErrors?: boolean
     instructions?: ComputedRef<string>
@@ -84,6 +85,7 @@ export function createAgentExecutor(
         AgentExecutor.fromAgentAndTools({
             agent: cfg.value.agent,
             tools: cfg.value.tools,
+            maxIterations: options.maxIterations,
             returnIntermediateSteps: options.returnIntermediateSteps,
             handleParsingErrors: options.handleParsingErrors
         })
