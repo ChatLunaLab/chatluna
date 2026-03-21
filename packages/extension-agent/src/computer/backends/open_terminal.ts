@@ -6,7 +6,7 @@ import { posix } from 'path'
 import { Readable } from 'node:stream'
 import { Context } from 'koishi'
 import mimeTypes from 'mime-types'
-import { buildPosixBackgroundCommand, quoteShell } from './types'
+import { quoteShell } from './types'
 import { OpenTerminalBackendConfig } from '../../types'
 import {
     ComputerSessionApi,
@@ -49,43 +49,27 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             throw new Error('open-terminal baseUrl is empty.')
         }
 
-        const current = await this.ctx.http.post(
-            this.url('/execute'),
-            {
-                command: 'pwd'
-            },
-            {
-                params: {
-                    wait: 5
-                },
-                headers: {
-                    ...this.headers(),
-                    'content-type': 'application/json'
-                }
-            }
+        const current = readOpenTerminalData<OpenTerminalCwdData>(
+            await this.ctx.http(this.url('/files/cwd'), {
+                method: 'GET',
+                headers: this.headers()
+            })
         )
-        const currentData =
-            (current as unknown as OpenTerminalResponse).data ??
-            (current as unknown as OpenTerminalData)
-        const output = formatOpenTerminalOutput(
-            currentData?.output ?? currentData
-        )
-        const root = output.stdout.trim() || '/'
+        const root = current.cwd || '/'
         this._home = root
 
         if (this.options.cwd) {
             try {
-                const result = await this.ctx.http(this.url('/files/list'), {
-                    method: 'GET',
-                    headers: this.headers(),
-                    params: {
-                        directory: this.options.cwd
-                    }
-                })
-                this._root =
-                    typeof result.data?.dir === 'string'
-                        ? result.data.dir
-                        : this.options.cwd
+                const result = readOpenTerminalData<OpenTerminalListData>(
+                    await this.ctx.http(this.url('/files/list'), {
+                        method: 'GET',
+                        headers: this.headers(),
+                        params: {
+                            directory: this.options.cwd
+                        }
+                    })
+                )
+                this._root = result.dir || this.options.cwd
                 this._cwd = this._root
             } catch {
                 this._root = root
@@ -198,7 +182,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 )
                 if (result.exitCode !== 0) {
                     throw new Error(
-                        result.stderr || `Failed to write ${filePath}`
+                        result.stderr ||
+                            result.stdout ||
+                            `Failed to write ${filePath}`
                     )
                 }
             } finally {
@@ -366,60 +352,148 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
-        const cwd = options.workdir || this._cwd
-        const headers = {
-            ...this.headers(),
-            'content-type': 'application/json'
+        const cwd = this.resolvePath(options.workdir || this._cwd)
+        const term = await openOpenTerminal(this.ctx, {
+            url: (pathname) => this.url(pathname),
+            headers: this.headers(),
+            apiKey: this.resolveSecret(this.cfg.apiKey),
+            cwd,
+            cols: 120,
+            rows: 30
+        })
+        const id = randomUUID().replaceAll('-', '')
+        const start = `__CHATLUNA_OPEN_TERMINAL_START__${id}`
+        const end = `__CHATLUNA_OPEN_TERMINAL_END__${id}`
+        const stdoutPath = `/tmp/chatluna-${id}.stdout`
+        const stderrPath = `/tmp/chatluna-${id}.stderr`
+        const env = options.env
+            ? Object.entries(options.env)
+                  .map(([key, value]) => `export ${key}=${quoteShell(value)}`)
+                  .join('\n')
+            : ''
+        const wrapped = `${env ? `${env}\n` : ''}stty -echo 2>/dev/null
+export PS1=''
+__chatluna_stdout=${quoteShell(stdoutPath)}
+__chatluna_stderr=${quoteShell(stderrPath)}
+rm -f "$__chatluna_stdout" "$__chatluna_stderr"
+: > "$__chatluna_stdout"
+: > "$__chatluna_stderr"
+printf '%s\n' ${quoteShell(start)}
+__chatluna_shell=$(command -v bash || command -v sh)
+"$__chatluna_shell" -lc ${quoteShell(command)} >"$__chatluna_stdout" 2>"$__chatluna_stderr"
+__chatluna_code=$?
+printf '\n${end}:%s\n' "$__chatluna_code"
+exit
+`
+
+        let pending = ''
+        let started = false
+        let exitCode = 1
+        let timedOut = false
+        const timeout = options.timeout ?? 30000
+        let result = { exitCode: 1 }
+
+        try {
+            result = await new Promise<{ exitCode: number }>((resolve) => {
+                let done = false
+                let timer: NodeJS.Timeout | undefined
+                let queue = Promise.resolve()
+
+                const finish = (code: number) => {
+                    if (done) {
+                        return
+                    }
+
+                    done = true
+                    clearTimeout(timer)
+                    resolve({ exitCode: code })
+                }
+
+                const trim = () => {
+                    if (!started) {
+                        const match = pending.match(
+                            new RegExp(
+                                `(?:^|\\r\\n|\\n|\\r)${escapeRegExp(start)}(?:\\r\\n|\\n|\\r)`
+                            )
+                        )
+                        if (!match || match.index == null) {
+                            const size = start.length + 8
+                            if (pending.length > size) {
+                                pending = pending.slice(-size)
+                            }
+                            return
+                        }
+
+                        pending = pending.slice(match.index + match[0].length)
+                        started = true
+                    }
+
+                    const match = pending.match(
+                        new RegExp(
+                            `(?:[\\s\\S]*?)${escapeRegExp(end)}:(-?\\d+)(?:\\r\\n|\\n|\\r)?`
+                        )
+                    )
+                    if (!match) {
+                        const size = end.length + 64
+                        if (pending.length > size) {
+                            pending = pending.slice(-size)
+                        }
+                        return
+                    }
+
+                    exitCode = Number(match[1]) || 0
+                    finish(exitCode)
+                }
+
+                term.ws.addEventListener('message', (event) => {
+                    queue = queue
+                        .then(async () => {
+                            if (done) {
+                                return
+                            }
+
+                            pending += await readOpenTerminalMessage(event.data)
+                            trim()
+                        })
+                        .catch(() => undefined)
+                })
+
+                term.closed.then(async () => {
+                    await queue.catch(() => undefined)
+                    if (!done) {
+                        finish(exitCode)
+                    }
+                })
+
+                if (timeout > 0) {
+                    timer = setTimeout(() => {
+                        trim()
+                        if (done) {
+                            return
+                        }
+
+                        timedOut = true
+                        finish(exitCode)
+                    }, timeout)
+                }
+
+                term.ws.send(Buffer.from(wrapped, 'utf8'))
+            })
+        } finally {
+            await term.kill().catch(() => undefined)
         }
-        const result = await this.ctx.http.post(
-            this.url('/execute'),
-            {
-                command,
-                cwd,
-                env: options.env
-            },
-            {
-                params: {
-                    wait: 1
-                },
-                headers
-            }
-        )
 
         this._cwd = cwd
-        const data =
-            (result as unknown as OpenTerminalResponse).data ??
-            (result as unknown as OpenTerminalData)
-
-        if (data?.status !== 'running') {
-            const output = formatOpenTerminalOutput(data?.output ?? data)
-            return {
-                exitCode: data?.exitCode ?? data?.code ?? data?.exit_code ?? 0,
-                stdout: output.stdout,
-                stderr: output.stderr,
-                signal: data?.signal,
-                timedOut: false
-            }
-        }
-
-        const run = createOpenTerminalPoller(
-            this.ctx,
-            (pathname) => this.url(pathname),
-            this.headers(),
-            data
-        )
-        const waited = await run.wait(options.timeout ?? 30000)
+        const [stdout, stderr] = await Promise.all([
+            this.readFile(stdoutPath).catch(() => ''),
+            this.readFile(stderrPath).catch(() => '')
+        ])
 
         return {
-            exitCode:
-                waited.data?.exitCode ??
-                waited.data?.code ??
-                waited.data?.exit_code ??
-                0,
-            stdout: waited.stdout,
-            stderr: waited.stderr,
-            signal: waited.data?.signal,
-            timedOut: waited.timedOut
+            exitCode: result.exitCode,
+            stdout,
+            stderr,
+            timedOut
         }
     }
 
@@ -466,97 +540,41 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async createTerminal(options: TerminalOptions = {}) {
-        const cwd = options.cwd || this._cwd
-        const result = await this.ctx.http.post(
-            this.url('/api/terminals'),
-            undefined,
-            {
-                headers: this.headers()
-            }
-        )
-        const data =
-            (result as unknown as OpenTerminalTerminalResponse).data ??
-            (result as unknown as OpenTerminalTerminalData)
-        if (typeof data.id !== 'string') {
-            throw new Error('Failed to create terminal.')
-        }
-
+        const cwd = this.resolvePath(options.cwd || this._cwd)
+        const term = await openOpenTerminal(this.ctx, {
+            url: (pathname) => this.url(pathname),
+            headers: this.headers(),
+            apiKey: this.resolveSecret(this.cfg.apiKey),
+            cwd,
+            cols: options.cols,
+            rows: options.rows
+        })
         const callbacks = new Set<(data: string) => void>()
-        const ws = this.ctx.http.ws(
-            toWebSocketUrl(this.url(`/api/terminals/${data.id}`)),
-            {
-                headers: this.headers()
-            }
-        )
-        const ctx = this.ctx
-        const deleteUrl = this.url(`/api/terminals/${data.id}`)
-        const requestHeaders = this.headers()
         let closed = false
-
-        const open = new Promise<void>((resolve, reject) => {
-            let settled = false
-            const fail = (reason: string) => {
-                if (settled) {
-                    return
-                }
-                settled = true
-                reject(new Error(reason))
-            }
-            ws.addEventListener('open', () => {
-                if (settled) {
-                    return
-                }
-                settled = true
-                const token = this.resolveSecret(this.cfg.apiKey)
-                if (token) {
-                    ws.send(
-                        JSON.stringify({
-                            type: 'auth',
-                            token
-                        })
-                    )
-                }
-                ws.send(Buffer.from(`cd ${quoteShell(cwd)}\n`, 'utf8'))
-                resolve()
-            })
-            ws.addEventListener('error', () => {
-                fail('Failed to open terminal websocket.')
-            })
-            ws.addEventListener('close', () => {
-                fail('Terminal websocket closed before ready.')
-            })
+        let queue = Promise.resolve()
+        term.ws.addEventListener('message', (event) => {
+            queue = queue
+                .then(async () => {
+                    const text = await readOpenTerminalMessage(event.data)
+                    if (!text) {
+                        return
+                    }
+                    for (const callback of callbacks) {
+                        callback(text)
+                    }
+                })
+                .catch(() => undefined)
         })
 
-        ws.addEventListener('message', (event) => {
-            const chunk = event.data
-            let text = ''
-            if (typeof chunk === 'string') {
-                text = chunk
-            } else if (chunk instanceof Blob) {
-                text = ''
-            } else if (Array.isArray(chunk)) {
-                text = Buffer.concat(chunk).toString('utf8')
-            } else {
-                text = Buffer.from(chunk).toString('utf8')
-            }
-            if (!text) {
-                return
-            }
-            for (const callback of callbacks) {
-                callback(text)
-            }
-        })
-
-        ws.addEventListener('close', () => {
+        term.ws.addEventListener('close', () => {
             closed = true
             callbacks.clear()
         })
 
-        await open
         this._cwd = cwd
 
         return {
-            id: data.id,
+            id: term.id,
             async onData(callback) {
                 callbacks.add(callback)
                 return () => {
@@ -564,17 +582,16 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }
             },
             async sendInput(data) {
-                if (closed || ws.readyState !== 1) {
+                if (closed || term.ws.readyState !== 1) {
                     return
                 }
-                const text = Buffer.from(data, 'utf8')
-                ws.send(text)
+                term.ws.send(Buffer.from(data, 'utf8'))
             },
             async resize(cols, rows) {
-                if (closed || ws.readyState !== 1) {
+                if (closed || term.ws.readyState !== 1) {
                     return
                 }
-                ws.send(
+                term.ws.send(
                     JSON.stringify({
                         type: 'resize',
                         cols,
@@ -583,15 +600,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 )
             },
             async kill() {
-                if (!closed) {
-                    ws.close()
-                    closed = true
-                }
-                await ctx.http
-                    .delete(deleteUrl, {
-                        headers: requestHeaders
-                    })
-                    .catch(() => undefined)
+                closed = true
+                callbacks.clear()
+                await term.kill()
             }
         } satisfies TerminalHandle
     }
@@ -601,7 +612,11 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         marker: string,
         _options: ExecuteOptions = {}
     ) {
-        return buildPosixBackgroundCommand(command, marker)
+        return `${command}
+__chatluna_code=$?
+printf '\n${marker}:%s\n' "$__chatluna_code"
+exit
+`
     }
 
     async getDesktopInfo() {
@@ -678,19 +693,16 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 }
 
-type OpenTerminalData = {
-    id?: string
-    next_offset?: number
-    output?: unknown
-    status?: string
-    exitCode?: number
-    code?: number
-    exit_code?: number
-    signal?: string
+type OpenTerminalCwdData = {
+    cwd?: string
 }
 
-type OpenTerminalResponse = {
-    data?: OpenTerminalData
+type OpenTerminalListData = {
+    dir?: string
+}
+
+type OpenTerminalEnvelope<T> = {
+    data?: T
 }
 
 type OpenTerminalTerminalData = {
@@ -699,138 +711,123 @@ type OpenTerminalTerminalData = {
     pid?: number
 }
 
-type OpenTerminalTerminalResponse = {
-    data?: OpenTerminalTerminalData
+type OpenTerminalSocket = {
+    id: string
+    ws: ReturnType<Context['http']['ws']>
+    closed: Promise<void>
+    kill(): Promise<void>
 }
 
-function createOpenTerminalPoller(
+async function openOpenTerminal(
     ctx: Context,
-    url: (pathname: string) => string,
-    headers: Record<string, string>,
-    init: OpenTerminalData
+    options: {
+        url: (pathname: string) => string
+        headers: Record<string, string>
+        apiKey: string
+        cwd: string
+        cols?: number
+        rows?: number
+    }
 ) {
-    if (typeof init.id !== 'string') {
-        throw new Error('Failed to start open-terminal command.')
-    }
-
-    const id = init.id
-    let data = init
-    let nextOffset =
-        typeof init.next_offset === 'number'
-            ? init.next_offset
-            : Array.isArray(init.output)
-              ? init.output.length
-              : 0
-    let closed = init.status !== 'running'
-    let timer: NodeJS.Timeout | undefined
-
-    const read = async () => {
-        if (closed) {
-            return data
-        }
-
-        const status = await ctx.http(url(`/execute/${id}/status`), {
-            method: 'GET',
-            headers,
-            params: {
-                wait: 1,
-                offset: nextOffset
-            }
+    const result = readOpenTerminalData<OpenTerminalTerminalData>(
+        await ctx.http.post(options.url('/api/terminals'), undefined, {
+            headers: options.headers
         })
+    )
+    if (typeof result.id !== 'string') {
+        throw new Error('Failed to create terminal.')
+    }
 
-        data =
-            (status as unknown as OpenTerminalResponse).data ??
-            (status as unknown as OpenTerminalData)
-        if (typeof data.next_offset === 'number') {
-            nextOffset = data.next_offset
+    const ws = ctx.http.ws(
+        toWebSocketUrl(options.url(`/api/terminals/${result.id}`)),
+        {
+            headers: options.headers
         }
-        closed = data.status !== 'running'
-        return data
-    }
+    )
+    let resolveClosed: (() => void) | undefined
+    const closed = new Promise<void>((resolve) => {
+        resolveClosed = resolve
+    })
+    ws.addEventListener('close', () => {
+        resolveClosed?.()
+    })
 
-    const kill = async () => {
-        closed = true
-        clearTimeout(timer)
-        await ctx.http
-            .delete(url(`/execute/${id}`), {
-                headers
-            })
-            .catch(() => undefined)
-    }
+    try {
+        await new Promise<void>((resolve, reject) => {
+            let done = false
 
-    return {
-        id,
-        start(onData: (text: string) => void) {
-            const poll = async () => {
-                if (closed) {
+            const fail = (message: string) => {
+                if (done) {
                     return
                 }
 
-                try {
-                    const data = await read()
-                    const output = formatOpenTerminalOutput(data.output ?? data)
-                    onData(`${output.stdout}${output.stderr}`)
-                } catch {
-                    closed = true
-                }
-
-                if (!closed) {
-                    timer = setTimeout(() => {
-                        poll().catch(() => undefined)
-                    }, 0)
-                }
+                done = true
+                reject(new Error(message))
             }
 
-            if (!closed) {
-                timer = setTimeout(() => {
-                    poll().catch(() => undefined)
-                }, 0)
-            }
-        },
-        async wait(timeout: number) {
-            const stdout: string[] = []
-            const stderr: string[] = []
-
-            const append = (data: OpenTerminalData) => {
-                const output = formatOpenTerminalOutput(data.output ?? data)
-                if (output.stdout) {
-                    stdout.push(output.stdout)
-                }
-                if (output.stderr) {
-                    stderr.push(output.stderr)
-                }
-            }
-
-            append(data)
-            const end = Date.now() + Math.max(timeout, 0)
-
-            while (Date.now() < end) {
-                if (closed) {
-                    break
+            ws.addEventListener('open', () => {
+                if (done) {
+                    return
                 }
 
-                append(await read())
-            }
-
-            if (!closed) {
-                await kill()
-                return {
-                    data,
-                    stdout: stdout.join(''),
-                    stderr: stderr.join(''),
-                    timedOut: true
+                done = true
+                if (options.apiKey) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'auth',
+                            token: options.apiKey
+                        })
+                    )
                 }
-            }
+                if (options.cols != null && options.rows != null) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'resize',
+                            cols: options.cols,
+                            rows: options.rows
+                        })
+                    )
+                }
+                ws.send(Buffer.from(`cd ${quoteShell(options.cwd)}\n`, 'utf8'))
+                resolve()
+            })
 
-            return {
-                data,
-                stdout: stdout.join(''),
-                stderr: stderr.join(''),
-                timedOut: false
-            }
-        },
-        kill
+            ws.addEventListener('error', () => {
+                fail('Failed to open terminal websocket.')
+            })
+
+            ws.addEventListener('close', () => {
+                fail('Terminal websocket closed before ready.')
+            })
+        })
+    } catch (err) {
+        if (ws.readyState === 0 || ws.readyState === 1) {
+            ws.close()
+        }
+        await ctx.http
+            .delete(options.url(`/api/terminals/${result.id}`), {
+                headers: options.headers
+            })
+            .catch(() => undefined)
+        throw err
     }
+
+    return {
+        id: result.id,
+        ws,
+        closed,
+        async kill() {
+            if (ws.readyState === 0 || ws.readyState === 1) {
+                ws.close()
+            }
+            await ctx.http
+                .delete(options.url(`/api/terminals/${result.id}`), {
+                    headers: options.headers
+                })
+                .catch(() => undefined)
+            await closed.catch(() => undefined)
+        }
+    } satisfies OpenTerminalSocket
 }
 
 function ensureTrailingSlash(url: string) {
@@ -859,85 +856,44 @@ function joinPath(dir: string, path: string) {
     return `${dir.replace(/\/$/, '')}/${path}`
 }
 
-function formatOpenTerminalOutput(output: unknown): {
-    stdout: string
-    stderr: string
-} {
-    if (typeof output === 'string') {
-        return { stdout: output, stderr: '' }
-    }
-
-    if (output && typeof output === 'object' && !Array.isArray(output)) {
-        const row = output as Record<string, unknown>
-        const direct = readOpenTerminalRow(row)
-        const type = typeof row.type === 'string' ? row.type.toLowerCase() : ''
-        const isErr = type.includes('stderr') || type.includes('error')
-        let stdout = direct
-        let stderr = ''
-        if (typeof row.stdout === 'string') {
-            stdout = row.stdout
-        } else if (isErr) {
-            stdout = ''
-        }
-        if (typeof row.stderr === 'string') {
-            stderr = row.stderr
-        } else if (isErr) {
-            stderr = direct
-        }
-        return { stdout, stderr }
-    }
-
-    const stdout: string[] = []
-    const stderr: string[] = []
-
-    if (!Array.isArray(output)) {
-        return { stdout: '', stderr: '' }
-    }
-
-    for (const item of output) {
-        if (typeof item === 'string') {
-            stdout.push(item)
-            continue
-        }
-
-        const row = item as Record<string, unknown>
-        const data = readOpenTerminalRow(row)
-        if (!data) {
-            continue
-        }
-
-        const type = typeof row.type === 'string' ? row.type.toLowerCase() : ''
-        if (type.includes('stderr') || type.includes('error')) {
-            stderr.push(data)
-            continue
-        }
-
-        stdout.push(data)
-    }
-
-    return {
-        stdout: stdout.join(''),
-        stderr: stderr.join('')
-    }
+function readOpenTerminalData<T>(value: unknown) {
+    return ((value as OpenTerminalEnvelope<T>).data ?? value) as T
 }
 
-function readOpenTerminalRow(row: Record<string, unknown>) {
-    if (typeof row.data === 'string') {
-        return row.data
+async function readOpenTerminalMessage(value: unknown) {
+    if (typeof value === 'string') {
+        return value
     }
-    if (typeof row.text === 'string') {
-        return row.text
+
+    if (value instanceof Blob) {
+        return Buffer.from(await value.arrayBuffer()).toString('utf8')
     }
-    if (typeof row.message === 'string') {
-        return row.message
+
+    if (Array.isArray(value)) {
+        return Buffer.concat(
+            value.map((item) =>
+                Buffer.isBuffer(item) ? item : Buffer.from(item)
+            )
+        ).toString('utf8')
     }
-    if (typeof row.output === 'string') {
-        return row.output
+
+    if (ArrayBuffer.isView(value)) {
+        return Buffer.from(
+            value.buffer,
+            value.byteOffset,
+            value.byteLength
+        ).toString('utf8')
     }
-    if (typeof row.content === 'string') {
-        return row.content
+
+    if (value instanceof ArrayBuffer) {
+        return Buffer.from(value).toString('utf8')
     }
+
     return ''
+}
+
+function escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 async function readOpenTerminalAsset(stream: Readable) {

@@ -19,7 +19,9 @@ Rules:
 - Absolute paths outside the scope path are blocked
 - Certain high-risk commands require explicit user confirmation
 - Commands in the blocked list are always rejected
-- If a command may take a while, keep running, or exceed the normal timeout, prefer background=true and query it later yourself
+- Default to foreground execution. In 99% of cases you should NOT use background=true.
+- Use background=true only when it is truly necessary for a long-lived process that must keep running after the tool returns, such as starting a server.
+- Builds, tests, scripts, package installs, one-off migrations, and most long commands should still run in the foreground, even if they take a while.
 - Do not use this tool for agentcli commands; there is a dedicated agentcli tool
 
 When to use:
@@ -51,7 +53,7 @@ When to use:
                 .boolean()
                 .optional()
                 .describe(
-                    'Run the command as a managed background job. Commands ending with & are also treated as background jobs automatically.'
+                    'Run the command as a managed background job only when strictly necessary for a long-lived process such as a server. Do not use this in normal cases. Commands ending with & are also treated as background jobs automatically.'
                 ),
             action: z
                 .enum(['run', 'status', 'list', 'kill'])
@@ -185,9 +187,14 @@ When to use:
             })
 
             if (result.timedOut) {
+                const output = await this.formatLargeResult(
+                    computer,
+                    'bash',
+                    formatExecuteResult(result)
+                )
                 return this.withBackend(
                     computer,
-                    `Command timed out after ${timeout}ms.`
+                    `Command timed out after ${timeout}ms.\n${output}`
                 )
             }
 
