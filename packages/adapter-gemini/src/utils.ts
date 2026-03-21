@@ -108,12 +108,18 @@ export function extractSystemMessages(
         return [undefined, messages]
     }
 
-    const systemMessages = messages.slice(
-        0,
-        Math.max(1, lastSystemMessageIndex)
-    )
+    const systemMessages = messages
+        .slice(0, lastSystemMessageIndex + 1)
+        .filter((msg) => msg.role === 'system')
 
-    const modelMessages = messages.slice(lastSystemMessageIndex + 1)
+    const modelMessages = [
+        ...messages
+            .slice(0, lastSystemMessageIndex)
+            .filter((msg) => msg.role !== 'system'),
+        ...messages
+            .slice(lastSystemMessageIndex + 1)
+            .filter((msg) => msg.role !== 'system')
+    ]
 
     return [
         {
