@@ -400,6 +400,7 @@ const guide = computed<GuideContent>(() => {
                         '  -p 8000:8000 \\',
                         '  -v open-terminal:/home/user \\',
                         '  -e OPEN_TERMINAL_API_KEY=your-secret-key \\',
+                        '  -e OPEN_TERMINAL_BINARY_MIME_PREFIXES=image,audio,video,application/pdf,application/zip,application/vnd.openxmlformats-officedocument.,application/octet-stream \\',
                         '  ghcr.io/open-webui/open-terminal'
                     ].join('\n')
                 },
@@ -662,6 +663,32 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    max-height: min(70vh, 720px);
+    overflow: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.guide-dialog::-webkit-scrollbar {
+    width: 10px;
+}
+
+.guide-dialog::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.guide-dialog::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.guide-dialog::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 .guide-intro,

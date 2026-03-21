@@ -840,7 +840,11 @@ export class ChatLunaAgentComputerService {
         )
 
         if (result.exitCode !== 0) {
-            throw new Error(result.stderr.trim() || `Failed to remove ${path}`)
+            throw new Error(
+                result.stderr.trim() ||
+                    result.stdout.trim() ||
+                    `Failed to remove ${path}`
+            )
         }
     }
 

@@ -1,10 +1,14 @@
 /** @module computer/backends/local/store */
 
+import { spawn } from 'node:child_process'
 import fs from 'fs/promises'
 import path from 'path'
 import micromatch from 'micromatch'
+import which from 'which'
 import { LocalBackendConfig } from '../../../types'
 import type { FileContent } from '../../types'
+
+const rg = which.sync('rg', { nothrow: true })
 
 export interface BaseFileStore {
     readFile(filePath: string, offset?: number, limit?: number): Promise<string>
@@ -121,43 +125,81 @@ export class FileStore implements BaseFileStore {
         this.assertInScope(dir)
 
         const stat = await fs.stat(dir).catch(() => null)
-        const files = stat?.isDirectory()
-            ? await this._findFiles(dir, include)
-            : include == null || this._matchPattern(dir, include)
-              ? [dir]
-              : []
+        if (!stat) {
+            return []
+        }
 
-        const regex = new RegExp(pattern, 'gm')
-        const results: { file: string; mtime: number; lines: string[] }[] = []
+        if (stat.isDirectory() && rg) {
+            const args = [
+                '--json',
+                '-n',
+                '--hidden',
+                '--no-ignore',
+                '--follow',
+                '--color',
+                'never',
+                '--engine',
+                'auto'
+            ]
 
-        for (const file of files) {
-            if (this._shouldIgnore(file)) {
-                continue
+            if (include) {
+                args.push('-g', include)
             }
 
+            for (const item of this._cfg.ignores) {
+                args.push('-g', `!${item}`)
+            }
+
+            args.push('-e', pattern, '.')
+
             try {
-                const fileStat = await fs.stat(file)
-                if (!fileStat.isFile()) {
-                    continue
+                const result = await runProcess(rg, args, dir)
+                if (result.exitCode === 1) {
+                    return []
                 }
 
-                const content = await fs.readFile(file, 'utf-8')
-                const lines = content.split('\n')
-                const matched: string[] = []
-                for (let idx = 0; idx < lines.length; idx++) {
-                    if (regex.test(lines[idx])) {
-                        matched.push(`${file}:${idx + 1}:${lines[idx]}`)
+                if (result.exitCode !== 0) {
+                    throw new Error(
+                        result.stderr ||
+                            `ripgrep exited with ${result.exitCode}`
+                    )
+                }
+
+                const matched = new Map<string, string[]>()
+                for (const line of result.stdout.split('\n')) {
+                    if (!line) {
+                        continue
                     }
-                    regex.lastIndex = 0
+
+                    const item = JSON.parse(line)
+                    if (item.type !== 'match') {
+                        continue
+                    }
+
+                    const raw = item.data.path.text as string | undefined
+                    if (!raw) {
+                        continue
+                    }
+
+                    const file = path.resolve(dir, raw)
+                    if (this._shouldIgnore(file)) {
+                        continue
+                    }
+
+                    if (include && !this._matchPattern(file, include)) {
+                        continue
+                    }
+
+                    const text = (
+                        (item.data.lines.text as string | undefined) || ''
+                    ).replace(/\r?\n$/, '')
+                    const list = matched.get(file) || []
+                    list.push(`${file}:${item.data.line_number}:${text}`)
+                    matched.set(file, list)
                 }
 
-                if (matched.length > 0) {
-                    results.push({
-                        file,
-                        mtime: fileStat.mtimeMs,
-                        lines: matched
-                    })
-                }
+                const files = await sortByMtime([...matched.keys()])
+                return files.flatMap((file) => matched.get(file) || [])
             } catch (err) {
                 if (process.env['CHATLUNA_AGENT_DEBUG']) {
                     console.debug(err)
@@ -165,8 +207,41 @@ export class FileStore implements BaseFileStore {
             }
         }
 
-        results.sort((a, b) => b.mtime - a.mtime)
-        return results.flatMap((item) => item.lines)
+        const files = stat.isDirectory()
+            ? await this._findFiles(dir, include)
+            : include == null || this._matchPattern(dir, include)
+              ? [dir]
+              : []
+
+        const regex = new RegExp(pattern, 'gm')
+        const matched = new Map<string, string[]>()
+
+        for (const file of files) {
+            if (this._shouldIgnore(file)) {
+                continue
+            }
+
+            const content = await fs.readFile(file, 'utf-8').catch(() => null)
+            if (content == null) {
+                continue
+            }
+
+            const lines = content.split('\n')
+            const list: string[] = []
+            for (let idx = 0; idx < lines.length; idx++) {
+                if (regex.test(lines[idx])) {
+                    list.push(`${file}:${idx + 1}:${lines[idx]}`)
+                }
+                regex.lastIndex = 0
+            }
+
+            if (list.length > 0) {
+                matched.set(file, list)
+            }
+        }
+
+        const sorted = await sortByMtime([...matched.keys()])
+        return sorted.flatMap((file) => matched.get(file) || [])
     }
 
     async glob(pattern: string, searchPath?: string) {
@@ -174,20 +249,58 @@ export class FileStore implements BaseFileStore {
         this.assertInScope(dir)
 
         const stat = await fs.stat(dir).catch(() => null)
+        if (!stat) {
+            return []
+        }
+
         if (!stat?.isDirectory()) {
             return this._matchPattern(dir, pattern) ? [dir] : []
         }
 
-        const files = await this._findFiles(dir, pattern)
-        const list = await Promise.all(
-            files.map(async (file) => ({
-                path: file,
-                mtime: (await fs.stat(file).catch(() => null))?.mtimeMs ?? 0
-            }))
-        )
+        if (rg) {
+            const args = [
+                '--files',
+                '--hidden',
+                '--no-ignore',
+                '--follow',
+                '-0'
+            ]
 
-        list.sort((a, b) => b.mtime - a.mtime)
-        return list.map((item) => item.path)
+            args.push('-g', pattern)
+            for (const item of this._cfg.ignores) {
+                args.push('-g', `!${item}`)
+            }
+
+            args.push('.')
+
+            try {
+                const result = await runProcess(rg, args, dir)
+                if (result.exitCode !== 0) {
+                    throw new Error(
+                        result.stderr ||
+                            `ripgrep exited with ${result.exitCode}`
+                    )
+                }
+
+                const files = result.stdout
+                    .split('\0')
+                    .filter(Boolean)
+                    .map((file) => path.resolve(dir, file))
+                    .filter(
+                        (file) =>
+                            !this._shouldIgnore(file) &&
+                            this._matchPattern(file, pattern)
+                    )
+
+                return sortByMtime(files)
+            } catch (err) {
+                if (process.env['CHATLUNA_AGENT_DEBUG']) {
+                    console.debug(err)
+                }
+            }
+        }
+
+        return sortByMtime(await this._findFiles(dir, pattern))
     }
 
     private async _findFiles(
@@ -197,7 +310,6 @@ export class FileStore implements BaseFileStore {
         try {
             const entries = await fs.readdir(dirPath, { withFileTypes: true })
             const results: string[] = []
-            const sub: Promise<string[]>[] = []
 
             for (const entry of entries) {
                 const fullPath = path.join(dirPath, entry.name)
@@ -206,7 +318,7 @@ export class FileStore implements BaseFileStore {
                 }
 
                 if (entry.isDirectory()) {
-                    sub.push(this._findFiles(fullPath, pattern))
+                    results.push(...(await this._findFiles(fullPath, pattern)))
                     continue
                 }
 
@@ -223,15 +335,17 @@ export class FileStore implements BaseFileStore {
 
                 try {
                     const stat = await fs.stat(fullPath)
+                    if (stat.isDirectory()) {
+                        results.push(
+                            ...(await this._findFiles(fullPath, pattern))
+                        )
+                        continue
+                    }
+
                     if (stat.isFile()) {
                         if (!pattern || this._matchPattern(fullPath, pattern)) {
                             results.push(fullPath)
                         }
-                        continue
-                    }
-
-                    if (stat.isDirectory()) {
-                        sub.push(this._findFiles(fullPath, pattern))
                     }
                 } catch (err) {
                     if (process.env['CHATLUNA_AGENT_DEBUG']) {
@@ -240,7 +354,7 @@ export class FileStore implements BaseFileStore {
                 }
             }
 
-            return results.concat(...(await Promise.all(sub)))
+            return results
         } catch (err) {
             if (process.env['CHATLUNA_AGENT_DEBUG']) {
                 console.debug(err)
@@ -284,6 +398,51 @@ export class FileStore implements BaseFileStore {
             `path "${filePath}" is not in scope "${this._cfg.scopePath}"`
         )
     }
+}
+
+async function runProcess(file: string, args: string[], cwd: string) {
+    return await new Promise<{
+        exitCode: number
+        stdout: string
+        stderr: string
+    }>((resolve, reject) => {
+        const stdout: Buffer[] = []
+        const stderr: Buffer[] = []
+        const child = spawn(file, args, {
+            cwd,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true
+        })
+
+        child.stdout.on('data', (chunk: Buffer | string) => {
+            stdout.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        })
+
+        child.stderr.on('data', (chunk: Buffer | string) => {
+            stderr.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        })
+
+        child.on('error', reject)
+        child.on('close', (code) => {
+            resolve({
+                exitCode: code ?? 0,
+                stdout: Buffer.concat(stdout).toString('utf8'),
+                stderr: Buffer.concat(stderr).toString('utf8').trim()
+            })
+        })
+    })
+}
+
+async function sortByMtime(files: string[]) {
+    const list = await Promise.all(
+        files.map(async (file) => ({
+            path: file,
+            mtime: (await fs.stat(file).catch(() => null))?.mtimeMs ?? 0
+        }))
+    )
+
+    list.sort((a, b) => b.mtime - a.mtime)
+    return list.map((item) => item.path)
 }
 
 function replaceSubstring(

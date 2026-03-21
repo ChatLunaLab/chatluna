@@ -14,6 +14,9 @@ export interface Config extends ChatLunaPlugin.Config {
     group: boolean
     groupScopeSelector: string[]
     groupWhitelist: string[]
+    fileSender: boolean
+    fileSenderToolName: string
+    fileSenderTimeout: number
     command: boolean
     commandWithSend: boolean
     commandAutoExecute: boolean
@@ -54,7 +57,8 @@ export const Config: Schema<Config> = Schema.intersect([
         cron: Schema.boolean().default(true)
     }),
     Schema.object({
-        group: Schema.boolean().default(false)
+        group: Schema.boolean().default(false),
+        fileSender: Schema.boolean().default(false)
     }),
 
     Schema.union([
@@ -118,6 +122,14 @@ export const Config: Schema<Config> = Schema.intersect([
             group: Schema.const(true).required(),
             groupScopeSelector: Schema.array(Schema.string()),
             groupWhitelist: Schema.array(Schema.string()).default([])
+        }),
+        Schema.object({})
+    ]),
+    Schema.union([
+        Schema.object({
+            fileSender: Schema.const(true).required(),
+            fileSenderToolName: Schema.string().default('send_file'),
+            fileSenderTimeout: Schema.number().min(1).max(300).default(30)
         }),
         Schema.object({})
     ]),

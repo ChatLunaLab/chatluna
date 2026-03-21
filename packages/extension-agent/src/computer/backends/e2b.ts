@@ -5,11 +5,13 @@ import { Buffer } from 'node:buffer'
 import { posix } from 'path'
 import { Readable } from 'node:stream'
 import {
+    CommandExitError,
     CommandHandle,
     CommandResult,
     CommandStartOpts,
     Sandbox as E2BSandbox,
-    NotFoundError
+    NotFoundError,
+    TimeoutError
 } from 'e2b'
 import mimeTypes from 'mime-types'
 import { Context } from 'koishi'
@@ -21,6 +23,7 @@ import {
     DesktopAction,
     DesktopInfo,
     ExecuteOptions,
+    ExecuteResult,
     FileContent,
     ScreenshotResult,
     StreamHandle,
@@ -378,7 +381,7 @@ export class E2BComputerSession implements ComputerSessionApi {
             envs: options.env
         } as CommandStartOpts)
         this._cwd = cwd
-        return mapCommandResult(result)
+        return result
     }
 
     async readAsset(filePath: string) {
@@ -641,15 +644,34 @@ export class E2BComputerSession implements ComputerSessionApi {
         command: string,
         options?: CommandStartOpts,
         sandbox?: SandboxWrapper
-    ) {
+    ): Promise<ExecuteResult> {
         const current = sandbox ?? (await this.ensureSandbox())
-        let result: Awaited<ReturnType<SandboxWrapper['commands']['run']>>
+        let handle: CommandHandle | undefined
+        let result: CommandResult | undefined
         let runErr: unknown
+        let timedOut = false
 
         try {
-            result = await current.commands.run(command, options)
+            handle = (await current.commands.run(command, {
+                ...options
+            } as CommandStartOpts & { background: true })) as CommandHandle
+            result = await handle.wait()
         } catch (err) {
-            runErr = err
+            if (err instanceof CommandExitError) {
+                result = err
+            } else if (
+                err instanceof TimeoutError ||
+                (err instanceof Error && err.name === 'TimeoutError')
+            ) {
+                timedOut = true
+                result = {
+                    exitCode: handle?.exitCode ?? 1,
+                    stdout: handle?.stdout ?? '',
+                    stderr: handle?.stderr ?? ''
+                }
+            } else {
+                runErr = err
+            }
         }
 
         try {
@@ -664,7 +686,11 @@ export class E2BComputerSession implements ComputerSessionApi {
             throw runErr
         }
 
-        return result
+        if (!result) {
+            throw new Error('Command finished without a result.')
+        }
+
+        return mapCommandResult(result, timedOut)
     }
 
     private ensureDesktopSandbox() {
@@ -700,13 +726,16 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 }
 
-function mapCommandResult(result: CommandResult | CommandHandle) {
+function mapCommandResult(
+    result: CommandResult | CommandHandle,
+    timedOut = false
+) {
     return {
         exitCode: result.exitCode ?? 0,
         stdout: result.stdout,
         stderr: result.stderr,
         signal: undefined,
-        timedOut: false
+        timedOut
     }
 }
 

@@ -226,11 +226,24 @@ async function runChildProcess(
         })
 
         let done = false
-        let timedOut = false
+        const finish = (result: ExecuteResult) => {
+            if (done) {
+                return
+            }
+
+            done = true
+            clearTimeout(timer)
+            resolve(result)
+        }
         const timer =
             timeout > 0
                 ? setTimeout(() => {
-                      timedOut = true
+                      finish({
+                          exitCode: 1,
+                          stdout: decodeOutput(stdoutChunks),
+                          stderr: decodeOutput(stderrChunks),
+                          timedOut: true
+                      })
                       killLocalChild(child).catch(() => undefined)
                   }, timeout)
                 : undefined
@@ -254,32 +267,16 @@ async function runChildProcess(
 
             done = true
             clearTimeout(timer)
-            if (timedOut) {
-                resolve({
-                    exitCode: 1,
-                    stdout: decodeOutput(stdoutChunks),
-                    stderr: decodeOutput(stderrChunks),
-                    timedOut: true
-                })
-                return
-            }
-
             reject(err)
         })
 
         child.on('close', (code, signal) => {
-            if (done) {
-                return
-            }
-
-            done = true
-            clearTimeout(timer)
-            resolve({
-                exitCode: code ?? (timedOut ? 1 : 0),
+            finish({
+                exitCode: code ?? 0,
                 stdout: decodeOutput(stdoutChunks),
                 stderr: decodeOutput(stderrChunks),
                 signal: signal ?? undefined,
-                timedOut
+                timedOut: false
             })
         })
     })

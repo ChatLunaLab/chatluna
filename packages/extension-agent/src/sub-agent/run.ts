@@ -105,6 +105,7 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
         tools: toolRef.tools,
         prompt: chatPrompt.value,
         agentMode: 'tool-calling',
+        maxIterations: input.info.maxTurns,
         returnIntermediateSteps: false,
         handleParsingErrors: true,
         instructions: computed(() => undefined)
