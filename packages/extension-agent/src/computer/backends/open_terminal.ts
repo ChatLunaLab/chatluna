@@ -467,92 +467,123 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
     async createTerminal(options: TerminalOptions = {}) {
         const cwd = options.cwd || this._cwd
-        const headers = {
-            ...this.headers(),
-            'content-type': 'application/json'
-        }
         const result = await this.ctx.http.post(
-            this.url('/execute'),
+            this.url('/api/terminals'),
+            undefined,
             {
-                command: 'bash',
-                cwd
-            },
-            {
-                params: {
-                    wait: 1
-                },
-                headers
+                headers: this.headers()
             }
         )
-
         const data =
-            (result as unknown as OpenTerminalResponse).data ??
-            (result as unknown as OpenTerminalData)
-
-        if (typeof data?.id !== 'string') {
-            const output = formatOpenTerminalOutput(data?.output ?? data)
-            throw new Error(
-                output.stderr || output.stdout || 'Failed to create terminal.'
-            )
+            (result as unknown as OpenTerminalTerminalResponse).data ??
+            (result as unknown as OpenTerminalTerminalData)
+        if (typeof data.id !== 'string') {
+            throw new Error('Failed to create terminal.')
         }
 
-        const run = createOpenTerminalPoller(
-            this.ctx,
-            (pathname) => this.url(pathname),
-            this.headers(),
-            data
-        )
         const callbacks = new Set<(data: string) => void>()
-        const url = this.url(`/execute/${run.id}`)
+        const ws = this.ctx.http.ws(
+            toWebSocketUrl(this.url(`/api/terminals/${data.id}`)),
+            {
+                headers: this.headers()
+            }
+        )
         const ctx = this.ctx
-        let buffer = ''
+        const deleteUrl = this.url(`/api/terminals/${data.id}`)
+        const requestHeaders = this.headers()
+        let closed = false
+        const queue: Buffer[] = []
         this._cwd = cwd
 
-        const output = formatOpenTerminalOutput(data?.output ?? data)
-        buffer = `${output.stdout}${output.stderr}`
+        const open = new Promise<void>((resolve, reject) => {
+            ws.addEventListener('open', () => {
+                const token = this.resolveSecret(this.cfg.apiKey)
+                if (token) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'auth',
+                            token
+                        })
+                    )
+                }
+                ws.send(Buffer.from(`cd ${quoteShell(cwd)}\n`, 'utf8'))
+                for (const item of queue) {
+                    ws.send(item)
+                }
+                queue.length = 0
+                resolve()
+            })
+            ws.addEventListener('error', reject)
+        })
 
-        const emit = (data: string) => {
-            if (!data) {
+        ws.addEventListener('message', (event) => {
+            const chunk = event.data
+            if (typeof chunk === 'string') {
                 return
             }
 
-            if (callbacks.size < 1) {
-                buffer += data
+            const text =
+                chunk instanceof Blob
+                    ? ''
+                    : Array.isArray(chunk)
+                      ? Buffer.concat(chunk).toString('utf8')
+                      : Buffer.from(chunk).toString('utf8')
+            if (!text) {
                 return
             }
-
             for (const callback of callbacks) {
-                callback(data)
+                callback(text)
             }
-        }
-        run.start(emit)
+        })
+
+        ws.addEventListener('close', () => {
+            closed = true
+            callbacks.clear()
+        })
+
+        await open
 
         return {
-            id: run.id,
+            id: data.id,
             async onData(callback) {
                 callbacks.add(callback)
-                if (buffer) {
-                    callback(buffer)
-                    buffer = ''
-                }
                 return () => {
                     callbacks.delete(callback)
                 }
             },
             async sendInput(data) {
-                await ctx.http.post(
-                    `${url}/input`,
-                    {
-                        input: data
-                    },
-                    {
-                        headers
-                    }
+                if (closed) {
+                    return
+                }
+                const text = Buffer.from(data, 'utf8')
+                if (ws.readyState === 1) {
+                    ws.send(text)
+                    return
+                }
+                queue.push(text)
+            },
+            async resize(cols, rows) {
+                if (closed || ws.readyState !== 1) {
+                    return
+                }
+                ws.send(
+                    JSON.stringify({
+                        type: 'resize',
+                        cols,
+                        rows
+                    })
                 )
             },
-            async resize(_cols, _rows) {},
             async kill() {
-                await run.kill()
+                if (!closed) {
+                    ws.close()
+                    closed = true
+                }
+                await ctx.http
+                    .delete(deleteUrl, {
+                        headers: requestHeaders
+                    })
+                    .catch(() => undefined)
             }
         } satisfies TerminalHandle
     }
@@ -652,6 +683,16 @@ type OpenTerminalData = {
 
 type OpenTerminalResponse = {
     data?: OpenTerminalData
+}
+
+type OpenTerminalTerminalData = {
+    id?: string
+    created_at?: string
+    pid?: number
+}
+
+type OpenTerminalTerminalResponse = {
+    data?: OpenTerminalTerminalData
 }
 
 function createOpenTerminalPoller(
@@ -786,6 +827,16 @@ function createOpenTerminalPoller(
 
 function ensureTrailingSlash(url: string) {
     return url.endsWith('/') ? url : `${url}/`
+}
+
+function toWebSocketUrl(url: string) {
+    if (url.startsWith('https://')) {
+        return `wss://${url.slice('https://'.length)}`
+    }
+    if (url.startsWith('http://')) {
+        return `ws://${url.slice('http://'.length)}`
+    }
+    return url
 }
 
 function joinPath(dir: string, path: string) {
