@@ -663,6 +663,9 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    max-height: min(70vh, 720px);
+    overflow: auto;
+    padding-right: 4px;
 }
 
 .guide-intro,
