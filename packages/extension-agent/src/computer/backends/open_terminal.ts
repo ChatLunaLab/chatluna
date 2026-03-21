@@ -851,17 +851,22 @@ function formatOpenTerminalOutput(output: unknown): {
 }
 
 function readOpenTerminalRow(row: Record<string, unknown>) {
-    return typeof row.data === 'string'
-        ? row.data
-        : typeof row.text === 'string'
-          ? row.text
-          : typeof row.message === 'string'
-            ? row.message
-            : typeof row.output === 'string'
-              ? row.output
-              : typeof row.content === 'string'
-                ? row.content
-                : ''
+    if (typeof row.data === 'string') {
+        return row.data
+    }
+    if (typeof row.text === 'string') {
+        return row.text
+    }
+    if (typeof row.message === 'string') {
+        return row.message
+    }
+    if (typeof row.output === 'string') {
+        return row.output
+    }
+    if (typeof row.content === 'string') {
+        return row.content
+    }
+    return ''
 }
 
 async function readOpenTerminalAsset(stream: Readable) {
