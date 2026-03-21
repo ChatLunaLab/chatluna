@@ -14,10 +14,8 @@ export async function apply(
         return
     }
 
-    const tool = new SendFileTool(config)
-
     plugin.registerTool(config.fileSenderToolName, {
-        description: tool.description,
+        description: new SendFileTool(config).description,
         selector() {
             return true
         },
@@ -65,21 +63,40 @@ type OneBotInternal = {
 class SendFileTool extends StructuredTool {
     name = 'send_file'
 
-    schema = z.object({
-        file: z.string().min(1).optional(),
-        name: z.string().optional(),
-        files: z
-            .array(
-                z.union([
-                    z.string(),
-                    z.object({
-                        file: z.string().min(1),
-                        name: z.string().optional()
-                    })
-                ])
-            )
-            .optional()
-    })
+    schema = z
+        .object({
+            file: z.string().min(1).optional(),
+            name: z.string().optional(),
+            files: z
+                .array(
+                    z.union([
+                        z.string(),
+                        z.object({
+                            file: z.string().min(1),
+                            name: z.string().optional()
+                        })
+                    ])
+                )
+                .optional()
+        })
+        .superRefine((input, ctx) => {
+            const hasFile = Boolean(input.file?.trim())
+            const hasFiles =
+                Array.isArray(input.files) && input.files.length > 0
+            if (!hasFile && !hasFiles) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "'file' 或 'files' 至少提供一个。"
+                })
+                return
+            }
+            if (hasFile && hasFiles) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "'file' 与 'files' 不能同时提供。"
+                })
+            }
+        })
 
     constructor(private config: Config) {
         super({})
