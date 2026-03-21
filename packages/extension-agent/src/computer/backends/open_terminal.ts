@@ -535,14 +535,16 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
         ws.addEventListener('message', (event) => {
             const chunk = event.data
-            const text =
-                typeof chunk === 'string'
-                    ? chunk
-                    : chunk instanceof Blob
-                      ? ''
-                    : Array.isArray(chunk)
-                      ? Buffer.concat(chunk).toString('utf8')
-                      : Buffer.from(chunk).toString('utf8')
+            let text = ''
+            if (typeof chunk === 'string') {
+                text = chunk
+            } else if (chunk instanceof Blob) {
+                text = ''
+            } else if (Array.isArray(chunk)) {
+                text = Buffer.concat(chunk).toString('utf8')
+            } else {
+                text = Buffer.from(chunk).toString('utf8')
+            }
             if (!text) {
                 return
             }

@@ -184,7 +184,7 @@ class SendFileTool extends StructuredTool {
                     targetId: String(
                         session.isDirect
                             ? session.userId
-                            : session.guildId ?? session.channelId
+                            : (session.guildId ?? session.channelId)
                     ),
                     error: validateError
                 })
