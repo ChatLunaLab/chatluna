@@ -26,10 +26,15 @@ export async function apply(
 }
 
 type OneBotResponse = {
+    status?: 'ok' | 'failed'
+    retcode?: number
     file_id?: string
     data?: {
         file_id?: string
     }
+    message?: string
+    wording?: string
+    stream?: string
 }
 
 type SendFileResult = {
@@ -183,7 +188,9 @@ class SendFileTool extends StructuredTool {
                     result.push({
                         file: item.file,
                         name: item.name,
-                        fileId: getFileId(data, item.file),
+                        fileId: String(
+                            data.data?.file_id || data.file_id || ''
+                        ).trim(),
                         targetType: 'private',
                         targetId: String(session.userId)
                     })
@@ -215,7 +222,9 @@ class SendFileTool extends StructuredTool {
                 result.push({
                     file: item.file,
                     name: item.name,
-                    fileId: getFileId(data, item.file),
+                    fileId: String(
+                        data.data?.file_id || data.file_id || ''
+                    ).trim(),
                     targetType: 'group',
                     targetId: String(session.guildId ?? session.channelId)
                 })
@@ -277,10 +286,6 @@ function getName(file: string, name?: string) {
     return 'file'
 }
 
-function getFileId(data: OneBotResponse, fallback: string) {
-    return String(data?.file_id ?? data?.data?.file_id ?? '').trim() || fallback
-}
-
 async function requestOnebot(
     internal: OneBotInternal,
     action: string,
@@ -308,13 +313,25 @@ async function requestOnebot(
         )
     }
 
-    const task = run()
-    return await Promise.race<OneBotResponse>([
-        task,
-        new Promise<OneBotResponse>((_resolve, reject) => {
-            setTimeout(() => {
-                reject(new Error(`${action} 请求超时，已超过 ${timeoutMs}ms。`))
-            }, timeoutMs)
-        })
-    ])
+    return await new Promise<OneBotResponse>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            reject(new Error(`${action} 请求超时，已超过 ${timeoutMs}ms。`))
+        }, timeoutMs)
+
+        run()
+            .then((data) => {
+                if (data.status && data.status !== 'ok') {
+                    const msg = data.wording || data.message || 'unknown error'
+                    reject(new Error(`${action} 请求失败：${msg}`))
+                    return
+                }
+                resolve(data)
+            })
+            .catch((err) => {
+                reject(err)
+            })
+            .finally(() => {
+                clearTimeout(timer)
+            })
+    })
 }
