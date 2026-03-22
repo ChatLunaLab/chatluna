@@ -20,6 +20,11 @@ export async function apply(
         selector() {
             return true
         },
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'file', 'onebot']
+        },
         authorization(session) {
             return session.platform === 'onebot'
         },
