@@ -59,6 +59,7 @@ export interface Config extends ChatLunaPlugin.Config {
         modelCapabilities: ModelCapabilities[]
         contextSize: number
     }[]
+    blacklistModels: string[]
     additionCookies: [string, string][]
     maxContextRatio: number
     temperature: number
@@ -94,7 +95,8 @@ export const Config: Schema<Config> = Schema.intersect([
             })
         )
             .default([])
-            .role('table')
+            .role('table'),
+        blacklistModels: Schema.array(Schema.string()).default([])
     }),
     Schema.object({
         apiKeys: Schema.array(
