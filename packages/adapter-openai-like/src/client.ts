@@ -68,13 +68,13 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 (model) => !isNonLLMModel(model)
             )
 
-            const blacklistModels = this._config.blacklistModels
+            const blacklist = this._config.blacklistModels
                 .map((keyword) => keyword.trim().toLowerCase())
                 .filter((keyword) => keyword.length > 0)
 
-            const blacklistFilteredModels = filteredModels.filter((model) => {
+            const models = filteredModels.filter((model) => {
                 const id = model.toLowerCase()
-                return !blacklistModels.some((keyword) => id.includes(keyword))
+                return !blacklist.some((keyword) => id.includes(keyword))
             })
 
             const supportToolCalling = (model: string) => {
@@ -90,7 +90,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 }
             }
 
-            const formattedModels = blacklistFilteredModels.map(
+            const formattedModels = models.map(
                 (model) =>
                     ({
                         name: model,
