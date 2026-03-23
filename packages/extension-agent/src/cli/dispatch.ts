@@ -677,6 +677,14 @@ function showTool(ctx: AgentCliCommandContext, raw?: string) {
                 ['description', item.description ?? '(none)'],
                 ['enabled', String(item.enabled)],
                 ['main', String(item.main)],
+                ['chatluna', String(item.chatlunaEnabled)],
+                ['character', String(item.characterEnabled)],
+                ['character-group', String(item.characterGroupEnabled)],
+                ['character-private', String(item.characterPrivateEnabled)],
+                ['character-group-mode', item.characterGroupMode],
+                ['character-private-mode', item.characterPrivateMode],
+                ['character-group-ids', item.characterGroupIds.join(', ') || '(none)'],
+                ['character-private-ids', item.characterPrivateIds.join(', ') || '(none)'],
                 ['authority', String(item.authority)],
                 ['source', item.source ?? '(unknown)'],
                 ['group', item.group ?? '(none)'],
@@ -1096,19 +1104,23 @@ function parseMutations(ctx: AgentCliCommandContext): AgentCliMutation[] {
                 idx >= 3 &&
                 (arg === 'enabled' ||
                     arg === 'main' ||
+                    arg === 'chatluna' ||
+                    arg === 'character' ||
+                    arg === 'group' ||
+                    arg === 'private' ||
                     arg === 'authority' ||
                     arg === 'subagents')
         )
         if (idx < 0) {
             throw new Error(
-                'Usage: preview set tool <name...> <enabled|main|authority|subagents> ...'
+                'Usage: preview set tool <name...> <enabled|main|chatluna|character|group|private|authority|subagents> ...'
             )
         }
 
         const names = args.slice(2, idx)
         if (names.length < 1) {
             throw new Error(
-                'Usage: preview set tool <name...> <enabled|main|authority|subagents> ...'
+                'Usage: preview set tool <name...> <enabled|main|chatluna|character|group|private|authority|subagents> ...'
             )
         }
 
@@ -1130,6 +1142,50 @@ function parseMutations(ctx: AgentCliCommandContext): AgentCliMutation[] {
                     type: 'set_tool_main',
                     name: item.name,
                     main: parseBool(args[idx + 1])
+                }
+            })
+        }
+
+        if (args[idx] === 'chatluna') {
+            return names.map((name) => {
+                const item = selectTool(ctx.agent, name)
+                return {
+                    type: 'set_tool_chatluna',
+                    name: item.name,
+                    chatluna: parseBool(args[idx + 1])
+                }
+            })
+        }
+
+        if (args[idx] === 'character') {
+            return names.map((name) => {
+                const item = selectTool(ctx.agent, name)
+                return {
+                    type: 'set_tool_character',
+                    name: item.name,
+                    character: parseBool(args[idx + 1])
+                }
+            })
+        }
+
+        if (args[idx] === 'group') {
+            return names.map((name) => {
+                const item = selectTool(ctx.agent, name)
+                return {
+                    type: 'set_tool_group',
+                    name: item.name,
+                    group: parseBool(args[idx + 1])
+                }
+            })
+        }
+
+        if (args[idx] === 'private') {
+            return names.map((name) => {
+                const item = selectTool(ctx.agent, name)
+                return {
+                    type: 'set_tool_private',
+                    name: item.name,
+                    private: parseBool(args[idx + 1])
                 }
             })
         }
@@ -1157,7 +1213,7 @@ function parseMutations(ctx: AgentCliCommandContext): AgentCliMutation[] {
         }
 
         throw new Error(
-            'Usage: preview set tool <name...> <enabled|main|authority|subagents> ...'
+            'Usage: preview set tool <name...> <enabled|main|chatluna|character|group|private|authority|subagents> ...'
         )
     }
 
@@ -1271,6 +1327,34 @@ function previewMutation(
         return [`tool ${item.name}: main agent ${item.main} -> ${op.main}`]
     }
 
+    if (op.type === 'set_tool_chatluna') {
+        const item = selectTool(agent, op.name)
+        return [
+            `tool ${item.name}: chatluna ${item.chatlunaEnabled} -> ${op.chatluna}`
+        ]
+    }
+
+    if (op.type === 'set_tool_character') {
+        const item = selectTool(agent, op.name)
+        return [
+            `tool ${item.name}: character ${item.characterEnabled} -> ${op.character}`
+        ]
+    }
+
+    if (op.type === 'set_tool_group') {
+        const item = selectTool(agent, op.name)
+        return [
+            `tool ${item.name}: character group ${item.characterGroupEnabled} -> ${op.group}`
+        ]
+    }
+
+    if (op.type === 'set_tool_private') {
+        const item = selectTool(agent, op.name)
+        return [
+            `tool ${item.name}: character private ${item.characterPrivateEnabled} -> ${op.private}`
+        ]
+    }
+
     if (op.type === 'set_tool_subagents') {
         const item = selectTool(agent, op.name)
         return [
@@ -1363,6 +1447,54 @@ async function applyMutation(
         }
         const item = createToolItemConfig(tool.items[op.name], op.name)
         item.main = op.main
+        tool.items[op.name] = item
+        await agent.saveToolConfig(tool)
+        return
+    }
+
+    if (op.type === 'set_tool_chatluna') {
+        const tool = {
+            items: { ...agent.args.config.tool.items },
+            registry: { ...(agent.args.config.tool.registry ?? {}) }
+        }
+        const item = createToolItemConfig(tool.items[op.name], op.name)
+        item.chatluna = op.chatluna
+        tool.items[op.name] = item
+        await agent.saveToolConfig(tool)
+        return
+    }
+
+    if (op.type === 'set_tool_character') {
+        const tool = {
+            items: { ...agent.args.config.tool.items },
+            registry: { ...(agent.args.config.tool.registry ?? {}) }
+        }
+        const item = createToolItemConfig(tool.items[op.name], op.name)
+        item.character = op.character
+        tool.items[op.name] = item
+        await agent.saveToolConfig(tool)
+        return
+    }
+
+    if (op.type === 'set_tool_group') {
+        const tool = {
+            items: { ...agent.args.config.tool.items },
+            registry: { ...(agent.args.config.tool.registry ?? {}) }
+        }
+        const item = createToolItemConfig(tool.items[op.name], op.name)
+        item.characterGroup = op.group
+        tool.items[op.name] = item
+        await agent.saveToolConfig(tool)
+        return
+    }
+
+    if (op.type === 'set_tool_private') {
+        const tool = {
+            items: { ...agent.args.config.tool.items },
+            registry: { ...(agent.args.config.tool.registry ?? {}) }
+        }
+        const item = createToolItemConfig(tool.items[op.name], op.name)
+        item.characterPrivate = op.private
         tool.items[op.name] = item
         await agent.saveToolConfig(tool)
         return
@@ -1940,7 +2072,7 @@ function helpLines(args: string[] = []) {
                     'Disable one or more tools for the main agent'
                 ],
                 [
-                    'set tool <name...> <enabled|main|authority|subagents> ...',
+                    'set tool <name...> <enabled|main|chatluna|character|group|private|authority|subagents> ...',
                     'Update one or more tools'
                 ],
                 [
@@ -1960,6 +2092,7 @@ function helpLines(args: string[] = []) {
                 'Supported sub-agent fields: tools, skills, mcp, computer.',
                 'Supported rules: all, allow, deny, and inherit for sub-agent fields.',
                 'Supported tool authority values: 0 to 5.',
+                'Tool scope fields include main, chatluna, character, group, and private.',
                 'Repeated `agentcli preview ...` commands in the same session append to the same pending preview until apply or cancel.',
                 'Named preview commands accept multiple targets when the syntax uses `<name...>` or `<selector...>`.',
                 'Quote JSON payloads so shell parsing keeps them intact.',
@@ -1970,6 +2103,9 @@ function helpLines(args: string[] = []) {
                 'agentcli preview enable skill coding-agent onboard delight',
                 'agentcli preview disable tool bash file_edit file_write --main',
                 'agentcli preview set tool bash grep authority 3',
+                'agentcli preview set tool web_search web_browser chatluna true',
+                'agentcli preview set tool file_read file_write character false',
+                'agentcli preview set tool group_mute private false',
                 'agentcli preview set tool bash grep subagents allow builtin:general',
                 'agentcli preview set mcp tool filesystem_read filesystem_write enabled false',
                 'agentcli preview disable tool bash --main && agentcli preview disable tool file_edit file_write --main',
@@ -2047,6 +2183,7 @@ function helpLines(args: string[] = []) {
             'Repeated `preview` commands append to the pending preview until apply or cancel.',
             'Many named preview commands accept multiple targets, including skills, sub-agents, tools, MCP tools, and removable MCP servers.',
             'Tool authority can be staged with `preview set tool <name...> authority <0-5>`.',
+            'Tool scope can be staged with `preview set tool <name...> <main|chatluna|character|group|private> <bool>`.',
             'Main-agent tool routing supports `preview disable tool <name...> --main`.',
             'Command chains support `&`, `&&`, `|`, `|&`, `||`, and `;`.',
             'Use `agentcli sync` when sandbox-created skills or sub-agents need to come back to local storage.'
@@ -2057,6 +2194,8 @@ function helpLines(args: string[] = []) {
             'agentcli sync',
             'agentcli preview set mcp tool filesystem_read filesystem_write enabled false',
             'agentcli preview set tool bash grep authority 3',
+            'agentcli preview set tool web_search web_browser chatluna true',
+            'agentcli preview set tool file_read file_write character false',
             'agentcli preview disable tool bash file_edit file_write --main',
             'agentcli preview set tool bash subagents allow builtin:general',
             'agentcli apply last'

@@ -29,12 +29,23 @@ export class ChatLunaAgentPermissionService {
     async start() {
         this._toolMaskDispose = this.ctx.chatluna.registerToolMaskResolver(
             'agent',
-            async ({ room, session }) => {
+            async ({
+                room,
+                session,
+                source
+            }: {
+                room?: { chatMode?: string }
+                session: Session
+                source?: 'chatluna' | 'character'
+            }) => {
                 if (room && room.chatMode !== 'plugin') {
                     return
                 }
 
-                const mask = this.createMainToolMask()
+                const mask = this.createMainToolMask(
+                    session,
+                    source ?? 'chatluna'
+                )
                 return {
                     ...mask,
                     toolCallMask: await this.createToolCallMask(session, mask)
@@ -106,27 +117,24 @@ export class ChatLunaAgentPermissionService {
     }
 
     filterComputerBackends(info: SubAgentInfo, names: ComputerBackendType[]) {
-        const rule = this.mergeRule(
-            info.permissions.computer,
-            this.config.subAgent.defaults.computer
-        )
+        const raw = info.permissions.computer
+        const rule =
+            raw.mode === 'inherit'
+                ? this.config.subAgent.defaults.computer
+                : raw
         const allow = rule.allow.filter(isComputerBackend)
         const deny = rule.deny.filter(isComputerBackend)
 
         if (rule.mode === 'allow') {
-            if (rule.allow.length < 1) {
-                return []
-            }
-
             if (allow.length < 1) {
-                return [...names]
+                return []
             }
 
             return names.filter((name) => allow.includes(name))
         }
 
         if (rule.mode === 'deny') {
-            if (rule.deny.length < 1) {
+            if (raw.mode === 'inherit' && deny.length < 1) {
                 return []
             }
 
@@ -149,8 +157,33 @@ export class ChatLunaAgentPermissionService {
 
         const list = Object.values(registry)
             .map((item) => {
+                const saved = this.config.tool.items[item.name]
+                const meta = this.config.tool.registry?.[item.name]
                 const cfg = createToolItemConfig(
-                    this.config.tool.items[item.name],
+                    {
+                        ...saved,
+                        enabled:
+                            saved?.enabled ?? meta?.defaultEnabled ?? true,
+                        main: saved?.main ?? meta?.defaultMain ?? true,
+                        chatluna:
+                            saved?.chatluna ?? meta?.defaultChatluna ?? true,
+                        character:
+                            saved?.character ?? meta?.defaultCharacter ?? true,
+                        characterGroup:
+                            saved?.characterGroup ??
+                            meta?.defaultCharacterGroup ??
+                            true,
+                        characterPrivate:
+                            saved?.characterPrivate ??
+                            meta?.defaultCharacterPrivate ??
+                            true,
+                        characterGroupMode:
+                            saved?.characterGroupMode ?? 'all',
+                        characterPrivateMode:
+                            saved?.characterPrivateMode ?? 'all',
+                        characterGroupIds: saved?.characterGroupIds ?? [],
+                        characterPrivateIds: saved?.characterPrivateIds ?? []
+                    },
                     item.name
                 )
                 return {
@@ -158,6 +191,14 @@ export class ChatLunaAgentPermissionService {
                     description: item.description,
                     enabled: cfg.enabled,
                     main: cfg.main,
+                    chatlunaEnabled: cfg.chatluna,
+                    characterEnabled: cfg.character,
+                    characterGroupEnabled: cfg.characterGroup,
+                    characterPrivateEnabled: cfg.characterPrivate,
+                    characterGroupMode: cfg.characterGroupMode,
+                    characterPrivateMode: cfg.characterPrivateMode,
+                    characterGroupIds: cfg.characterGroupIds,
+                    characterPrivateIds: cfg.characterPrivateIds,
                     subAgents: cfg.subAgents,
                     authority: cfg.authority,
                     source: item.meta?.source,
@@ -186,8 +227,9 @@ export class ChatLunaAgentPermissionService {
         return {
             enabled: list.length > 0,
             total: list.length,
-            mainEnabled: list.filter((item) => item.enabled && item.main)
-                .length,
+            mainEnabled: list.filter(
+                (item) => item.enabled && item.main
+            ).length,
             subAgentEnabled: list.filter(
                 (item) => item.enabled && hasSubAgentAccess(item.subAgents)
             ).length,
@@ -203,6 +245,12 @@ export class ChatLunaAgentPermissionService {
             description: item.description,
             enabled: item.enabled,
             main: item.main,
+            chatlunaEnabled: item.chatlunaEnabled,
+            characterEnabled: item.characterEnabled,
+            characterGroupEnabled: item.characterGroupEnabled,
+            characterPrivateEnabled: item.characterPrivateEnabled,
+            characterGroupMode: item.characterGroupMode,
+            characterPrivateMode: item.characterPrivateMode,
             source: item.source,
             group: item.group,
             tags: item.tags,
@@ -212,11 +260,68 @@ export class ChatLunaAgentPermissionService {
         }))
     }
 
-    createMainToolMask(): ToolMask {
+    createMainToolMask(
+        session?: Session,
+        source: 'chatluna' | 'character' = 'chatluna'
+    ): ToolMask {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
         const allow = tools
-            .filter((item) => item.enabled && item.main)
+            .filter((item) => {
+                if (!item.enabled) {
+                    return false
+                }
+
+                if (!item.main) {
+                    return false
+                }
+
+                if (source === 'chatluna' && !item.chatlunaEnabled) {
+                    return false
+                }
+
+                if (source === 'character' && !item.characterEnabled) {
+                    return false
+                }
+
+                if (source === 'character') {
+                    const id = session?.isDirect
+                        ? session.userId
+                        : (session?.guildId ?? session?.channelId)
+
+                    if (session?.isDirect === true) {
+                        if (!item.characterPrivateEnabled) {
+                            return false
+                        }
+
+                        if (item.characterPrivateMode === 'allow') {
+                            return item.characterPrivateIds.includes(id)
+                        }
+
+                        if (item.characterPrivateMode === 'deny') {
+                            return !item.characterPrivateIds.includes(id)
+                        }
+
+                        return true
+                    }
+
+                    if (!item.characterGroupEnabled) {
+                        return false
+                    }
+
+                    if (item.characterGroupMode === 'allow') {
+                        return item.characterGroupIds.includes(id)
+                    }
+
+                    if (item.characterGroupMode === 'deny') {
+                        return !item.characterGroupIds.includes(id)
+                    }
+
+                    return true
+                }
+
+                return true
+            })
             .map((item) => item.name)
 
         return buildToolMask(allNames, allow)
@@ -310,7 +415,13 @@ export class ChatLunaAgentPermissionService {
                             tags:
                                 meta?.tags && meta.tags.length > 0
                                     ? meta.tags
-                                    : item.meta?.tags
+                                    : item.meta?.tags,
+                            defaultEnabled: meta?.defaultEnabled,
+                            defaultMain: meta?.defaultMain,
+                            defaultChatluna: meta?.defaultChatluna,
+                            defaultCharacter: meta?.defaultCharacter,
+                            defaultCharacterGroup: meta?.defaultCharacterGroup,
+                            defaultCharacterPrivate: meta?.defaultCharacterPrivate
                         }
                     }
                 ]

@@ -5,7 +5,7 @@
         v-loading="loading"
     >
         <div class="toolbar-container">
-            <div class="toolbar-main">
+            <div class="toolbar-main" v-if="currentView === 'list'">
                 <div class="headline">
                     <div class="page-title">工具</div>
                 </div>
@@ -31,7 +31,18 @@
             </div>
         </div>
 
-        <div class="panel catalog-panel">
+        <Transition name="page-swap" mode="out-in">
+            <tool-detail
+                v-if="currentView === 'detail' && selectedTool"
+                key="detail"
+                :tool="selectedTool"
+                :draft="draft.items[selectedTool.name]"
+                :agent-options="agentOptions"
+                @back="currentView = 'list'"
+                @save="saveSelected"
+            />
+
+            <div v-else key="list" class="panel catalog-panel">
             <div class="panel-header catalog-header">
                 <div>
                     <div class="panel-title">工具列表</div>
@@ -118,6 +129,50 @@
                             <el-tag
                                 size="small"
                                 effect="plain"
+                                :type="item.chatlunaEnabled ? 'success' : 'info'"
+                            >
+                                {{
+                                    item.chatlunaEnabled
+                                        ? 'ChatLuna 启用'
+                                        : 'ChatLuna 禁用'
+                                }}
+                            </el-tag>
+                            <el-tag
+                                size="small"
+                                effect="plain"
+                                :type="item.characterEnabled ? 'success' : 'info'"
+                            >
+                                {{
+                                    item.characterEnabled
+                                        ? 'Character 启用'
+                                        : 'Character 禁用'
+                                }}
+                            </el-tag>
+                            <el-tag
+                                size="small"
+                                effect="plain"
+                                :type="item.characterGroupEnabled ? 'success' : 'info'"
+                            >
+                                {{
+                                    item.characterGroupEnabled
+                                        ? 'Character 群聊启用'
+                                        : 'Character 群聊禁用'
+                                }}
+                            </el-tag>
+                            <el-tag
+                                size="small"
+                                effect="plain"
+                                :type="item.characterPrivateEnabled ? 'success' : 'info'"
+                            >
+                                {{
+                                    item.characterPrivateEnabled
+                                        ? 'Character 私聊启用'
+                                        : 'Character 私聊禁用'
+                                }}
+                            </el-tag>
+                            <el-tag
+                                size="small"
+                                effect="plain"
                                 :type="subAgentModeType(item.subAgents.mode)"
                             >
                                 {{ subAgentModeLabel(item.subAgents.mode) }}
@@ -159,14 +214,8 @@
             <div v-else class="empty-state">
                 <el-empty description="没有匹配的工具。" />
             </div>
-        </div>
-
-        <tool-edit-dialog
-            v-model:visible="dialogVisible"
-            :tool="selectedTool"
-            :agent-options="agentOptions"
-            @save="handleDialogSave"
-        />
+            </div>
+        </Transition>
     </div>
 </template>
 
@@ -174,7 +223,7 @@
 import { computed, ref, watch } from 'vue'
 import { Search, Tools } from '@element-plus/icons-vue'
 import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
-import ToolEditDialog from './tool-edit-dialog.vue'
+import ToolDetail from './tool-detail.vue'
 import type {
     PermissionRule,
     SubAgentInfo,
@@ -217,7 +266,7 @@ const keyword = ref('')
 const compactMode = useCompactMode('tool')
 const hideDesc = useHideDesc('tool')
 const selectedName = ref('')
-const dialogVisible = ref(false)
+const currentView = ref<'list' | 'detail'>('list')
 const draft = ref<ToolConfig>(cloneConfig(props.config))
 const localDirty = ref(false)
 
@@ -254,13 +303,28 @@ const tools = computed(() => {
     return Object.values(props.status.catalog)
         .map((item) => {
             const saved = draft.value.items[item.name]
-            return {
-                ...item,
-                enabled: saved?.enabled ?? item.enabled,
-                main: saved?.main ?? item.main,
-                subAgents: cloneRule(saved?.subAgents ?? item.subAgents),
-                authority: saved?.authority ?? item.authority
-            }
+                return {
+                    ...item,
+                    enabled: saved?.enabled ?? item.enabled,
+                    main: saved?.main ?? item.main,
+                    chatlunaEnabled: saved?.chatluna ?? item.chatlunaEnabled,
+                    characterEnabled:
+                        saved?.character ?? item.characterEnabled,
+                    characterGroupEnabled:
+                        saved?.characterGroup ?? item.characterGroupEnabled,
+                    characterPrivateEnabled:
+                        saved?.characterPrivate ?? item.characterPrivateEnabled,
+                    characterGroupMode:
+                        saved?.characterGroupMode ?? item.characterGroupMode,
+                    characterPrivateMode:
+                        saved?.characterPrivateMode ?? item.characterPrivateMode,
+                    characterGroupIds:
+                        saved?.characterGroupIds ?? item.characterGroupIds,
+                    characterPrivateIds:
+                        saved?.characterPrivateIds ?? item.characterPrivateIds,
+                    subAgents: cloneRule(saved?.subAgents ?? item.subAgents),
+                    authority: saved?.authority ?? item.authority
+                }
         })
         .sort((a, b) => a.name.localeCompare(b.name))
 })
@@ -299,7 +363,13 @@ const dirty = computed(() => {
 
 function openEditor(name: string) {
     selectedName.value = name
-    dialogVisible.value = true
+    if (!draft.value.items[name]) {
+        const item = tools.value.find((value) => value.name === name)
+        if (item) {
+            draft.value.items[name] = createItem(item)
+        }
+    }
+    currentView.value = 'detail'
 }
 
 function setEnabled(name: string, enabled: boolean) {
@@ -316,8 +386,7 @@ function setEnabled(name: string, enabled: boolean) {
     scheduleToolSave()
 }
 
-function handleDialogSave(name: string, item: ToolItemConfig) {
-    draft.value.items[name] = item
+function saveSelected() {
     scheduleToolSave()
 }
 
@@ -366,6 +435,22 @@ function createItem(
     return {
         enabled: item?.enabled !== false,
         main: item?.main !== false,
+        chatluna: item?.chatluna !== false,
+        character: item?.character !== false,
+        characterGroup: item?.characterGroup !== false,
+        characterPrivate: item?.characterPrivate !== false,
+        characterGroupMode:
+            item?.characterGroupMode === 'allow' ||
+            item?.characterGroupMode === 'deny'
+                ? item.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            item?.characterPrivateMode === 'allow' ||
+            item?.characterPrivateMode === 'deny'
+                ? item.characterPrivateMode
+                : 'all',
+        characterGroupIds: [...(item?.characterGroupIds ?? [])],
+        characterPrivateIds: [...(item?.characterPrivateIds ?? [])],
         subAgents: cloneRule(item?.subAgents),
         authority: item?.authority ?? defaultAuthority(name)
     }

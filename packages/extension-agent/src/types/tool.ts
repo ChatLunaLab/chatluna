@@ -4,6 +4,12 @@ export interface ToolMetaOverride {
     source?: string
     group?: string
     tags?: string[]
+    defaultEnabled?: boolean
+    defaultMain?: boolean
+    defaultChatluna?: boolean
+    defaultCharacter?: boolean
+    defaultCharacterGroup?: boolean
+    defaultCharacterPrivate?: boolean
 }
 
 export interface PermissionRule {
@@ -15,6 +21,14 @@ export interface PermissionRule {
 export interface ToolItemConfig {
     enabled: boolean
     main: boolean
+    chatluna: boolean
+    character: boolean
+    characterGroup: boolean
+    characterPrivate: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
     subAgents: PermissionRule
     authority: number
 }
@@ -29,6 +43,14 @@ export interface ToolInfo {
     description?: string
     enabled: boolean
     main: boolean
+    chatlunaEnabled: boolean
+    characterEnabled: boolean
+    characterGroupEnabled: boolean
+    characterPrivateEnabled: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
     subAgents: PermissionRule
     authority: number
     source?: string
@@ -43,6 +65,12 @@ export interface ToolAvailabilityInfo {
     description?: string
     enabled: boolean
     main: boolean
+    chatlunaEnabled: boolean
+    characterEnabled: boolean
+    characterGroupEnabled: boolean
+    characterPrivateEnabled: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
     agents: string[]
     source?: string
     group?: string

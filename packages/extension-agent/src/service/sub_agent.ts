@@ -5,7 +5,8 @@ import { HumanMessage } from '@langchain/core/messages'
 import { Context } from 'koishi'
 import {
     MessageQueue,
-    SubagentContext
+    SubagentContext,
+    ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
@@ -353,7 +354,10 @@ export class ChatLunaAgentSubAgentService {
         }
 
         const runId = randomUUID()
-        const mask = this.permission.createSubAgentToolMask(info)
+        const base = options.parentSubagentContext?.toolMask
+        const next = this.permission.createSubAgentToolMask(info)
+        const names = this.ctx.chatluna.platform.getFilteredTools(next)
+        const mask = buildSubAgentToolMask(base, names)
 
         const subCtx = {
             agentId: info.id,
@@ -617,5 +621,33 @@ export class ChatLunaAgentSubAgentService {
         await this.refreshCatalog()
         await this.ctx.chatluna_agent?.refreshConsoleData()
         return true
+    }
+}
+
+function buildSubAgentToolMask(base: ToolMask | undefined, names: string[]) {
+    if (!base) {
+        return buildToolMask(names)
+    }
+
+    const allow = names.filter((name) => {
+        if (base.mode === 'all') {
+            return true
+        }
+
+        if (base.mode === 'allow') {
+            return base.allow.includes(name)
+        }
+
+        return !base.deny.includes(name)
+    })
+
+    return buildToolMask(allow)
+}
+
+function buildToolMask(allow: string[]): ToolMask {
+    return {
+        mode: 'allow',
+        allow,
+        deny: []
     }
 }

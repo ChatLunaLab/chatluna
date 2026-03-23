@@ -3,7 +3,11 @@
         <div class="field-card">
             <div class="field-label">模式</div>
             <el-select v-model="value.mode">
-                <el-option label="inherit" value="inherit" />
+                <el-option
+                    v-if="allowInherit"
+                    label="inherit"
+                    value="inherit"
+                />
                 <el-option label="all" value="all" />
                 <el-option label="allow" value="allow" />
                 <el-option label="deny" value="deny" />
@@ -84,9 +88,11 @@ const props = withDefaults(
     defineProps<{
         modelValue: RuleDraft
         options?: RuleOption[]
+        allowInherit?: boolean
     }>(),
     {
-        options: undefined
+        options: undefined,
+        allowInherit: true
     }
 )
 

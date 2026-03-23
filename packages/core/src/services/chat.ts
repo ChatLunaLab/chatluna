@@ -1030,7 +1030,8 @@ class ChatInterfaceWrapper {
                 toolMask ??
                 (await this._service.resolveToolMask({
                     session,
-                    room
+                    room,
+                    source: 'chatluna'
                 }))
 
             const chainValues = await chatInterface.chat({

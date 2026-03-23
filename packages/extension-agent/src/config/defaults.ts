@@ -70,6 +70,22 @@ export function createToolItemConfig(
     return {
         enabled: input.enabled !== false,
         main: input.main !== false,
+        chatluna: input.chatluna !== false,
+        character: input.character !== false,
+        characterGroup: input.characterGroup !== false,
+        characterPrivate: input.characterPrivate !== false,
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
+        characterGroupIds: [...(input.characterGroupIds ?? [])],
+        characterPrivateIds: [...(input.characterPrivateIds ?? [])],
         subAgents: input.subAgents ?? createPermissionRule('all'),
         authority: input.authority ?? getDefaultToolAuthority(name)
     }
@@ -78,7 +94,107 @@ export function createToolItemConfig(
 export function createDefaultToolConfig(): ToolConfig {
     return {
         items: {},
-        registry: {}
+        registry: {
+            web_search: {
+                source: 'extension',
+                group: 'search',
+                tags: ['search', 'web'],
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            web_browser: {
+                source: 'extension',
+                group: 'search',
+                tags: ['search', 'web', 'browser'],
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            group_mute: {
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'group', 'moderation'],
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: false,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: false
+            },
+            send_file: {
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'file', 'onebot'],
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: false,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            file_read: {
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            file_write: {
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            file_edit: {
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            file_publish: {
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            grep: {
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            glob: {
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            bash: {
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: true,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            },
+            task: {
+                source: 'extension',
+                group: 'agent',
+                tags: ['handoff'],
+                defaultMain: true,
+                defaultChatluna: true,
+                defaultCharacter: false,
+                defaultCharacterGroup: true,
+                defaultCharacterPrivate: true
+            }
+        }
     }
 }
 

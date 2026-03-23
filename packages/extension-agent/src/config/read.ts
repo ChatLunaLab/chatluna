@@ -16,7 +16,11 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
             ...base,
             ...cfg,
             tool: {
-                registry: { ...(cfg.tool?.registry ?? {}) },
+                ...base.tool,
+                registry: {
+                    ...(base.tool.registry ?? {}),
+                    ...(cfg.tool?.registry ?? {})
+                },
                 items: Object.fromEntries(
                     Object.entries(cfg.tool?.items ?? {}).map(
                         ([name, item]) => [

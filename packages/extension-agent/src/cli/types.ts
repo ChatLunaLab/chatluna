@@ -135,6 +135,26 @@ export type AgentCliMutation =
           main: boolean
       }
     | {
+          type: 'set_tool_chatluna'
+          name: string
+          chatluna: boolean
+      }
+    | {
+          type: 'set_tool_character'
+          name: string
+          character: boolean
+      }
+    | {
+          type: 'set_tool_group'
+          name: string
+          group: boolean
+      }
+    | {
+          type: 'set_tool_private'
+          name: string
+          private: boolean
+      }
+    | {
           type: 'set_tool_subagents'
           name: string
           rule: PermissionRule
