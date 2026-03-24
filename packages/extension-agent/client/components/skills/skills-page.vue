@@ -2,7 +2,6 @@
     <div
         class="skills-page"
         :class="{ compact: compactMode }"
-        v-loading="loading"
     >
         <div class="toolbar-container">
             <div class="toolbar-main">
@@ -51,187 +50,189 @@
             </div>
         </div>
 
-        <div class="panel catalog-panel">
-            <div class="panel-header catalog-header">
-                <div>
-                    <div class="panel-title">Skills 列表</div>
-                    <div class="panel-description">
-                        ChatLuna 目前可用的全部 Skills。
+        <div class="page-content" v-loading="loading">
+            <div class="panel catalog-panel">
+                <div class="panel-header catalog-header">
+                    <div>
+                        <div class="panel-title">Skills 列表</div>
+                        <div class="panel-description">
+                            ChatLuna 目前可用的全部 Skills。
+                        </div>
+                    </div>
+
+                    <div class="catalog-actions">
+                        <el-input
+                            v-model="filterText"
+                            class="search-input"
+                            placeholder="搜索技能名称、描述或路径"
+                            clearable
+                        >
+                            <template #prefix>
+                                <el-icon><Search /></el-icon>
+                            </template>
+                        </el-input>
                     </div>
                 </div>
 
-                <div class="catalog-actions">
-                    <el-input
-                        v-model="filterText"
-                        class="search-input"
-                        placeholder="搜索技能名称、描述或路径"
-                        clearable
-                    >
-                        <template #prefix>
-                            <el-icon><Search /></el-icon>
-                        </template>
-                    </el-input>
-                </div>
-            </div>
-
-            <div
-                v-if="filteredSkills.length > 0"
-                class="card-list"
-                :class="{ compact: compactMode }"
-            >
                 <div
-                    v-for="item in filteredSkills"
-                    :key="item.id"
-                    class="skill-card"
-                    :class="{
-                        centered: hideDesc,
-                        muted: !item.visible,
-                        invalid: item.state !== 'ready',
-                        readonly: isReadonly(item)
-                    }"
+                    v-if="filteredSkills.length > 0"
+                    class="card-list"
+                    :class="{ compact: compactMode }"
                 >
-                    <div class="skill-top">
-                        <div class="skill-brand">
-                            <div class="skill-icon">
-                                <el-icon :size="16"><MagicStick /></el-icon>
+                    <div
+                        v-for="item in filteredSkills"
+                        :key="item.id"
+                        class="skill-card"
+                        :class="{
+                            centered: hideDesc,
+                            muted: !item.visible,
+                            invalid: item.state !== 'ready',
+                            readonly: isReadonly(item)
+                        }"
+                    >
+                        <div class="skill-top">
+                            <div class="skill-brand">
+                                <div class="skill-icon">
+                                    <el-icon :size="16"><MagicStick /></el-icon>
+                                </div>
+
+                                <div class="skill-copy">
+                                    <div class="skill-title">
+                                        {{
+                                            item.emoji
+                                                ? `${item.emoji} ${item.name}`
+                                                : item.name
+                                        }}
+                                    </div>
+                                    <div v-if="!hideDesc" class="skill-name">
+                                        {{ `${item.source} / ${item.scope}` }}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="skill-copy">
-                                <div class="skill-title">
+                            <el-switch
+                                :model-value="item.enabled"
+                                :loading="skillBusy[item.id] === true"
+                                :disabled="isReadonly(item)"
+                                @change="
+                                    (value) => toggleSkill(item, value as boolean)
+                                "
+                            />
+                        </div>
+
+                        <div v-if="!hideDesc" class="skill-description">
+                            {{ item.description || '这个技能暂时没有说明。' }}
+                        </div>
+
+                        <div v-if="!hideDesc" class="skill-path">
+                            {{ item.path || '当前没有可用路径' }}
+                        </div>
+
+                        <div class="skill-footer">
+                            <div class="skill-chips">
+                                <el-tag
+                                    size="small"
+                                    effect="plain"
+                                    :type="item.available ? 'success' : 'warning'"
+                                >
+                                    {{ item.available ? '环境就绪' : '缺少依赖' }}
+                                </el-tag>
+                                <el-tag
+                                    size="small"
+                                    effect="plain"
+                                    :type="item.modelEnabled ? 'success' : 'info'"
+                                >
                                     {{
-                                        item.emoji
-                                            ? `${item.emoji} ${item.name}`
-                                            : item.name
+                                        item.modelEnabled
+                                            ? '模型可见'
+                                            : '模型不可见'
                                     }}
-                                </div>
-                                <div v-if="!hideDesc" class="skill-name">
-                                    {{ `${item.source} / ${item.scope}` }}
-                                </div>
+                                </el-tag>
                             </div>
-                        </div>
 
-                        <el-switch
-                            :model-value="item.enabled"
-                            :loading="skillBusy[item.id] === true"
-                            :disabled="isReadonly(item)"
-                            @change="
-                                (value) => toggleSkill(item, value as boolean)
-                            "
-                        />
-                    </div>
-
-                    <div v-if="!hideDesc" class="skill-description">
-                        {{ item.description || '这个技能暂时没有说明。' }}
-                    </div>
-
-                    <div v-if="!hideDesc" class="skill-path">
-                        {{ item.path || '当前没有可用路径' }}
-                    </div>
-
-                    <div class="skill-footer">
-                        <div class="skill-chips">
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="item.available ? 'success' : 'warning'"
+                            <div
+                                v-if="!hideDesc && item.homepage"
+                                class="skill-meta"
                             >
-                                {{ item.available ? '环境就绪' : '缺少依赖' }}
-                            </el-tag>
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="item.modelEnabled ? 'success' : 'info'"
+                                主页：{{ item.homepage }}
+                            </div>
+
+                            <div
+                                v-if="!hideDesc && item.compatibility"
+                                class="skill-meta"
                             >
-                                {{
-                                    item.modelEnabled
-                                        ? '模型可见'
-                                        : '模型不可见'
-                                }}
-                            </el-tag>
-                        </div>
+                                兼容性：{{ item.compatibility }}
+                            </div>
 
-                        <div
-                            v-if="!hideDesc && item.homepage"
-                            class="skill-meta"
-                        >
-                            主页：{{ item.homepage }}
-                        </div>
+                            <div
+                                v-if="!hideDesc && formatRequires(item)"
+                                class="skill-meta"
+                            >
+                                依赖要求：{{ formatRequires(item) }}
+                            </div>
 
-                        <div
-                            v-if="!hideDesc && item.compatibility"
-                            class="skill-meta"
-                        >
-                            兼容性：{{ item.compatibility }}
-                        </div>
+                            <div
+                                v-if="!hideDesc && formatInstall(item)"
+                                class="skill-meta"
+                            >
+                                安装方式：{{ formatInstall(item) }}
+                            </div>
 
-                        <div
-                            v-if="!hideDesc && formatRequires(item)"
-                            class="skill-meta"
-                        >
-                            依赖要求：{{ formatRequires(item) }}
-                        </div>
-
-                        <div
-                            v-if="!hideDesc && formatInstall(item)"
-                            class="skill-meta"
-                        >
-                            安装方式：{{ formatInstall(item) }}
-                        </div>
-
-                        <div class="skill-actions">
-                            <div class="skill-actions-main">
-                                <el-button
-                                    size="small"
-                                    plain
-                                    :disabled="!item.path"
-                                    @click="previewSkill(item)"
-                                >
-                                    查看内容
-                                </el-button>
-                                <el-button
-                                    size="small"
-                                    plain
-                                    :disabled="!canExport(item)"
-                                    @click="exportSkill(item)"
-                                >
-                                    导出 ZIP
-                                </el-button>
-                                <el-button
-                                    class="danger-soft"
-                                    size="small"
-                                    plain
-                                    type="danger"
-                                    :loading="skillBusy[item.id] === true"
-                                    :disabled="!canRemove(item)"
-                                    @click="removeSkill(item)"
-                                >
-                                    删除
-                                </el-button>
-                                <el-button
-                                    v-if="hasDiagnostics(item)"
-                                    size="small"
-                                    plain
-                                    type="warning"
-                                    @click="openDiagnostics(item)"
-                                >
-                                    错误信息
-                                </el-button>
-                                <el-button
-                                    v-if="item.homepage"
-                                    size="small"
-                                    plain
-                                    @click="openLink(item.homepage)"
-                                >
-                                    打开主页
-                                </el-button>
+                            <div class="skill-actions">
+                                <div class="skill-actions-main">
+                                    <el-button
+                                        size="small"
+                                        plain
+                                        :disabled="!item.path"
+                                        @click="previewSkill(item)"
+                                    >
+                                        查看内容
+                                    </el-button>
+                                    <el-button
+                                        size="small"
+                                        plain
+                                        :disabled="!canExport(item)"
+                                        @click="exportSkill(item)"
+                                    >
+                                        导出 ZIP
+                                    </el-button>
+                                    <el-button
+                                        class="danger-soft"
+                                        size="small"
+                                        plain
+                                        type="danger"
+                                        :loading="skillBusy[item.id] === true"
+                                        :disabled="!canRemove(item)"
+                                        @click="removeSkill(item)"
+                                    >
+                                        删除
+                                    </el-button>
+                                    <el-button
+                                        v-if="hasDiagnostics(item)"
+                                        size="small"
+                                        plain
+                                        type="warning"
+                                        @click="openDiagnostics(item)"
+                                    >
+                                        错误信息
+                                    </el-button>
+                                    <el-button
+                                        v-if="item.homepage"
+                                        size="small"
+                                        plain
+                                        @click="openLink(item.homepage)"
+                                    >
+                                        打开主页
+                                    </el-button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div v-else class="empty-state">
-                <el-empty description="没有找到匹配的技能。" />
+                <div v-else class="empty-state">
+                    <el-empty description="没有找到匹配的技能。" />
+                </div>
             </div>
         </div>
 
@@ -593,7 +594,7 @@ function base64ToBlob(data: string, type: string) {
 .toolbar-container {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 20;
     background: linear-gradient(
         180deg,
         color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,

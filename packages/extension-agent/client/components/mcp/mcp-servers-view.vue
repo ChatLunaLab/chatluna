@@ -1154,6 +1154,7 @@ async function saveTool() {
     border-radius: 16px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 20%);
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .panel-header {
@@ -1164,6 +1165,7 @@ async function saveTool() {
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
     gap: 16px;
+    box-sizing: border-box;
 }
 
 .panel-title {

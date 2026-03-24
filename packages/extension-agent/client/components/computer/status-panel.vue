@@ -105,6 +105,7 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     padding: 16px 18px;
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    box-sizing: border-box;
 }
 
 .panel-title {

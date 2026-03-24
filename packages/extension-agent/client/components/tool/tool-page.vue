@@ -2,7 +2,6 @@
     <div
         class="tool-page"
         :class="{ compact: compactMode }"
-        v-loading="loading"
     >
         <div class="toolbar-container">
             <div class="toolbar-main" v-if="currentView === 'list'">
@@ -42,191 +41,193 @@
             </div>
         </div>
 
-        <Transition name="page-swap" mode="out-in">
-            <tool-detail
-                v-if="currentView === 'detail' && selectedTool"
-                key="detail"
-                :tool="selectedTool"
-                :draft="draft.items[selectedTool.name]"
-                :agent-options="agentOptions"
-                @back="currentView = 'list'"
-                @save="saveSelected"
-            />
+        <div class="page-content" v-loading="loading">
+            <Transition name="page-swap" mode="out-in">
+                <tool-detail
+                    v-if="currentView === 'detail' && selectedTool"
+                    key="detail"
+                    :tool="selectedTool"
+                    :draft="draft.items[selectedTool.name]"
+                    :agent-options="agentOptions"
+                    @back="currentView = 'list'"
+                    @save="saveSelected"
+                />
 
-            <div v-else key="list" class="panel catalog-panel">
-            <div class="panel-header catalog-header">
-                <div>
-                    <div class="panel-title">工具列表</div>
-                    <div class="panel-description">
-                        ChatLuna 目前可用的全部工具。
-                    </div>
-                </div>
-
-                <el-input
-                    v-model="keyword"
-                    class="search-input"
-                    placeholder="搜索工具名、说明、来源、分组、MCP server"
-                    clearable
-                >
-                    <template #prefix>
-                        <el-icon><Search /></el-icon>
-                    </template>
-                </el-input>
-            </div>
-
-            <div
-                v-if="filteredTools.length > 0"
-                class="card-list"
-                :class="{ compact: compactMode }"
-            >
-                <div
-                    v-for="item in filteredTools"
-                    :key="item.name"
-                    class="tool-card"
-                    :class="{ centered: hideDesc, muted: !item.enabled }"
-                    @click="openEditor(item.name)"
-                >
-                    <div class="tool-top">
-                        <div class="tool-brand">
-                            <div class="tool-icon">
-                                <el-icon :size="16"><Tools /></el-icon>
-                            </div>
-
-                            <div class="tool-copy">
-                                <div class="tool-title">
-                                    {{ item.name }}
-                                </div>
-                                <div v-if="!hideDesc" class="tool-name">
-                                    {{ item.source || 'unknown' }}
-                                    {{ item.group ? ` / ${item.group}` : '' }}
-                                </div>
+                <div v-else key="list" class="panel catalog-panel">
+                    <div class="panel-header catalog-header">
+                        <div>
+                            <div class="panel-title">工具列表</div>
+                            <div class="panel-description">
+                                ChatLuna 目前可用的全部工具。
                             </div>
                         </div>
 
-                        <el-switch
-                            :model-value="item.enabled"
-                            @change="setEnabled(item.name, $event as boolean)"
-                            @click.stop
-                        />
+                        <el-input
+                            v-model="keyword"
+                            class="search-input"
+                            placeholder="搜索工具名、说明、来源、分组、MCP server"
+                            clearable
+                        >
+                            <template #prefix>
+                                <el-icon><Search /></el-icon>
+                            </template>
+                        </el-input>
                     </div>
 
-                    <div v-if="!hideDesc" class="tool-description">
-                        {{ item.description || '这个工具暂时没有说明。' }}
-                    </div>
+                    <div
+                        v-if="filteredTools.length > 0"
+                        class="card-list"
+                        :class="{ compact: compactMode }"
+                    >
+                        <div
+                            v-for="item in filteredTools"
+                            :key="item.name"
+                            class="tool-card"
+                            :class="{ centered: hideDesc, muted: !item.enabled }"
+                            @click="openEditor(item.name)"
+                        >
+                            <div class="tool-top">
+                                <div class="tool-brand">
+                                    <div class="tool-icon">
+                                        <el-icon :size="16"><Tools /></el-icon>
+                                    </div>
 
-                    <div class="tool-footer">
-                        <div class="tool-tags">
-                            <el-tag
-                                v-if="item.name === 'handoff'"
-                                size="small"
-                                effect="plain"
-                            >
-                                {{ item.name }}
-                            </el-tag>
-                            <el-tag size="small" effect="plain">
-                                {{ item.enabled ? '启用' : '停用' }}
-                            </el-tag>
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="item.main ? 'success' : 'info'"
-                            >
-                                {{
-                                    item.main
-                                        ? '主 Agent 可用'
-                                        : '主 Agent 禁用'
-                                }}
-                            </el-tag>
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="item.chatlunaEnabled ? 'success' : 'info'"
-                            >
-                                {{
-                                    item.chatlunaEnabled
-                                        ? 'ChatLuna 启用'
-                                        : 'ChatLuna 禁用'
-                                }}
-                            </el-tag>
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="item.characterEnabled ? 'success' : 'info'"
-                            >
-                                {{
-                                    item.characterEnabled
-                                        ? 'Character 启用'
-                                        : 'Character 禁用'
-                                }}
-                            </el-tag>
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="item.characterGroupEnabled ? 'success' : 'info'"
-                            >
-                                {{
-                                    item.characterGroupEnabled
-                                        ? 'Character 群聊启用'
-                                        : 'Character 群聊禁用'
-                                }}
-                            </el-tag>
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="item.characterPrivateEnabled ? 'success' : 'info'"
-                            >
-                                {{
-                                    item.characterPrivateEnabled
-                                        ? 'Character 私聊启用'
-                                        : 'Character 私聊禁用'
-                                }}
-                            </el-tag>
-                            <el-tag
-                                size="small"
-                                effect="plain"
-                                :type="subAgentModeType(item.subAgents.mode)"
-                            >
-                                {{ subAgentModeLabel(item.subAgents.mode) }}
-                            </el-tag>
-                            <el-tag size="small" effect="plain">
-                                {{
-                                    item.authority > 0
-                                        ? `权限 >= ${item.authority}`
-                                        : '无权限限制'
-                                }}
-                            </el-tag>
-                            <el-tag
-                                v-if="item.isMcp"
-                                size="small"
-                                effect="plain"
-                            >
-                                MCP
-                            </el-tag>
-                            <el-tag
-                                v-if="item.serverName"
-                                size="small"
-                                effect="plain"
-                            >
-                                {{ item.serverName }}
-                            </el-tag>
-                            <el-tag
-                                v-for="tag in item.tags ?? []"
-                                :key="tag"
-                                size="small"
-                                effect="plain"
-                            >
-                                {{ tag }}
-                            </el-tag>
+                                    <div class="tool-copy">
+                                        <div class="tool-title">
+                                            {{ item.name }}
+                                        </div>
+                                        <div v-if="!hideDesc" class="tool-name">
+                                            {{ item.source || 'unknown' }}
+                                            {{ item.group ? ` / ${item.group}` : '' }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <el-switch
+                                    :model-value="item.enabled"
+                                    @change="setEnabled(item.name, $event as boolean)"
+                                    @click.stop
+                                />
+                            </div>
+
+                            <div v-if="!hideDesc" class="tool-description">
+                                {{ item.description || '这个工具暂时没有说明。' }}
+                            </div>
+
+                            <div class="tool-footer">
+                                <div class="tool-tags">
+                                    <el-tag
+                                        v-if="item.name === 'handoff'"
+                                        size="small"
+                                        effect="plain"
+                                    >
+                                        {{ item.name }}
+                                    </el-tag>
+                                    <el-tag size="small" effect="plain">
+                                        {{ item.enabled ? '启用' : '停用' }}
+                                    </el-tag>
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="item.main ? 'success' : 'info'"
+                                    >
+                                        {{
+                                            item.main
+                                                ? '主 Agent 可用'
+                                                : '主 Agent 禁用'
+                                        }}
+                                    </el-tag>
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="item.chatlunaEnabled ? 'success' : 'info'"
+                                    >
+                                        {{
+                                            item.chatlunaEnabled
+                                                ? 'ChatLuna 启用'
+                                                : 'ChatLuna 禁用'
+                                        }}
+                                    </el-tag>
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="item.characterEnabled ? 'success' : 'info'"
+                                    >
+                                        {{
+                                            item.characterEnabled
+                                                ? 'Character 启用'
+                                                : 'Character 禁用'
+                                        }}
+                                    </el-tag>
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="item.characterGroupEnabled ? 'success' : 'info'"
+                                    >
+                                        {{
+                                            item.characterGroupEnabled
+                                                ? 'Character 群聊启用'
+                                                : 'Character 群聊禁用'
+                                        }}
+                                    </el-tag>
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="item.characterPrivateEnabled ? 'success' : 'info'"
+                                    >
+                                        {{
+                                            item.characterPrivateEnabled
+                                                ? 'Character 私聊启用'
+                                                : 'Character 私聊禁用'
+                                        }}
+                                    </el-tag>
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="subAgentModeType(item.subAgents.mode)"
+                                    >
+                                        {{ subAgentModeLabel(item.subAgents.mode) }}
+                                    </el-tag>
+                                    <el-tag size="small" effect="plain">
+                                        {{
+                                            item.authority > 0
+                                                ? `权限 >= ${item.authority}`
+                                                : '无权限限制'
+                                        }}
+                                    </el-tag>
+                                    <el-tag
+                                        v-if="item.isMcp"
+                                        size="small"
+                                        effect="plain"
+                                    >
+                                        MCP
+                                    </el-tag>
+                                    <el-tag
+                                        v-if="item.serverName"
+                                        size="small"
+                                        effect="plain"
+                                    >
+                                        {{ item.serverName }}
+                                    </el-tag>
+                                    <el-tag
+                                        v-for="tag in item.tags ?? []"
+                                        :key="tag"
+                                        size="small"
+                                        effect="plain"
+                                    >
+                                        {{ tag }}
+                                    </el-tag>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div v-else class="empty-state">
-                <el-empty description="没有匹配的工具。" />
-            </div>
-            </div>
-        </Transition>
+                    <div v-else class="empty-state">
+                        <el-empty description="没有匹配的工具。" />
+                    </div>
+                </div>
+            </Transition>
+        </div>
     </div>
 </template>
 
@@ -448,20 +449,20 @@ function createItem(
         main: item?.main !== false,
         chatluna: item?.chatluna !== false,
         character: item?.character !== false,
-        characterGroup: item?.characterGroup !== false,
-        characterPrivate: item?.characterPrivate !== false,
+        characterGroup: (item as any)?.characterGroup !== false,
+        characterPrivate: (item as any)?.characterPrivate !== false,
         characterGroupMode:
-            item?.characterGroupMode === 'allow' ||
-            item?.characterGroupMode === 'deny'
-                ? item.characterGroupMode
+            (item as any)?.characterGroupMode === 'allow' ||
+            (item as any)?.characterGroupMode === 'deny'
+                ? (item as any).characterGroupMode
                 : 'all',
         characterPrivateMode:
-            item?.characterPrivateMode === 'allow' ||
-            item?.characterPrivateMode === 'deny'
-                ? item.characterPrivateMode
+            (item as any)?.characterPrivateMode === 'allow' ||
+            (item as any)?.characterPrivateMode === 'deny'
+                ? (item as any).characterPrivateMode
                 : 'all',
-        characterGroupIds: [...(item?.characterGroupIds ?? [])],
-        characterPrivateIds: [...(item?.characterPrivateIds ?? [])],
+        characterGroupIds: [...((item as any)?.characterGroupIds ?? [])],
+        characterPrivateIds: [...((item as any)?.characterPrivateIds ?? [])],
         subAgents: cloneRule(item?.subAgents),
         authority: item?.authority ?? defaultAuthority(name)
     }
@@ -504,7 +505,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 .toolbar-container {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 20;
     background: linear-gradient(
         180deg,
         color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
@@ -516,16 +517,11 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     backdrop-filter: blur(8px);
 }
 
-.toolbar-main,
-.catalog-header,
-.panel-header,
-.tool-top,
-.tool-brand {
+.toolbar-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    flex: 1 1 auto;
 }
 
 .headline {
@@ -539,7 +535,22 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     display: none;
 }
 
+.page-content {
+    position: relative;
+    min-height: 200px;
+}
+
+:deep(.el-loading-mask) {
+    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
+    z-index: 10;
+}
+
 @media (max-width: 768px) {
+    .toolbar-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .headline {
         justify-content: space-between;
         width: 100%;
@@ -550,18 +561,19 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
         display: inline-flex;
     }
 
+    .actions-section {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .actions-section .el-button {
+        margin-left: 0;
+        margin-bottom: 4px;
+    }
+
     .hidden-mobile {
         display: none;
     }
-}
-
-.tool-copy {
-    min-width: 0;
-    flex: 1 1 auto;
-}
-
-.mobile-only-desc-toggle {
-    display: none;
 }
 
 .page-title {
@@ -570,33 +582,11 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     color: var(--k-text-dark);
 }
 
-.panel-description,
-.tool-name,
-.tool-description {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-    word-break: break-word;
-}
-
-.actions-section,
-.tool-tags {
+.actions-section {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-}
-
-.tool-footer {
-    margin-top: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.catalog-panel {
-    margin-top: 18px;
 }
 
 .panel {
@@ -604,37 +594,47 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    overflow: hidden;
     box-sizing: border-box;
 }
 
-.panel-title,
-.tool-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--k-text-dark);
-    line-height: 1.4;
-}
-
-.tool-title {
-    font-size: 18px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.tool-name {
-    font-size: 14px;
-}
-
-.panel {
-    overflow: hidden;
-    min-height: 420px;
+.catalog-panel {
+    margin-top: 18px;
 }
 
 .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
     padding: 16px 18px;
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .catalog-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .search-input {
+        width: 100% !important;
+    }
+}
+
+.panel-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--k-text-dark);
+}
+
+.panel-description {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--k-text-light);
 }
 
 .search-input {
@@ -673,6 +673,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     flex-direction: column;
     gap: 12px;
     cursor: pointer;
+    overflow: hidden;
     transition:
         border-color 0.2s ease,
         transform 0.2s ease;
@@ -688,17 +689,23 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 .tool-top {
+    display: flex;
+    justify-content: space-between;
     align-items: flex-start;
+    gap: 12px;
+}
+
+.tool-brand {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .tool-card.centered .tool-top {
     align-items: center;
     min-height: 34px;
-}
-
-.tool-brand {
-    justify-content: flex-start;
-    min-width: 0;
 }
 
 .tool-card.centered .tool-brand {
@@ -723,6 +730,23 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     flex: 0 0 auto;
 }
 
+.tool-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--k-text-dark);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tool-name,
+.tool-description {
+    font-size: 12px;
+    color: var(--k-text-light);
+    line-height: 1.6;
+}
+
 .tool-description {
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -734,88 +758,49 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     -webkit-line-clamp: 2;
 }
 
-.empty-state {
+.tool-footer {
+    margin-top: auto;
+}
+
+.tool-tags {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 280px;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 @media (max-width: 1680px) {
-    .card-list {
-        --card-cols: 4;
-    }
-
-    .card-list.compact {
-        --card-cols: 4;
-    }
+    .card-list { --card-cols: 4; }
 }
 
 @media (max-width: 1320px) {
-    .card-list {
-        --card-cols: 3;
-    }
-
-    .card-list.compact {
-        --card-cols: 4;
-    }
+    .card-list { --card-cols: 3; }
 }
 
 @media (max-width: 1080px) {
-    .card-list {
-        --card-cols: 2;
-    }
-
-    .card-list.compact {
-        --card-cols: 3;
-    }
+    .card-list { --card-cols: 2; }
 }
 
 @media (max-width: 768px) {
-    .toolbar-main,
-    .catalog-header,
-    .panel-header,
-    .tool-top,
-    .tool-brand {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .actions-section {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
-    .actions-section .el-button {
-        margin-left: 0;
-        margin-bottom: 4px;
-    }
-
-    .hidden-mobile {
-        display: none;
-    }
-
-    .mobile-only-desc-toggle {
-        display: inline-flex;
-    }
-
-    .search-input {
-        width: 100%;
-    }
-
     .card-list {
         --card-cols: 1;
         flex-direction: column;
         align-items: stretch;
     }
 
-    .card-list.compact {
-        --card-cols: 1;
-    }
-
     .tool-card {
         flex-basis: 100%;
         max-width: none;
     }
+}
+
+.page-swap-enter-active,
+.page-swap-leave-active {
+    transition: all 0.24s ease;
+}
+
+.page-swap-enter-from,
+.page-swap-leave-to {
+    opacity: 0;
+    transform: translateX(18px) translateY(4px);
 }
 </style>

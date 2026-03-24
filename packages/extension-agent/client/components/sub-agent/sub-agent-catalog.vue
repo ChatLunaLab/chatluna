@@ -471,9 +471,11 @@ function canRemove(item: SubAgentInfo) {
         max-width: none;
     }
 
-    .agent-top,
+    .agent-top {
+        align-items: flex-start;
+    }
+
     .agent-brand {
-        flex-direction: column;
         align-items: flex-start;
     }
 }

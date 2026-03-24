@@ -2,7 +2,6 @@
     <div
         class="computer-page"
         :class="{ compact: compactMode }"
-        v-loading="busy"
     >
         <div class="toolbar-container">
             <div class="toolbar-main">
@@ -37,125 +36,127 @@
             </div>
         </div>
 
-        <div class="provider-row">
-            <div class="provider-item">
-                <div>
-                    <div class="row-title">默认电脑能力后端</div>
-                    <div v-if="!hideDesc" class="row-description">
-                        Agent
-                        会优先使用这里选择的执行环境，建议优先启用隔离后端，
-                        Local 仅在明确知道风险时再打开。
+        <div class="page-content" v-loading="busy">
+            <div class="provider-row">
+                <div class="provider-item">
+                    <div>
+                        <div class="row-title">默认电脑能力后端</div>
+                        <div v-if="!hideDesc" class="row-description">
+                            Agent
+                            会优先使用这里选择的执行环境，建议优先启用隔离后端，
+                            Local 仅在明确知道风险时再打开。
+                        </div>
                     </div>
-                </div>
-                <el-select
-                    :model-value="draft.defaultProvider"
-                    class="provider-select"
-                    @update:model-value="updateProvider"
-                >
-                    <el-option label="E2B" value="e2b" />
-                    <el-option label="open-terminal" value="open-terminal" />
-                    <el-option label="Local（高风险）" value="local" />
-                </el-select>
-            </div>
-            <div class="provider-item">
-                <div>
-                    <div class="row-title">会话自动关闭</div>
-                    <div v-if="!hideDesc" class="row-description">
-                        当会话的空闲时间超过此时间后会自动关闭。
-                    </div>
-                </div>
-                <div class="provider-value">
-                    <el-input-number
-                        :model-value="Math.round(draft.idleTimeoutMs / 60000)"
+                    <el-select
+                        :model-value="draft.defaultProvider"
                         class="provider-select"
-                        :min="1"
-                        :max="60"
-                        :step="1"
-                        controls-position="right"
-                        @update:model-value="updateIdleTimeout"
-                    />
-                    <span class="row-unit">分钟</span>
+                        @update:model-value="updateProvider"
+                    >
+                        <el-option label="E2B" value="e2b" />
+                        <el-option label="open-terminal" value="open-terminal" />
+                        <el-option label="Local（高风险）" value="local" />
+                    </el-select>
+                </div>
+                <div class="provider-item">
+                    <div>
+                        <div class="row-title">会话自动关闭</div>
+                        <div v-if="!hideDesc" class="row-description">
+                            当会话的空闲时间超过此时间后会自动关闭。
+                        </div>
+                    </div>
+                    <div class="provider-value">
+                        <el-input-number
+                            :model-value="Math.round(draft.idleTimeoutMs / 60000)"
+                            class="provider-select"
+                            :min="1"
+                            :max="60"
+                            :step="1"
+                            controls-position="right"
+                            @update:model-value="updateIdleTimeout"
+                        />
+                        <span class="row-unit">分钟</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="tabs">
-            <div
-                :class="['tab', { active: activeTab === 'config' }]"
-                @click="activeTab = 'config'"
-            >
-                配置
-            </div>
-            <div
-                :class="['tab', { active: activeTab === 'terminal' }]"
-                @click="activeTab = 'terminal'"
-            >
-                终端
-            </div>
-            <div
-                :class="['tab', { active: activeTab === 'jobs' }]"
-                @click="activeTab = 'jobs'"
-            >
-                后台任务
-            </div>
-            <div
-                :class="['tab', { active: activeTab === 'files' }]"
-                @click="activeTab = 'files'"
-            >
-                文件
-            </div>
-            <div
-                :class="['tab', { active: activeTab === 'desktop' }]"
-                @click="activeTab = 'desktop'"
-            >
-                桌面
-            </div>
-        </div>
-
-        <div class="tab-content">
-            <Transition name="fade-slide" mode="out-in">
-                <div v-if="activeTab === 'config'" key="config">
-                    <configuration-panel
-                        :config="draft"
-                        :compact-mode="compactMode"
-                        :hide-desc="hideDesc"
-                        :status="status"
-                        :testing="testing"
-                        @update:config="updateConfig"
-                        @test="testBackend"
-                    />
+            <div class="tabs">
+                <div
+                    :class="['tab', { active: activeTab === 'config' }]"
+                    @click="activeTab = 'config'"
+                >
+                    配置
                 </div>
-
-                <div v-else-if="activeTab === 'terminal'" key="terminal">
-                    <terminal-panel
-                        :config="draft"
-                        :status="status"
-                        :job="pendingJob"
-                        @job-handled="pendingJob = undefined"
-                    />
+                <div
+                    :class="['tab', { active: activeTab === 'terminal' }]"
+                    @click="activeTab = 'terminal'"
+                >
+                    终端
                 </div>
-
-                <div v-else-if="activeTab === 'jobs'" key="jobs">
-                    <background-jobs-panel
-                        :compact-mode="compactMode"
-                        :hide-desc="hideDesc"
-                        @open="openJob"
-                    />
+                <div
+                    :class="['tab', { active: activeTab === 'jobs' }]"
+                    @click="activeTab = 'jobs'"
+                >
+                    后台任务
                 </div>
-
-                <div v-else-if="activeTab === 'files'" key="files">
-                    <files-panel :config="draft" :status="status" />
+                <div
+                    :class="['tab', { active: activeTab === 'files' }]"
+                    @click="activeTab = 'files'"
+                >
+                    文件
                 </div>
-
-                <div v-else key="desktop">
-                    <desktop-panel
-                        :config="draft"
-                        :compact-mode="compactMode"
-                        :hide-desc="hideDesc"
-                        :status="status"
-                    />
+                <div
+                    :class="['tab', { active: activeTab === 'desktop' }]"
+                    @click="activeTab = 'desktop'"
+                >
+                    桌面
                 </div>
-            </Transition>
+            </div>
+
+            <div class="tab-content">
+                <Transition name="fade-slide" mode="out-in">
+                    <div v-if="activeTab === 'config'" key="config">
+                        <configuration-panel
+                            :config="draft"
+                            :compact-mode="compactMode"
+                            :hide-desc="hideDesc"
+                            :status="status"
+                            :testing="testing"
+                            @update:config="updateConfig"
+                            @test="testBackend"
+                        />
+                    </div>
+
+                    <div v-else-if="activeTab === 'terminal'" key="terminal">
+                        <terminal-panel
+                            :config="draft"
+                            :status="status"
+                            :job="pendingJob"
+                            @job-handled="pendingJob = undefined"
+                        />
+                    </div>
+
+                    <div v-else-if="activeTab === 'jobs'" key="jobs">
+                        <background-jobs-panel
+                            :compact-mode="compactMode"
+                            :hide-desc="hideDesc"
+                            @open="openJob"
+                        />
+                    </div>
+
+                    <div v-else-if="activeTab === 'files'" key="files">
+                        <files-panel :config="draft" :status="status" />
+                    </div>
+
+                    <div v-else key="desktop">
+                        <desktop-panel
+                            :config="draft"
+                            :compact-mode="compactMode"
+                            :hide-desc="hideDesc"
+                            :status="status"
+                        />
+                    </div>
+                </Transition>
+            </div>
         </div>
     </div>
 </template>
@@ -451,7 +452,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 .toolbar-container {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 20;
     background: linear-gradient(
         180deg,
         color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
@@ -628,7 +629,17 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 }
 
 @media (max-width: 1080px) {
-    .provider-row {
+.page-content {
+    position: relative;
+    min-height: 200px;
+}
+
+:deep(.el-loading-mask) {
+    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
+    z-index: 10;
+}
+
+.provider-row {
         grid-template-columns: 1fr;
     }
 }

@@ -1,5 +1,5 @@
 <template>
-    <div class="mcp-page" :class="{ compact: compactMode }" v-loading="loading">
+    <div class="mcp-page" :class="{ compact: compactMode }">
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
@@ -20,36 +20,38 @@
             </div>
         </div>
 
-        <div class="tabs">
-            <div
-                :class="['tab', { active: currentTab === 'servers' }]"
-                @click="currentTab = 'servers'"
-            >
-                服务器与工具
+        <div class="page-content" v-loading="loading">
+            <div class="tabs">
+                <div
+                    :class="['tab', { active: currentTab === 'servers' }]"
+                    @click="currentTab = 'servers'"
+                >
+                    服务器与工具
+                </div>
+                <div
+                    :class="['tab', { active: currentTab === 'json' }]"
+                    @click="currentTab = 'json'"
+                >
+                    JSON 配置
+                </div>
             </div>
-            <div
-                :class="['tab', { active: currentTab === 'json' }]"
-                @click="currentTab = 'json'"
-            >
-                JSON 配置
-            </div>
-        </div>
 
-        <div class="tab-content">
-            <mcp-servers-view
-                v-if="currentTab === 'servers'"
-                :config="config"
-                :compact-mode="compactMode"
-                :status="status"
-                :hide-desc="hideDesc"
-                @refresh="$emit('refresh')"
-            />
-            <mcp-json-view
-                v-else
-                :config="config"
-                @refresh="$emit('refresh')"
-                @save="$emit('save', $event)"
-            />
+            <div class="tab-content">
+                <mcp-servers-view
+                    v-if="currentTab === 'servers'"
+                    :config="config"
+                    :compact-mode="compactMode"
+                    :status="status"
+                    :hide-desc="hideDesc"
+                    @refresh="$emit('refresh')"
+                />
+                <mcp-json-view
+                    v-else
+                    :config="config"
+                    @refresh="$emit('refresh')"
+                    @save="$emit('save', $event)"
+                />
+            </div>
         </div>
     </div>
 </template>
@@ -103,7 +105,7 @@ const hideDesc = useHideDesc('mcp')
 .toolbar-container {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 20;
     background: linear-gradient(
         180deg,
         color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
@@ -124,6 +126,16 @@ const hideDesc = useHideDesc('mcp')
 
 .headline {
     min-width: 0;
+}
+
+.page-content {
+    position: relative;
+    min-height: 200px;
+}
+
+:deep(.el-loading-mask) {
+    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
+    z-index: 10;
 }
 
 .page-title {

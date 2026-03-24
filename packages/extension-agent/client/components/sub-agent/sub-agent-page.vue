@@ -2,7 +2,6 @@
     <div
         class="sub-agent-page"
         :class="{ compact: compactMode }"
-        v-loading="loading || busy"
     >
         <div class="toolbar-container">
             <div class="toolbar-main">
@@ -56,69 +55,71 @@
             </div>
         </div>
 
-        <Transition name="page-swap" mode="out-in">
-            <div v-if="currentView === 'list'" key="list-view">
-                <div class="tabs">
-                    <div
-                        :class="['tab', { active: listTab === 'catalog' }]"
-                        @click="listTab = 'catalog'"
-                    >
-                        列表
+        <div class="page-content" v-loading="loading || busy">
+            <Transition name="page-swap" mode="out-in">
+                <div v-if="currentView === 'list'" key="list-view">
+                    <div class="tabs">
+                        <div
+                            :class="['tab', { active: listTab === 'catalog' }]"
+                            @click="listTab = 'catalog'"
+                        >
+                            列表
+                        </div>
+                        <div
+                            :class="['tab', { active: listTab === 'runs' }]"
+                            @click="listTab = 'runs'"
+                        >
+                            运行记录
+                        </div>
+                        <div
+                            :class="['tab', { active: listTab === 'availability' }]"
+                            @click="listTab = 'availability'"
+                        >
+                            工具可用性
+                        </div>
                     </div>
-                    <div
-                        :class="['tab', { active: listTab === 'runs' }]"
-                        @click="listTab = 'runs'"
-                    >
-                        运行记录
-                    </div>
-                    <div
-                        :class="['tab', { active: listTab === 'availability' }]"
-                        @click="listTab = 'availability'"
-                    >
-                        工具可用性
-                    </div>
+
+                    <Transition name="fade-slide" mode="out-in">
+                        <sub-agent-catalog
+                            v-if="listTab === 'catalog'"
+                            key="catalog"
+                            :agents="agents"
+                            :compact-mode="compactMode"
+                            :hide-desc="hideDesc"
+                            :removable-ids="removableIds"
+                            @select="openDetail"
+                            @toggle="toggleAgent"
+                            @remove="removeAgent"
+                        />
+                        <sub-agent-runs
+                            v-else-if="listTab === 'runs'"
+                            key="runs"
+                            :runs="runs"
+                        />
+                        <sub-agent-availability
+                            v-else
+                            key="availability"
+                            :availability="toolAvailability"
+                        />
+                    </Transition>
                 </div>
 
-                <Transition name="fade-slide" mode="out-in">
-                    <sub-agent-catalog
-                        v-if="listTab === 'catalog'"
-                        key="catalog"
-                        :agents="agents"
-                        :compact-mode="compactMode"
-                        :hide-desc="hideDesc"
-                        :removable-ids="removableIds"
-                        @select="openDetail"
-                        @toggle="toggleAgent"
-                        @remove="removeAgent"
-                    />
-                    <sub-agent-runs
-                        v-else-if="listTab === 'runs'"
-                        key="runs"
-                        :runs="runs"
-                    />
-                    <sub-agent-availability
-                        v-else
-                        key="availability"
-                        :availability="toolAvailability"
-                    />
-                </Transition>
-            </div>
-
-            <sub-agent-detail
-                v-else-if="selectedAgent"
-                key="detail-view"
-                :agent="selectedAgent"
-                :draft="draft"
-                :model-names="modelNames"
-                :skill-options="skillOptions"
-                :computer-options="computerOptions"
-                :tools="tools"
-                :can-remove="canRemoveSelected"
-                @back="currentView = 'list'"
-                @save="saveSelected"
-                @remove="removeSelected"
-            />
-        </Transition>
+                <sub-agent-detail
+                    v-else-if="selectedAgent"
+                    key="detail-view"
+                    :agent="selectedAgent"
+                    :draft="draft"
+                    :model-names="modelNames"
+                    :skill-options="skillOptions"
+                    :computer-options="computerOptions"
+                    :tools="tools"
+                    :can-remove="canRemoveSelected"
+                    @back="currentView = 'list'"
+                    @save="saveSelected"
+                    @remove="removeSelected"
+                />
+            </Transition>
+        </div>
 
         <preset-dialog
             v-model:visible="showPresetDialog"
@@ -637,6 +638,93 @@ function canRemoveAgent(item: SubAgentInfo) {
 
 .mobile-only-desc-toggle {
     display: none;
+}
+
+.page-content {
+    position: relative;
+    min-height: 200px;
+}
+
+:deep(.el-loading-mask) {
+    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
+    z-index: 10;
+}
+
+@media (max-width: 768px) {
+    .toolbar-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .headline {
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .mobile-only-desc-toggle {
+        display: inline-flex;
+    }
+
+    .actions-section {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .actions-section .el-button {
+        margin-left: 0;
+        margin-bottom: 4px;
+    }
+
+    .hidden-mobile {
+        display: none;
+    }
+
+    .tabs {
+        width: 100%;
+        box-sizing: border-box;
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab {
+        flex-shrink: 0;
+        text-align: center;
+    }
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--k-text-dark);
+}
+
+.actions-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+    margin-bottom: 22px;
+    padding: 4px;
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 28%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 48%);
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
