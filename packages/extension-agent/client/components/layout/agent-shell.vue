@@ -205,4 +205,75 @@ const saveSection = async (
         padding-bottom: 112px;
     }
 }
+
+:deep(.el-tag) {
+    background-color: transparent !important;
+    border-radius: 6px;
+    height: 24px;
+    padding: 0 10px;
+    border-width: 1px;
+    border-style: solid;
+    line-height: 22px;
+}
+
+:deep(.el-tag.el-tag--primary),
+:deep(.el-tag:not(.el-tag--success):not(.el-tag--info):not(.el-tag--warning):not(.el-tag--danger)) {
+    border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%) !important;
+    color: var(--k-color-primary) !important;
+}
+
+:deep(.el-tag.el-tag--success) {
+    border-color: color-mix(in srgb, var(--el-color-success), transparent 40%) !important;
+    color: var(--el-color-success) !important;
+}
+
+:deep(.el-tag.el-tag--warning) {
+    border-color: color-mix(in srgb, var(--el-color-warning), transparent 40%) !important;
+    color: var(--el-color-warning) !important;
+}
+
+:deep(.el-tag.el-tag--danger) {
+    border-color: color-mix(in srgb, var(--el-color-danger), transparent 40%) !important;
+    color: var(--el-color-danger) !important;
+}
+
+:deep(.el-tag.el-tag--info) {
+    border-color: color-mix(in srgb, var(--k-text-light), transparent 50%) !important;
+    color: var(--k-text-light) !important;
+}
+
+:deep(.warning-box) {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--el-color-warning), transparent 92%);
+    border: 1px solid color-mix(in srgb, var(--el-color-warning), transparent 60%);
+    margin-bottom: 20px;
+    color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 40%);
+}
+
+:deep(.warning-title) {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 20%);
+}
+
+:deep(.warning-desc) {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+:deep(.info-box) {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-text-light), transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--k-text-light), transparent 60%);
+    margin-bottom: 20px;
+    color: color-mix(in srgb, var(--k-text-light), var(--k-text-dark) 40%);
+}
+
+:deep(.info-desc) {
+    font-size: 13px;
+    line-height: 1.5;
+}
 </style>

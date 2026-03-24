@@ -159,12 +159,7 @@ const handleSave = () => {
 }
 
 .toolbar-container {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background: linear-gradient(180deg, var(--k-page-bg) 72%, transparent);
-    padding: 12px 0;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .toolbar-main {

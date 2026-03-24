@@ -57,16 +57,13 @@ const active = computed(() =>
     top: 50%;
     transform: translateY(-50%);
     box-sizing: border-box;
-    background: color-mix(in srgb, var(--k-side-bg), transparent 20%);
-    backdrop-filter: blur(8px);
+    background: var(--k-card-bg);
+    box-shadow: var(--k-card-shadow);
     border: 1px solid var(--k-color-divider);
     border-radius: 16px;
     padding: 12px;
     z-index: 100;
-    transition:
-        width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-        border-color 0.24s ease,
-        background-color 0.24s ease;
+    transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
     width: 64px;
     overflow: hidden;
 }
@@ -92,11 +89,9 @@ const active = computed(() =>
     right: 0;
     height: 40px;
     border-radius: 10px;
-    background: var(--k-color-primary);
+    background: var(--k-hover-bg);
     transform: translateY(calc(var(--nav-index) * var(--nav-step)));
-    transition:
-        transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-        opacity 0.24s ease;
+    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: none;
     will-change: transform;
 }
@@ -111,28 +106,8 @@ const active = computed(() =>
     cursor: pointer;
     color: var(--k-text-light);
     overflow: hidden;
-    transition:
-        background-color 0.2s ease,
-        color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease;
     white-space: nowrap;
-    position: relative;
-    z-index: 0;
-}
-
-.nav-item::before {
-    content: '';
-    position: absolute;
-    inset: 2px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--k-hover-bg), transparent 8%);
-    opacity: 0;
-    transform: scale(0.94);
-    transition:
-        opacity 0.18s ease,
-        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.nav-item > * {
     position: relative;
     z-index: 1;
 }
@@ -141,19 +116,9 @@ const active = computed(() =>
     color: var(--k-text-dark);
 }
 
-.nav-item:hover::before {
-    opacity: 1;
-    transform: scale(1);
-}
-
 .nav-item.active {
-    background-color: transparent;
-    color: white;
-    box-shadow: none;
-}
-
-.nav-item.active::before {
-    opacity: 0;
+    color: var(--k-color-primary);
+    font-weight: 500;
 }
 
 .nav-item .el-icon {
@@ -176,7 +141,6 @@ const active = computed(() =>
         opacity 0.16s ease 0.12s,
         transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
     font-size: 14px;
-    font-weight: 500;
 }
 
 .side-nav:is(:hover, :focus-within) .nav-label {
@@ -223,10 +187,6 @@ const active = computed(() =>
         color: var(--k-color-primary);
     }
 
-    .nav-item::before {
-        display: none;
-    }
-
     .nav-label {
         display: none;
     }
@@ -241,8 +201,7 @@ const active = computed(() =>
     .side-nav,
     .nav-item,
     .nav-label,
-    .nav-pill,
-    .nav-item::before {
+    .nav-pill {
         transition-duration: 0.01ms !important;
         transition-delay: 0s !important;
     }

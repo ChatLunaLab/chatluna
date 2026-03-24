@@ -176,8 +176,16 @@
                         v-if="(characterKind === 'private' ? draft.characterPrivate : draft.characterGroup) && currentMode !== 'all'"
                         style="margin-top: 24px;"
                     >
-                        <div class="field-subtitle" style="margin-bottom: 12px;">
-                            {{ currentListLabel }}
+                        <div class="field-subtitle" style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span>{{ currentListLabel }}，可用英文逗号分隔多个 ID</span>
+                            <el-icon
+                                v-if="currentIdArray.length > 0"
+                                class="copy-icon"
+                                title="复制所有 ID"
+                                @click="copyIds"
+                            >
+                                <CopyDocument />
+                            </el-icon>
                         </div>
                         
                         <div class="custom-id-input-wrapper">
@@ -260,12 +268,34 @@
                 </div>
             </div>
         </div>
+
+        <el-dialog
+            v-model="showCopyDialog"
+            title="手动复制 ID"
+            width="400px"
+            append-to-body
+        >
+            <div style="margin-bottom: 16px; font-size: 13px; color: var(--k-text-light);">
+                当前环境限制或复制失败，请手动全选并复制下方内容：
+            </div>
+            <el-input
+                ref="copyInputRef"
+                v-model="copyContent"
+                type="textarea"
+                :rows="4"
+                readonly
+            />
+            <template #footer>
+                <el-button type="primary" @click="showCopyDialog = false">确定</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, Close } from '@element-plus/icons-vue'
-import { computed, ref } from 'vue'
+import { ArrowLeft, Close, CopyDocument } from '@element-plus/icons-vue'
+import { computed, ref, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import type { SubAgentInfo, ToolInfo, ToolItemConfig } from '../../../src/types'
 
 const props = defineProps<{
@@ -289,6 +319,31 @@ const tabs = [
     { value: 'actor', label: '触发者权限' },
     { value: 'subagent', label: 'Sub Agent 权限' }
 ] as const
+
+const showCopyDialog = ref(false)
+const copyContent = ref('')
+const copyInputRef = ref()
+
+async function copyIds() {
+    const text = currentIdArray.value.join(',')
+    
+    if (window.isSecureContext && navigator.clipboard) {
+        try {
+            await navigator.clipboard.writeText(text)
+            ElMessage.success('已复制到剪贴板')
+            return
+        } catch (e) {
+            console.error('Copy failed', e)
+        }
+    }
+    
+    copyContent.value = text
+    showCopyDialog.value = true
+    nextTick(() => {
+        copyInputRef.value?.focus()
+        copyInputRef.value?.select()
+    })
+}
 
 const modeOptions = [
     { label: '全局', value: 'all' },
@@ -702,5 +757,19 @@ function agentLabel(item: SubAgentInfo) {
     padding: 0 10px;
     height: 24px;
     color: var(--k-color-primary) !important;
+}
+
+.copy-icon {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--k-text-light);
+    transition: color 0.2s, background-color 0.2s;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.copy-icon:hover {
+    color: var(--k-color-primary);
+    background-color: color-mix(in srgb, var(--k-color-primary), transparent 90%);
 }
 </style>

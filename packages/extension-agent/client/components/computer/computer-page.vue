@@ -429,6 +429,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 <style scoped>
 .computer-page {
     min-height: 100%;
+    max-width: 860px;
     width: 100%;
     min-width: 0;
     margin: 0 auto;
@@ -437,18 +438,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 }
 
 .toolbar-container {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
-        color-mix(in srgb, var(--k-page-bg), transparent 12%) 76%,
-        transparent 100%
-    );
-    padding: 10px 0 14px;
-    margin-bottom: 10px;
-    backdrop-filter: blur(8px);
+    margin-bottom: 16px;
 }
 
 .toolbar-main {

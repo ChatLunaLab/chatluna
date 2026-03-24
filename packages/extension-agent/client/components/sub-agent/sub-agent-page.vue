@@ -612,18 +612,7 @@ function canRemoveAgent(item: SubAgentInfo) {
 }
 
 .toolbar-container {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
-        color-mix(in srgb, var(--k-page-bg), transparent 12%) 76%,
-        transparent 100%
-    );
-    padding: 10px 0 14px;
-    margin-bottom: 10px;
-    backdrop-filter: blur(8px);
+    margin-bottom: 16px;
 }
 
 .toolbar-main {
