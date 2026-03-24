@@ -9,10 +9,10 @@
         <div class="settings-body">
             <div class="setting-row info-row">
                 <div class="setting-copy">
-                    <div class="setting-title">Computer 提示</div>
-                    <div class="setting-description">由 backend 自动决定。</div>
+                    <div class="setting-title">电脑使用权限 (Computer Use)</div>
+                    <div class="setting-description">指示 AI 是否具备操作终端、文件系统或桌面环境的能力。</div>
                     <div class="setting-description setting-hint">
-                        {{ computerHint }}
+                        状态：{{ computerHint }} (由当前配置的执行后端自动注入提示词)
                     </div>
                 </div>
             </div>
@@ -177,6 +177,31 @@ function updateDraftDir(idx: number, value: string) {
     flex-direction: column;
     gap: 14px;
     padding: 18px;
+    max-height: 50vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.settings-body::-webkit-scrollbar {
+    width: 10px;
+}
+
+.settings-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.settings-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.settings-body::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 .setting-row {
@@ -241,11 +266,6 @@ function updateDraftDir(idx: number, value: string) {
     .dialog-section-header {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .dir-row {
-        grid-template-columns: 1fr;
-        align-items: stretch;
     }
 }
 </style>

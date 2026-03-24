@@ -130,6 +130,29 @@ defineProps<{
     max-height: 84px;
     overflow: auto;
     align-content: flex-start;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.grant-tags::-webkit-scrollbar {
+    width: 10px;
+}
+
+.grant-tags::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.grant-tags::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.grant-tags::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 .empty-state {

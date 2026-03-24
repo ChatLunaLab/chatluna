@@ -1052,6 +1052,106 @@ function resetPanels() {
     overflow: auto;
     padding: 0 16px;
     background: var(--k-page-bg);
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.crumb-bar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.crumb-bar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.crumb-bar::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+}
+
+.list-body {
+    position: relative;
+    min-height: 240px;
+    max-height: clamp(260px, 44vh, 420px);
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.list-body::-webkit-scrollbar {
+    width: 10px;
+}
+
+.list-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.list-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.tabs-scroll {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    min-height: 48px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.tabs-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.tabs-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tabs-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+}
+
+.image-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 360px;
+    height: 100%;
+    padding: 20px;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.image-stage::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.image-stage::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.image-stage::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
 }
 
 .crumb-item {

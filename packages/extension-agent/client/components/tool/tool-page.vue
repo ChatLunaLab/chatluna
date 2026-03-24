@@ -691,6 +691,11 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     flex: 1 1 auto;
 }
 
+.tool-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
 .tool-card.centered .tool-top {
     align-items: center;
     min-height: 34px;
@@ -726,6 +731,10 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.tool-top :deep(.el-switch) {
+    flex-shrink: 0;
 }
 
 .tool-name,

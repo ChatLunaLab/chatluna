@@ -1,10 +1,15 @@
 <template>
     <div class="panel catalog-panel">
         <div class="panel-header catalog-header">
-            <div>
-                <div class="panel-title">Sub Agent 列表</div>
-                <div class="panel-description">
-                    ChatLuna 目前可用的全部 Sub Agent。
+            <div class="catalog-header-content">
+                <div class="catalog-header-info">
+                    <div class="panel-title">Sub Agent 列表</div>
+                    <div class="panel-description">
+                        ChatLuna 目前可用的全部 Sub Agent。
+                    </div>
+                </div>
+                <div class="catalog-actions">
+                    <slot name="actions"></slot>
                 </div>
             </div>
 
@@ -14,10 +19,10 @@
                 placeholder="搜索名称、描述、路径或诊断"
                 clearable
             >
-                <template #prefix>
-                    <el-icon><Search /></el-icon>
-                </template>
-            </el-input>
+                    <template #prefix>
+                        <el-icon><Search /></el-icon>
+                    </template>
+                </el-input>
         </div>
 
         <div
@@ -192,11 +197,35 @@ function canRemove(item: SubAgentInfo) {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 16px;
     padding: 16px 18px;
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
     box-sizing: border-box;
+}
+
+.catalog-header-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.catalog-header-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.catalog-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.catalog-actions :deep(.el-button) {
+    margin: 0;
 }
 
 .panel-title {
@@ -389,6 +418,17 @@ function canRemove(item: SubAgentInfo) {
     .catalog-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .catalog-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .catalog-actions {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .search-input {

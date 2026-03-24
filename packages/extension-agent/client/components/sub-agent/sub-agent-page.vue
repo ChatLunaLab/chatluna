@@ -37,20 +37,6 @@
                     >
                         {{ hideDesc ? '显示描述' : '隐藏描述' }}
                     </el-button>
-                    <input
-                        ref="fileInput"
-                        type="file"
-                        accept=".md,text/markdown"
-                        class="hidden-input"
-                        @change="handleUpload"
-                    />
-                    <el-button @click="showPresetDialog = true">
-                        从预设创建
-                    </el-button>
-                    <el-button @click="fileInput?.click()">
-                        上传 Markdown
-                    </el-button>
-                    <el-button @click="reloadSubAgents">重新扫描</el-button>
                 </div>
             </div>
         </div>
@@ -90,7 +76,24 @@
                             @select="openDetail"
                             @toggle="toggleAgent"
                             @remove="removeAgent"
-                        />
+                        >
+                            <template #actions>
+                                <input
+                                    ref="fileInput"
+                                    type="file"
+                                    accept=".md,text/markdown"
+                                    class="hidden-input"
+                                    @change="handleUpload"
+                                />
+                                <el-button @click="showPresetDialog = true">
+                                    从预设创建
+                                </el-button>
+                                <el-button @click="fileInput?.click()">
+                                    上传 Markdown
+                                </el-button>
+                                <el-button @click="reloadSubAgents">重新扫描</el-button>
+                            </template>
+                        </sub-agent-catalog>
                         <sub-agent-runs
                             v-else-if="listTab === 'runs'"
                             key="runs"
@@ -761,17 +764,12 @@ function canRemoveAgent(item: SubAgentInfo) {
 
     .tabs {
         width: 100%;
-        overflow-x: auto;
-        justify-content: flex-start;
-        scrollbar-width: none;
-    }
-
-    .tabs::-webkit-scrollbar {
-        display: none;
+        justify-content: center;
+        overflow: hidden;
     }
 
     .tab {
-        flex: 0 0 auto;
+        flex: 1 1 0;
         text-align: center;
     }
 }
