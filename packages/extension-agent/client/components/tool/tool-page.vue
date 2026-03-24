@@ -500,6 +500,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
+    box-sizing: border-box;
 }
 
 .toolbar-container {
@@ -642,28 +643,14 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 .card-list {
-    --card-cols: 5;
-    --card-gap: 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px var(--card-gap);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
     padding: 16px;
-}
-
-.card-list.compact {
-    --card-cols: 4;
+    box-sizing: border-box;
 }
 
 .tool-card {
-    flex: 0 1
-        calc(
-            (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-        );
-    max-width: calc(
-        (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-    );
-    min-width: 0;
-    box-sizing: border-box;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
@@ -674,6 +661,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     gap: 12px;
     cursor: pointer;
     overflow: hidden;
+    box-sizing: border-box;
     transition:
         border-color 0.2s ease,
         transform 0.2s ease;
@@ -768,28 +756,34 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     gap: 6px;
 }
 
-@media (max-width: 1680px) {
-    .card-list { --card-cols: 4; }
-}
-
-@media (max-width: 1320px) {
-    .card-list { --card-cols: 3; }
-}
-
-@media (max-width: 1080px) {
-    .card-list { --card-cols: 2; }
-}
-
 @media (max-width: 768px) {
-    .card-list {
-        --card-cols: 1;
-        flex-direction: column;
-        align-items: stretch;
-    }
+.card-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.tool-card {
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    overflow: hidden;
+    box-sizing: border-box;
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
 
     .tool-card {
-        flex-basis: 100%;
-        max-width: none;
+        width: 100%;
     }
 }
 

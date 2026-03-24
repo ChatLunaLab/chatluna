@@ -1188,33 +1188,27 @@ async function saveTool() {
 }
 
 .card-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px 16px;
-    padding: 14px 14px 16px;
-}
-
-.card-list.compact {
-    gap: 14px 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .server-card,
 .tool-card {
-    flex: 0 0 320px;
-    width: 320px;
-    max-width: 100%;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
     background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 18%);
     padding: 14px;
-    transition:
-        border-color 0.2s ease,
-        background-color 0.2s ease;
     display: flex;
     flex-direction: column;
-    min-width: 0;
+    gap: 10px;
     box-sizing: border-box;
+    transition: all 0.2s;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .card-list.compact .server-card,

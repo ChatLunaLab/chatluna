@@ -447,6 +447,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
+    box-sizing: border-box;
 }
 
 .toolbar-container {
@@ -482,7 +483,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 }
 
 .page-title {
-    font-size: 19px;
+    font-size: 24px;
     font-weight: 600;
     color: var(--k-text-dark);
 }
@@ -494,18 +495,14 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     flex-wrap: wrap;
 }
 
-.computer-page.compact .provider-row {
-    gap: 12px;
-    margin-top: 14px;
-    margin-bottom: 14px;
+.page-content {
+    position: relative;
+    min-height: 200px;
 }
 
-.computer-page.compact .provider-item {
-    padding: 14px 16px;
-}
-
-.computer-page.compact .tabs {
-    margin-bottom: 18px;
+:deep(.el-loading-mask) {
+    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
+    z-index: 10;
 }
 
 .provider-row {
@@ -574,22 +571,6 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     white-space: nowrap;
 }
 
-.tabs {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 24px;
-    margin-bottom: 24px;
-    padding: 4px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 28%);
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 48%);
-    width: fit-content;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
 .tab-content {
     min-height: 400px;
 }
@@ -617,29 +598,8 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
 }
 
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-    transition: all 0.2s ease;
-}
-
-.fade-slide-enter-from,
-.fade-slide-leave-to {
-    opacity: 0;
-    transform: translateY(8px);
-}
-
 @media (max-width: 1080px) {
-.page-content {
-    position: relative;
-    min-height: 200px;
-}
-
-:deep(.el-loading-mask) {
-    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
-    z-index: 10;
-}
-
-.provider-row {
+    .provider-row {
         grid-template-columns: 1fr;
     }
 }
@@ -668,17 +628,14 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
         grid-template-columns: 1fr;
     }
 
-    .provider-select {
-        width: 100%;
-    }
-
+    .provider-select,
     .provider-value {
         width: 100%;
     }
 
     .tabs {
         width: 100%;
-        box-sizing: border-box;
+        display: flex;
         overflow-x: auto;
         justify-content: flex-start;
         scrollbar-width: none;
@@ -689,7 +646,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     }
 
     .tab {
-        flex-shrink: 0;
+        flex: 0 0 auto;
         text-align: center;
     }
 }

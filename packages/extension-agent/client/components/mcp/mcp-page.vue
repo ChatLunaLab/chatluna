@@ -4,6 +4,15 @@
             <div class="toolbar-main">
                 <div class="headline">
                     <div class="page-title">MCP</div>
+                    <el-button
+                        size="small"
+                        class="mobile-only-desc-toggle"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
                 </div>
 
                 <div class="actions-section">
@@ -15,6 +24,15 @@
                         @click="compactMode = !compactMode"
                     >
                         {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        class="hidden-mobile"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
                     </el-button>
                 </div>
             </div>
@@ -100,6 +118,7 @@ const hideDesc = useHideDesc('mcp')
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
+    box-sizing: border-box;
 }
 
 .toolbar-container {
@@ -125,7 +144,14 @@ const hideDesc = useHideDesc('mcp')
 }
 
 .headline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     min-width: 0;
+}
+
+.mobile-only-desc-toggle {
+    display: none;
 }
 
 .page-content {
@@ -200,6 +226,16 @@ const hideDesc = useHideDesc('mcp')
         align-items: flex-start;
     }
 
+    .headline {
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .mobile-only-desc-toggle {
+        display: inline-flex;
+    }
+
     .actions-section {
         width: 100%;
         justify-content: flex-start;
@@ -216,18 +252,17 @@ const hideDesc = useHideDesc('mcp')
 
     .tabs {
         width: 100%;
-        box-sizing: border-box;
-        overflow-x: auto;
-        justify-content: flex-start;
-        scrollbar-width: none;
-    }
-
-    .tabs::-webkit-scrollbar {
-        display: none;
+        display: flex;
+        justify-content: center;
     }
 
     .tab {
-        flex-shrink: 0;
+        flex: 1;
+        text-align: center;
+    }
+
+    .tab {
+        flex: 1;
         text-align: center;
     }
 }

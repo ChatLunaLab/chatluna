@@ -127,6 +127,7 @@
         </div>
     </div>
 </template>
+
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Search, UserFilled } from '@element-plus/icons-vue'
@@ -170,18 +171,6 @@ const filteredAgents = computed(() => {
     })
 })
 
-function stateLabel(state: SubAgentInfo['state']) {
-    if (state === 'ready') return '可用'
-    if (state === 'invalid') return '无效'
-    return '缺失'
-}
-
-function stateTag(state: SubAgentInfo['state']) {
-    if (state === 'ready') return 'success'
-    if (state === 'invalid') return 'warning'
-    return 'info'
-}
-
 function canRemove(item: SubAgentInfo) {
     return props.removableIds.includes(item.id)
 }
@@ -195,6 +184,7 @@ function canRemove(item: SubAgentInfo) {
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
     min-height: 420px;
+    box-sizing: border-box;
 }
 
 .panel-header,
@@ -206,6 +196,7 @@ function canRemove(item: SubAgentInfo) {
     padding: 16px 18px;
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    box-sizing: border-box;
 }
 
 .panel-title {
@@ -242,28 +233,14 @@ function canRemove(item: SubAgentInfo) {
 }
 
 .card-list {
-    --card-cols: 5;
-    --card-gap: 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px var(--card-gap);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
     padding: 16px;
-}
-
-.card-list.compact {
-    --card-cols: 4;
+    box-sizing: border-box;
 }
 
 .agent-card {
-    flex: 0 1
-        calc(
-            (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-        );
-    max-width: calc(
-        (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-    );
-    min-width: 0;
-    box-sizing: border-box;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
@@ -273,6 +250,7 @@ function canRemove(item: SubAgentInfo) {
     flex-direction: column;
     gap: 12px;
     cursor: pointer;
+    box-sizing: border-box;
     transition:
         border-color 0.2s ease,
         transform 0.2s ease;
@@ -390,17 +368,6 @@ function canRemove(item: SubAgentInfo) {
         var(--el-color-danger),
         var(--k-text-dark) 22%
     );
-    --el-button-hover-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 86%
-    );
-    --el-button-hover-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 52%
-    );
-    --el-button-hover-text-color: var(--el-color-danger);
 }
 
 .diagnostic-box {
@@ -416,36 +383,6 @@ function canRemove(item: SubAgentInfo) {
     min-height: 280px;
 }
 
-@media (max-width: 1680px) {
-    .card-list {
-        --card-cols: 4;
-    }
-
-    .card-list.compact {
-        --card-cols: 4;
-    }
-}
-
-@media (max-width: 1320px) {
-    .card-list {
-        --card-cols: 3;
-    }
-
-    .card-list.compact {
-        --card-cols: 4;
-    }
-}
-
-@media (max-width: 980px) {
-    .card-list {
-        --card-cols: 2;
-    }
-
-    .card-list.compact {
-        --card-cols: 3;
-    }
-}
-
 @media (max-width: 768px) {
     .catalog-header {
         flex-direction: column;
@@ -456,19 +393,33 @@ function canRemove(item: SubAgentInfo) {
         width: 100%;
     }
 
-    .card-list {
-        --card-cols: 1;
-        flex-direction: column;
-        align-items: stretch;
-    }
+.card-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
+}
 
-    .card-list.compact {
-        --card-cols: 1;
-    }
+.agent-card {
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    overflow: hidden;
+    box-sizing: border-box;
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
 
     .agent-card {
-        flex-basis: 100%;
-        max-width: none;
+        width: 100%;
     }
 
     .agent-top {

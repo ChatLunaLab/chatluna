@@ -37,6 +37,27 @@
                     >
                         {{ hideDesc ? '显示描述' : '隐藏描述' }}
                     </el-button>
+                </div>
+
+                <div class="actions-section">
+                    <el-button
+                        size="small"
+                        class="hidden-mobile"
+                        :type="compactMode ? 'primary' : 'default'"
+                        plain
+                        @click="compactMode = !compactMode"
+                    >
+                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        class="hidden-mobile"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
                     <el-button @click="showGithubDialog = true">
                         从 Github 导入
                     </el-button>
@@ -676,6 +697,7 @@ function base64ToBlob(data: string, type: string) {
     padding: 16px 18px;
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    box-sizing: border-box;
 }
 
 .panel-title {
@@ -886,26 +908,14 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .card-list {
-    --card-cols: 5;
-    --card-gap: 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px var(--card-gap);
-    padding: 14px 14px 16px;
-}
-
-.card-list.compact {
-    --card-cols: 4;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .skill-card {
-    flex: 0 1
-        calc(
-            (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-        );
-    max-width: calc(
-        (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-    );
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
@@ -1005,36 +1015,6 @@ function base64ToBlob(data: string, type: string) {
     margin-bottom: 12px;
 }
 
-@media (max-width: 1680px) {
-    .card-list {
-        --card-cols: 4;
-    }
-
-    .card-list.compact {
-        --card-cols: 4;
-    }
-}
-
-@media (max-width: 1320px) {
-    .card-list {
-        --card-cols: 3;
-    }
-
-    .card-list.compact {
-        --card-cols: 4;
-    }
-}
-
-@media (max-width: 1080px) {
-    .card-list {
-        --card-cols: 2;
-    }
-
-    .card-list.compact {
-        --card-cols: 3;
-    }
-}
-
 @media (max-width: 768px) {
     .toolbar-main {
         flex-direction: column;
@@ -1083,24 +1063,11 @@ function base64ToBlob(data: string, type: string) {
     }
 
     .card-list {
-        --card-cols: 1;
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .card-list.compact {
-        --card-cols: 1;
+        grid-template-columns: 1fr;
     }
 
     .skill-card {
-        flex-basis: 100%;
-        max-width: none;
-    }
-
-    .skill-top,
-    .skill-brand {
-        flex-direction: column;
-        align-items: flex-start;
+        width: 100%;
     }
 }
 </style>
