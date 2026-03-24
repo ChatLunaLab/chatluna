@@ -140,12 +140,13 @@ const install = computed(() => {
 }
 
 .warning-block {
-    border-color: color-mix(in srgb, var(--el-color-warning), transparent 52%);
-    background: color-mix(
-        in srgb,
-        var(--el-color-warning-light-9),
-        var(--k-page-bg) 38%
-    );
+    border: none;
+    background: color-mix(in srgb, var(--el-color-warning), transparent 90%);
+}
+
+.warning-block .section-title,
+.warning-block .section-line {
+    color: color-mix(in srgb, var(--k-text-dark), var(--el-color-warning) 34%);
 }
 
 .hero-title,
@@ -164,6 +165,14 @@ const install = computed(() => {
     line-height: 1.7;
     color: var(--k-text-light);
     word-break: break-word;
+}
+
+.section-line {
+    color: color-mix(in srgb, var(--k-text-dark), transparent 18%);
+}
+
+.section-empty {
+    color: color-mix(in srgb, var(--k-text-light), white 6%);
 }
 
 .hero-path {

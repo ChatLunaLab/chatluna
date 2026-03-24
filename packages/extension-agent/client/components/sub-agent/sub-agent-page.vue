@@ -8,6 +8,7 @@
                 <div class="headline">
                     <div class="page-title">Sub Agent</div>
                     <el-button
+                        v-if="currentView === 'list' && listTab === 'catalog'"
                         size="small"
                         class="mobile-only-desc-toggle"
                         :type="hideDesc ? 'primary' : 'default'"
@@ -19,24 +20,26 @@
                 </div>
 
                 <div class="actions-section">
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="compactMode ? 'primary' : 'default'"
-                        plain
-                        @click="compactMode = !compactMode"
-                    >
-                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
-                    </el-button>
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="hideDesc ? 'primary' : 'default'"
-                        plain
-                        @click="hideDesc = !hideDesc"
-                    >
-                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
-                    </el-button>
+                    <template v-if="currentView === 'list' && listTab === 'catalog'">
+                        <el-button
+                            size="small"
+                            class="hidden-mobile"
+                            :type="compactMode ? 'primary' : 'default'"
+                            plain
+                            @click="compactMode = !compactMode"
+                        >
+                            {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                        </el-button>
+                        <el-button
+                            size="small"
+                            class="hidden-mobile"
+                            :type="hideDesc ? 'primary' : 'default'"
+                            plain
+                            @click="hideDesc = !hideDesc"
+                        >
+                            {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                        </el-button>
+                    </template>
                 </div>
             </div>
         </div>

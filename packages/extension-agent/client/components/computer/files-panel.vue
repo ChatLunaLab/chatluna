@@ -114,7 +114,7 @@
                                 {{ item.label }}
                             </button>
                             <span
-                                v-if="idx < crumbs.length - 1"
+                                v-if="idx < crumbs.length - 1 && item.label !== '/'"
                                 class="crumb-divider"
                             >
                                 /
@@ -1026,6 +1026,13 @@ function resetPanels() {
     color: var(--k-text-light);
 }
 
+.cell-copy {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .panel-copy {
     margin-top: 4px;
 }
@@ -1173,15 +1180,21 @@ function resetPanels() {
     color: var(--k-color-primary);
 }
 
+.crumb-item:first-child {
+    padding-left: 4px;
+    padding-right: 0;
+}
+
 .crumb-divider {
     flex-shrink: 0;
+    margin: 0 0 0 -2px;
     color: var(--k-text-light);
 }
 
 .list-head,
 .list-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.8fr) 128px 160px;
+    grid-template-columns: minmax(0, 2.6fr) minmax(72px, 0.9fr) minmax(88px, 1fr);
     gap: 12px;
     align-items: center;
 }

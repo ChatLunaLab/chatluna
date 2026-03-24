@@ -632,11 +632,16 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 .card-list {
+    --card-cols: 5;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
     padding: 16px;
     box-sizing: border-box;
+}
+
+.card-list.compact {
+    --card-cols: 4;
 }
 
 .tool-card {
@@ -754,7 +759,42 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     gap: 6px;
 }
 
+@media (max-width: 1680px) {
+    .card-list {
+        --card-cols: 4;
+    }
+
+    .card-list.compact {
+        --card-cols: 3;
+    }
+}
+
+@media (max-width: 1320px) {
+    .card-list {
+        --card-cols: 3;
+    }
+
+    .card-list.compact {
+        --card-cols: 2;
+    }
+}
+
+@media (max-width: 1080px) {
+    .card-list {
+        --card-cols: 2;
+    }
+
+    .card-list.compact {
+        --card-cols: 1;
+    }
+}
+
 @media (max-width: 768px) {
+    .card-list,
+    .card-list.compact {
+        --card-cols: 1;
+    }
+
     .tool-card {
         width: 100%;
     }

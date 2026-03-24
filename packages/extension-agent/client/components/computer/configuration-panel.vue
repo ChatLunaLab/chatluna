@@ -40,8 +40,8 @@
                         如何配置
                     </el-button>
                     <el-button
-                        text
-                        type="primary"
+                        class="test-link"
+                        plain
                         :loading="props.testing.e2b"
                         @click="emit('test', 'e2b')"
                     >
@@ -114,8 +114,8 @@
                         如何配置
                     </el-button>
                     <el-button
-                        text
-                        type="primary"
+                        class="test-link"
+                        plain
                         :loading="props.testing['open-terminal']"
                         @click="emit('test', 'open-terminal')"
                     >
@@ -191,8 +191,8 @@
                         如何配置
                     </el-button>
                     <el-button
-                        text
-                        type="primary"
+                        class="test-link"
+                        plain
                         :loading="props.testing.local"
                         @click="emit('test', 'local')"
                     >
@@ -650,6 +650,49 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     justify-content: flex-end;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.backend-actions :deep(.test-link.el-button) {
+    --el-button-bg-color: transparent;
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 12%
+    );
+    --el-button-text-color: var(--k-text-dark);
+    --el-button-hover-bg-color: color-mix(
+        in srgb,
+        var(--k-side-bg),
+        var(--k-page-bg) 18%
+    );
+    --el-button-hover-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 0%
+    );
+    --el-button-hover-text-color: var(--k-text-dark);
+    --el-button-active-bg-color: color-mix(
+        in srgb,
+        var(--k-side-bg),
+        var(--k-page-bg) 26%
+    );
+    --el-button-active-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 0%
+    );
+    --el-button-active-text-color: var(--k-text-dark);
+    --el-button-disabled-bg-color: color-mix(
+        in srgb,
+        var(--k-side-bg),
+        transparent 10%
+    );
+    --el-button-disabled-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 24%
+    );
+    --el-button-disabled-text-color: var(--k-text-light);
 }
 
 .backend-body {

@@ -262,11 +262,16 @@ function canRemove(item: SubAgentInfo) {
 }
 
 .card-list {
+    --card-cols: 5;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
     padding: 16px;
     box-sizing: border-box;
+}
+
+.card-list.compact {
+    --card-cols: 4;
 }
 
 .agent-card {
@@ -414,6 +419,36 @@ function canRemove(item: SubAgentInfo) {
     min-height: 280px;
 }
 
+@media (max-width: 1680px) {
+    .card-list {
+        --card-cols: 4;
+    }
+
+    .card-list.compact {
+        --card-cols: 3;
+    }
+}
+
+@media (max-width: 1320px) {
+    .card-list {
+        --card-cols: 3;
+    }
+
+    .card-list.compact {
+        --card-cols: 2;
+    }
+}
+
+@media (max-width: 980px) {
+    .card-list {
+        --card-cols: 2;
+    }
+
+    .card-list.compact {
+        --card-cols: 1;
+    }
+}
+
 @media (max-width: 768px) {
     .catalog-header {
         flex-direction: column;
@@ -435,7 +470,9 @@ function canRemove(item: SubAgentInfo) {
         width: 100%;
     }
 
-    .card-list {
+    .card-list,
+    .card-list.compact {
+        --card-cols: 1;
         grid-template-columns: 1fr;
     }
 

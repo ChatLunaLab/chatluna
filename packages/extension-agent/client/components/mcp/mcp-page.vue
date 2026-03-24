@@ -114,11 +114,15 @@ const hideDesc = useHideDesc('mcp')
 <style scoped>
 .mcp-page {
     min-height: 100%;
-    width: 100%;
+    width: min(100%, 1800px);
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
     box-sizing: border-box;
+}
+
+.mcp-page.compact {
+    width: min(100%, 1440px);
 }
 
 .toolbar-container {

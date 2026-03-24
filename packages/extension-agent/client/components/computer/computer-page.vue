@@ -17,6 +17,14 @@
                 </div>
 
                 <div class="actions-section">
+                    <el-button
+                        v-if="dirty"
+                        type="primary"
+                        :loading="saving"
+                        @click="saveComputer"
+                    >
+                        保存
+                    </el-button>
                     <el-button :loading="reloading" @click="reloadComputer">
                         重新加载
                     </el-button>

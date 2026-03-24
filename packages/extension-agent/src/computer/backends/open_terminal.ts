@@ -93,20 +93,21 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
     async readFile(filePath: string, offset?: number, limit?: number) {
         try {
-            const result = await this.ctx.http(this.url('/files/list'), {
-                method: 'GET',
-                headers: this.headers(),
-                params: {
-                    directory: filePath
+            const result = readOpenTerminalData<
+                OpenTerminalListData & {
+                    entries?: { name?: string; type?: string }[]
                 }
-            })
-            const dir =
-                typeof result.data?.dir === 'string'
-                    ? result.data.dir
-                    : filePath
-            const entries = Array.isArray(result.data?.entries)
-                ? result.data.entries
-                : []
+            >(
+                await this.ctx.http(this.url('/files/list'), {
+                    method: 'GET',
+                    headers: this.headers(),
+                    params: {
+                        directory: filePath
+                    }
+                })
+            )
+            const dir = result.dir || filePath
+            const entries = Array.isArray(result.entries) ? result.entries : []
 
             return entries
                 .map((item) => {
@@ -134,20 +135,22 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             )
         }
 
-        const result = await this.ctx.http(
-            this.url(`/files/read?${params.toString()}`),
-            {
+        const result = readOpenTerminalData<{
+            content?: string
+            total_lines?: number
+        }>(
+            await this.ctx.http(this.url(`/files/read?${params.toString()}`), {
                 method: 'GET',
                 headers: this.headers()
-            }
+            })
         )
 
         const text =
-            typeof result.data?.content === 'string'
-                ? result.data.content
-                : typeof result.data === 'string'
-                  ? result.data
-                  : JSON.stringify(result.data)
+            typeof result.content === 'string'
+                ? result.content
+                : typeof result === 'string'
+                  ? result
+                  : JSON.stringify(result)
 
         if (offset == null && limit == null) {
             return text
@@ -157,8 +160,8 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const lines = text.split('\n')
         const resultLines = lines.map((line, idx) => `${start + idx}: ${line}`)
         const total =
-            typeof result.data?.total_lines === 'number'
-                ? result.data.total_lines
+            typeof result.total_lines === 'number'
+                ? result.total_lines
                 : start + lines.length - 1
         if (start + lines.length - 1 >= total) {
             return resultLines.join('\n')
@@ -293,16 +296,17 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             params.append('include', include)
         }
 
-        const result = await this.ctx.http(
-            this.url(`/files/grep?${params.toString()}`),
-            {
+        const result = readOpenTerminalData<{
+            matches?: { file?: string; line?: number; content?: string }[]
+        }>(
+            await this.ctx.http(this.url(`/files/grep?${params.toString()}`), {
                 method: 'GET',
                 headers: this.headers()
-            }
+            })
         )
 
-        const matches = Array.isArray(result.data?.matches)
-            ? result.data.matches
+        const matches = Array.isArray(result.matches)
+            ? result.matches
             : []
 
         return matches
@@ -326,16 +330,17 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             type: 'file',
             max_results: '500'
         })
-        const result = await this.ctx.http(
-            this.url(`/files/glob?${params.toString()}`),
-            {
+        const result = readOpenTerminalData<{
+            matches?: { path?: string }[]
+        }>(
+            await this.ctx.http(this.url(`/files/glob?${params.toString()}`), {
                 method: 'GET',
                 headers: this.headers()
-            }
+            })
         )
 
-        const matches = Array.isArray(result.data?.matches)
-            ? result.data.matches
+        const matches = Array.isArray(result.matches)
+            ? result.matches
             : []
 
         return matches

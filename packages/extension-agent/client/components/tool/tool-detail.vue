@@ -488,30 +488,13 @@ function agentLabel(item: SubAgentInfo) {
     margin-top: 32px;
     margin-bottom: 32px;
     overflow-x: auto;
-    scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
-        transparent;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     white-space: nowrap;
 }
 
 .tabs-underline::-webkit-scrollbar {
-    height: 6px;
-}
-
-.tabs-underline::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.tabs-underline::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
-    border-radius: 10px;
-    border: 1px solid transparent;
-    background-clip: content-box;
-}
-
-.tabs-underline::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
-    background-clip: content-box;
+    display: none;
 }
 
 .tab-item {

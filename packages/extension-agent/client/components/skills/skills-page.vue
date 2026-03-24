@@ -212,9 +212,9 @@
                                     </el-button>
                                     <el-button
                                         v-if="hasDiagnostics(item)"
+                                        class="warning-soft"
                                         size="small"
                                         plain
-                                        type="warning"
                                         @click="openDiagnostics(item)"
                                     >
                                         错误信息
@@ -809,6 +809,65 @@ function base64ToBlob(data: string, type: string) {
     );
 }
 
+.skill-actions-main :deep(.warning-soft.el-button) {
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 90%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 58%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        var(--k-text-dark) 24%
+    );
+    --el-button-hover-bg-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 84%
+    );
+    --el-button-hover-border-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 46%
+    );
+    --el-button-hover-text-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        var(--k-text-dark) 16%
+    );
+    --el-button-active-bg-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 80%
+    );
+    --el-button-active-border-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 38%
+    );
+    --el-button-active-text-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        var(--k-text-dark) 12%
+    );
+    --el-button-disabled-bg-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 95%
+    );
+    --el-button-disabled-border-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 82%
+    );
+    --el-button-disabled-text-color: var(--k-text-light);
+}
+
 .skill-footer {
     margin-top: auto;
     display: flex;
@@ -897,11 +956,16 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .card-list {
+    --card-cols: 5;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
     padding: 16px;
     box-sizing: border-box;
+}
+
+.card-list.compact {
+    --card-cols: 4;
 }
 
 .skill-card {
@@ -1004,6 +1068,36 @@ function base64ToBlob(data: string, type: string) {
     margin-bottom: 12px;
 }
 
+@media (max-width: 1680px) {
+    .card-list {
+        --card-cols: 4;
+    }
+
+    .card-list.compact {
+        --card-cols: 3;
+    }
+}
+
+@media (max-width: 1320px) {
+    .card-list {
+        --card-cols: 3;
+    }
+
+    .card-list.compact {
+        --card-cols: 2;
+    }
+}
+
+@media (max-width: 1080px) {
+    .card-list {
+        --card-cols: 2;
+    }
+
+    .card-list.compact {
+        --card-cols: 1;
+    }
+}
+
 @media (max-width: 768px) {
     .toolbar-main {
         flex-direction: column;
@@ -1051,7 +1145,9 @@ function base64ToBlob(data: string, type: string) {
         align-items: flex-start;
     }
 
-    .card-list {
+    .card-list,
+    .card-list.compact {
+        --card-cols: 1;
         grid-template-columns: 1fr;
     }
 
