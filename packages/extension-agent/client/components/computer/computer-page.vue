@@ -1,8 +1,5 @@
 <template>
-    <div
-        class="computer-page"
-        :class="{ compact: compactMode }"
-    >
+    <div class="computer-page">
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
@@ -20,15 +17,6 @@
                 </div>
 
                 <div class="actions-section">
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="compactMode ? 'primary' : 'default'"
-                        plain
-                        @click="compactMode = !compactMode"
-                    >
-                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
-                    </el-button>
                     <el-button :loading="reloading" @click="reloadComputer">
                         重新加载
                     </el-button>
@@ -39,7 +27,7 @@
         <div class="page-content" v-loading="busy">
             <div class="provider-row">
                 <div class="provider-item">
-                    <div>
+                    <div class="provider-copy">
                         <div class="row-title">默认电脑能力后端</div>
                         <div v-if="!hideDesc" class="row-description">
                             Agent
@@ -47,18 +35,20 @@
                             Local 仅在明确知道风险时再打开。
                         </div>
                     </div>
-                    <el-select
-                        :model-value="draft.defaultProvider"
-                        class="provider-select"
-                        @update:model-value="updateProvider"
-                    >
-                        <el-option label="E2B" value="e2b" />
-                        <el-option label="open-terminal" value="open-terminal" />
-                        <el-option label="Local（高风险）" value="local" />
-                    </el-select>
+                    <div class="provider-value">
+                        <el-select
+                            :model-value="draft.defaultProvider"
+                            class="provider-select"
+                            @update:model-value="updateProvider"
+                        >
+                            <el-option label="E2B" value="e2b" />
+                            <el-option label="open-terminal" value="open-terminal" />
+                            <el-option label="Local（高风险）" value="local" />
+                        </el-select>
+                    </div>
                 </div>
                 <div class="provider-item">
-                    <div>
+                    <div class="provider-copy">
                         <div class="row-title">会话自动关闭</div>
                         <div v-if="!hideDesc" class="row-description">
                             当会话的空闲时间超过此时间后会自动关闭。
@@ -117,7 +107,6 @@
                     <div v-if="activeTab === 'config'" key="config">
                         <configuration-panel
                             :config="draft"
-                            :compact-mode="compactMode"
                             :hide-desc="hideDesc"
                             :status="status"
                             :testing="testing"
@@ -137,7 +126,6 @@
 
                     <div v-else-if="activeTab === 'jobs'" key="jobs">
                         <background-jobs-panel
-                            :compact-mode="compactMode"
                             :hide-desc="hideDesc"
                             @open="openJob"
                         />
@@ -150,7 +138,6 @@
                     <div v-else key="desktop">
                         <desktop-panel
                             :config="draft"
-                            :compact-mode="compactMode"
                             :hide-desc="hideDesc"
                             :status="status"
                         />
@@ -165,7 +152,7 @@
 import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
-import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
+import { useHideDesc } from '../shared/use-hide-desc'
 import ConfigurationPanel from './configuration-panel.vue'
 import BackgroundJobsPanel from './background-jobs-panel.vue'
 import TerminalPanel from './terminal-panel.vue'
@@ -277,7 +264,6 @@ const props = withDefaults(
 )
 
 const activeTab = ref('config')
-const compactMode = useCompactMode('computer')
 const draft = ref<ComputerConfig>(cloneConfig(props.config))
 const hideDesc = useHideDesc('computer')
 const pendingJob = ref<ComputerBackgroundJobInfo>()
@@ -516,7 +502,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 .provider-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: flex-start;
+    align-items: center;
     gap: 14px;
     padding: 16px 18px;
     border: 1px solid
@@ -524,6 +510,10 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     box-sizing: border-box;
+}
+
+.provider-copy {
+    min-width: 0;
 }
 
 .tabs {
@@ -543,13 +533,14 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 }
 
 .provider-select {
-    width: 180px;
+    width: 220px;
 }
 
 .provider-value {
     display: flex;
     align-items: center;
     gap: 10px;
+    justify-self: end;
 }
 
 .row-title {
@@ -620,12 +611,9 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
         margin-bottom: 4px;
     }
 
-    .hidden-mobile {
-        display: none;
-    }
-
     .provider-item {
         grid-template-columns: 1fr;
+        align-items: flex-start;
     }
 
     .provider-select,
