@@ -32,29 +32,6 @@
         <div class="editor-body">
             <!-- 详细信息 -->
             <div v-if="tab === 'info'" class="page-grid">
-                <div class="section-title">工具信息</div>
-                <div class="field-grid readonly-grid">
-                    <div class="field-card flat-card">
-                        <div class="field-label">名称</div>
-                        <div class="field-static">{{ tool.name }}</div>
-                    </div>
-                    <div class="field-card flat-card">
-                        <div class="field-label">来源</div>
-                        <div class="field-static">
-                            {{ tool.source || 'unknown' }}
-                            {{ tool.group ? ` / ${tool.group}` : '' }}
-                        </div>
-                    </div>
-                    <div class="field-card flat-card full-row">
-                        <div class="field-label">说明</div>
-                        <div class="field-static">
-                            {{ tool.description || '暂无说明。' }}
-                        </div>
-                    </div>
-                </div>
-
-                <el-divider style="margin: 4px 0;" />
-
                 <div class="section-title">全局状态</div>
                 <div class="field-grid">
                     <div class="field-card flat-card switch-card">
@@ -73,6 +50,29 @@
                                 <div class="field-help">控制主 Agent 是否允许调用这个工具。</div>
                             </div>
                             <el-switch v-model="draft.main" />
+                        </div>
+                    </div>
+                </div>
+
+                <el-divider style="margin: 4px 0;" />
+
+                <div class="section-title">工具信息</div>
+                <div class="field-grid readonly-grid">
+                    <div class="field-card flat-card">
+                        <div class="field-label">名称</div>
+                        <div class="field-static">{{ tool.name }}</div>
+                    </div>
+                    <div class="field-card flat-card">
+                        <div class="field-label">来源</div>
+                        <div class="field-static">
+                            {{ tool.source || 'unknown' }}
+                            {{ tool.group ? ` / ${tool.group}` : '' }}
+                        </div>
+                    </div>
+                    <div class="field-card flat-card full-row">
+                        <div class="field-label">说明</div>
+                        <div class="field-static">
+                            {{ tool.description || '暂无说明。' }}
                         </div>
                     </div>
                 </div>
@@ -155,7 +155,7 @@
                         <template v-if="(characterKind === 'private' ? draft.characterPrivate : draft.characterGroup)">
                             <div class="scope-row" style="margin-top: 24px;">
                                 <div>
-                                    <div class="field-subtitle">触发模式</div>
+                                    <div class="field-subtitle">生效模式</div>
                                     <div class="field-help">定义生效的白名单或黑名单。</div>
                                 </div>
                                 <el-segmented
@@ -387,7 +387,7 @@ function agentLabel(item: SubAgentInfo) {
 
 .page-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 32px;
@@ -488,6 +488,7 @@ function agentLabel(item: SubAgentInfo) {
     border-radius: 8px;
     border: 1px solid color-mix(in srgb, var(--k-color-divider), transparent 20%);
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
 }
 
 .flat-card {

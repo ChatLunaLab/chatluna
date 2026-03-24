@@ -23,27 +23,12 @@
                 <div class="actions-section">
                     <el-button
                         size="small"
+                        class="hidden-mobile"
                         :type="compactMode ? 'primary' : 'default'"
                         plain
                         @click="compactMode = !compactMode"
                     >
                         {{ compactMode ? '宽屏模式' : '紧凑显示' }}
-                    </el-button>
-                    <el-button
-                        size="small"
-                        :type="hideDesc ? 'primary' : 'default'"
-                        plain
-                        @click="hideDesc = !hideDesc"
-                    >
-                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
-                    </el-button>
-                    <el-button
-                        type="primary"
-                        :loading="saving"
-                        :disabled="!dirty || reloading"
-                        @click="saveComputer"
-                    >
-                        保存
                     </el-button>
                     <el-button :loading="reloading" @click="reloadComputer">
                         重新加载
@@ -540,6 +525,23 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
+}
+
+.tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    margin-bottom: 24px;
+    padding: 4px;
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 28%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 48%);
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .provider-select {
@@ -575,7 +577,8 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 22px;
+    margin-top: 24px;
+    margin-bottom: 24px;
     padding: 4px;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 28%);
@@ -583,6 +586,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 48%);
     width: fit-content;
     max-width: 100%;
+    box-sizing: border-box;
 }
 
 .tab-content {
@@ -637,7 +641,16 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 
     .actions-section {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: flex-start;
+    }
+
+    .actions-section .el-button {
+        margin-left: 0;
+        margin-bottom: 4px;
+    }
+
+    .hidden-mobile {
+        display: none;
     }
 
     .provider-item {
@@ -654,10 +667,18 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 
     .tabs {
         width: 100%;
+        box-sizing: border-box;
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+        display: none;
     }
 
     .tab {
-        flex: 1 1 0;
+        flex-shrink: 0;
         text-align: center;
     }
 }

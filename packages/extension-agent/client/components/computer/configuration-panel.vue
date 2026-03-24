@@ -586,6 +586,7 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     background: var(--k-card-bg);
     overflow: hidden;
     transition: border-color 0.2s ease;
+    box-sizing: border-box;
 }
 
 .backend-card:hover {

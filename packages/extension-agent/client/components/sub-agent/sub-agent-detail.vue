@@ -335,6 +335,7 @@ const toolOptions = computed(() => {
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
 }
 
 .field-card.full-row {

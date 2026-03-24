@@ -166,6 +166,7 @@ function handleCreate() {
         var(--k-side-bg),
         var(--k-page-bg) 18%
     );
+    box-sizing: border-box;
 }
 
 .field-card.full-row {

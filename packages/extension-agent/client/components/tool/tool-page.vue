@@ -8,11 +8,21 @@
             <div class="toolbar-main" v-if="currentView === 'list'">
                 <div class="headline">
                     <div class="page-title">工具</div>
+                    <el-button
+                        size="small"
+                        class="mobile-only-desc-toggle"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
                 </div>
 
                 <div class="actions-section">
                     <el-button
                         size="small"
+                        class="hidden-mobile"
                         :type="compactMode ? 'primary' : 'default'"
                         plain
                         @click="compactMode = !compactMode"
@@ -21,6 +31,7 @@
                     </el-button>
                     <el-button
                         size="small"
+                        class="hidden-mobile"
                         :type="hideDesc ? 'primary' : 'default'"
                         plain
                         @click="hideDesc = !hideDesc"
@@ -517,13 +528,40 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     flex: 1 1 auto;
 }
 
-.headline,
-.tool-copy {
+.headline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     min-width: 0;
 }
 
+.mobile-only-desc-toggle {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .headline {
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .mobile-only-desc-toggle {
+        display: inline-flex;
+    }
+
+    .hidden-mobile {
+        display: none;
+    }
+}
+
 .tool-copy {
+    min-width: 0;
     flex: 1 1 auto;
+}
+
+.mobile-only-desc-toggle {
+    display: none;
 }
 
 .page-title {
@@ -566,6 +604,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
 }
 
 .panel-title,
@@ -744,7 +783,20 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 
     .actions-section {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: flex-start;
+    }
+
+    .actions-section .el-button {
+        margin-left: 0;
+        margin-bottom: 4px;
+    }
+
+    .hidden-mobile {
+        display: none;
+    }
+
+    .mobile-only-desc-toggle {
+        display: inline-flex;
     }
 
     .search-input {

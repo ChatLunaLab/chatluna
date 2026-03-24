@@ -8,11 +8,21 @@
             <div class="toolbar-main">
                 <div class="headline">
                     <div class="page-title">Skills</div>
+                    <el-button
+                        size="small"
+                        class="mobile-only-desc-toggle"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                    </el-button>
                 </div>
 
                 <div class="actions-section">
                     <el-button
                         size="small"
+                        class="hidden-mobile"
                         :type="compactMode ? 'primary' : 'default'"
                         plain
                         @click="compactMode = !compactMode"
@@ -21,6 +31,7 @@
                     </el-button>
                     <el-button
                         size="small"
+                        class="hidden-mobile"
                         :type="hideDesc ? 'primary' : 'default'"
                         plain
                         @click="hideDesc = !hideDesc"
@@ -602,7 +613,35 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .headline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     min-width: 0;
+}
+
+.mobile-only-desc-toggle {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .headline {
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .mobile-only-desc-toggle {
+        display: inline-flex;
+    }
+
+    .hidden-mobile {
+        display: none;
+    }
+
+    .catalog-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 .page-title {
@@ -625,6 +664,7 @@ function base64ToBlob(data: string, type: string) {
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .panel-header {
@@ -995,10 +1035,35 @@ function base64ToBlob(data: string, type: string) {
 }
 
 @media (max-width: 768px) {
+    .toolbar-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .catalog-header,
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .actions-section,
     .catalog-actions {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: flex-start;
+    }
+
+    .actions-section .el-button,
+    .catalog-actions .el-button {
+        margin-left: 0;
+        margin-bottom: 4px;
+    }
+
+    .hidden-mobile {
+        display: none;
+    }
+
+    .mobile-only-desc-toggle {
+        display: inline-flex;
     }
 
     .search-input {
