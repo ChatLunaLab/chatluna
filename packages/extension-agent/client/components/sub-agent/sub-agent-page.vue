@@ -6,31 +6,10 @@
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
-                    <div class="page-title">子 Agent</div>
+                    <div class="page-title">Sub Agent</div>
                     <el-button
                         size="small"
                         class="mobile-only-desc-toggle"
-                        :type="hideDesc ? 'primary' : 'default'"
-                        plain
-                        @click="hideDesc = !hideDesc"
-                    >
-                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
-                    </el-button>
-                </div>
-
-                <div class="actions-section">
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="compactMode ? 'primary' : 'default'"
-                        plain
-                        @click="compactMode = !compactMode"
-                    >
-                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
-                    </el-button>
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
                         :type="hideDesc ? 'primary' : 'default'"
                         plain
                         @click="hideDesc = !hideDesc"
@@ -413,7 +392,7 @@ async function loadExtraData() {
         presetNames.value = [...presets]
         modelNames.value = [...models]
     } catch {
-        ElMessage.error('读取 sub-agent 数据失败，请稍后重试。')
+        ElMessage.error('读取 Sub Agent 数据失败，请稍后重试。')
     } finally {
         busy.value = false
     }
@@ -424,7 +403,7 @@ async function reloadSubAgents() {
         busy.value = true
         await send('chatluna-agent/reloadSubAgents')
         await loadExtraData()
-        ElMessage.success('已重新扫描 sub-agent 目录。')
+        ElMessage.success('已重新扫描 Sub Agent 目录。')
     } catch {
         ElMessage.error('重新扫描失败，请稍后重试。')
     } finally {
@@ -484,7 +463,7 @@ async function saveSelected() {
 
         await send('chatluna-agent/saveSubAgentConfig', next)
         await loadExtraData()
-        ElMessage.success('已保存 sub-agent 配置。')
+        ElMessage.success('已保存 Sub Agent 配置。')
     } catch {
         ElMessage.error('保存失败，请稍后重试。')
     } finally {
@@ -518,7 +497,7 @@ async function removeAgent(item: SubAgentInfo) {
             currentView.value = 'list'
         }
         await loadExtraData()
-        ElMessage.success('已删除该 sub-agent。')
+        ElMessage.success('已删除该 Sub Agent。')
     } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
             ElMessage.error('删除失败，请稍后重试。')
@@ -626,12 +605,13 @@ function canRemoveAgent(item: SubAgentInfo) {
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
+    box-sizing: border-box;
 }
 
 .toolbar-container {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 20;
     background: linear-gradient(
         180deg,
         color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
@@ -669,116 +649,6 @@ function canRemoveAgent(item: SubAgentInfo) {
 :deep(.el-loading-mask) {
     background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
     z-index: 10;
-}
-
-@media (max-width: 768px) {
-    .toolbar-main {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .headline {
-        justify-content: space-between;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .mobile-only-desc-toggle {
-        display: inline-flex;
-    }
-
-    .actions-section {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
-    .actions-section .el-button {
-        margin-left: 0;
-        margin-bottom: 4px;
-    }
-
-    .hidden-mobile {
-        display: none;
-    }
-
-    .tabs {
-        width: 100%;
-        box-sizing: border-box;
-        overflow-x: auto;
-        justify-content: flex-start;
-        scrollbar-width: none;
-    }
-
-    .tabs::-webkit-scrollbar {
-        display: none;
-    }
-
-    .tab {
-        flex-shrink: 0;
-        text-align: center;
-    }
-}
-
-.page-title {
-    font-size: 24px;
-    font-weight: 600;
-    color: var(--k-text-dark);
-}
-
-.actions-section {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.tabs {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 18px;
-    margin-bottom: 22px;
-    padding: 4px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 28%);
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 48%);
-    width: fit-content;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-@media (max-width: 768px) {
-    .headline {
-        justify-content: space-between;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .mobile-only-desc-toggle {
-        display: inline-flex;
-    }
-
-    .hidden-mobile {
-        display: none;
-    }
-
-    .tabs {
-        width: 100%;
-        box-sizing: border-box;
-        overflow-x: auto;
-        justify-content: flex-start;
-        scrollbar-width: none;
-    }
-
-    .tabs::-webkit-scrollbar {
-        display: none;
-    }
-
-    .tab {
-        flex-shrink: 0;
-        text-align: center;
-    }
 }
 
 .page-title {
@@ -865,6 +735,12 @@ function canRemoveAgent(item: SubAgentInfo) {
         align-items: flex-start;
     }
 
+    .headline {
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
     .actions-section {
         width: 100%;
         justify-content: flex-start;
@@ -885,10 +761,17 @@ function canRemoveAgent(item: SubAgentInfo) {
 
     .tabs {
         width: 100%;
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+        display: none;
     }
 
     .tab {
-        flex: 1 1 0;
+        flex: 0 0 auto;
         text-align: center;
     }
 }

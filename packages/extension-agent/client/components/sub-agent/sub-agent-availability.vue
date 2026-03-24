@@ -4,7 +4,7 @@
             <div>
                 <div class="panel-title">工具可用性</div>
                 <div class="panel-description">
-                    反向查看每个工具当前会被哪些 sub-agent 看到与允许。
+                    反向查看每个工具当前会被哪些 Sub Agent 看到与允许。
                 </div>
             </div>
         </div>
@@ -36,7 +36,7 @@
                         {{ agent }}
                     </el-tag>
                     <span v-if="item.agents.length === 0" class="grant-empty">
-                        当前没有 sub-agent 获得这个工具
+                        当前没有 Sub Agent 获得这个工具
                     </span>
                 </div>
             </div>

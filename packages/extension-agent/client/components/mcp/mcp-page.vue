@@ -260,10 +260,5 @@ const hideDesc = useHideDesc('mcp')
         flex: 1;
         text-align: center;
     }
-
-    .tab {
-        flex: 1;
-        text-align: center;
-    }
 }
 </style>

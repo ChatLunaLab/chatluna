@@ -37,27 +37,6 @@
                     >
                         {{ hideDesc ? '显示描述' : '隐藏描述' }}
                     </el-button>
-                </div>
-
-                <div class="actions-section">
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="compactMode ? 'primary' : 'default'"
-                        plain
-                        @click="compactMode = !compactMode"
-                    >
-                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
-                    </el-button>
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="hideDesc ? 'primary' : 'default'"
-                        plain
-                        @click="hideDesc = !hideDesc"
-                    >
-                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
-                    </el-button>
                     <el-button @click="showGithubDialog = true">
                         从 Github 导入
                     </el-button>

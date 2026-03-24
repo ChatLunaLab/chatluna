@@ -757,31 +757,6 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 @media (max-width: 768px) {
-.card-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-    padding: 16px;
-    box-sizing: border-box;
-}
-
-.tool-card {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    cursor: pointer;
-    overflow: hidden;
-    box-sizing: border-box;
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
-}
-
     .tool-card {
         width: 100%;
     }

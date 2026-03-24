@@ -2,9 +2,9 @@
     <div class="panel catalog-panel">
         <div class="panel-header catalog-header">
             <div>
-                <div class="panel-title">子 Agent 列表</div>
+                <div class="panel-title">Sub Agent 列表</div>
                 <div class="panel-description">
-                    ChatLuna 目前可用的全部子 Agent。
+                    ChatLuna 目前可用的全部 Sub Agent。
                 </div>
             </div>
 
@@ -123,7 +123,7 @@
         </div>
 
         <div v-else class="empty-state">
-            <el-empty description="没有匹配的 sub-agent。" />
+            <el-empty description="没有匹配的 Sub Agent。" />
         </div>
     </div>
 </template>
@@ -234,7 +234,7 @@ function canRemove(item: SubAgentInfo) {
 
 .card-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
     gap: 16px;
     padding: 16px;
     box-sizing: border-box;
@@ -250,6 +250,7 @@ function canRemove(item: SubAgentInfo) {
     flex-direction: column;
     gap: 12px;
     cursor: pointer;
+    overflow: hidden;
     box-sizing: border-box;
     transition:
         border-color 0.2s ease,
@@ -274,6 +275,7 @@ function canRemove(item: SubAgentInfo) {
     gap: 12px;
     justify-content: space-between;
     align-items: flex-start;
+    min-width: 0;
 }
 
 .agent-card.centered .agent-top {
@@ -393,33 +395,13 @@ function canRemove(item: SubAgentInfo) {
         width: 100%;
     }
 
-.card-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-    padding: 16px;
-    box-sizing: border-box;
-}
-
-.agent-card {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    cursor: pointer;
-    overflow: hidden;
-    box-sizing: border-box;
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
-}
+    .card-list {
+        grid-template-columns: 1fr;
+    }
 
     .agent-card {
         width: 100%;
+        min-width: 0;
     }
 
     .agent-top {

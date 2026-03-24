@@ -36,7 +36,7 @@
         </div>
 
         <div v-else class="empty-state">
-            <el-empty description="目前还没有 sub-agent 运行记录。" />
+            <el-empty description="目前还没有 Sub Agent 运行记录。" />
         </div>
     </div>
 </template>
