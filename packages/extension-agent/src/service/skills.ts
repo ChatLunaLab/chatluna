@@ -185,6 +185,22 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         return { id, content: skill.raw }
     }
 
+    async saveSkillContent(id: string, content: string) {
+        const skill = this._skills.get(id)
+        if (!skill) {
+            throw new Error(`Skill not found: ${id}`)
+        }
+
+        if (skill.remote) {
+            throw new Error('Cannot edit remote skill content')
+        }
+
+        const { writeFile } = require('fs/promises')
+        await writeFile(skill.path, content, 'utf-8')
+
+        await this.reload()
+    }
+
     async previewImport(
         input: SkillImportInput
     ): Promise<SkillImportPreviewResult> {

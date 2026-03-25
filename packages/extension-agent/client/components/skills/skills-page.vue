@@ -53,6 +53,9 @@
                         </div>
 
                         <div class="catalog-actions">
+                            <el-button @click="showMarkdownDialog = true">
+                                从 Markdown 导入
+                            </el-button>
                             <el-button @click="showGithubDialog = true">
                                 从 Github 导入
                             </el-button>
@@ -189,7 +192,7 @@
                                         :disabled="!item.path"
                                         @click="previewSkill(item)"
                                     >
-                                        查看内容
+                                        查看/编辑内容
                                     </el-button>
                                     <el-button
                                         size="small"
@@ -249,11 +252,17 @@
 
         <skills-import-github-dialog
             v-model:visible="showGithubDialog"
+            :config="config"
             @refresh="$emit('refresh')"
         />
 
         <skills-import-folder-dialog
             v-model:visible="showFolderDialog"
+            @refresh="$emit('refresh')"
+        />
+
+        <skills-import-markdown-dialog
+            v-model:visible="showMarkdownDialog"
             @refresh="$emit('refresh')"
         />
 
@@ -264,7 +273,7 @@
 
         <el-dialog
             v-model="showPreview"
-            title="技能内容"
+            title="查看/编辑技能内容"
             width="720px"
             destroy-on-close
         >
@@ -272,9 +281,20 @@
             <code-editor
                 v-model="previewContent"
                 :language="previewLanguage"
-                :readonly="true"
+                :readonly="isReadonly(previewItem) || previewItem?.remote"
                 :min-height="400"
             />
+            <template #footer>
+                <el-button @click="showPreview = false">取消</el-button>
+                <el-button
+                    type="primary"
+                    :loading="savingContent"
+                    :disabled="isReadonly(previewItem) || previewItem?.remote || previewContent === originalContent"
+                    @click="saveContent"
+                >
+                    保存
+                </el-button>
+            </template>
         </el-dialog>
     </div>
 </template>
@@ -289,6 +309,7 @@ import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import SkillsDiagnosticsDialog from './skills-diagnostics-dialog.vue'
 import SkillsImportFolderDialog from './skills-import-folder-dialog.vue'
 import SkillsImportGithubDialog from './skills-import-github-dialog.vue'
+import SkillsImportMarkdownDialog from './skills-import-markdown-dialog.vue'
 import SkillsSettingsDialog from './skills-settings-dialog.vue'
 import type {
     ComputerStatus,
@@ -297,6 +318,13 @@ import type {
     SkillsConfig,
     SkillsStatus
 } from '../../../src/types'
+
+function formatError(error: unknown) {
+    return String(error instanceof Error ? error.message : error)
+        .replace(/^Error:\s*/, '')
+        .split('\n')[0]
+        .trim()
+}
 
 const props = withDefaults(
     defineProps<{
@@ -313,7 +341,8 @@ const props = withDefaults(
                 '~/.claude/skills',
                 '~/.config/opencode/skills'
             ],
-            items: {}
+            items: {},
+            githubToken: ''
         }),
         status: () => ({
             enabled: true,
@@ -342,12 +371,16 @@ const skillBusy = ref<Record<string, boolean>>({})
 const showSettingsDialog = ref(false)
 const showGithubDialog = ref(false)
 const showFolderDialog = ref(false)
+const showMarkdownDialog = ref(false)
 const showDiagnosticsDialog = ref(false)
 const showPreview = ref(false)
 const diagnosticSkill = ref<SkillInfo>()
 const previewTitle = ref('')
 const previewContent = ref('')
+const originalContent = ref('')
 const previewLanguage = ref('plaintext')
+const previewItem = ref<SkillInfo>()
+const savingContent = ref(false)
 
 watch(
     () => props.status.catalog,
@@ -424,12 +457,45 @@ async function toggleSkill(item: SkillInfo, enabled: boolean) {
 async function previewSkill(item: SkillInfo) {
     try {
         const result = await send('chatluna-agent/getSkillContent', item.id)
+        previewItem.value = item
         previewTitle.value = item.name
+        originalContent.value = result?.content ?? ''
         previewContent.value = result?.content ?? ''
         previewLanguage.value = inferLanguage(item.path)
         showPreview.value = true
     } catch {
         ElMessage.error('读取技能内容失败，请稍后重试。')
+    }
+}
+
+async function saveContent() {
+    if (!previewItem.value) return
+
+    try {
+        await ElMessageBox.confirm(
+            '确定要保存对该 Skill 内容的修改吗？',
+            '确认保存',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }
+        )
+    } catch {
+        return
+    }
+
+    try {
+        savingContent.value = true
+        await send('chatluna-agent/saveSkillContent', previewItem.value.id, previewContent.value)
+        originalContent.value = previewContent.value
+        ElMessage.success('保存成功。')
+        showPreview.value = false
+        emit('refresh')
+    } catch (error) {
+        ElMessage.error(`保存失败: ${formatError(error)}`)
+    } finally {
+        savingContent.value = false
     }
 }
 
@@ -633,7 +699,14 @@ function base64ToBlob(data: string, type: string) {
 
     .catalog-actions {
         width: 100%;
-        justify-content: flex-start;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+    }
+
+    .catalog-actions :deep(.el-button) {
+        width: 100%;
+        min-width: 0;
     }
 }
 
@@ -1137,6 +1210,16 @@ function base64ToBlob(data: string, type: string) {
 
     .search-input {
         width: 100%;
+    }
+
+    .catalog-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .catalog-actions :deep(.el-button) {
+        width: 100%;
+        min-width: 0;
     }
 
     .dialog-section-header,

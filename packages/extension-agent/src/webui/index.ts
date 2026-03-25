@@ -251,6 +251,11 @@ function registerSkillsListeners(ctx: Context, agent: AgentRef) {
         agent().skills.getSkillContent(id)
     )
 
+    ctx.console.addListener(
+        'chatluna-agent/saveSkillContent',
+        ok((id, content) => agent().skills.saveSkillContent(id, content))
+    )
+
     ctx.console.addListener('chatluna-agent/exportSkill', async (id) =>
         agent().exportSkill(id)
     )
@@ -326,6 +331,11 @@ function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
     ctx.console.addListener(
         'chatluna-agent/uploadSubAgent',
         ok((input) => agent().uploadSubAgent(input))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/previewSubAgentImport',
+        async (data) => agent().previewSubAgentImport(data)
     )
 
     ctx.console.addListener(

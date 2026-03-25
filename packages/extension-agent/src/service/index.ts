@@ -182,7 +182,8 @@ export class ChatLunaAgentService extends Service {
         const result = await this.skills.importSkills(input)
         const skills = {
             dirs: [...this.args.config.skills.dirs],
-            items: { ...this.args.config.skills.items }
+            items: { ...this.args.config.skills.items },
+            githubToken: this.args.config.skills.githubToken ?? ''
         }
 
         for (const name of result.imported) {
@@ -249,7 +250,8 @@ export class ChatLunaAgentService extends Service {
     async setSkillEnabled(id: string, enabled: boolean) {
         const skills = {
             dirs: [...this.args.config.skills.dirs],
-            items: { ...this.args.config.skills.items }
+            items: { ...this.args.config.skills.items },
+            githubToken: this.args.config.skills.githubToken ?? ''
         }
         const info = this.skills.listSkills().find((item) => item.id === id)
         skills.items[id] = {
@@ -266,7 +268,8 @@ export class ChatLunaAgentService extends Service {
 
         const skills = {
             dirs: [...this.args.config.skills.dirs],
-            items: { ...this.args.config.skills.items }
+            items: { ...this.args.config.skills.items },
+            githubToken: this.args.config.skills.githubToken ?? ''
         }
         delete skills.items[id]
         await this.updateConfig('skills', skills, async () => {
@@ -306,6 +309,11 @@ export class ChatLunaAgentService extends Service {
         await writeFile(file, input.data, 'utf-8')
         await this.subAgent.reload()
         await this.refreshConsoleData()
+    }
+
+    async previewSubAgentImport(data: string) {
+        const { parseAgentFrontmatter } = require('../sub-agent/parse')
+        return parseAgentFrontmatter(data, 'preview')
     }
 
     async addSubAgent(input: ManualSubAgentInput) {

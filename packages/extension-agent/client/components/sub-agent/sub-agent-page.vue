@@ -81,18 +81,11 @@
                             @remove="removeAgent"
                         >
                             <template #actions>
-                                <input
-                                    ref="fileInput"
-                                    type="file"
-                                    accept=".md,text/markdown"
-                                    class="hidden-input"
-                                    @change="handleUpload"
-                                />
                                 <el-button @click="showPresetDialog = true">
                                     从预设创建
                                 </el-button>
-                                <el-button @click="fileInput?.click()">
-                                    上传 Markdown
+                                <el-button @click="showMarkdownDialog = true">
+                                    从 Markdown 创建
                                 </el-button>
                                 <el-button @click="reloadSubAgents">重新扫描</el-button>
                             </template>
@@ -117,6 +110,7 @@
                     :draft="draft"
                     :model-names="modelNames"
                     :skill-options="skillOptions"
+                    :mcp-options="mcpOptions"
                     :computer-options="computerOptions"
                     :tools="tools"
                     :can-remove="canRemoveSelected"
@@ -133,6 +127,12 @@
             :model-names="modelNames"
             @create="createPresetAgent"
         />
+
+        <sub-agent-import-markdown-dialog
+            v-model:visible="showMarkdownDialog"
+            @refresh="reloadSubAgents"
+            @created="onAgentCreated"
+        />
     </div>
 </template>
 
@@ -145,6 +145,7 @@ import SubAgentCatalog from './sub-agent-catalog.vue'
 import SubAgentDetail from './sub-agent-detail.vue'
 import SubAgentRuns from './sub-agent-runs.vue'
 import SubAgentAvailability from './sub-agent-availability.vue'
+import SubAgentImportMarkdownDialog from './sub-agent-import-markdown-dialog.vue'
 import PresetDialog from './preset-dialog.vue'
 import type {
     ComputerStatus,
@@ -174,6 +175,7 @@ const props = withDefaults(
             runs: SubAgentRunInfo[]
         }
         skills?: Record<string, SkillInfo>
+        mcp?: Record<string, any>
         computer?: ComputerStatus
         tools: Record<string, ToolInfo>
         loading?: boolean
@@ -250,6 +252,7 @@ const props = withDefaults(
             runs: []
         }),
         skills: () => ({}),
+        mcp: () => ({}),
         computer: undefined,
         tools: () => ({}),
         loading: false
@@ -260,7 +263,6 @@ defineEmits<{
     refresh: []
 }>()
 
-const fileInput = ref<HTMLInputElement>()
 const busy = ref(false)
 const compactMode = useCompactMode('subAgent')
 const hideDesc = useHideDesc('subAgent')
@@ -273,16 +275,20 @@ const presetNames = ref<string[]>([])
 const modelNames = ref<string[]>([])
 const selectedId = ref('')
 const showPresetDialog = ref(false)
+const showMarkdownDialog = ref(false)
 
 const draft = reactive({
+    name: '',
+    description: '',
+    promptContent: '',
     model: '',
     maxTurns: 100,
     hidden: false,
     allowKoishiMessageTransform: false,
-    skills: createRuleDraft(),
-    mcp: createRuleDraft(),
-    tools: createRuleDraft(),
-    computer: createRuleDraft('deny')
+    skills: createRuleDraft('inherit'),
+    mcp: createRuleDraft('inherit'),
+    tools: createRuleDraft('inherit'),
+    computer: createRuleDraft('inherit')
 })
 
 watch(
@@ -316,6 +322,9 @@ watch(
     (value) => {
         if (!value) return
 
+        draft.name = value.name ?? ''
+        draft.description = value.description ?? ''
+        draft.promptContent = value.promptContent ?? ''
         draft.model = value.model ?? ''
         draft.maxTurns = value.maxTurns ?? 100
         draft.hidden = value.hidden
@@ -341,6 +350,14 @@ const removableIds = computed(() => {
 const skillOptions = computed(() => {
     return Object.values(props.skills ?? {})
         .filter((item) => item.visible && item.state === 'ready')
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((item) => ({
+            value: item.name,
+            label: item.name
+        }))
+})
+const mcpOptions = computed(() => {
+    return Object.values(props.mcp ?? {})
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((item) => ({
             value: item.name,
@@ -378,6 +395,10 @@ onMounted(async () => {
 function openDetail(id: string) {
     selectedId.value = id
     currentView.value = 'detail'
+}
+
+function onAgentCreated(id: string) {
+    openDetail(id)
 }
 
 async function loadExtraData() {
@@ -535,28 +556,6 @@ async function createPresetAgent(
         ElMessage.success('已创建 preset agent。')
     } catch {
         ElMessage.error('创建 preset agent 失败，请稍后重试。')
-    } finally {
-        busy.value = false
-    }
-}
-
-async function handleUpload(event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    input.value = ''
-
-    if (!file) return
-
-    try {
-        busy.value = true
-        await send('chatluna-agent/uploadSubAgent', {
-            name: file.name,
-            data: await file.text()
-        })
-        await loadExtraData()
-        ElMessage.success('已导入 markdown agent。')
-    } catch {
-        ElMessage.error('上传失败，请稍后重试。')
     } finally {
         busy.value = false
     }

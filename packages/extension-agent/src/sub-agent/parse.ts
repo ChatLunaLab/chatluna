@@ -128,7 +128,7 @@ export function parseAgentFrontmatter(
             permissions.skills = createRule(item.skills, 'inherit')
             permissions.mcp = createRule(item.mcp, 'inherit')
             permissions.tools = createRule(item.tools, 'inherit')
-            permissions.computer = createRule(item.computer, 'deny')
+            permissions.computer = createRule(item.computer, 'inherit')
         }
     }
 

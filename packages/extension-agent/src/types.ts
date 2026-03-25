@@ -158,6 +158,10 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/getSkillContent': (
             id: string
         ) => Promise<SkillContentResult | undefined>
+        'chatluna-agent/saveSkillContent': (
+            id: string,
+            content: string
+        ) => Promise<ActionResult>
         'chatluna-agent/exportSkill': (
             id: string
         ) => Promise<SkillExportResult | undefined>
@@ -221,6 +225,7 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/uploadSubAgent': (
             input: SubAgentImportInput
         ) => Promise<ActionResult>
+        'chatluna-agent/previewSubAgentImport': (data: string) => Promise<any>
         'chatluna-agent/createPresetAgent': (
             name: string,
             preset: string,

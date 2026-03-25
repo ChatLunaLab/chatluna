@@ -447,10 +447,18 @@ function createItem(
     return {
         enabled: item?.enabled !== false,
         main: item?.main !== false,
-        chatluna: item?.chatluna !== false,
-        character: item?.character !== false,
-        characterGroup: (item as any)?.characterGroup !== false,
-        characterPrivate: (item as any)?.characterPrivate !== false,
+        chatluna:
+            ((item as any)?.chatluna ??
+                (item as any)?.chatlunaEnabled) !== false,
+        character:
+            ((item as any)?.character ??
+                (item as any)?.characterEnabled) !== false,
+        characterGroup:
+            ((item as any)?.characterGroup ??
+                (item as any)?.characterGroupEnabled) !== false,
+        characterPrivate:
+            ((item as any)?.characterPrivate ??
+                (item as any)?.characterPrivateEnabled) !== false,
         characterGroupMode:
             (item as any)?.characterGroupMode === 'allow' ||
             (item as any)?.characterGroupMode === 'deny'

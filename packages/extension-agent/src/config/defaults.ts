@@ -58,7 +58,7 @@ export function createSubAgentItemConfig(
             mcp: input.permissions?.mcp ?? createPermissionRule('inherit'),
             tools: input.permissions?.tools ?? createPermissionRule('inherit'),
             computer:
-                input.permissions?.computer ?? createPermissionRule('deny')
+                input.permissions?.computer ?? createPermissionRule('inherit')
         }
     }
 }
@@ -230,10 +230,10 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
         },
         presetAgents: {},
         defaults: {
-            skills: createPermissionRule('deny'),
+            skills: createPermissionRule('allow'),
             mcp: createPermissionRule('inherit'),
             tools: createPermissionRule('inherit'),
-            computer: createPermissionRule('deny')
+            computer: createPermissionRule('allow')
         }
     }
 }
@@ -300,7 +300,8 @@ export function getDefaultConfig(): AgentConfig {
         },
         skills: {
             dirs: [...DEFAULT_SKILL_DIRS],
-            items: {}
+            items: {},
+            githubToken: ''
         },
         computer: createDefaultComputerConfig(),
         subAgent: createDefaultSubAgentConfig(),

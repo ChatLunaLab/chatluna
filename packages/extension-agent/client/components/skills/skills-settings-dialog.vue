@@ -37,10 +37,47 @@
                 <el-button @click="addDraftDir()">添加位置</el-button>
             </div>
 
+            <div class="setting-row">
+                <div class="setting-copy">
+                    <div class="setting-title">GitHub Token（可选）</div>
+                    <div class="setting-description">
+                        配置后，Skills 从 GitHub 导入会优先使用这个 Token，能显著降低匿名请求限流问题。
+                    </div>
+                    <div class="setting-description setting-link-row">
+                        <el-link
+                            href="https://github.com/settings/tokens?type=beta"
+                            target="_blank"
+                            type="primary"
+                        >
+                            申请 GitHub Token
+                        </el-link>
+                    </div>
+                </div>
+
+                <el-input
+                    v-model="tokenDraft"
+                    class="token-input"
+                    name="chatluna-settings-github-token"
+                    type="password"
+                    autocomplete="new-password"
+                    autocapitalize="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    show-password
+                    clearable
+                    placeholder="ghp_xxx / github_pat_xxx"
+                />
+            </div>
+
             <div v-if="dirDraft.length > 0" class="dir-list">
                 <div v-for="(item, idx) in dirDraft" :key="idx" class="dir-row">
                     <el-input
                         :model-value="item"
+                        :name="`chatluna-skill-dir-${idx}`"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        autocorrect="off"
+                        spellcheck="false"
                         placeholder="例如：~/.agents/skills"
                         @update:model-value="updateDraftDir(idx, $event)"
                     />
@@ -87,7 +124,8 @@ const props = withDefaults(
                 '~/.claude/skills',
                 '~/.config/opencode/skills'
             ],
-            items: {}
+            items: {},
+            githubToken: ''
         }),
         status: () => ({
             enabled: true,
@@ -108,16 +146,18 @@ const emit = defineEmits<{
 }>()
 
 const dirDraft = ref<string[]>([])
+const tokenDraft = ref('')
 const saving = ref(false)
 
 watch(
-    () => [props.visible, props.config.dirs] as const,
+    () => [props.visible, props.config.dirs, props.config.githubToken] as const,
     ([visible]) => {
         if (!visible) {
             return
         }
 
         dirDraft.value = [...(props.config.dirs ?? [])]
+        tokenDraft.value = props.config.githubToken ?? ''
     },
     {
         immediate: true,
@@ -145,7 +185,8 @@ async function saveSettings() {
 
         await send('chatluna-agent/saveSkills', {
             items: { ...props.config.items },
-            dirs
+            dirs,
+            githubToken: tokenDraft.value.trim()
         } satisfies SkillsConfig)
 
         emit('update:visible', false)
@@ -261,11 +302,23 @@ function updateDraftDir(idx: number, value: string) {
     gap: 10px;
 }
 
+.setting-link-row {
+    margin-top: 8px;
+}
+
+.token-input {
+    width: min(320px, 100%);
+}
+
 @media (max-width: 768px) {
     .setting-row,
     .dialog-section-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .token-input {
+        width: 100%;
     }
 }
 </style>

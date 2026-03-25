@@ -15,6 +15,12 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
         return {
             ...base,
             ...cfg,
+            skills: {
+                ...base.skills,
+                ...(cfg.skills ?? {}),
+                items: { ...(cfg.skills?.items ?? {}) },
+                dirs: [...(cfg.skills?.dirs ?? base.skills.dirs)]
+            },
             tool: {
                 ...base.tool,
                 registry: {

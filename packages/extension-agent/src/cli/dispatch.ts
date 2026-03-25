@@ -683,8 +683,14 @@ function showTool(ctx: AgentCliCommandContext, raw?: string) {
                 ['character-private', String(item.characterPrivateEnabled)],
                 ['character-group-mode', item.characterGroupMode],
                 ['character-private-mode', item.characterPrivateMode],
-                ['character-group-ids', item.characterGroupIds.join(', ') || '(none)'],
-                ['character-private-ids', item.characterPrivateIds.join(', ') || '(none)'],
+                [
+                    'character-group-ids',
+                    item.characterGroupIds.join(', ') || '(none)'
+                ],
+                [
+                    'character-private-ids',
+                    item.characterPrivateIds.join(', ') || '(none)'
+                ],
                 ['authority', String(item.authority)],
                 ['source', item.source ?? '(unknown)'],
                 ['group', item.group ?? '(none)'],

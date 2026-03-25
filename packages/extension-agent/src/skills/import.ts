@@ -77,8 +77,15 @@ export async function importSkills(
             throw new Error('导入源中没有找到可用的 Skill 包。')
         }
 
-        if (!preview.valid) {
-            throw new Error('导入源中存在无效的 Skill 包，请先修复后再导入。')
+        const selected = new Set(input.selected ?? preview.skills.map((item) => item.dir))
+        const picked = preview.skills.filter((item) => selected.has(item.dir))
+
+        if (picked.length < 1) {
+            throw new Error('请至少勾选一个要导入的 Skill。')
+        }
+
+        if (picked.some((item) => item.state !== 'ready')) {
+            throw new Error('已勾选的 Skill 里存在校验失败项，请取消勾选或先修复。')
         }
 
         const result: SkillImportResult = {
@@ -91,10 +98,9 @@ export async function importSkills(
 
         await mkdir(skillsRoot, { recursive: true })
 
-        for (const item of preview.skills) {
+        for (const item of picked) {
             const dir = join(source.root, item.dir === '.' ? '' : item.dir)
-            const name = basename(dir)
-            const dest = join(skillsRoot, name)
+            const dest = join(skillsRoot, item.importName)
             const existed = (
                 await stat(dest).catch(() => undefined)
             )?.isDirectory()
@@ -102,10 +108,16 @@ export async function importSkills(
             await rm(dest, { recursive: true, force: true })
             await cp(dir, dest, { recursive: true })
 
-            result.imported.push(name)
+            result.imported.push(item.importName)
             if (existed) {
-                result.replaced.push(name)
+                result.replaced.push(item.importName)
             }
+        }
+
+        if (picked.length < preview.skills.length) {
+            result.diagnostics.push(
+                `已跳过 ${preview.skills.length - picked.length} 个未勾选的 Skill。`
+            )
         }
 
         result.imported = Array.from(new Set(result.imported)).sort((a, b) =>
@@ -135,15 +147,30 @@ async function previewMaterializedSource(
             .slice(root.length)
             .replaceAll('\\', '/')
             .replace(/^\/+/, '')
+        const importName = basename(item.dir)
 
         return {
             dir: dir || '.',
+            importName,
             name: item.name,
             description: item.description,
             state: item.state,
+            exists: false,
             diagnostics: item.diagnostics
         }
     })
+
+    const skillsRoot = getSkillsRootPath(ctx)
+    for (const item of skills) {
+        item.exists =
+            (await stat(join(skillsRoot, item.importName)).catch(() => undefined))?.isDirectory() === true
+        if (item.exists) {
+            item.diagnostics = [
+                `将覆盖现有 Skill：${item.importName}`,
+                ...item.diagnostics
+            ]
+        }
+    }
     const valid =
         skills.length > 0 && skills.every((item) => item.state === 'ready')
     const notes = [...diagnostics]
@@ -226,12 +253,12 @@ async function previewGithub(ctx: Context, url: string) {
     const diagnostics: string[] = []
     const ref =
         info.ref || (await fetchGithubDefaultBranch(ctx, info.owner, info.repo))
-    const response = await ctx.http(
-        `https://api.github.com/repos/${info.owner}/${info.repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
-        {
-            method: 'get',
-            headers: githubHeaders()
-        }
+    const response = await requestGithub<{
+        tree?: Array<{ path?: string; type?: string }>
+        truncated?: boolean
+    }>(
+        ctx,
+        `https://api.github.com/repos/${info.owner}/${info.repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`
     )
     const tree = Array.isArray(response.data?.tree) ? response.data.tree : []
 
@@ -328,18 +355,36 @@ async function previewGithub(ctx: Context, url: string) {
             : `${info.owner}/${info.repo}`
         const scanned = await scanSkillRoot(tmp, ctx)
         const skills = scanned.map(
-            (item): SkillImportPreviewItem => ({
-                dir:
+            (item): SkillImportPreviewItem => {
+                const dir =
                     item.dir
                         .slice(tmp.length)
                         .replaceAll('\\', '/')
-                        .replace(/^\/+/, '') || '.',
-                name: item.name,
-                description: item.description,
-                state: item.state,
-                diagnostics: item.diagnostics
-            })
+                        .replace(/^\/+/, '') || '.'
+
+                return {
+                    dir,
+                    importName: basename(item.dir),
+                    name: item.name,
+                    description: item.description,
+                    state: item.state,
+                    exists: false,
+                    diagnostics: item.diagnostics
+                }
+            }
         )
+
+        const skillsRoot = getSkillsRootPath(ctx)
+        for (const item of skills) {
+            item.exists =
+                (await stat(join(skillsRoot, item.importName)).catch(() => undefined))?.isDirectory() === true
+            if (item.exists) {
+                item.diagnostics = [
+                    `将覆盖现有 Skill：${item.importName}`,
+                    ...item.diagnostics
+                ]
+            }
+        }
         const valid =
             skills.length > 0 && skills.every((item) => item.state === 'ready')
 
@@ -375,15 +420,12 @@ async function importFromGithub(ctx: Context, url: string, tmp: string) {
     const root = join(tmp, `${info.owner}-${info.repo}`)
     await mkdir(root, { recursive: true })
 
-    const response = await ctx.http(
+    const response = await requestGithub<ArrayBuffer>(
+        ctx,
         info.ref
             ? `https://api.github.com/repos/${info.owner}/${info.repo}/zipball/${encodeURIComponent(info.ref)}`
             : `https://api.github.com/repos/${info.owner}/${info.repo}/zipball`,
-        {
-            responseType: 'arraybuffer',
-            method: 'get',
-            headers: githubHeaders()
-        }
+        { responseType: 'arraybuffer' }
     )
 
     await unzipToDir(Buffer.from(response.data), root)
@@ -483,12 +525,9 @@ async function fetchGithubDefaultBranch(
     owner: string,
     repo: string
 ) {
-    const response = await ctx.http(
-        `https://api.github.com/repos/${owner}/${repo}`,
-        {
-            method: 'get',
-            headers: githubHeaders()
-        }
+    const response = await requestGithub<{ default_branch?: string }>(
+        ctx,
+        `https://api.github.com/repos/${owner}/${repo}`
     )
 
     const branch = String(response.data?.default_branch ?? '').trim()
@@ -506,26 +545,84 @@ async function fetchGithubFile(
     path: string,
     ref: string
 ) {
-    const response = await ctx.http(
+    const response = await requestGithub<{ content?: string }>(
+        ctx,
         `https://api.github.com/repos/${owner}/${repo}/contents/${path
             .split('/')
             .map((item) => encodeURIComponent(item))
-            .join('/')}?ref=${encodeURIComponent(ref)}`,
-        {
-            method: 'get',
-            headers: githubHeaders()
-        }
+            .join('/')}?ref=${encodeURIComponent(ref)}`
     )
     const content = String(response.data?.content ?? '').replace(/\n/g, '')
 
     return Buffer.from(content, 'base64').toString('utf-8')
 }
 
-function githubHeaders() {
-    return {
+function githubHeaders(ctx: Context) {
+    const headers: Record<string, string> = {
         Accept: 'application/vnd.github+json',
         'User-Agent': 'ChatLuna-Agent'
     }
+
+    const token = ctx.chatluna_agent?.args.config.skills.githubToken?.trim()
+    if (token) {
+        headers.Authorization = `Bearer ${token}`
+    }
+
+    return headers
+}
+
+async function requestGithub<T>(
+    ctx: Context,
+    url: string,
+    options: {
+        responseType?: 'arraybuffer'
+    } = {}
+) {
+    try {
+        return (await ctx.http(url, {
+            method: 'get',
+            headers: githubHeaders(ctx),
+            responseType: options.responseType
+        })) as unknown as { data: T }
+    } catch (err) {
+        throw new Error(getGithubError(err))
+    }
+}
+
+function getGithubError(err: unknown) {
+    const status = Number(
+        (err as any)?.response?.status ??
+            (err as any)?.status ??
+            (err as any)?.statusCode ??
+            0
+    )
+    const msg = String((err as any)?.message ?? err ?? '').trim()
+
+    if (status === 401 || /bad credentials/i.test(msg)) {
+        return 'GitHub Token 无效或已过期，请检查后重试。'
+    }
+
+    if (status === 403 && /rate limit/i.test(msg)) {
+        return 'GitHub API 已触发限流，请稍后重试，或先在导入弹窗里配置 GitHub Token。'
+    }
+
+    if (/rate limit/i.test(msg)) {
+        return 'GitHub API 已触发限流，请稍后重试，或先在导入弹窗里配置 GitHub Token。'
+    }
+
+    if (status === 403) {
+        return 'GitHub 拒绝了当前请求，请检查仓库权限或 Token 配置。'
+    }
+
+    if (status === 404) {
+        return 'GitHub 地址不存在，或当前分支、目录无法访问。'
+    }
+
+    if (msg) {
+        return `GitHub 请求失败：${msg}`
+    }
+
+    return 'GitHub 请求失败，请稍后重试。'
 }
 
 function parseGithubUrl(url: string) {

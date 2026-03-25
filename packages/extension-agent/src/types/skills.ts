@@ -5,6 +5,7 @@ import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platf
 export interface SkillsConfig {
     dirs: string[]
     items: Record<string, SkillConfig>
+    githubToken?: string
 }
 
 export interface SkillConfig {
@@ -94,9 +95,11 @@ export interface SkillImportPreviewEntry {
 
 export interface SkillImportPreviewItem {
     dir: string
+    importName: string
     name: string
     description: string
     state: SkillState
+    exists: boolean
     diagnostics: string[]
 }
 
@@ -104,16 +107,19 @@ export type SkillImportInput =
     | {
           type: 'github'
           url: string
+          selected?: string[]
       }
     | {
           type: 'zip'
           name: string
           data: string
+          selected?: string[]
       }
     | {
           type: 'folder'
           name: string
           files: SkillImportFile[]
+          selected?: string[]
       }
 
 export interface SkillImportResult {

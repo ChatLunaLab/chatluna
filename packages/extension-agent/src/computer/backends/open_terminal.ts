@@ -305,9 +305,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             })
         )
 
-        const matches = Array.isArray(result.matches)
-            ? result.matches
-            : []
+        const matches = Array.isArray(result.matches) ? result.matches : []
 
         return matches
             .map((item) => {
@@ -339,9 +337,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             })
         )
 
-        const matches = Array.isArray(result.matches)
-            ? result.matches
-            : []
+        const matches = Array.isArray(result.matches) ? result.matches : []
 
         return matches
             .map((item) => {

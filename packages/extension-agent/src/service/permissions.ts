@@ -106,10 +106,6 @@ export class ChatLunaAgentPermissionService {
         }
 
         if (rule.mode === 'deny') {
-            if (rule.deny.length < 1) {
-                return []
-            }
-
             return names.filter((name) => !rule.deny.includes(name))
         }
 
@@ -126,22 +122,10 @@ export class ChatLunaAgentPermissionService {
         const deny = rule.deny.filter(isComputerBackend)
 
         if (rule.mode === 'allow') {
-            if (allow.length < 1) {
-                return []
-            }
-
             return names.filter((name) => allow.includes(name))
         }
 
         if (rule.mode === 'deny') {
-            if (raw.mode === 'inherit' && deny.length < 1) {
-                return []
-            }
-
-            if (deny.length < 1) {
-                return [...names]
-            }
-
             return names.filter((name) => !deny.includes(name))
         }
 
@@ -162,8 +146,7 @@ export class ChatLunaAgentPermissionService {
                 const cfg = createToolItemConfig(
                     {
                         ...saved,
-                        enabled:
-                            saved?.enabled ?? meta?.defaultEnabled ?? true,
+                        enabled: saved?.enabled ?? meta?.defaultEnabled ?? true,
                         main: saved?.main ?? meta?.defaultMain ?? true,
                         chatluna:
                             saved?.chatluna ?? meta?.defaultChatluna ?? true,
@@ -177,8 +160,7 @@ export class ChatLunaAgentPermissionService {
                             saved?.characterPrivate ??
                             meta?.defaultCharacterPrivate ??
                             true,
-                        characterGroupMode:
-                            saved?.characterGroupMode ?? 'all',
+                        characterGroupMode: saved?.characterGroupMode ?? 'all',
                         characterPrivateMode:
                             saved?.characterPrivateMode ?? 'all',
                         characterGroupIds: saved?.characterGroupIds ?? [],
@@ -227,9 +209,8 @@ export class ChatLunaAgentPermissionService {
         return {
             enabled: list.length > 0,
             total: list.length,
-            mainEnabled: list.filter(
-                (item) => item.enabled && item.main
-            ).length,
+            mainEnabled: list.filter((item) => item.enabled && item.main)
+                .length,
             subAgentEnabled: list.filter(
                 (item) => item.enabled && hasSubAgentAccess(item.subAgents)
             ).length,
@@ -421,7 +402,8 @@ export class ChatLunaAgentPermissionService {
                             defaultChatluna: meta?.defaultChatluna,
                             defaultCharacter: meta?.defaultCharacter,
                             defaultCharacterGroup: meta?.defaultCharacterGroup,
-                            defaultCharacterPrivate: meta?.defaultCharacterPrivate
+                            defaultCharacterPrivate:
+                                meta?.defaultCharacterPrivate
                         }
                     }
                 ]

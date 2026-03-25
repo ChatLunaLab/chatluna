@@ -53,6 +53,7 @@
                                 :config="subAgentCfg"
                                 :status="subAgentStatus"
                                 :skills="skillsStatus?.catalog"
+                                :mcp="mcpStatus?.servers"
                                 :computer="computerStatus"
                                 :tools="toolStatus?.catalog"
                                 :loading="loading"
