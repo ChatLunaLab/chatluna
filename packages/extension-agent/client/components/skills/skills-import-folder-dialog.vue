@@ -108,8 +108,9 @@
                             </div>
                         </div>
                         <el-scrollbar max-height="320px">
-                            <div
+                            <el-checkbox-group
                                 v-if="preview.skills.length > 0"
+                                v-model="selected"
                                 class="skill-list"
                             >
                                 <div
@@ -123,8 +124,7 @@
                                 >
                                     <div class="skill-head">
                                         <el-checkbox
-                                            v-model="selected"
-                                            :label="item.dir"
+                                            :value="item.dir"
                                             :disabled="item.state !== 'ready'"
                                         >
                                             <div>
@@ -183,7 +183,7 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </el-checkbox-group>
 
                             <div v-else class="empty-copy">
                                 当前压缩包里没有识别到 Skill 包。

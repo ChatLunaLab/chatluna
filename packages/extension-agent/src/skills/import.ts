@@ -511,13 +511,25 @@ async function findSubpathRoot(root: string, subpath: string) {
             )
     )
 
-    for (const dir of dirs) {
-        if (dir === clean || dir.endsWith(`/${clean}`)) {
-            return join(root, dir)
-        }
+    const matched = dirs.filter((dir) => {
+        return dir === clean || dir.endsWith(`/${clean}`)
+    })
+
+    if (matched.length < 1) {
+        return undefined
     }
 
-    return undefined
+    matched.sort((a, b) => {
+        const aDepth = a.split('/').length
+        const bDepth = b.split('/').length
+        if (aDepth !== bDepth) {
+            return aDepth - bDepth
+        }
+
+        return a.length - b.length
+    })
+
+    return join(root, matched[0])
 }
 
 async function fetchGithubDefaultBranch(
