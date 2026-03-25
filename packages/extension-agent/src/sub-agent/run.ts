@@ -253,12 +253,15 @@ async function resolveSkillPrompt(
 ) {
     const service = ctx.chatluna_agent?.skills
     if (!service) return undefined
+    if (!permission.canUseTool(info, 'skill')) return undefined
 
     const skills = service.listSkills().filter((item) => item.modelEnabled)
     const list = permission.filterSkillNames(
         info,
         skills.map((item) => item.name)
     )
+    if (list.length < 1) return undefined
+
     const cwd = ctx.chatluna_agent?.computer.getPromptWorkdir()
     const status = ctx.chatluna_agent?.computer.getStatus()
     const remote = status != null && status.defaultProvider !== 'local'

@@ -534,6 +534,15 @@ export class ChatLunaAgentSubAgentService {
 
                 if (runtime.configurable?.subagentContext) return next()
 
+                const mask = (runtime.configurable as { toolMask?: ToolMask })
+                    ?.toolMask
+                if (
+                    mask != null &&
+                    !this.ctx.chatluna.platform.getFilteredTools(mask).includes('task')
+                ) {
+                    return next()
+                }
+
                 const agents = this.listRunnableAgents()
                 if (agents.length < 1) return next()
 

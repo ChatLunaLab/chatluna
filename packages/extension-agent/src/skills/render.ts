@@ -14,16 +14,12 @@ export function renderAvailableSkills(
 ) {
     const lines = ['<available_skills>']
 
-    lines.push(
-        ...(cwd
-            ? [
-                  `You may use available computer-use capabilities when the environment provides them. Working directory: ${escapeXml(cwd)}.`
-              ]
-            : [
-                  "By currently, no computer-use capabilities are available. Please don't try run or execute any computer-use capabilities."
-              ]),
-        ''
-    )
+    if (cwd) {
+        lines.push(
+            `You may use available computer-use capabilities when the environment provides them. Working directory: ${escapeXml(cwd)}.`,
+            ''
+        )
+    }
 
     if (dir) {
         lines.push(

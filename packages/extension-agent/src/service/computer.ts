@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import which from 'which'
+import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
@@ -1054,6 +1055,20 @@ export class ChatLunaAgentComputerService {
         this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
             'after_system_prompts',
             async (runtime: PromptContextRuntime, next) => {
+                const mask = (runtime.configurable as { toolMask?: ToolMask })
+                    ?.toolMask
+                if (mask != null) {
+                    const registry = this.ctx.chatluna.platform.getToolRegistry()
+                    const names = this.ctx.chatluna.platform.getFilteredTools(mask)
+                    if (
+                        !names.some((name) =>
+                            registry[name]?.meta?.tags?.includes('computer')
+                        )
+                    ) {
+                        return next()
+                    }
+                }
+
                 const msg = new SystemMessage(
                     [
                         '<computer_use>',

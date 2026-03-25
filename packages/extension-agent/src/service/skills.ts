@@ -1,6 +1,7 @@
 /** @module service/skills */
 
 import { SystemMessage } from '@langchain/core/messages'
+import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     countMessageTokens,
     PromptContextRuntime
@@ -460,7 +461,14 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 const status = this.ctx.chatluna_agent?.computer.getStatus()
                 const remote =
                     status != null && status.defaultProvider !== 'local'
-                const skills = sub
+                const mask = (runtime.configurable as { toolMask?: ToolMask })
+                    ?.toolMask
+                const hasTool =
+                    mask == null ||
+                    this.ctx.chatluna.platform
+                        .getFilteredTools(mask)
+                        .includes('skill')
+                const skills = sub || !hasTool
                     ? []
                     : this._catalog
                           .filter((s) => s.modelEnabled)
@@ -470,7 +478,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     remote
                 )
 
-                if (skills.length > 0 || active.length > 0 || !sub) {
+                if (skills.length > 0 || active.length > 0) {
                     const msg = renderAvailableSkills(
                         skills,
                         active,
