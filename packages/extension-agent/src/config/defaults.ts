@@ -121,7 +121,7 @@ export function createDefaultToolConfig(): ToolConfig {
                 tags: ['plugin-common', 'group', 'moderation'],
                 defaultMain: true,
                 defaultChatluna: true,
-                defaultCharacter: false,
+                defaultCharacter: true,
                 defaultCharacterGroup: true,
                 defaultCharacterPrivate: false
             },
@@ -132,8 +132,8 @@ export function createDefaultToolConfig(): ToolConfig {
                 defaultMain: true,
                 defaultChatluna: true,
                 defaultCharacter: false,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
+                defaultCharacterGroup: false,
+                defaultCharacterPrivate: false
             },
             file_read: {
                 defaultMain: true,

@@ -18,8 +18,11 @@ export async function apply(
                 return true
             },
             meta: {
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'interaction'],
                 defaultMain: true,
-                defaultChatluna: false,
+                defaultChatluna: true,
                 defaultCharacter: false,
                 defaultCharacterGroup: false,
                 defaultCharacterPrivate: false
@@ -36,8 +39,11 @@ export async function apply(
                 return true
             },
             meta: {
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'interaction'],
                 defaultMain: true,
-                defaultChatluna: false,
+                defaultChatluna: true,
                 defaultCharacter: false,
                 defaultCharacterGroup: false,
                 defaultCharacterPrivate: false

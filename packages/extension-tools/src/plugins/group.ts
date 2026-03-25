@@ -26,7 +26,7 @@ export async function apply(
             tags: ['plugin-common', 'group', 'moderation'],
             defaultMain: true,
             defaultChatluna: true,
-            defaultCharacter: false,
+            defaultCharacter: true,
             defaultCharacterGroup: true,
             defaultCharacterPrivate: false
         },

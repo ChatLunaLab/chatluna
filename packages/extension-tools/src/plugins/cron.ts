@@ -198,8 +198,11 @@ export async function apply(
             )
         },
         meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'cron'],
             defaultMain: true,
-            defaultChatluna: false,
+            defaultChatluna: true,
             defaultCharacter: false,
             defaultCharacterGroup: false,
             defaultCharacterPrivate: false

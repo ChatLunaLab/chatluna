@@ -38,6 +38,9 @@ export async function apply(
             return true
         },
         meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'search'],
             defaultMain: true,
             defaultChatluna: true,
             defaultCharacter: false,
@@ -56,6 +59,9 @@ export async function apply(
             return true
         },
         meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'add'],
             defaultMain: true,
             defaultChatluna: true,
             defaultCharacter: true,
@@ -74,6 +80,9 @@ export async function apply(
             return true
         },
         meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'delete'],
             defaultMain: true,
             defaultChatluna: true,
             defaultCharacter: true,
@@ -92,6 +101,9 @@ export async function apply(
             return true
         },
         meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'update'],
             defaultMain: true,
             defaultChatluna: true,
             defaultCharacter: true,

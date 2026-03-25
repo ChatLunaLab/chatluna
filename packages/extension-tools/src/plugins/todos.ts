@@ -34,11 +34,14 @@ export async function apply(
             return true
         },
         meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'todos'],
             defaultMain: true,
-            defaultChatluna: false,
-            defaultCharacter: false,
-            defaultCharacterGroup: false,
-            defaultCharacterPrivate: false
+            defaultChatluna: true,
+            defaultCharacter: true,
+            defaultCharacterGroup: true,
+            defaultCharacterPrivate: true
         },
         createTool(params) {
             return new TodosTool(ctx, config)

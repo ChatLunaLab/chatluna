@@ -25,7 +25,7 @@ export async function apply(
             group: 'plugin-common',
             tags: ['plugin-common', 'file', 'onebot'],
             defaultMain: true,
-            defaultChatluna: false,
+            defaultChatluna: true,
             defaultCharacter: false,
             defaultCharacterGroup: false,
             defaultCharacterPrivate: false

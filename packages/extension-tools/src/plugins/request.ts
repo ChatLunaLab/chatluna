@@ -65,8 +65,11 @@ export async function apply(
         description: requestGetTool.description,
         selector: requestSelector,
         meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'request', 'http'],
             defaultMain: true,
-            defaultChatluna: false,
+            defaultChatluna: true,
             defaultCharacter: false,
             defaultCharacterGroup: false,
             defaultCharacterPrivate: false
@@ -78,8 +81,11 @@ export async function apply(
         description: requestPostTool.description,
         selector: requestSelector,
         meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'request', 'http'],
             defaultMain: true,
-            defaultChatluna: false,
+            defaultChatluna: true,
             defaultCharacter: false,
             defaultCharacterGroup: false,
             defaultCharacterPrivate: false
