@@ -23,7 +23,12 @@ export async function apply(
         meta: {
             source: 'extension',
             group: 'plugin-common',
-            tags: ['plugin-common', 'file', 'onebot']
+            tags: ['plugin-common', 'file', 'onebot'],
+            defaultMain: true,
+            defaultChatluna: false,
+            defaultCharacter: false,
+            defaultCharacterGroup: false,
+            defaultCharacterPrivate: false
         },
         authorization(session) {
             return session.platform === 'onebot'

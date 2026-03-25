@@ -37,6 +37,13 @@ export async function apply(
         selector(history) {
             return true
         },
+        meta: {
+            defaultMain: true,
+            defaultChatluna: true,
+            defaultCharacter: false,
+            defaultCharacterGroup: false,
+            defaultCharacterPrivate: false
+        },
 
         createTool(params) {
             return new MemorySearchTool(ctx, params)
@@ -47,6 +54,13 @@ export async function apply(
         description: new MemoryAddTool(ctx, params).description,
         selector(history) {
             return true
+        },
+        meta: {
+            defaultMain: true,
+            defaultChatluna: true,
+            defaultCharacter: true,
+            defaultCharacterGroup: true,
+            defaultCharacterPrivate: true
         },
 
         createTool(params) {
@@ -59,6 +73,13 @@ export async function apply(
         selector(history) {
             return true
         },
+        meta: {
+            defaultMain: true,
+            defaultChatluna: true,
+            defaultCharacter: true,
+            defaultCharacterGroup: true,
+            defaultCharacterPrivate: true
+        },
 
         createTool(params) {
             return new MemoryDeleteTool(ctx, params)
@@ -69,6 +90,13 @@ export async function apply(
         description: new MemoryUpdateTool(ctx, params).description,
         selector(history) {
             return true
+        },
+        meta: {
+            defaultMain: true,
+            defaultChatluna: true,
+            defaultCharacter: true,
+            defaultCharacterGroup: true,
+            defaultCharacterPrivate: true
         },
 
         createTool(params) {

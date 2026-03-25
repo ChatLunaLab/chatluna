@@ -23,7 +23,12 @@ export async function apply(
         meta: {
             source: 'extension',
             group: 'plugin-common',
-            tags: ['plugin-common', 'group', 'moderation']
+            tags: ['plugin-common', 'group', 'moderation'],
+            defaultMain: true,
+            defaultChatluna: true,
+            defaultCharacter: false,
+            defaultCharacterGroup: true,
+            defaultCharacterPrivate: false
         },
         authorization(session) {
             if (session.isDirect) {

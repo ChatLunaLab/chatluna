@@ -71,11 +71,17 @@ export interface ChatLunaTool {
 }
 
 export interface ChatLunaToolMeta {
-    source?: 'core' | 'extension' | 'mcp' | 'action'
+    source?: 'core' | 'extension' | 'mcp' | 'action' | string
     group?: string
     tags?: string[]
     isMcp?: boolean
     serverName?: string
+    defaultEnabled?: boolean
+    defaultMain?: boolean
+    defaultChatluna?: boolean
+    defaultCharacter?: boolean
+    defaultCharacterGroup?: boolean
+    defaultCharacterPrivate?: boolean
 }
 
 export type CreateVectorStoreFunction = (

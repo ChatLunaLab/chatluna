@@ -64,12 +64,26 @@ export async function apply(
     plugin.registerTool(requestGetTool.name, {
         description: requestGetTool.description,
         selector: requestSelector,
+        meta: {
+            defaultMain: true,
+            defaultChatluna: false,
+            defaultCharacter: false,
+            defaultCharacterGroup: false,
+            defaultCharacterPrivate: false
+        },
         createTool: () => requestGetTool
     })
 
     plugin.registerTool(requestPostTool.name, {
         description: requestPostTool.description,
         selector: requestSelector,
+        meta: {
+            defaultMain: true,
+            defaultChatluna: false,
+            defaultCharacter: false,
+            defaultCharacterGroup: false,
+            defaultCharacterPrivate: false
+        },
         createTool: () => requestPostTool
     })
 }

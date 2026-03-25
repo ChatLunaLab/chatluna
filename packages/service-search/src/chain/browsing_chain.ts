@@ -207,9 +207,7 @@ export class ChatLunaBrowsingChain
 
     private async _selectTool(name: string): Promise<StructuredTool> {
         const chatLunaTool = this.tools.value.find(
-            (tool) =>
-                tool.name === name &&
-                applyToolMask(name, this._toolMask)
+            (tool) => tool.name === name && applyToolMask(name, this._toolMask)
         )
 
         if (!chatLunaTool) {

@@ -197,6 +197,13 @@ export async function apply(
                 ])
             )
         },
+        meta: {
+            defaultMain: true,
+            defaultChatluna: false,
+            defaultCharacter: false,
+            defaultCharacterGroup: false,
+            defaultCharacterPrivate: false
+        },
 
         createTool(params) {
             return new CronTool(ctx, config, scheduledTasks, prepareTask)

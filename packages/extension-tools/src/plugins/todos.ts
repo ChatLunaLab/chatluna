@@ -33,6 +33,13 @@ export async function apply(
         selector() {
             return true
         },
+        meta: {
+            defaultMain: true,
+            defaultChatluna: false,
+            defaultCharacter: false,
+            defaultCharacterGroup: false,
+            defaultCharacterPrivate: false
+        },
         createTool(params) {
             return new TodosTool(ctx, config)
         }

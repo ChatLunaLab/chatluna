@@ -17,6 +17,13 @@ export async function apply(
             selector(_) {
                 return true
             },
+            meta: {
+                defaultMain: true,
+                defaultChatluna: false,
+                defaultCharacter: false,
+                defaultCharacterGroup: false,
+                defaultCharacterPrivate: false
+            },
 
             createTool(params) {
                 return new BuiltQuestionTool()
@@ -27,6 +34,13 @@ export async function apply(
             description: new BuiltUserConfirmTool().description,
             selector(_) {
                 return true
+            },
+            meta: {
+                defaultMain: true,
+                defaultChatluna: false,
+                defaultCharacter: false,
+                defaultCharacterGroup: false,
+                defaultCharacterPrivate: false
             },
 
             createTool(params) {
