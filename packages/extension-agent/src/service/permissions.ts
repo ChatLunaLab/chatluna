@@ -283,16 +283,16 @@ export class ChatLunaAgentPermissionService {
         const allNames = this.listTools()
             .map((item) => item.name)
             .filter((name) => applyToolMask(name, mask))
-        const allow = allNames.filter(
-            (name) => this.hasAuthority(session, this.getTool(name)?.authority)
+        const allow = allNames.filter((name) =>
+            this.hasAuthority(session, this.getTool(name)?.authority)
         )
         return buildToolMask(allNames, allow)
     }
 
     hasAuthority(session?: Session, authority = 0) {
-        const auth = (session as Session<User.Field> | undefined)?.user?.[
-            'authority'
-        ] ?? 0
+        const auth =
+            (session as Session<User.Field> | undefined)?.user?.['authority'] ??
+            0
         return auth >= authority
     }
 

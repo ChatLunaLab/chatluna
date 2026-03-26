@@ -113,18 +113,23 @@ export class ChatLunaAgentSubAgentService {
     }
 
     listRunnableAgents(
-        session?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[1],
+        session?: Parameters<
+            ChatLunaAgentPermissionService['canUseSubAgent']
+        >[1],
         source?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[2]
     ) {
         return this.getCatalogSync().filter(
             (item) =>
-                isRunnable(item) && this.permission.canUseSubAgent(item, session, source)
+                isRunnable(item) &&
+                this.permission.canUseSubAgent(item, session, source)
         )
     }
 
     findRunnableAgent(
         name: string,
-        session?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[1],
+        session?: Parameters<
+            ChatLunaAgentPermissionService['canUseSubAgent']
+        >[1],
         source?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[2]
     ) {
         return this.getCatalogSync().find(
@@ -207,7 +212,9 @@ export class ChatLunaAgentSubAgentService {
         const parent = runConfig?.configurable?.subagentContext
         const session = runConfig?.configurable?.session
         const conversationId = runConfig?.configurable?.conversationId
-        const source = (runConfig?.configurable as { source?: 'chatluna' | 'character' })?.source ?? 'chatluna'
+        const source =
+            (runConfig?.configurable as { source?: 'chatluna' | 'character' })
+                ?.source ?? 'chatluna'
 
         if (action === 'list') {
             if (!conversationId) {
@@ -335,6 +342,9 @@ export class ChatLunaAgentSubAgentService {
                 session,
                 parentConversationId: conversationId,
                 parentSubagentContext: parent,
+                parentToolMask: (
+                    runConfig?.configurable as { toolMask?: ToolMask }
+                )?.toolMask,
                 model: runConfig?.configurable?.model,
                 task: next,
                 background: input.background === true
@@ -372,7 +382,8 @@ export class ChatLunaAgentSubAgentService {
         }
 
         const runId = randomUUID()
-        const base = options.parentSubagentContext?.toolMask
+        const base =
+            options.parentSubagentContext?.toolMask ?? options.parentToolMask
         const next = this.permission.createSubAgentToolMask(info)
         const names = this.ctx.chatluna.platform.getFilteredTools(next)
         const mask = buildSubAgentToolMask(base, names)
@@ -562,13 +573,20 @@ export class ChatLunaAgentSubAgentService {
                 if (runtime.configurable?.subagentContext) return next()
 
                 const session = runtime.configurable?.session
-                const source = (runtime.configurable as { source?: 'chatluna' | 'character' })?.source ?? 'chatluna'
+                const source =
+                    (
+                        runtime.configurable as {
+                            source?: 'chatluna' | 'character'
+                        }
+                    )?.source ?? 'chatluna'
 
                 const mask = (runtime.configurable as { toolMask?: ToolMask })
                     ?.toolMask
                 if (
                     mask != null &&
-                    !this.ctx.chatluna.platform.getFilteredTools(mask).includes('task')
+                    !this.ctx.chatluna.platform
+                        .getFilteredTools(mask)
+                        .includes('task')
                 ) {
                     return next()
                 }

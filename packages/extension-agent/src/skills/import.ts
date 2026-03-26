@@ -77,7 +77,9 @@ export async function importSkills(
             throw new Error('导入源中没有找到可用的 Skill 包。')
         }
 
-        const selected = new Set(input.selected ?? preview.skills.map((item) => item.dir))
+        const selected = new Set(
+            input.selected ?? preview.skills.map((item) => item.dir)
+        )
         const picked = preview.skills.filter((item) => selected.has(item.dir))
 
         if (picked.length < 1) {
@@ -85,7 +87,21 @@ export async function importSkills(
         }
 
         if (picked.some((item) => item.state !== 'ready')) {
-            throw new Error('已勾选的 Skill 里存在校验失败项，请取消勾选或先修复。')
+            throw new Error(
+                '已勾选的 Skill 里存在校验失败项，请取消勾选或先修复。'
+            )
+        }
+
+        const duplicate = picked.find(
+            (item, idx) =>
+                picked.findIndex(
+                    (next) => next.importName === item.importName
+                ) !== idx
+        )
+        if (duplicate) {
+            throw new Error(
+                `导入列表里存在重复目标目录：${duplicate.importName}`
+            )
         }
 
         const result: SkillImportResult = {
@@ -159,11 +175,28 @@ async function previewMaterializedSource(
             diagnostics: item.diagnostics
         }
     })
+    const counts = new Map<string, number>()
+
+    for (const item of skills) {
+        counts.set(item.importName, (counts.get(item.importName) ?? 0) + 1)
+    }
 
     const skillsRoot = getSkillsRootPath(ctx)
     for (const item of skills) {
+        if ((counts.get(item.importName) ?? 0) > 1) {
+            item.state = 'invalid'
+            item.diagnostics = [
+                `重复的导入目录名：${item.importName}`,
+                ...item.diagnostics
+            ]
+        }
+
         item.exists =
-            (await stat(join(skillsRoot, item.importName)).catch(() => undefined))?.isDirectory() === true
+            (
+                await stat(join(skillsRoot, item.importName)).catch(
+                    () => undefined
+                )
+            )?.isDirectory() === true
         if (item.exists) {
             item.diagnostics = [
                 `将覆盖现有 Skill：${item.importName}`,
@@ -254,7 +287,7 @@ async function previewGithub(ctx: Context, url: string) {
     const ref =
         info.ref || (await fetchGithubDefaultBranch(ctx, info.owner, info.repo))
     const response = await requestGithub<{
-        tree?: Array<{ path?: string; type?: string }>
+        tree?: { path?: string; type?: string }[]
         truncated?: boolean
     }>(
         ctx,
@@ -354,30 +387,45 @@ async function previewGithub(ctx: Context, url: string) {
             ? `${info.owner}/${info.repo}/${info.subpath}`
             : `${info.owner}/${info.repo}`
         const scanned = await scanSkillRoot(tmp, ctx)
-        const skills = scanned.map(
-            (item): SkillImportPreviewItem => {
-                const dir =
-                    item.dir
-                        .slice(tmp.length)
-                        .replaceAll('\\', '/')
-                        .replace(/^\/+/, '') || '.'
+        const skills = scanned.map((item): SkillImportPreviewItem => {
+            const dir =
+                item.dir
+                    .slice(tmp.length)
+                    .replaceAll('\\', '/')
+                    .replace(/^\/+/, '') || '.'
 
-                return {
-                    dir,
-                    importName: basename(item.dir),
-                    name: item.name,
-                    description: item.description,
-                    state: item.state,
-                    exists: false,
-                    diagnostics: item.diagnostics
-                }
+            return {
+                dir,
+                importName: basename(item.dir),
+                name: item.name,
+                description: item.description,
+                state: item.state,
+                exists: false,
+                diagnostics: item.diagnostics
             }
-        )
+        })
+        const counts = new Map<string, number>()
+
+        for (const item of skills) {
+            counts.set(item.importName, (counts.get(item.importName) ?? 0) + 1)
+        }
 
         const skillsRoot = getSkillsRootPath(ctx)
         for (const item of skills) {
+            if ((counts.get(item.importName) ?? 0) > 1) {
+                item.state = 'invalid'
+                item.diagnostics = [
+                    `重复的导入目录名：${item.importName}`,
+                    ...item.diagnostics
+                ]
+            }
+
             item.exists =
-                (await stat(join(skillsRoot, item.importName)).catch(() => undefined))?.isDirectory() === true
+                (
+                    await stat(join(skillsRoot, item.importName)).catch(
+                        () => undefined
+                    )
+                )?.isDirectory() === true
             if (item.exists) {
                 item.diagnostics = [
                     `将覆盖现有 Skill：${item.importName}`,
@@ -492,44 +540,24 @@ async function findSubpathRoot(root: string, subpath: string) {
         return root
     }
 
-    const dirs = await collectFilesRecursive(root, { relative: true }).then(
-        (files) =>
-            Array.from(
-                new Set(
-                    files.flatMap((file) => {
-                        const result: string[] = []
-                        let current = dirname(file)
-
-                        while (current && current !== '.') {
-                            result.push(current.replaceAll('\\', '/'))
-                            current = dirname(current)
-                        }
-
-                        return result
-                    })
-                )
-            )
-    )
-
-    const matched = dirs.filter((dir) => {
-        return dir === clean || dir.endsWith(`/${clean}`)
-    })
-
-    if (matched.length < 1) {
-        return undefined
+    const direct = join(root, clean)
+    if ((await stat(direct).catch(() => undefined))?.isDirectory()) {
+        return direct
     }
 
-    matched.sort((a, b) => {
-        const aDepth = a.split('/').length
-        const bDepth = b.split('/').length
-        if (aDepth !== bDepth) {
-            return aDepth - bDepth
+    const entries = await collectFilesRecursive(root, { relative: true })
+    const tops = Array.from(
+        new Set(entries.map((file) => file.replaceAll('\\', '/').split('/')[0]))
+    ).filter(Boolean)
+
+    for (const name of tops) {
+        const target = join(root, name, clean)
+        if ((await stat(target).catch(() => undefined))?.isDirectory()) {
+            return target
         }
+    }
 
-        return a.length - b.length
-    })
-
-    return join(root, matched[0])
+    return undefined
 }
 
 async function fetchGithubDefaultBranch(
@@ -602,13 +630,16 @@ async function requestGithub<T>(
 }
 
 function getGithubError(err: unknown) {
+    const value = err as {
+        response?: { status?: number }
+        status?: number
+        statusCode?: number
+        message?: string
+    }
     const status = Number(
-        (err as any)?.response?.status ??
-            (err as any)?.status ??
-            (err as any)?.statusCode ??
-            0
+        value.response?.status ?? value.status ?? value.statusCode ?? 0
     )
-    const msg = String((err as any)?.message ?? err ?? '').trim()
+    const msg = String(value.message ?? err ?? '').trim()
 
     if (status === 401 || /bad credentials/i.test(msg)) {
         return 'GitHub Token 无效或已过期，请检查后重试。'

@@ -325,6 +325,7 @@ async function handleSelect(file: any) {
     try {
         reading.value = true
         preview.value = undefined
+        selected.value = []
         name.value = next.name
         data.value = bufferToBase64(await next.arrayBuffer())
 
@@ -332,8 +333,7 @@ async function handleSelect(file: any) {
         preview.value = await send('chatluna-agent/previewSkillImport', {
             type: 'zip',
             name: name.value,
-            data: data.value,
-            selected: selected.value
+            data: data.value
         })
     } catch {
         data.value = ''

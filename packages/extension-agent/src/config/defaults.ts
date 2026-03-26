@@ -240,7 +240,7 @@ export function createDefaultToolConfig(): ToolConfig {
                 tags: ['handoff'],
                 defaultMain: true,
                 defaultChatluna: true,
-                defaultCharacter: false,
+                defaultCharacter: true,
                 defaultCharacterGroup: true,
                 defaultCharacterPrivate: true
             }

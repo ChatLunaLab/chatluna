@@ -290,7 +290,7 @@ function validateFile(file: string) {
 function withTimeout<T>(promise: Promise<T>, timeout: number): Promise<T> {
     return Promise.race([
         promise,
-        new Promise<T>((_, reject) =>
+        new Promise<T>((_resolve, reject) =>
             setTimeout(() => reject(new Error('Timeout')), timeout)
         )
     ])

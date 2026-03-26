@@ -2,7 +2,8 @@
 
 import {
     MessageQueue,
-    SubagentContext
+    SubagentContext,
+    ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { Session } from 'koishi'
@@ -15,6 +16,7 @@ export interface RunSubAgentOptions {
     session: Session
     parentConversationId: string
     parentSubagentContext?: SubagentContext
+    parentToolMask?: ToolMask
     signal?: AbortSignal
     model?: ChatLunaChatModel
     task?: SubAgentTaskSession

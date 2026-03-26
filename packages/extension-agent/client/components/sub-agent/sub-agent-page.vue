@@ -618,8 +618,8 @@ async function saveSelected() {
         const next = structuredClone(toRaw(props.config))
         const saved = {
             enabled: draft.enabled,
-            name: item.name,
-            description: item.description,
+            name: draft.name,
+            description: draft.description,
             chatluna: draft.chatluna,
             character: draft.character,
             characterGroup: draft.characterGroup,
@@ -634,6 +634,7 @@ async function saveSelected() {
             model: draft.model.trim() || undefined,
             maxTurns: draft.maxTurns,
             hidden: draft.hidden,
+            promptContent: draft.promptContent,
             promptMode: item.promptMode,
             preset: item.preset,
             allowKoishiMessageTransform: draft.allowKoishiMessageTransform,

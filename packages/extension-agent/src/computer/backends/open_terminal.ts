@@ -100,6 +100,8 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
+        const target = this.resolvePath(filePath)
+
         try {
             const result = readOpenTerminalData<
                 OpenTerminalListData & {
@@ -110,11 +112,11 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                     method: 'GET',
                     headers: this.headers(),
                     params: {
-                        directory: filePath
+                        directory: target
                     }
                 })
             )
-            const dir = result.dir || filePath
+            const dir = result.dir || target
             const entries = Array.isArray(result.entries) ? result.entries : []
 
             return entries
@@ -131,7 +133,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 .join('\n')
         } catch {}
 
-        const params = new URLSearchParams({ path: filePath })
+        const params = new URLSearchParams({ path: target })
         if (offset != null) {
             params.set('start_line', String(offset))
         }

@@ -573,9 +573,6 @@ function setEnabled(id: string, enabled: boolean) {
     }
 
     draft.value.items[id].enabled = enabled
-    if (!enabled) {
-        draft.value.items[id].mode = 'description'
-    }
     scheduleSave()
 }
 
@@ -834,7 +831,19 @@ function formatInstall(item: SkillInfo) {
 }
 
 function openLink(url: string) {
-    window.open(url, '_blank', 'noopener,noreferrer')
+    const value = url.trim()
+
+    try {
+        const parsed = new URL(value)
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            ElMessage.warning('当前主页链接不是 http 或 https 地址。')
+            return
+        }
+
+        window.open(parsed.toString(), '_blank', 'noopener,noreferrer')
+    } catch {
+        ElMessage.warning('当前主页链接格式无效。')
+    }
 }
 
 function downloadExport(result: SkillExportResult) {

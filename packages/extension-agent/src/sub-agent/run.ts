@@ -258,7 +258,9 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
                             at: Date.now(),
                             title: '最终输出',
                             text:
-                                getMessageContent(event.message?.content ?? '') ||
+                                getMessageContent(
+                                    event.message?.content ?? ''
+                                ) ||
                                 event.output ||
                                 event.log
                         })
@@ -360,8 +362,7 @@ async function resolveSkillPrompt(
 
     return getMessageContent(
         renderAvailableSkills(
-            skills
-                .map((item) => (remote ? { ...item, dir: '' } : item)),
+            skills.map((item) => (remote ? { ...item, dir: '' } : item)),
             [],
             remote ? getRemoteSkillsRoot() : getSkillsRootPath(ctx),
             cwd,

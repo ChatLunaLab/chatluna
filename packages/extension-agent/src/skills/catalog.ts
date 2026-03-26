@@ -14,12 +14,13 @@ export function buildSkillCatalog(
 
     for (const skill of applyShadowing(skills)) {
         const cfg = createSkillItemConfig(configItems[skill.id])
-        const mode = cfg.enabled ? cfg.mode : 'off'
+        const mode = cfg.mode
         const visible =
             !skill.shadowedBy &&
             skill.enabled &&
             skill.available &&
             skill.state === 'ready' &&
+            cfg.enabled &&
             mode === 'description'
         catalog.push({
             id: skill.id,
@@ -74,7 +75,7 @@ export function buildSkillCatalog(
         }
 
         const cfg = createSkillItemConfig(item)
-        const mode = cfg.enabled ? cfg.mode : 'off'
+        const mode = cfg.mode
         if (!cfg.enabled && cfg.mode !== 'description' && cfg.mode !== 'full') {
             continue
         }

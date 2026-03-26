@@ -128,6 +128,17 @@ export interface SubAgentImportInput {
     data: string
 }
 
+export interface SubAgentImportPreviewResult {
+    state: 'ready' | 'invalid'
+    diagnostics: string[]
+    promptContent?: string
+    value?: {
+        format: 'chatluna' | 'claude' | 'opencode'
+        name: string
+        description: string
+    }
+}
+
 export interface ManualSubAgentInput {
     id?: string
     name: string

@@ -32,6 +32,7 @@ import type {
     SubAgentConfig,
     SubAgentExportResult,
     SubAgentImportInput,
+    SubAgentImportPreviewResult,
     SubAgentInfo,
     SubAgentItemConfig,
     SubAgentRunInfo,
@@ -234,7 +235,9 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/uploadSubAgent': (
             input: SubAgentImportInput
         ) => Promise<ActionResult>
-        'chatluna-agent/previewSubAgentImport': (data: string) => Promise<any>
+        'chatluna-agent/previewSubAgentImport': (
+            data: string
+        ) => Promise<SubAgentImportPreviewResult>
         'chatluna-agent/createPresetAgent': (
             name: string,
             preset: string,

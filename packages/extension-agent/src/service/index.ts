@@ -13,6 +13,7 @@ import {
     createSubAgentMarkdown,
     getSubAgentFileName
 } from '../sub-agent/markdown'
+import { parseAgentFrontmatter } from '../sub-agent/parse'
 import {
     AgentConfig,
     ManualSubAgentInput,
@@ -70,10 +71,13 @@ export class ChatLunaAgentService extends Service {
 
     async start() {
         this._toolUpdateDispose?.()
-        this._toolUpdateDispose = this.ctx.on('chatluna/tool-updated', async () => {
-            this.permission.invalidateCache()
-            await this.refreshConsoleData()
-        })
+        this._toolUpdateDispose = this.ctx.on(
+            'chatluna/tool-updated',
+            async () => {
+                this.permission.invalidateCache()
+                await this.refreshConsoleData()
+            }
+        )
 
         await Promise.all([
             this.permission.start(),
@@ -329,7 +333,6 @@ export class ChatLunaAgentService extends Service {
     }
 
     async previewSubAgentImport(data: string) {
-        const { parseAgentFrontmatter } = require('../sub-agent/parse')
         return parseAgentFrontmatter(data, 'preview')
     }
 
@@ -358,7 +361,9 @@ export class ChatLunaAgentService extends Service {
     async exportSubAgent(
         id: string
     ): Promise<SubAgentExportResult | undefined> {
-        const info = this.subAgent.getCatalogSync().find((item) => item.id === id)
+        const info = this.subAgent
+            .getCatalogSync()
+            .find((item) => item.id === id)
         if (!info || !info.promptContent.trim()) {
             return undefined
         }
