@@ -78,6 +78,31 @@ export interface SubAgentRunInfo {
     turnCount: number
     error?: string
     output?: string
+    trace: SubAgentRunTraceEntry[]
+}
+
+export interface SubAgentRunTraceEntry {
+    id: string
+    type:
+        | 'prompt'
+        | 'message'
+        | 'thought'
+        | 'tool-call'
+        | 'tool-result'
+        | 'output'
+        | 'error'
+    at: number
+    text: string
+    tool?: string
+    title?: string
+    callId?: string
+}
+
+export interface SubAgentExportResult {
+    id: string
+    name: string
+    fileName: string
+    content: string
 }
 
 export interface SubAgentImportInput {

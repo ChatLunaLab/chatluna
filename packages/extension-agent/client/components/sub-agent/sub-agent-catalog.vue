@@ -13,16 +13,55 @@
                 </div>
             </div>
 
-            <el-input
-                v-model="keyword"
-                class="search-input"
-                placeholder="搜索名称、描述、路径或诊断"
-                clearable
-            >
+            <div class="search-row">
+                <el-popover
+                    placement="bottom-start"
+                    trigger="click"
+                    popper-class="sub-agent-filter-popper"
+                >
+                    <template #reference>
+                        <el-button class="filter-trigger" plain>
+                            {{ filters.length > 0 ? `筛选 ${filters.length}` : '筛选' }}
+                        </el-button>
+                    </template>
+
+                    <div class="filter-panel">
+                        <el-checkbox-group v-model="filters">
+                            <div class="filter-list">
+                                <el-checkbox
+                                    v-for="item in filterOptions"
+                                    :key="item.value"
+                                    :label="item.value"
+                                >
+                                    {{ item.label }}
+                                </el-checkbox>
+                            </div>
+                        </el-checkbox-group>
+
+                        <div class="filter-panel-actions">
+                            <el-button
+                                size="small"
+                                text
+                                :disabled="filters.length === 0"
+                                @click="filters = []"
+                            >
+                                清空
+                            </el-button>
+                        </div>
+                    </div>
+                </el-popover>
+
+                <el-input
+                    v-model="keyword"
+                    class="search-input"
+                    placeholder="搜索名称、描述、路径或诊断"
+                    clearable
+                >
                     <template #prefix>
                         <el-icon><Search /></el-icon>
                     </template>
                 </el-input>
+            </div>
         </div>
 
         <div
@@ -81,6 +120,21 @@
                         <el-tag
                             size="small"
                             effect="plain"
+                            :type="item.enabled ? 'success' : 'info'"
+                        >
+                            {{ item.enabled ? '启用' : '禁用' }}
+                        </el-tag>
+                        <el-tag
+                            v-if="item.hidden"
+                            size="small"
+                            effect="plain"
+                            type="warning"
+                        >
+                            已隐藏
+                        </el-tag>
+                        <el-tag
+                            size="small"
+                            effect="plain"
                             :type="
                                 item.state === 'ready' &&
                                 !item.hidden &&
@@ -99,8 +153,20 @@
                         </el-tag>
                     </div>
 
-                    <div v-if="canRemove(item)" class="agent-actions">
+                    <div class="agent-actions" @click.stop>
+                        <el-button size="small" plain @click="$emit('preview', item)">
+                            查看/修改内容
+                        </el-button>
                         <el-button
+                            size="small"
+                            plain
+                            :disabled="!canExport(item)"
+                            @click="$emit('export', item)"
+                        >
+                            导出 MD
+                        </el-button>
+                        <el-button
+                            v-if="canRemove(item)"
                             class="danger-soft"
                             size="small"
                             plain
@@ -148,18 +214,51 @@ const props = defineProps<{
 defineEmits<{
     select: [id: string]
     toggle: [item: SubAgentInfo, enabled: boolean]
+    preview: [item: SubAgentInfo]
+    export: [item: SubAgentInfo]
     remove: [item: SubAgentInfo]
 }>()
 
 const keyword = ref('')
+const filters = ref<string[]>([])
+const filterOptions = [
+    { label: '启用', value: 'enabled:yes' },
+    { label: '禁用', value: 'enabled:no' },
+    { label: '可用', value: 'state:ready' },
+    { label: '不可用', value: 'state:not-ready' },
+    { label: '已隐藏', value: 'hidden:yes' },
+    { label: '内置 Agent', value: 'source:builtin' },
+    { label: 'Markdown Agent', value: 'source:markdown' },
+    { label: '预设 Agent', value: 'source:preset' },
+    { label: '手动 Agent', value: 'source:manual' }
+]
 
 const filteredAgents = computed(() => {
     const text = keyword.value.trim().toLowerCase()
-    if (!text) {
-        return props.agents
-    }
 
     return props.agents.filter((item) => {
+        if (
+            filters.value.length > 0 &&
+            !filters.value.every((value) => {
+                if (value === 'enabled:yes') return item.enabled
+                if (value === 'enabled:no') return !item.enabled
+                if (value === 'state:ready') return item.state === 'ready'
+                if (value === 'state:not-ready') return item.state !== 'ready'
+                if (value === 'hidden:yes') return item.hidden
+                if (value === 'source:builtin') return item.source === 'builtin'
+                if (value === 'source:markdown') return item.source === 'markdown'
+                if (value === 'source:preset') return item.source === 'preset'
+                if (value === 'source:manual') return item.source === 'manual'
+                return true
+            })
+        ) {
+            return false
+        }
+
+        if (!text) {
+            return true
+        }
+
         return [
             item.name,
             item.description,
@@ -178,6 +277,10 @@ const filteredAgents = computed(() => {
 
 function canRemove(item: SubAgentInfo) {
     return props.removableIds.includes(item.id)
+}
+
+function canExport(item: SubAgentInfo) {
+    return item.promptContent.trim().length > 0
 }
 </script>
 
@@ -259,6 +362,38 @@ function canRemove(item: SubAgentInfo) {
 
 .search-input {
     width: min(360px, 100%);
+}
+
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-trigger {
+    flex: 0 0 auto;
+}
+
+.filter-panel {
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
 }
 
 .card-list {
@@ -384,8 +519,15 @@ function canRemove(item: SubAgentInfo) {
 }
 
 .agent-actions {
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+    gap: 8px;
+}
+
+.agent-actions :deep(.el-button) {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
 }
 
 .agent-actions :deep(.danger-soft.el-button) {
@@ -468,6 +610,32 @@ function canRemove(item: SubAgentInfo) {
 
     .search-input {
         width: 100%;
+    }
+
+    .search-row {
+        width: 100%;
+        min-width: 0;
+        flex: none;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .filter-trigger {
+        min-width: 0;
+        width: 100%;
+        flex: none;
+    }
+
+    .search-input {
+        width: 100% !important;
+        min-width: 0;
+        flex: none;
+    }
+
+    .search-input :deep(.el-input__wrapper) {
+        min-height: 32px;
     }
 
     .card-list,

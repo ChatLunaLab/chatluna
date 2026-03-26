@@ -77,6 +77,8 @@
                             :hide-desc="hideDesc"
                             :removable-ids="removableIds"
                             @select="openDetail"
+                            @preview="previewAgent"
+                            @export="exportSubAgent"
                             @toggle="toggleAgent"
                             @remove="removeAgent"
                         >
@@ -87,7 +89,6 @@
                                 <el-button @click="showMarkdownDialog = true">
                                     从 Markdown 创建
                                 </el-button>
-                                <el-button @click="reloadSubAgents">重新扫描</el-button>
                             </template>
                         </sub-agent-catalog>
                         <sub-agent-runs
@@ -105,7 +106,14 @@
 
                 <sub-agent-detail
                     v-else-if="selectedAgent"
-                    key="detail-view"
+                    :key="[
+                        'detail-view',
+                        selectedAgent.id,
+                        skillOptions.length,
+                        mcpOptions.length,
+                        computerOptions.length,
+                        Object.keys(props.tools ?? {}).length
+                    ].join(':')"
                     :agent="selectedAgent"
                     :draft="draft"
                     :model-names="modelNames"
@@ -133,14 +141,60 @@
             @refresh="reloadSubAgents"
             @created="onAgentCreated"
         />
+
+        <el-dialog
+            v-model="showPreview"
+            title="查看/修改 Sub Agent 内容"
+            width="860px"
+            destroy-on-close
+            :close-on-click-modal="false"
+            :fullscreen="mobile"
+        >
+            <div class="preview-meta">{{ previewTitle }}</div>
+            <div class="preview-form">
+                <div class="field-label">Agent 名称</div>
+                <el-input
+                    v-model="previewDraft.name"
+                    placeholder="例如：my-agent"
+                    :disabled="!canEditPreview"
+                />
+
+                <div class="field-label" style="margin-top: 12px">简介</div>
+                <el-input
+                    v-model="previewDraft.description"
+                    placeholder="一句简短的描述"
+                    :disabled="!canEditPreview"
+                />
+
+                <div class="field-label" style="margin-top: 12px">指令</div>
+                <code-editor
+                    v-model="previewDraft.promptContent"
+                    language="markdown"
+                    :min-height="320"
+                    :readonly="!canEditPreview"
+                />
+            </div>
+            <template #footer>
+                <el-button @click="showPreview = false">取消</el-button>
+                <el-button
+                    type="primary"
+                    :loading="savingPreview"
+                    :disabled="!canSavePreview"
+                    @click="savePreview"
+                >
+                    保存内容
+                </el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
+import CodeEditor from '../shared/code-editor.vue'
 import SubAgentCatalog from './sub-agent-catalog.vue'
 import SubAgentDetail from './sub-agent-detail.vue'
 import SubAgentRuns from './sub-agent-runs.vue'
@@ -276,8 +330,19 @@ const modelNames = ref<string[]>([])
 const selectedId = ref('')
 const showPresetDialog = ref(false)
 const showMarkdownDialog = ref(false)
+const showPreview = ref(false)
+const previewTitle = ref('')
+const previewItem = ref<SubAgentInfo>()
+const savingPreview = ref(false)
+const mobile = ref(false)
+const previewDraft = reactive({
+    name: '',
+    description: '',
+    promptContent: ''
+})
 
 const draft = reactive({
+    enabled: false,
     name: '',
     description: '',
     promptContent: '',
@@ -322,6 +387,7 @@ watch(
     (value) => {
         if (!value) return
 
+        draft.enabled = value.enabled
         draft.name = value.name ?? ''
         draft.description = value.description ?? ''
         draft.promptContent = value.promptContent ?? ''
@@ -341,6 +407,17 @@ const canRemoveSelected = computed(() => {
     const item = selectedAgent.value
     if (!item) return false
     return canRemoveAgent(item)
+})
+const canEditPreview = computed(() => {
+    return previewItem.value?.source === 'markdown' && !previewItem.value.remote
+})
+const canSavePreview = computed(() => {
+    return (
+        canEditPreview.value &&
+        previewDraft.name.trim().length > 0 &&
+        previewDraft.description.trim().length > 0 &&
+        previewDraft.promptContent.trim().length > 0
+    )
 })
 const removableIds = computed(() => {
     return agents.value
@@ -389,12 +466,34 @@ const computerOptions = computed(() => {
 })
 
 onMounted(async () => {
+    mobile.value = window.innerWidth <= 768
+    window.addEventListener('resize', onResize)
     await loadExtraData()
 })
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', onResize)
+})
+
+watch(
+    [
+        () => props.status.catalog,
+        () => props.tools,
+        () => props.skills
+    ],
+    async () => {
+        await loadDynamicData()
+    },
+    { deep: true }
+)
 
 function openDetail(id: string) {
     selectedId.value = id
     currentView.value = 'detail'
+}
+
+function onResize() {
+    mobile.value = window.innerWidth <= 768
 }
 
 function onAgentCreated(id: string) {
@@ -422,6 +521,22 @@ async function loadExtraData() {
         ElMessage.error('读取 Sub Agent 数据失败，请稍后重试。')
     } finally {
         busy.value = false
+    }
+}
+
+async function loadDynamicData() {
+    try {
+        const [catalog, runList, availability] = await Promise.all([
+            send('chatluna-agent/getSubAgents'),
+            send('chatluna-agent/getSubAgentRuns'),
+            send('chatluna-agent/getToolAvailability')
+        ])
+
+        agents.value = [...catalog]
+        runs.value = [...runList]
+        toolAvailability.value = [...availability]
+    } catch {
+        ElMessage.error('同步 Sub Agent 动态数据失败，请稍后重试。')
     }
 }
 
@@ -457,7 +572,7 @@ async function saveSelected() {
         busy.value = true
         const next = structuredClone(toRaw(props.config))
         const saved = {
-            enabled: item.enabled,
+            enabled: draft.enabled,
             name: item.name,
             description: item.description,
             source: item.source,
@@ -558,6 +673,88 @@ async function createPresetAgent(
         ElMessage.error('创建 preset agent 失败，请稍后重试。')
     } finally {
         busy.value = false
+    }
+}
+
+async function exportSubAgent(item?: SubAgentInfo) {
+    if (!item) return
+
+    try {
+        const result = await send('chatluna-agent/exportSubAgent', item.id)
+        if (!result) {
+            ElMessage.warning('这个 Sub Agent 暂时不能导出。')
+            return
+        }
+
+        const blob = new Blob([result.content], {
+            type: 'text/markdown;charset=utf-8'
+        })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+
+        link.href = url
+        link.download = result.fileName
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+        ElMessage.success('已开始下载 Sub Agent Markdown。')
+    } catch {
+        ElMessage.error('导出失败，请稍后重试。')
+    }
+}
+
+function previewAgent(item: SubAgentInfo) {
+    previewItem.value = item
+    previewTitle.value = item.name
+    previewDraft.name = item.name
+    previewDraft.description = item.description
+    previewDraft.promptContent = item.promptContent
+    showPreview.value = true
+}
+
+async function savePreview() {
+    const item = previewItem.value
+    if (!item || !canSavePreview.value) return
+
+    try {
+        await ElMessageBox.confirm(
+            item.name !== previewDraft.name.trim()
+                ? '您修改了 Agent 名称，这将会创建一个新的副本。确定要继续吗？'
+                : '确定要保存修改后的内容吗？',
+            '确认保存',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }
+        )
+    } catch {
+        return
+    }
+
+    try {
+        savingPreview.value = true
+        await send('chatluna-agent/addSubAgent', {
+            name: previewDraft.name.trim(),
+            description: previewDraft.description.trim(),
+            promptContent: previewDraft.promptContent.trim(),
+            model: item.model,
+            maxTurns: item.maxTurns,
+            hidden: item.hidden,
+            enabled: item.enabled,
+            allowKoishiMessageTransform: item.allowKoishiMessageTransform,
+            permissions: item.permissions
+        })
+        ElMessage.success('保存内容成功。')
+        showPreview.value = false
+        await loadExtraData()
+    } catch (error) {
+        ElMessage.error(
+            `保存失败：${error instanceof Error ? error.message : String(error)}`
+        )
+    } finally {
+        savingPreview.value = false
     }
 }
 
@@ -701,6 +898,23 @@ function canRemoveAgent(item: SubAgentInfo) {
     display: none;
 }
 
+.preview-meta {
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--k-text-light);
+}
+
+.preview-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.field-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--k-text-dark);
+}
+
 .fade-slide-enter-active,
 .fade-slide-leave-active {
     transition: all 0.2s ease;
@@ -762,6 +976,10 @@ function canRemoveAgent(item: SubAgentInfo) {
     .tab {
         flex: 1 1 0;
         text-align: center;
+    }
+
+    :deep(.el-dialog.is-fullscreen .el-dialog__body) {
+        padding-top: 12px;
     }
 }
 </style>

@@ -23,12 +23,14 @@ import type {
     SkillImportPreviewResult,
     SkillImportResult,
     SkillInfo,
+    SkillMode,
     SkillsConfig,
     SkillsStatus
 } from './types/skills'
 import type {
     ManualSubAgentInput,
     SubAgentConfig,
+    SubAgentExportResult,
     SubAgentImportInput,
     SubAgentInfo,
     SubAgentItemConfig,
@@ -170,6 +172,9 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/addSubAgent': (
             input: ManualSubAgentInput
         ) => Promise<SubAgentInfo>
+        'chatluna-agent/exportSubAgent': (
+            id: string
+        ) => Promise<SubAgentExportResult | undefined>
         'chatluna-agent/getModelNames': () => Promise<string[]>
         'chatluna-agent/importSkills': (
             input: SkillImportInput
@@ -217,6 +222,10 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/setSkillEnabled': (
             id: string,
             enabled: boolean
+        ) => Promise<ActionResult>
+        'chatluna-agent/setSkillMode': (
+            id: string,
+            mode: SkillMode
         ) => Promise<ActionResult>
         'chatluna-agent/setSubAgentEnabled': (
             id: string,

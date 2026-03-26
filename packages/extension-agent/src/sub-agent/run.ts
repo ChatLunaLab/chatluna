@@ -118,6 +118,13 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
         input.session,
         llm.modelName
     )
+    input.run.trace.push({
+        id: `${input.run.runId}:prompt`,
+        type: 'prompt',
+        at: Date.now(),
+        title: '用户请求',
+        text: getMessageContent(msg.content)
+    })
     toolRef.update(input.session, input.task.messages.concat(msg), input.mask)
     const toolCallMask = await input.permission.createToolCallMask(
         input.session,
@@ -176,23 +183,85 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
                 subagentContext: subCtx,
                 onAgentEvent: async (event) => {
                     if (event.type === 'tool-call') {
+                        const thought = event.actions[0]?.log?.trim()
+                        if (thought) {
+                            input.run.trace.push({
+                                id: `${input.run.runId}:thought:${input.run.trace.length}`,
+                                type: 'thought',
+                                at: Date.now(),
+                                title: '模型输出',
+                                text: thought
+                            })
+                        }
+
                         input.run.toolCount += event.actions.length
                         input.run.lastTool =
                             event.actions[event.actions.length - 1]?.tool
+                        for (const action of event.actions) {
+                            input.run.trace.push({
+                                id: `${input.run.runId}:tool-call:${action.toolCallId ?? input.run.trace.length}`,
+                                type: 'tool-call',
+                                at: Date.now(),
+                                title: `调用工具：${action.tool}`,
+                                tool: action.tool,
+                                callId: action.toolCallId,
+                                text:
+                                    typeof action.toolInput === 'string'
+                                        ? action.toolInput
+                                        : JSON.stringify(
+                                              action.toolInput,
+                                              null,
+                                              2
+                                          )
+                            })
+                        }
                     }
 
                     if (event.type === 'tool-result') {
                         saveUser()
                         appendTaskToolBatch(input.task, event.steps)
+                        for (const step of event.steps) {
+                            input.run.trace.push({
+                                id: `${input.run.runId}:tool-result:${step.action.toolCallId ?? input.run.trace.length}`,
+                                type: 'tool-result',
+                                at: Date.now(),
+                                title: `工具输出：${step.action.tool}`,
+                                tool: step.action.tool,
+                                callId: step.action.toolCallId,
+                                text: formatTraceText(step.observation)
+                            })
+                        }
                     }
 
                     if (event.type === 'human-update') {
                         saveUser()
                         appendTaskMessages(input.task, event.messages)
+                        for (const item of event.messages) {
+                            input.run.trace.push({
+                                id: `${input.run.runId}:message:${input.run.trace.length}`,
+                                type: 'message',
+                                at: Date.now(),
+                                title: '追加消息',
+                                text: getMessageContent(item.content)
+                            })
+                        }
                     }
 
                     if (event.type === 'round-decision') {
                         input.run.turnCount += 1
+                    }
+
+                    if (event.type === 'done') {
+                        input.run.trace.push({
+                            id: `${input.run.runId}:output`,
+                            type: 'output',
+                            at: Date.now(),
+                            title: '最终输出',
+                            text:
+                                getMessageContent(event.message?.content ?? '') ||
+                                event.output ||
+                                event.log
+                        })
                     }
 
                     await input.refresh()
@@ -207,6 +276,30 @@ export async function runSubAgentTurn(input: RunSubAgentTurnOptions) {
     }
 
     return result
+}
+
+function formatTraceText(value: unknown) {
+    if (typeof value === 'string') {
+        return value
+    }
+
+    if (Array.isArray(value)) {
+        const text = value
+            .map((item) => {
+                if ('text' in item && typeof item.text === 'string') {
+                    return item.text
+                }
+
+                return JSON.stringify(item, null, 2)
+            })
+            .join('\n\n')
+
+        if (text) {
+            return text
+        }
+    }
+
+    return JSON.stringify(value, null, 2) ?? String(value)
 }
 
 function createTools(
@@ -255,12 +348,11 @@ async function resolveSkillPrompt(
     if (!service) return undefined
     if (!permission.canUseTool(info, 'skill')) return undefined
 
-    const skills = service.listSkills().filter((item) => item.modelEnabled)
-    const list = permission.filterSkillNames(
+    const skills = permission.filterSkills(
         info,
-        skills.map((item) => item.name)
+        service.listSkills().filter((item) => item.modelEnabled)
     )
-    if (list.length < 1) return undefined
+    if (skills.length < 1) return undefined
 
     const cwd = ctx.chatluna_agent?.computer.getPromptWorkdir()
     const status = ctx.chatluna_agent?.computer.getStatus()
@@ -269,7 +361,6 @@ async function resolveSkillPrompt(
     return getMessageContent(
         renderAvailableSkills(
             skills
-                .filter((item) => list.includes(item.name))
                 .map((item) => (remote ? { ...item, dir: '' } : item)),
             [],
             remote ? getRemoteSkillsRoot() : getSkillsRootPath(ctx),

@@ -12,7 +12,7 @@
                 <div class="page-title">{{ agent.name }} 配置</div>
                 <div class="page-description">调整当前 Sub Agent 的详细配置。</div>
             </div>
-            
+
             <div class="editor-actions">
                 <el-button
                     v-if="canRemove"
@@ -43,7 +43,31 @@
         <div class="editor-body">
             <!-- 详细信息 -->
             <div v-if="tab === 'info'" class="page-grid">
-                <div class="section-title">基础配置</div>
+                <div class="section-title">全局状态</div>
+                <div class="field-grid">
+                    <div class="field-card flat-card switch-card">
+                        <div class="scope-row">
+                            <div>
+                                <div class="field-label">全局启用</div>
+                                <div class="field-help">关闭后当前 Sub Agent 不会被主 Agent 调用。</div>
+                            </div>
+                            <el-switch v-model="draft.enabled" />
+                        </div>
+                    </div>
+                    <div class="field-card flat-card switch-card">
+                        <div class="scope-row">
+                            <div>
+                                <div class="field-label">隐藏</div>
+                                <div class="field-help">隐藏后该 Sub Agent 不会出现在 Agent 的工具描述里。</div>
+                            </div>
+                            <el-switch v-model="draft.hidden" />
+                        </div>
+                    </div>
+                </div>
+
+                <el-divider style="margin: 4px 0;" />
+
+                <div class="section-title">Sub Agent 信息</div>
                 <div class="field-grid readonly-grid">
                     <div class="field-card flat-card">
                         <div class="field-label">名称</div>
@@ -55,19 +79,17 @@
                             {{ `${agent.source} / ${agent.format}` }}
                         </div>
                     </div>
-                    <div class="field-card flat-card full-row" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div class="field-label">说明</div>
-                            <div class="field-static">
-                                {{ agent.description || '暂无说明。' }}
-                            </div>
+                    <div class="field-card flat-card full-row">
+                        <div class="field-label">说明</div>
+                        <div class="field-static">
+                            {{ agent.description || '暂无说明。' }}
                         </div>
-                        <el-button v-if="canEditContent" @click="showEditDialog = true" plain>
-                            查看/编辑内容
-                        </el-button>
-                        <el-button v-else @click="showEditDialog = true" plain>
-                            查看内容
-                        </el-button>
+                    </div>
+                    <div class="field-card flat-card full-row">
+                        <div class="field-label">内容来源</div>
+                        <div class="field-static">
+                            {{ agent.path || agent.preset || '内置定义' }}
+                        </div>
                     </div>
                 </div>
 
@@ -104,15 +126,6 @@
                 </div>
 
                 <div class="field-grid">
-                    <div class="field-card flat-card switch-card">
-                        <div class="scope-row">
-                            <div>
-                                <div class="field-label">隐藏</div>
-                                <div class="field-help">隐藏后该 Sub Agent 不会出现在任何 Agent 的工具描述里。</div>
-                            </div>
-                            <el-switch v-model="draft.hidden" />
-                        </div>
-                    </div>
                     <div class="field-card flat-card switch-card">
                         <div class="scope-row">
                             <div>
@@ -171,52 +184,13 @@
             </div>
         </div>
 
-        <el-dialog
-            v-model="showEditDialog"
-            title="查看/编辑 Agent 内容"
-            width="860px"
-            destroy-on-close
-            :close-on-click-modal="false"
-        >
-            <div class="dialog-body">
-                <div class="form-card">
-                    <div class="field-label">Agent 名称</div>
-                    <el-input v-model="editDraft.name" placeholder="例如：my-agent" :disabled="!canEditContent" />
-                    
-                    <div class="field-label" style="margin-top: 12px">简介</div>
-                    <el-input v-model="editDraft.description" placeholder="一句简短的描述" :disabled="!canEditContent" />
-                    
-                    <div class="field-label" style="margin-top: 12px">指令</div>
-                    <code-editor
-                        v-model="editDraft.promptContent"
-                        language="markdown"
-                        :min-height="240"
-                        :readonly="!canEditContent"
-                    />
-                </div>
-            </div>
-            <template #footer>
-                <el-button @click="showEditDialog = false">取消</el-button>
-                <el-button
-                    type="primary"
-                    :loading="savingContent"
-                    :disabled="!canEditContent || !canSaveContent"
-                    @click="saveContent"
-                >
-                    保存内容
-                </el-button>
-            </template>
-        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { computed, ref, watch } from 'vue'
-import { send } from '@koishijs/client'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed, ref } from 'vue'
 import PermissionEditor from './permission-editor.vue'
-import CodeEditor from '../shared/code-editor.vue'
 import type { SubAgentInfo, ToolInfo } from '../../../src/types'
 
 interface RuleDraft {
@@ -226,6 +200,7 @@ interface RuleDraft {
 }
 
 interface AgentDraft {
+    enabled: boolean
     name: string
     description: string
     promptContent: string
@@ -259,7 +234,6 @@ const emit = defineEmits<{
     back: []
     save: []
     remove: []
-    refresh: []
 }>()
 
 const tab = ref<'info' | 'permission'>('info')
@@ -268,36 +242,6 @@ const tabs = [
     { value: 'info', label: '基础信息' },
     { value: 'permission', label: '权限配置' }
 ] as const
-
-const showEditDialog = ref(false)
-const savingContent = ref(false)
-
-const editDraft = ref({
-    name: '',
-    description: '',
-    promptContent: ''
-})
-
-watch(
-    () => props.agent,
-    (val) => {
-        if (!val) return
-        editDraft.value.name = val.name ?? ''
-        editDraft.value.description = val.description ?? ''
-        editDraft.value.promptContent = val.promptContent ?? ''
-    },
-    { immediate: true }
-)
-
-const canEditContent = computed(() => {
-    return props.agent.source === 'markdown' && !props.agent.remote
-})
-
-const canSaveContent = computed(() => {
-    return editDraft.value.name.trim().length > 0 && 
-           editDraft.value.description.trim().length > 0 && 
-           editDraft.value.promptContent.trim().length > 0
-})
 
 const modelOptions = computed(() => {
     const items = new Set(props.modelNames)
@@ -316,44 +260,6 @@ const toolOptions = computed(() => {
         }))
 })
 
-async function saveContent() {
-    try {
-        await ElMessageBox.confirm(
-            props.agent.name !== editDraft.value.name.trim() 
-                ? '您修改了 Agent 名称，这将会创建一个新的副本。确定要继续吗？' 
-                : '确定要保存修改后的内容吗？',
-            '确认保存',
-            {
-                confirmButtonText: '确定',
-                cancelButtonText: '取消',
-                type: 'warning'
-            }
-        )
-    } catch {
-        return
-    }
-
-    try {
-        savingContent.value = true
-        await send('chatluna-agent/addSubAgent', {
-            name: editDraft.value.name.trim(),
-            description: editDraft.value.description.trim(),
-            promptContent: editDraft.value.promptContent.trim(),
-            model: props.draft.model,
-            maxTurns: props.draft.maxTurns,
-            hidden: props.draft.hidden,
-            allowKoishiMessageTransform: props.draft.allowKoishiMessageTransform,
-            permissions: props.agent.permissions // We don't overwrite current draft permissions here
-        })
-        ElMessage.success('保存内容成功。')
-        showEditDialog.value = false
-        emit('refresh')
-    } catch (error) {
-        ElMessage.error(`保存失败: ${error instanceof Error ? error.message : String(error)}`)
-    } finally {
-        savingContent.value = false
-    }
-}
 </script>
 
 <style scoped>
@@ -509,13 +415,8 @@ async function saveContent() {
     color: var(--k-text-dark);
 }
 
+.field-help,
 .field-static {
-    margin-top: 8px;
-    color: var(--k-text-dark);
-    line-height: 1.6;
-}
-
-.field-help {
     margin-top: 6px;
     font-size: 13px;
     line-height: 1.5;
@@ -577,19 +478,6 @@ async function saveContent() {
     line-height: 1.6;
     color: var(--k-text-light);
     word-break: break-word;
-}
-
-.dialog-body {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.form-card {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 14px 0;
 }
 
 @media (max-width: 768px) {

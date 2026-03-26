@@ -55,23 +55,66 @@
 
                 <div v-else key="list" class="panel catalog-panel">
                     <div class="panel-header catalog-header">
-                        <div>
+                        <div class="catalog-header-info">
                             <div class="panel-title">工具列表</div>
                             <div class="panel-description">
                                 ChatLuna 目前可用的全部工具。
                             </div>
                         </div>
 
-                        <el-input
-                            v-model="keyword"
-                            class="search-input"
-                            placeholder="搜索工具名、说明、来源、分组、MCP server"
-                            clearable
-                        >
-                            <template #prefix>
-                                <el-icon><Search /></el-icon>
-                            </template>
-                        </el-input>
+                        <div class="search-row">
+                            <el-popover
+                                placement="bottom-start"
+                                trigger="click"
+                                popper-class="tools-filter-popper"
+                            >
+                                <template #reference>
+                                    <el-button class="filter-trigger" plain>
+                                        {{
+                                            filters.length > 0
+                                                ? `筛选 ${filters.length}`
+                                                : '筛选'
+                                        }}
+                                    </el-button>
+                                </template>
+
+                                <div class="filter-panel">
+                                    <el-checkbox-group v-model="filters">
+                                        <div class="filter-list">
+                                            <el-checkbox
+                                                v-for="item in filterOptions"
+                                                :key="item.value"
+                                                :label="item.value"
+                                            >
+                                                {{ item.label }}
+                                            </el-checkbox>
+                                        </div>
+                                    </el-checkbox-group>
+
+                                    <div class="filter-panel-actions">
+                                        <el-button
+                                            size="small"
+                                            text
+                                            :disabled="filters.length === 0"
+                                            @click="filters = []"
+                                        >
+                                            清空
+                                        </el-button>
+                                    </div>
+                                </div>
+                            </el-popover>
+
+                            <el-input
+                                v-model="keyword"
+                                class="search-input"
+                                placeholder="搜索工具名、说明、来源、分组、MCP server"
+                                clearable
+                            >
+                                <template #prefix>
+                                    <el-icon><Search /></el-icon>
+                                </template>
+                            </el-input>
+                        </div>
                     </div>
 
                     <div
@@ -124,7 +167,7 @@
                                         {{ item.name }}
                                     </el-tag>
                                     <el-tag size="small" effect="plain">
-                                        {{ item.enabled ? '启用' : '停用' }}
+                                        {{ item.enabled ? '启用' : '禁用' }}
                                     </el-tag>
                                     <el-tag
                                         size="small"
@@ -133,7 +176,7 @@
                                     >
                                         {{
                                             item.main
-                                                ? '主 Agent 可用'
+                                                ? '主 Agent 启用'
                                                 : '主 Agent 禁用'
                                         }}
                                     </el-tag>
@@ -275,12 +318,24 @@ const emit = defineEmits<{
 }>()
 
 const keyword = ref('')
+const filters = ref<string[]>([])
 const compactMode = useCompactMode('tool')
 const hideDesc = useHideDesc('tool')
 const selectedName = ref('')
 const currentView = ref<'list' | 'detail'>('list')
 const draft = ref<ToolConfig>(cloneConfig(props.config))
 const localDirty = ref(false)
+const filterOptions = [
+    { label: '启用', value: 'enabled:yes' },
+    { label: '禁用', value: 'enabled:no' },
+    { label: '主 Agent 启用', value: 'main:yes' },
+    { label: '主 Agent 禁用', value: 'main:no' },
+    { label: '伪装插件启用', value: 'character:yes' },
+    { label: '伪装插件禁用', value: 'character:no' },
+    { label: '主插件启用', value: 'chatluna:yes' },
+    { label: '主插件禁用', value: 'chatluna:no' },
+    { label: 'MCP 工具', value: 'mcp:yes' }
+]
 
 watch(
     () => props.config,
@@ -343,11 +398,30 @@ const tools = computed(() => {
 
 const filteredTools = computed(() => {
     const text = keyword.value.trim().toLowerCase()
-    if (!text) {
-        return tools.value
-    }
 
     return tools.value.filter((item) => {
+        if (
+            filters.value.length > 0 &&
+            !filters.value.every((value) => {
+                if (value === 'enabled:yes') return item.enabled
+                if (value === 'enabled:no') return !item.enabled
+                if (value === 'main:yes') return item.main
+                if (value === 'main:no') return !item.main
+                if (value === 'chatluna:yes') return item.chatlunaEnabled
+                if (value === 'chatluna:no') return !item.chatlunaEnabled
+                if (value === 'character:yes') return item.characterEnabled
+                if (value === 'character:no') return !item.characterEnabled
+                if (value === 'mcp:yes') return item.isMcp
+                return true
+            })
+        ) {
+            return false
+        }
+
+        if (!text) {
+            return true
+        }
+
         return [
             item.name,
             item.description,
@@ -617,8 +691,35 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
         align-items: flex-start;
     }
 
+    .catalog-header-info {
+        width: 100%;
+        flex: none;
+    }
+
+    .search-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        align-items: stretch;
+        width: 100%;
+        min-width: 0;
+        flex: none;
+    }
+
+    .filter-trigger {
+        min-width: 0;
+        width: 100%;
+        flex: none;
+    }
+
     .search-input {
         width: 100% !important;
+        min-width: 0;
+        flex: none;
+    }
+
+    .search-input :deep(.el-input__wrapper) {
+        min-height: 32px;
     }
 }
 
@@ -635,8 +736,71 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     color: var(--k-text-light);
 }
 
+.catalog-header-info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.search-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: auto;
+    flex-wrap: nowrap;
+    flex: 0 1 440px;
+    min-width: 220px;
+}
+
+.filter-trigger {
+    height: 32px;
+    min-width: 92px;
+    padding-inline: 12px;
+    flex: 0 0 auto;
+}
+
 .search-input {
-    width: min(360px, 100%);
+    width: auto;
+    min-width: 0;
+    flex: 1 1 260px;
+}
+
+.filter-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: max-content;
+    min-width: 0;
+}
+
+.filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.filter-list :deep(.el-checkbox) {
+    margin-right: 0;
+}
+
+.filter-list :deep(.el-checkbox__label) {
+    padding-left: 8px;
+    white-space: nowrap;
+}
+
+.filter-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 4px;
+    border-top: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 28%);
+}
+
+:global(.tools-filter-popper.el-popover) {
+    width: max-content !important;
+    min-width: 0 !important;
+    padding: 12px;
 }
 
 .card-list {
@@ -801,6 +965,43 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     .card-list,
     .card-list.compact {
         --card-cols: 1;
+    }
+
+    .catalog-header {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+    }
+
+    .catalog-header-info {
+        width: 100%;
+        flex: none;
+    }
+
+    .search-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        align-items: stretch;
+        width: 100%;
+        min-width: 0;
+        flex: none;
+    }
+
+    .filter-trigger {
+        min-width: 0;
+        width: 100%;
+        flex: none;
+    }
+
+    .search-input {
+        width: 100% !important;
+        min-width: 0;
+        flex: none;
+    }
+
+    .search-input :deep(.el-input__wrapper) {
+        min-height: 32px;
     }
 
     .tool-card {

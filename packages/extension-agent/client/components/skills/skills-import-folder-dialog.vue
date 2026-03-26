@@ -10,37 +10,38 @@
         @update:model-value="$emit('update:visible', $event)"
     >
         <div class="dialog-body">
-            <input
-                ref="fileInput"
-                type="file"
-                class="hidden-input"
-                accept=".zip,.skill,application/zip"
-                @change="handleSelect"
-            />
-
             <div class="form-card">
                 <div class="field-label">本地文件</div>
-                <div class="field-row">
-                    <div class="folder-copy">
-                        <div class="folder-name">
-                            {{ name || '尚未选择文件' }}
-                        </div>
-                        <div class="field-hint">
-                            {{
-                                data
-                                    ? '已读取压缩包，并自动完成预览。'
-                                    : '选择一个 .zip 或 .skill 文件后，会先生成预览并校验 Skill 包结构。'
-                            }}
-                        </div>
+                <el-upload
+                    drag
+                    action="#"
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    accept=".zip,.skill,application/zip"
+                    :disabled="reading || previewing"
+                    @change="handleSelect"
+                >
+                    <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+                    <div class="el-upload__text">
+                        将文件拖到此处，或 <em>点击上传</em>
                     </div>
+                    <template #tip>
+                        <div class="el-upload__tip">
+                            只能上传单个 `.zip` 或 `.skill` 文件
+                        </div>
+                    </template>
+                </el-upload>
 
-                    <el-button
-                        type="primary"
-                        :loading="reading || previewing"
-                        @click="openPicker"
-                    >
-                        选择 .zip / .skill
-                    </el-button>
+                <div v-if="name" class="upload-file-info">
+                    已选择文件：{{ name }}
+                </div>
+
+                <div class="field-hint">
+                    {{
+                        data
+                            ? '已读取压缩包，并自动完成预览。'
+                            : '选择一个 .zip 或 .skill 文件后，会先生成预览并校验 Skill 包结构。'
+                    }}
                 </div>
             </div>
 
@@ -195,26 +196,30 @@
         </div>
 
         <template #footer>
-            <div class="footer-copy">
-                {{
-                    preview
-                        ? canImport
-                            ? replaceCount > 0
-                                ? `已勾选 ${selected.length} 个 Skill，其中 ${replaceCount} 个会覆盖现有内容。`
-                                : `已勾选 ${selected.length} 个 Skill，现在可以直接导入并启用。`
-                            : '请至少勾选一个通过校验的 Skill；若提示将覆盖，可取消对应勾选。'
-                        : '先选择本地文件，再导入。'
-                }}
+            <div class="dialog-footer">
+                <div class="footer-copy">
+                    {{
+                        preview
+                            ? canImport
+                                ? replaceCount > 0
+                                    ? `已勾选 ${selected.length} 个 Skill，其中 ${replaceCount} 个会覆盖现有内容。`
+                                    : `已勾选 ${selected.length} 个 Skill，现在可以直接导入并启用。`
+                                : '请至少勾选一个通过校验的 Skill；若提示将覆盖，可取消对应勾选。'
+                            : '先选择本地文件，再导入。'
+                    }}
+                </div>
+                <div class="footer-actions">
+                    <el-button @click="$emit('update:visible', false)">取消</el-button>
+                    <el-button
+                        type="primary"
+                        :loading="importing"
+                        :disabled="!canImport || !data"
+                        @click="importSkills"
+                    >
+                        导入并启用
+                    </el-button>
+                </div>
             </div>
-            <el-button @click="$emit('update:visible', false)">取消</el-button>
-            <el-button
-                type="primary"
-                :loading="importing"
-                :disabled="!canImport || !data"
-                @click="importSkills"
-            >
-                导入并启用
-            </el-button>
         </template>
     </el-dialog>
 </template>
@@ -223,7 +228,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
-import { Document, FolderOpened } from '@element-plus/icons-vue'
+import { Document, FolderOpened, UploadFilled } from '@element-plus/icons-vue'
 import type { SkillImportPreviewResult } from '../../../src/types'
 import { buildImportTree } from './import-tree'
 
@@ -251,7 +256,6 @@ const emit = defineEmits<{
     refresh: []
 }>()
 
-const fileInput = ref<HTMLInputElement>()
 const name = ref('')
 const data = ref('')
 const preview = ref<SkillImportPreviewResult>()
@@ -305,20 +309,15 @@ function selectReady(all: boolean) {
         : []
 }
 
-function openPicker() {
-    fileInput.value?.click()
-}
+async function handleSelect(file: any) {
+    const raw = file.raw as File
+    const next = raw ?? (file as File)
 
-async function handleSelect(event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    input.value = ''
-
-    if (!file) {
+    if (!next) {
         return
     }
 
-    if (!/\.(zip|skill)$/i.test(file.name)) {
+    if (!/\.(zip|skill)$/i.test(next.name)) {
         ElMessage.warning('请选择 .zip 或 .skill 文件。')
         return
     }
@@ -326,8 +325,8 @@ async function handleSelect(event: Event) {
     try {
         reading.value = true
         preview.value = undefined
-        name.value = file.name
-        data.value = bufferToBase64(await file.arrayBuffer())
+        name.value = next.name
+        data.value = bufferToBase64(await next.arrayBuffer())
 
         previewing.value = true
         preview.value = await send('chatluna-agent/previewSkillImport', {
@@ -388,10 +387,6 @@ function bufferToBase64(buffer: ArrayBuffer) {
 </script>
 
 <style scoped>
-.hidden-input {
-    display: none;
-}
-
 .dialog-body {
     display: flex;
     flex-direction: column;
@@ -472,7 +467,6 @@ function bufferToBase64(buffer: ArrayBuffer) {
     flex-wrap: wrap;
 }
 
-.field-row,
 .preview-top,
 .skill-head,
 .tree-node {
@@ -482,7 +476,6 @@ function bufferToBase64(buffer: ArrayBuffer) {
     min-width: 0;
 }
 
-.field-row,
 .preview-top,
 .skill-head {
     justify-content: space-between;
@@ -508,11 +501,30 @@ function bufferToBase64(buffer: ArrayBuffer) {
     margin-top: 6px;
 }
 
+.upload-file-info {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--el-color-success);
+    overflow-wrap: anywhere;
+}
+
 .footer-copy {
-    margin-right: auto;
     font-size: 12px;
     line-height: 1.6;
     color: var(--k-text-light);
+}
+
+.dialog-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 .preview-card {
@@ -642,9 +654,7 @@ function bufferToBase64(buffer: ArrayBuffer) {
 
 :deep(.skills-import-dialog .el-dialog__footer) {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    padding-top: 8px;
 }
 
 .skill-list {
@@ -693,7 +703,6 @@ function bufferToBase64(buffer: ArrayBuffer) {
 }
 
 @media (max-width: 768px) {
-    .field-row,
     .preview-top,
     .skill-head {
         flex-direction: column;
@@ -714,8 +723,13 @@ function bufferToBase64(buffer: ArrayBuffer) {
         width: 100%;
     }
 
-    .field-row :deep(.el-button) {
+    :deep(.skills-import-dialog .el-upload) {
         width: 100%;
+    }
+
+    :deep(.skills-import-dialog .el-upload-dragger) {
+        width: 100%;
+        padding: 18px 12px;
     }
 
     .panel-head,
@@ -758,7 +772,11 @@ function bufferToBase64(buffer: ArrayBuffer) {
         padding: 12px 16px 16px;
     }
 
-    :deep(.skills-import-dialog .el-dialog__footer .el-button) {
+    .footer-actions {
+        width: 100%;
+    }
+
+    .footer-actions :deep(.el-button) {
         flex: 1 1 0;
         min-width: 0;
         margin: 0;
@@ -766,7 +784,6 @@ function bufferToBase64(buffer: ArrayBuffer) {
 
     .footer-copy {
         width: 100%;
-        margin-right: 0;
     }
 }
 </style>

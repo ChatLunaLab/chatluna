@@ -4,6 +4,7 @@ import {
     AgentConfig,
     ComputerConfig,
     PermissionRule,
+    SkillConfig,
     SubAgentConfig,
     SubAgentItemConfig,
     ToolConfig,
@@ -88,6 +89,37 @@ export function createToolItemConfig(
         characterPrivateIds: [...(input.characterPrivateIds ?? [])],
         subAgents: input.subAgents ?? createPermissionRule('all'),
         authority: input.authority ?? getDefaultToolAuthority(name)
+    }
+}
+
+export function createSkillItemConfig(
+    input: Partial<SkillConfig> = {}
+): SkillConfig {
+    return {
+        enabled: input.enabled !== false,
+        mode:
+            input.mode === 'description' || input.mode === 'full'
+                ? input.mode
+                : 'description',
+        remote: input.remote === true,
+        main: input.main !== false,
+        chatluna: input.chatluna !== false,
+        character: input.character !== false,
+        characterGroup: input.characterGroup !== false,
+        characterPrivate: input.characterPrivate !== false,
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
+        characterGroupIds: [...(input.characterGroupIds ?? [])],
+        characterPrivateIds: [...(input.characterPrivateIds ?? [])],
+        subAgents: input.subAgents ?? createPermissionRule('all')
     }
 }
 

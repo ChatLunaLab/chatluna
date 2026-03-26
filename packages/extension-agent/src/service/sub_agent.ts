@@ -386,7 +386,8 @@ export class ChatLunaAgentSubAgentService {
             background: options.background,
             startedAt: Date.now(),
             toolCount: 0,
-            turnCount: 0
+            turnCount: 0,
+            trace: []
         }
 
         const abort = options.background ? new AbortController() : undefined
@@ -432,6 +433,13 @@ export class ChatLunaAgentSubAgentService {
             } catch (err) {
                 run.state = signal?.aborted ? 'aborted' : 'failed'
                 run.error = err instanceof Error ? err.message : String(err)
+                run.trace.push({
+                    id: `${run.runId}:error`,
+                    type: 'error',
+                    at: Date.now(),
+                    title: run.state === 'aborted' ? '运行已中止' : '运行失败',
+                    text: run.error
+                })
                 run.endedAt = Date.now()
                 delete task.activeRunId
                 touchTaskSession(task)

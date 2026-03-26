@@ -1,6 +1,7 @@
 /** @module types/skills */
 
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import type { PermissionRule } from './tool'
 
 export interface SkillsConfig {
     dirs: string[]
@@ -8,9 +9,22 @@ export interface SkillsConfig {
     githubToken?: string
 }
 
+export type SkillMode = 'off' | 'description' | 'full'
+
 export interface SkillConfig {
     enabled: boolean
+    mode?: SkillMode
     remote?: boolean
+    main?: boolean
+    chatluna?: boolean
+    character?: boolean
+    characterGroup?: boolean
+    characterPrivate?: boolean
+    characterGroupMode?: 'all' | 'allow' | 'deny'
+    characterPrivateMode?: 'all' | 'allow' | 'deny'
+    characterGroupIds?: string[]
+    characterPrivateIds?: string[]
+    subAgents?: PermissionRule
 }
 
 export type SkillSource =
@@ -59,6 +73,17 @@ export interface SkillInfo {
     scope: SkillScope
     state: SkillState
     enabled: boolean
+    mode: SkillMode
+    main: boolean
+    chatlunaEnabled: boolean
+    characterEnabled: boolean
+    characterGroupEnabled: boolean
+    characterPrivateEnabled: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
+    subAgents: PermissionRule
     available: boolean
     visible: boolean
     modelEnabled: boolean

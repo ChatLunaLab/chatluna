@@ -368,7 +368,10 @@ async function parseSkillText(input: {
             : extra.allowImplicitInvocation !== false
     const userInvocable = frontmatter['user-invocable'] !== false
     const id = createSkillId(input.file)
-    const enabled = input.cfg.items[id]?.enabled !== false
+    const mode =
+        input.cfg.items[id]?.mode ??
+        (input.cfg.items[id]?.enabled ? 'description' : 'off')
+    const enabled = mode !== 'off'
     const state: SkillState = description ? 'ready' : 'invalid'
 
     diagnostics.push(...availableResult.diagnostics)
@@ -423,6 +426,9 @@ function createInvalidSkill(input: {
     body: string
 }): ScannedSkill {
     const id = createSkillId(input.file)
+    const mode =
+        input.cfg.items[id]?.mode ??
+        (input.cfg.items[id]?.enabled ? 'description' : 'off')
 
     return {
         id,
@@ -434,7 +440,7 @@ function createInvalidSkill(input: {
         scope: input.target.scope,
         remote: input.target.remote,
         state: 'invalid',
-        enabled: input.cfg.items[id]?.enabled !== false,
+        enabled: mode !== 'off',
         available: false,
         userInvocable: true,
         implicitInvocation: false,

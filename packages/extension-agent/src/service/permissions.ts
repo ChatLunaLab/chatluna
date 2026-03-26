@@ -2,11 +2,16 @@
 
 import { applyToolMask, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import { Context, Session, User } from 'koishi'
-import { createPermissionRule, createToolItemConfig } from '../config/defaults'
+import {
+    createPermissionRule,
+    createSkillItemConfig,
+    createToolItemConfig
+} from '../config/defaults'
 import {
     AgentConfig,
     ComputerBackendType,
     PermissionRule,
+    SkillInfo,
     SubAgentInfo,
     SubAgentPermissionConfig,
     ToolAvailabilityInfo,
@@ -38,10 +43,6 @@ export class ChatLunaAgentPermissionService {
                 session: Session
                 source?: 'chatluna' | 'character'
             }) => {
-                if (room && room.chatMode !== 'plugin') {
-                    return
-                }
-
                 const mask = this.createMainToolMask(
                     session,
                     source ?? 'chatluna'
@@ -101,15 +102,23 @@ export class ChatLunaAgentPermissionService {
             this.config.subAgent.defaults.skills
         )
 
-        if (rule.mode === 'allow') {
-            return names.filter((name) => rule.allow.includes(name))
-        }
+        return names.filter((name) => matchRule(name, rule))
+    }
 
-        if (rule.mode === 'deny') {
-            return names.filter((name) => !rule.deny.includes(name))
-        }
+    filterSkills(info: SubAgentInfo, items: SkillInfo[]) {
+        const rule = this.mergeRule(
+            info.permissions.skills,
+            this.config.subAgent.defaults.skills
+        )
 
-        return [...names]
+        return items.filter((item) => {
+            if (!matchRule(item.name, rule)) {
+                return false
+            }
+
+            const cfg = createSkillItemConfig(this.config.skills.items[item.id])
+            return matchRule(info.id, cfg.subAgents)
+        })
     }
 
     filterComputerBackends(info: SubAgentInfo, names: ComputerBackendType[]) {

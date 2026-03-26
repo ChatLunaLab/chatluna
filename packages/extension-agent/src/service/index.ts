@@ -22,7 +22,9 @@ import {
     SkillImportInput,
     SkillImportPreviewResult,
     SkillImportResult,
+    SkillMode,
     SubAgentConfig,
+    SubAgentExportResult,
     SubAgentImportInput,
     SubAgentInfo,
     SubAgentItemConfig
@@ -41,6 +43,7 @@ export class ChatLunaAgentService extends Service {
     public permission: ChatLunaAgentPermissionService
     public skills: ChatLunaAgentSkillsService
     public subAgent: ChatLunaAgentSubAgentService
+    private _toolUpdateDispose?: () => void
 
     constructor(
         public ctx: Context,
@@ -66,6 +69,12 @@ export class ChatLunaAgentService extends Service {
     }
 
     async start() {
+        this._toolUpdateDispose?.()
+        this._toolUpdateDispose = this.ctx.on('chatluna/tool-updated', async () => {
+            this.permission.invalidateCache()
+            await this.refreshConsoleData()
+        })
+
         await Promise.all([
             this.permission.start(),
             this.cli.start(),
@@ -78,6 +87,8 @@ export class ChatLunaAgentService extends Service {
     }
 
     async stop() {
+        this._toolUpdateDispose?.()
+        this._toolUpdateDispose = undefined
         await this.subAgent.stop()
         await this.mcp.stop()
         await this.skills.stop()
@@ -191,7 +202,7 @@ export class ChatLunaAgentService extends Service {
                 createHashId(
                     join(getSkillsRootPath(this.ctx), name, 'SKILL.md')
                 )
-            ] = { enabled: true, remote: false }
+            ] = { enabled: false, mode: 'off', remote: false }
         }
 
         await this.updateConfig('skills', skills, async () => {
@@ -248,6 +259,10 @@ export class ChatLunaAgentService extends Service {
     }
 
     async setSkillEnabled(id: string, enabled: boolean) {
+        return await this.setSkillMode(id, enabled ? 'description' : 'off')
+    }
+
+    async setSkillMode(id: string, mode: SkillMode) {
         const skills = {
             dirs: [...this.args.config.skills.dirs],
             items: { ...this.args.config.skills.items },
@@ -255,7 +270,9 @@ export class ChatLunaAgentService extends Service {
         }
         const info = this.skills.listSkills().find((item) => item.id === id)
         skills.items[id] = {
-            enabled,
+            ...skills.items[id],
+            enabled: mode !== 'off',
+            mode,
             remote: info?.remote === true || skills.items[id]?.remote === true
         }
         await this.updateConfig('skills', skills, async () => {
@@ -336,6 +353,32 @@ export class ChatLunaAgentService extends Service {
         }
 
         return info
+    }
+
+    async exportSubAgent(
+        id: string
+    ): Promise<SubAgentExportResult | undefined> {
+        const info = this.subAgent.getCatalogSync().find((item) => item.id === id)
+        if (!info || !info.promptContent.trim()) {
+            return undefined
+        }
+
+        return {
+            id: info.id,
+            name: info.name,
+            fileName: `${getSubAgentFileName(info.name)}.md`,
+            content: createSubAgentMarkdown({
+                name: info.name,
+                description: info.description,
+                promptContent: info.promptContent,
+                model: info.model,
+                maxTurns: info.maxTurns,
+                hidden: info.hidden,
+                enabled: info.enabled,
+                allowKoishiMessageTransform: info.allowKoishiMessageTransform,
+                permissions: info.permissions
+            })
+        }
     }
 
     async registerSubAgent(input: ManualSubAgentInput) {

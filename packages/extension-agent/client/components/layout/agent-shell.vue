@@ -26,9 +26,11 @@
                             <skills-page
                                 :config="skillsCfg"
                                 :status="skillsStatus"
+                                :agents="subAgentStatus?.catalog"
                                 :computer="computerStatus"
                                 :loading="loading"
                                 @refresh="refreshData"
+                                @save="(value) => saveSection('skills', value)"
                             />
                         </div>
 
@@ -84,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { send, store } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
 import AgentSidebar from './agent-sidebar.vue'
@@ -127,6 +129,12 @@ const handleTabChange = (tab: string) => {
     activeTab.value = tab
 }
 
+watch(activeTab, async (tab) => {
+    if (tab === 'skills' || tab === 'subAgent' || tab === 'tool') {
+        await refreshData()
+    }
+})
+
 const saveMcp = async (value: AgentConfig['mcp']) => {
     try {
         pending.value = true
@@ -140,8 +148,8 @@ const saveMcp = async (value: AgentConfig['mcp']) => {
 }
 
 const saveSection = async (
-    key: 'subAgent' | 'tool',
-    value: AgentConfig['subAgent'] | AgentConfig['tool']
+    key: 'skills' | 'subAgent' | 'tool',
+    value: AgentConfig['skills'] | AgentConfig['subAgent'] | AgentConfig['tool']
 ) => {
     if (!config.value) {
         return

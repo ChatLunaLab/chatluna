@@ -27,7 +27,7 @@
                         @keyup.enter="previewImport"
                     />
                     <el-button
-                        :type="preview ? (canImport ? 'success' : 'warning') : 'primary'"
+                        plain
                         :loading="previewing"
                         @click="previewImport"
                     >
@@ -56,6 +56,7 @@
                         placeholder="ghp_xxx / github_pat_xxx"
                     />
                     <el-button
+                        plain
                         :loading="savingToken"
                         :disabled="tokenDraft.trim() === savedToken"
                         @click="saveToken()"
@@ -226,26 +227,30 @@
         </div>
 
         <template #footer>
-            <div class="footer-copy">
-                {{
-                    preview
-                        ? canImport
-                            ? replaceCount > 0
-                                ? `已勾选 ${selected.length} 个 Skill，其中 ${replaceCount} 个会覆盖现有内容。`
-                                : `已勾选 ${selected.length} 个 Skill，现在可以直接导入并启用。`
-                            : '请至少勾选一个通过校验的 Skill；若提示将覆盖，可取消对应勾选。'
-                        : '先预览文件树，再导入。'
-                }}
+            <div class="dialog-footer">
+                <div class="footer-copy">
+                    {{
+                        preview
+                            ? canImport
+                                ? replaceCount > 0
+                                    ? `已勾选 ${selected.length} 个 Skill，其中 ${replaceCount} 个会覆盖现有内容。`
+                                    : `已勾选 ${selected.length} 个 Skill，现在可以直接导入并启用。`
+                                : '请至少勾选一个通过校验的 Skill；若提示将覆盖，可取消对应勾选。'
+                            : '先预览文件树，再导入。'
+                    }}
+                </div>
+                <div class="footer-actions">
+                    <el-button @click="$emit('update:visible', false)">取消</el-button>
+                    <el-button
+                        type="primary"
+                        :loading="importing"
+                        :disabled="!canImport"
+                        @click="importSkills"
+                    >
+                        导入并启用
+                    </el-button>
+                </div>
             </div>
-            <el-button @click="$emit('update:visible', false)">取消</el-button>
-            <el-button
-                type="primary"
-                :loading="importing"
-                :disabled="!canImport"
-                @click="importSkills"
-            >
-                导入并启用
-            </el-button>
         </template>
     </el-dialog>
 </template>
@@ -550,10 +555,22 @@ async function saveToken(show = true) {
 }
 
 .footer-copy {
-    margin-right: auto;
     font-size: 12px;
     line-height: 1.6;
     color: var(--k-text-light);
+}
+
+.dialog-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 .field-hint,
@@ -704,9 +721,7 @@ async function saveToken(show = true) {
 
 :deep(.skills-import-dialog .el-dialog__footer) {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    padding-top: 8px;
 }
 
 .skill-list {
@@ -824,7 +839,11 @@ async function saveToken(show = true) {
         padding: 12px 16px 16px;
     }
 
-    :deep(.skills-import-dialog .el-dialog__footer .el-button) {
+    .footer-actions {
+        width: 100%;
+    }
+
+    .footer-actions :deep(.el-button) {
         flex: 1 1 0;
         min-width: 0;
         margin: 0;
@@ -832,7 +851,6 @@ async function saveToken(show = true) {
 
     .footer-copy {
         width: 100%;
-        margin-right: 0;
     }
 }
 </style>
