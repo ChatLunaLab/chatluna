@@ -1,7 +1,7 @@
 <template>
     <el-form class="backend-form" label-position="top">
         <div class="warning-box">
-            <div class="warning-title">Local 终端能力很危险</div>
+            <div class="warning-title">本地终端能力很危险</div>
             <div class="warning-desc">它会直接在宿主机执行命令，而不是隔离沙箱。建议默认关闭，只在明确知道风险、且需要访问本地工作区时临时启用。</div>
         </div>
 

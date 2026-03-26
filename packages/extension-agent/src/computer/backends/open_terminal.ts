@@ -58,6 +58,14 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const root = current.cwd || '/'
         this._home = root
 
+        const home = await this.execute('printf %s "$HOME"', {
+            workdir: root,
+            timeout: 5000
+        }).catch(() => undefined)
+        if (home?.stdout?.startsWith('/')) {
+            this._home = home.stdout.trim()
+        }
+
         if (this.options.cwd) {
             try {
                 const result = readOpenTerminalData<OpenTerminalListData>(
@@ -200,7 +208,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         await this.ctx.http.post(
             this.url('/files/write'),
             {
-                path: filePath,
+                path: this.resolvePath(filePath),
                 content
             },
             {

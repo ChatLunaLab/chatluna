@@ -1057,23 +1057,23 @@ export class ChatLunaAgentComputerService {
             async (runtime: PromptContextRuntime, next) => {
                 const mask = (runtime.configurable as { toolMask?: ToolMask })
                     ?.toolMask
-                if (mask != null) {
-                    const registry = this.ctx.chatluna.platform.getToolRegistry()
-                    const names = this.ctx.chatluna.platform.getFilteredTools(mask)
-                    if (
-                        !names.some((name) =>
-                            registry[name]?.meta?.tags?.includes('computer')
-                        )
-                    ) {
-                        return next()
-                    }
+                const registry = this.ctx.chatluna.platform.getToolRegistry()
+                const names =
+                    mask != null
+                        ? this.ctx.chatluna.platform.getFilteredTools(mask)
+                        : Object.keys(registry)
+                const capabilities = names.filter((name) =>
+                    registry[name]?.meta?.tags?.includes('computer')
+                )
+                if (capabilities.length < 1) {
+                    return next()
                 }
 
                 const msg = new SystemMessage(
                     [
                         '<computer_use>',
                         `Default provider: ${this.resolveProvider() ?? this.config.computer.defaultProvider}`,
-                        `Available capabilities: ${this.getCapabilities().join(', ')}`,
+                        `Available capabilities: ${capabilities.join(', ')}`,
                         'Prefer isolated backends when available. ' +
                             'Local computer access runs directly on the host machine and should only be used when explicitly enabled.',
                         'Use these capabilities when file operations, code search, shell execution, terminal interaction, or preview access are needed.',
