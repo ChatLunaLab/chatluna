@@ -14,6 +14,15 @@ export interface SubAgentItemConfig {
     enabled: boolean
     name: string
     description: string
+    chatluna: boolean
+    character: boolean
+    characterGroup: boolean
+    characterPrivate: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
+    authority: number
     source: 'builtin' | 'markdown' | 'preset' | 'manual'
     format: 'chatluna' | 'claude' | 'opencode'
     model?: string
@@ -45,6 +54,15 @@ export interface SubAgentInfo {
     format: 'chatluna' | 'claude' | 'opencode'
     state: 'ready' | 'invalid' | 'missing'
     enabled: boolean
+    chatlunaEnabled: boolean
+    characterEnabled: boolean
+    characterGroupEnabled: boolean
+    characterPrivateEnabled: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
+    authority: number
     hidden: boolean
     remote?: boolean
     path?: string
@@ -115,6 +133,15 @@ export interface ManualSubAgentInput {
     name: string
     description?: string
     promptContent?: string
+    chatluna?: boolean
+    character?: boolean
+    characterGroup?: boolean
+    characterPrivate?: boolean
+    characterGroupMode?: 'all' | 'allow' | 'deny'
+    characterPrivateMode?: 'all' | 'allow' | 'deny'
+    characterGroupIds?: string[]
+    characterPrivateIds?: string[]
+    authority?: number
     format?: SubAgentInfo['format']
     model?: string
     maxTurns?: number

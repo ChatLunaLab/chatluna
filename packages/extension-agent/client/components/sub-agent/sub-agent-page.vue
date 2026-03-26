@@ -243,6 +243,15 @@ const props = withDefaults(
                     enabled: false,
                     name: 'plan',
                     description: '',
+                    chatluna: true,
+                    character: true,
+                    characterGroup: true,
+                    characterPrivate: true,
+                    characterGroupMode: 'all',
+                    characterPrivateMode: 'all',
+                    characterGroupIds: [],
+                    characterPrivateIds: [],
+                    authority: 0,
                     source: 'builtin',
                     format: 'chatluna',
                     maxTurns: 100,
@@ -260,6 +269,15 @@ const props = withDefaults(
                     enabled: false,
                     name: 'general',
                     description: '',
+                    chatluna: true,
+                    character: true,
+                    characterGroup: true,
+                    characterPrivate: true,
+                    characterGroupMode: 'all',
+                    characterPrivateMode: 'all',
+                    characterGroupIds: [],
+                    characterPrivateIds: [],
+                    authority: 0,
                     source: 'builtin',
                     format: 'chatluna',
                     maxTurns: 100,
@@ -277,6 +295,15 @@ const props = withDefaults(
                     enabled: false,
                     name: 'explore',
                     description: '',
+                    chatluna: true,
+                    character: true,
+                    characterGroup: true,
+                    characterPrivate: true,
+                    characterGroupMode: 'all',
+                    characterPrivateMode: 'all',
+                    characterGroupIds: [],
+                    characterPrivateIds: [],
+                    authority: 0,
                     source: 'builtin',
                     format: 'chatluna',
                     maxTurns: 100,
@@ -346,6 +373,15 @@ const draft = reactive({
     name: '',
     description: '',
     promptContent: '',
+    chatluna: true,
+    character: true,
+    characterGroup: true,
+    characterPrivate: true,
+    characterGroupMode: 'all' as const,
+    characterPrivateMode: 'all' as const,
+    characterGroupIds: [] as string[],
+    characterPrivateIds: [] as string[],
+    authority: 0,
     model: '',
     maxTurns: 100,
     hidden: false,
@@ -391,6 +427,15 @@ watch(
         draft.name = value.name ?? ''
         draft.description = value.description ?? ''
         draft.promptContent = value.promptContent ?? ''
+        draft.chatluna = value.chatlunaEnabled
+        draft.character = value.characterEnabled
+        draft.characterGroup = value.characterGroupEnabled
+        draft.characterPrivate = value.characterPrivateEnabled
+        draft.characterGroupMode = value.characterGroupMode
+        draft.characterPrivateMode = value.characterPrivateMode
+        draft.characterGroupIds = [...value.characterGroupIds]
+        draft.characterPrivateIds = [...value.characterPrivateIds]
+        draft.authority = value.authority
         draft.model = value.model ?? ''
         draft.maxTurns = value.maxTurns ?? 100
         draft.hidden = value.hidden
@@ -575,6 +620,15 @@ async function saveSelected() {
             enabled: draft.enabled,
             name: item.name,
             description: item.description,
+            chatluna: draft.chatluna,
+            character: draft.character,
+            characterGroup: draft.characterGroup,
+            characterPrivate: draft.characterPrivate,
+            characterGroupMode: draft.characterGroupMode,
+            characterPrivateMode: draft.characterPrivateMode,
+            characterGroupIds: [...draft.characterGroupIds],
+            characterPrivateIds: [...draft.characterPrivateIds],
+            authority: draft.authority,
             source: item.source,
             format: item.format,
             model: draft.model.trim() || undefined,
@@ -650,11 +704,20 @@ async function removeAgent(item: SubAgentInfo) {
 async function createPresetAgent(
     name: string,
     preset: string,
-    options: {
-        description: string
-        model: string | undefined
-        maxTurns: number
-        hidden: boolean
+        options: {
+            description: string
+            chatluna?: boolean
+            character?: boolean
+            characterGroup?: boolean
+            characterPrivate?: boolean
+            characterGroupMode?: 'all' | 'allow' | 'deny'
+            characterPrivateMode?: 'all' | 'allow' | 'deny'
+            characterGroupIds?: string[]
+            characterPrivateIds?: string[]
+            authority?: number
+            model: string | undefined
+            maxTurns: number
+            hidden: boolean
         allowKoishiMessageTransform: boolean
     }
 ) {
@@ -739,6 +802,15 @@ async function savePreview() {
             name: previewDraft.name.trim(),
             description: previewDraft.description.trim(),
             promptContent: previewDraft.promptContent.trim(),
+            chatluna: item.chatlunaEnabled,
+            character: item.characterEnabled,
+            characterGroup: item.characterGroupEnabled,
+            characterPrivate: item.characterPrivateEnabled,
+            characterGroupMode: item.characterGroupMode,
+            characterPrivateMode: item.characterPrivateMode,
+            characterGroupIds: item.characterGroupIds,
+            characterPrivateIds: item.characterPrivateIds,
+            authority: item.authority,
             model: item.model,
             maxTurns: item.maxTurns,
             hidden: item.hidden,

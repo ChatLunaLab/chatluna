@@ -479,6 +479,7 @@ const skills = computed(() => {
                 ...item,
                 enabled: saved?.enabled ?? item.enabled,
                 mode: saved?.enabled === false ? 'off' : (saved?.mode ?? item.mode),
+                authority: saved?.authority ?? item.authority,
                 main: saved?.main ?? item.main,
                 chatlunaEnabled: saved?.chatluna ?? item.chatlunaEnabled,
                 characterEnabled: saved?.character ?? item.characterEnabled,
@@ -622,6 +623,7 @@ function createItem(item?: Partial<SkillConfig> | SkillInfo): SkillConfig {
     return {
         enabled: item?.enabled !== false,
         mode: item?.mode === 'full' ? 'full' : 'description',
+        authority: (item as SkillConfig | undefined)?.authority ?? (item as SkillInfo | undefined)?.authority ?? 0,
         remote: (item as SkillConfig | undefined)?.remote === true,
         main: (item as SkillConfig | undefined)?.main !== false,
         chatluna: (item as SkillConfig | undefined)?.chatluna ?? (item as SkillInfo | undefined)?.chatlunaEnabled ?? true,

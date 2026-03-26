@@ -186,6 +186,14 @@
                             >
                                 <CopyDocument />
                             </el-icon>
+                            <el-icon
+                                v-if="currentIdArray.length > 0"
+                                class="copy-icon"
+                                title="清空所有 ID"
+                                @click="clearIds"
+                            >
+                                <Delete />
+                            </el-icon>
                         </div>
                         
                         <div class="custom-id-input-wrapper">
@@ -293,7 +301,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, Close, CopyDocument } from '@element-plus/icons-vue'
+import { ArrowLeft, Close, CopyDocument, Delete } from '@element-plus/icons-vue'
 import { computed, ref, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { SubAgentInfo, ToolInfo, ToolItemConfig } from '../../../src/types'
@@ -386,6 +394,15 @@ function removeId(id: string) {
     } else {
         props.draft.characterGroupIds = props.draft.characterGroupIds.filter(i => i !== id)
     }
+}
+
+function clearIds() {
+    if (characterKind.value === 'private') {
+        props.draft.characterPrivateIds = []
+        return
+    }
+
+    props.draft.characterGroupIds = []
 }
 
 const currentListLabel = computed(() => {

@@ -112,13 +112,26 @@ export class ChatLunaAgentSubAgentService {
         )
     }
 
-    listRunnableAgents() {
-        return this.getCatalogSync().filter(isRunnable)
+    listRunnableAgents(
+        session?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[1],
+        source?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[2]
+    ) {
+        return this.getCatalogSync().filter(
+            (item) =>
+                isRunnable(item) && this.permission.canUseSubAgent(item, session, source)
+        )
     }
 
-    findRunnableAgent(name: string) {
+    findRunnableAgent(
+        name: string,
+        session?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[1],
+        source?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[2]
+    ) {
         return this.getCatalogSync().find(
-            (item) => item.name === name && isRunnable(item)
+            (item) =>
+                item.name === name &&
+                isRunnable(item) &&
+                this.permission.canUseSubAgent(item, session, source)
         )
     }
 
@@ -194,6 +207,7 @@ export class ChatLunaAgentSubAgentService {
         const parent = runConfig?.configurable?.subagentContext
         const session = runConfig?.configurable?.session
         const conversationId = runConfig?.configurable?.conversationId
+        const source = (runConfig?.configurable as { source?: 'chatluna' | 'character' })?.source ?? 'chatluna'
 
         if (action === 'list') {
             if (!conversationId) {
@@ -275,7 +289,7 @@ export class ChatLunaAgentSubAgentService {
 
         let info = task ? this._catalog.get(task.agentId) : undefined
         if (input.agent?.trim()) {
-            info = this.findRunnableAgent(input.agent.trim())
+            info = this.findRunnableAgent(input.agent.trim(), session, source)
             if (!info) {
                 return `Sub-agent '${input.agent}' is not available.`
             }
@@ -290,6 +304,10 @@ export class ChatLunaAgentSubAgentService {
         }
 
         if (!info || !isRunnable(info)) {
+            return `Sub-agent '${input.agent ?? task?.agentName}' is not available.`
+        }
+
+        if (!this.permission.canUseSubAgent(info, session, source)) {
             return `Sub-agent '${input.agent ?? task?.agentName}' is not available.`
         }
 
@@ -520,7 +538,8 @@ export class ChatLunaAgentSubAgentService {
         this._toolDispose = this.ctx.chatluna.platform.registerTool('task', {
             description: this.buildToolDescription(),
             selector: () => this.listRunnableAgents().length > 0,
-            authorization: () => true,
+            authorization: (session) =>
+                this.listRunnableAgents(session, 'chatluna').length > 0,
             createTool: () => new TaskTool(this),
             meta: {
                 source: 'extension',
@@ -542,6 +561,9 @@ export class ChatLunaAgentSubAgentService {
 
                 if (runtime.configurable?.subagentContext) return next()
 
+                const session = runtime.configurable?.session
+                const source = (runtime.configurable as { source?: 'chatluna' | 'character' })?.source ?? 'chatluna'
+
                 const mask = (runtime.configurable as { toolMask?: ToolMask })
                     ?.toolMask
                 if (
@@ -551,7 +573,7 @@ export class ChatLunaAgentSubAgentService {
                     return next()
                 }
 
-                const agents = this.listRunnableAgents()
+                const agents = this.listRunnableAgents(session, source)
                 if (agents.length < 1) return next()
 
                 const status = this.ctx.chatluna_agent?.computer.getStatus()

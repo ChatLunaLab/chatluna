@@ -219,6 +219,15 @@ function parseMarkdownAgentText(
         enabled: parsed.value?.enabled ?? true,
         name: parsed.value?.name ?? basename(file).replace(/\.md$/i, ''),
         description: parsed.value?.description ?? '',
+        chatluna: parsed.value?.chatluna ?? true,
+        character: parsed.value?.character ?? true,
+        characterGroup: parsed.value?.characterGroup ?? true,
+        characterPrivate: parsed.value?.characterPrivate ?? true,
+        characterGroupMode: parsed.value?.characterGroupMode,
+        characterPrivateMode: parsed.value?.characterPrivateMode,
+        characterGroupIds: parsed.value?.characterGroupIds,
+        characterPrivateIds: parsed.value?.characterPrivateIds,
+        authority: parsed.value?.authority,
         source: 'markdown',
         format: parsed.value?.format ?? target.hint ?? 'chatluna',
         model: parsed.value?.model,
@@ -241,7 +250,11 @@ function parseMarkdownAgentText(
                   tools: saved.permissions?.tools ?? base.permissions.tools,
                   computer:
                       saved.permissions?.computer ?? base.permissions.computer
-              }
+              },
+              characterGroupIds:
+                  saved.characterGroupIds ?? base.characterGroupIds,
+              characterPrivateIds:
+                  saved.characterPrivateIds ?? base.characterPrivateIds
           })
         : base
 
@@ -253,6 +266,15 @@ function parseMarkdownAgentText(
         format: item.format,
         state: parsed.state,
         enabled: item.enabled,
+        chatlunaEnabled: item.chatluna,
+        characterEnabled: item.character,
+        characterGroupEnabled: item.characterGroup,
+        characterPrivateEnabled: item.characterPrivate,
+        characterGroupMode: item.characterGroupMode,
+        characterPrivateMode: item.characterPrivateMode,
+        characterGroupIds: item.characterGroupIds,
+        characterPrivateIds: item.characterPrivateIds,
+        authority: item.authority,
         hidden: item.hidden ?? false,
         remote: target.remote,
         path: file,

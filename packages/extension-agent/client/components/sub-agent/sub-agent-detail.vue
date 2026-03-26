@@ -153,8 +153,136 @@
                 </div>
             </div>
 
-            <!-- 权限配置 -->
-            <div v-else-if="tab === 'permission'" class="page-grid">
+            <div v-else-if="tab === 'session'" class="page-grid">
+                <div class="section-title">会话配置</div>
+                <div class="field-card flat-card">
+                    <div class="scope-row">
+                        <div>
+                            <div class="field-subtitle">主插件</div>
+                            <div class="field-help">控制 `chatluna` 主插件是否允许调用当前 Sub Agent。</div>
+                        </div>
+                        <el-switch v-model="draft.chatluna" />
+                    </div>
+                </div>
+
+                <div class="field-card flat-card" style="margin-top: 8px;">
+                    <div class="scope-row">
+                        <div>
+                            <div class="field-subtitle">伪装插件</div>
+                            <div class="field-help">控制 `chatluna-character` 是否允许调用当前 Sub Agent。</div>
+                        </div>
+                        <el-switch v-model="draft.character" />
+                    </div>
+                </div>
+
+                <template v-if="draft.character">
+                    <el-divider style="margin: 16px 0;" />
+                    <div class="section-title">伪装插件会话规则配置</div>
+
+                    <div class="inner-tabs" style="margin-bottom: 16px;">
+                        <div
+                            :class="['inner-tab', { active: characterKind === 'private' }]"
+                            @click="characterKind = 'private'"
+                        >
+                            私聊
+                        </div>
+                        <div class="inner-tab-divider"></div>
+                        <div
+                            :class="['inner-tab', { active: characterKind === 'group' }]"
+                            @click="characterKind = 'group'"
+                        >
+                            群聊
+                        </div>
+                    </div>
+
+                    <div class="field-card flat-card">
+                        <div class="scope-row">
+                            <div>
+                                <div class="field-subtitle">在此类型会话中启用</div>
+                                <div class="field-help">独立控制私聊或群聊的 Sub Agent 开关。</div>
+                            </div>
+                            <el-switch
+                                v-if="characterKind === 'private'"
+                                v-model="draft.characterPrivate"
+                            />
+                            <el-switch
+                                v-else
+                                v-model="draft.characterGroup"
+                            />
+                        </div>
+
+                        <template v-if="currentEnabled">
+                            <div class="scope-row" style="margin-top: 24px;">
+                                <div>
+                                    <div class="field-subtitle">生效模式</div>
+                                    <div class="field-help">定义当前会话类型使用全局、白名单或黑名单。</div>
+                                </div>
+                                <el-segmented v-model="currentModeValue" :options="scopeOptions" />
+                            </div>
+                        </template>
+                    </div>
+
+                    <div v-if="currentEnabled && currentModeValue !== 'all'" style="margin-top: 24px;">
+                        <div class="field-subtitle" style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span>{{ currentListLabel }}，可用英文逗号分隔多个 ID</span>
+                            <el-icon
+                                v-if="currentIds.length > 0"
+                                class="copy-icon"
+                                title="复制所有 ID"
+                                @click="copyIds"
+                            >
+                                <CopyDocument />
+                            </el-icon>
+                            <el-icon
+                                v-if="currentIds.length > 0"
+                                class="copy-icon"
+                                title="清空所有 ID"
+                                @click="clearIds"
+                            >
+                                <Delete />
+                            </el-icon>
+                        </div>
+
+                        <div class="custom-id-input-wrapper">
+                            <div v-if="currentIds.length > 0" class="id-tag-list">
+                                <div v-for="id in currentIds" :key="id" class="id-tag">
+                                    {{ id }}
+                                    <el-icon class="id-tag-close" @click="removeId(id)"><Close /></el-icon>
+                                </div>
+                            </div>
+
+                            <div class="id-input-row">
+                                <input
+                                    v-model="idInput"
+                                    type="text"
+                                    class="id-native-input"
+                                    placeholder="输入自定义会话 ID"
+                                    @keyup.enter="addId"
+                                />
+                                <button class="id-submit-btn" type="button" @click="addId">填入</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div v-else-if="tab === 'actor'" class="page-grid">
+                <div class="field-card flat-card">
+                    <div class="field-label" style="margin-bottom: 8px;">最低权限</div>
+                    <div class="field-help" style="margin-bottom: 16px;">
+                        基于 Koishi 用户 authority。0 表示不限制，3 通常表示管理员。
+                    </div>
+                    <el-input-number
+                        v-model="draft.authority"
+                        :min="0"
+                        :step="1"
+                        controls-position="right"
+                    />
+                </div>
+            </div>
+
+            <!-- 功能权限 -->
+            <div v-else class="page-grid">
                 <div class="section-title">Skills 权限</div>
                 <permission-editor
                     v-model="draft.skills"
@@ -184,12 +312,22 @@
             </div>
         </div>
 
+        <el-dialog v-model="showCopyDialog" title="手动复制 ID" width="400px" append-to-body>
+            <div style="margin-bottom: 16px; font-size: 13px; color: var(--k-text-light);">
+                当前环境限制或复制失败，请手动全选并复制下方内容：
+            </div>
+            <el-input ref="copyInputRef" v-model="copyContent" type="textarea" :rows="4" readonly />
+            <template #footer>
+                <el-button type="primary" @click="showCopyDialog = false">确定</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft } from '@element-plus/icons-vue'
-import { computed, ref } from 'vue'
+import { ArrowLeft, Close, CopyDocument, Delete } from '@element-plus/icons-vue'
+import { computed, nextTick, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import PermissionEditor from './permission-editor.vue'
 import type { SubAgentInfo, ToolInfo } from '../../../src/types'
 
@@ -204,6 +342,15 @@ interface AgentDraft {
     name: string
     description: string
     promptContent: string
+    chatluna: boolean
+    character: boolean
+    characterGroup: boolean
+    characterPrivate: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
+    authority: number
     model: string
     maxTurns: number
     hidden: boolean
@@ -236,12 +383,25 @@ const emit = defineEmits<{
     remove: []
 }>()
 
-const tab = ref<'info' | 'permission'>('info')
+const tab = ref<'info' | 'session' | 'actor' | 'feature'>('info')
+const characterKind = ref<'private' | 'group'>('private')
+const idInput = ref('')
+const showCopyDialog = ref(false)
+const copyContent = ref('')
+const copyInputRef = ref()
 
 const tabs = [
     { value: 'info', label: '基础信息' },
-    { value: 'permission', label: '权限配置' }
+    { value: 'session', label: '会话权限' },
+    { value: 'actor', label: '触发者权限' },
+    { value: 'feature', label: '功能权限' }
 ] as const
+
+const scopeOptions = [
+    { label: '全局', value: 'all' },
+    { label: '白名单', value: 'allow' },
+    { label: '黑名单', value: 'deny' }
+]
 
 const modelOptions = computed(() => {
     const items = new Set(props.modelNames)
@@ -259,6 +419,100 @@ const toolOptions = computed(() => {
             label: item.group ? `${item.name} · ${item.group}` : item.name
         }))
 })
+
+const currentEnabled = computed(() => {
+    return characterKind.value === 'private'
+        ? props.draft.characterPrivate !== false
+        : props.draft.characterGroup !== false
+})
+
+const currentModeValue = computed({
+    get: () => {
+        return characterKind.value === 'private'
+            ? props.draft.characterPrivateMode ?? 'all'
+            : props.draft.characterGroupMode ?? 'all'
+    },
+    set: (value: 'all' | 'allow' | 'deny') => {
+        if (characterKind.value === 'private') {
+            props.draft.characterPrivateMode = value
+            return
+        }
+
+        props.draft.characterGroupMode = value
+    }
+})
+
+const currentIds = computed(() => {
+    return characterKind.value === 'private'
+        ? props.draft.characterPrivateIds
+        : props.draft.characterGroupIds
+})
+
+const currentListLabel = computed(() => {
+    if (characterKind.value === 'private') {
+        return currentModeValue.value === 'allow'
+            ? '要启用的私聊 ID 列表'
+            : '要禁用的私聊 ID 列表'
+    }
+
+    return currentModeValue.value === 'allow'
+        ? '要启用的群聊 ID 列表'
+        : '要禁用的群聊 ID 列表'
+})
+
+async function copyIds() {
+    const text = currentIds.value.join(',')
+
+    if (window.isSecureContext && navigator.clipboard) {
+        try {
+            await navigator.clipboard.writeText(text)
+            ElMessage.success('已复制到剪贴板')
+            return
+        } catch {}
+    }
+
+    copyContent.value = text
+    showCopyDialog.value = true
+    nextTick(() => {
+        copyInputRef.value?.focus()
+        copyInputRef.value?.select()
+    })
+}
+
+function addId() {
+    const value = idInput.value.trim()
+    if (!value) return
+
+    const ids = value.split(/[\n,]/g).map((item) => item.trim()).filter(Boolean)
+    const set = new Set(currentIds.value)
+    ids.forEach((item) => set.add(item))
+
+    if (characterKind.value === 'private') {
+        props.draft.characterPrivateIds = Array.from(set)
+    } else {
+        props.draft.characterGroupIds = Array.from(set)
+    }
+
+    idInput.value = ''
+}
+
+function removeId(id: string) {
+    if (characterKind.value === 'private') {
+        props.draft.characterPrivateIds = props.draft.characterPrivateIds.filter((item) => item !== id)
+        return
+    }
+
+    props.draft.characterGroupIds = props.draft.characterGroupIds.filter((item) => item !== id)
+}
+
+function clearIds() {
+    if (characterKind.value === 'private') {
+        props.draft.characterPrivateIds = []
+        return
+    }
+
+    props.draft.characterGroupIds = []
+}
 
 </script>
 
@@ -430,6 +684,122 @@ const toolOptions = computed(() => {
     gap: 16px;
 }
 
+.field-subtitle,
+.field-static {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--k-text-dark);
+}
+
+.inner-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.inner-tab {
+    font-size: 14px;
+    color: var(--k-text-light);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.inner-tab.active {
+    color: var(--k-color-primary);
+}
+
+.inner-tab-divider {
+    width: 1px;
+    height: 14px;
+    background: color-mix(in srgb, var(--k-color-divider), transparent 40%);
+}
+
+.custom-id-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.id-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.id-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 16px;
+    background-color: color-mix(in srgb, var(--k-text-light), transparent 85%);
+    color: var(--k-text-dark);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.id-tag-close,
+.copy-icon {
+    cursor: pointer;
+}
+
+.id-input-row {
+    display: flex;
+    align-items: center;
+    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--k-color-divider), transparent 40%) inset;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.id-native-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--k-text-dark);
+    outline: none;
+}
+
+.id-submit-btn {
+    border: none;
+    background-color: color-mix(in srgb, var(--k-text-light), transparent 85%);
+    border-radius: 6px;
+    padding: 8px 20px;
+    color: var(--k-text-dark);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+:deep(.el-segmented) {
+    padding: 3px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-color-divider), transparent 42%);
+}
+
+:deep(.el-segmented__item) {
+    border-radius: 6px;
+    color: var(--k-text-light);
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+:deep(.el-segmented__item.is-selected) {
+    color: #fff;
+}
+
+:deep(.el-segmented__item-selected) {
+    border-radius: 6px;
+    background: var(--k-color-primary);
+    box-shadow: none;
+}
+
+:deep(.el-segmented__item:hover) {
+    background-color: color-mix(in srgb, var(--k-side-bg), var(--k-text-light) 12%) !important;
+}
+
 .editor-actions {
     display: flex;
     align-items: center;
@@ -497,6 +867,15 @@ const toolOptions = computed(() => {
 
     .option-grid {
         grid-template-columns: 1fr;
+    }
+
+    .scope-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .detail-view {
+        padding: 0;
     }
 }
 </style>

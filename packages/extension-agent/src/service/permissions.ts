@@ -266,51 +266,7 @@ export class ChatLunaAgentPermissionService {
                     return false
                 }
 
-                if (source === 'chatluna' && !item.chatlunaEnabled) {
-                    return false
-                }
-
-                if (source === 'character' && !item.characterEnabled) {
-                    return false
-                }
-
-                if (source === 'character') {
-                    const id = session?.isDirect
-                        ? session.userId
-                        : (session?.guildId ?? session?.channelId)
-
-                    if (session?.isDirect === true) {
-                        if (!item.characterPrivateEnabled) {
-                            return false
-                        }
-
-                        if (item.characterPrivateMode === 'allow') {
-                            return item.characterPrivateIds.includes(id)
-                        }
-
-                        if (item.characterPrivateMode === 'deny') {
-                            return !item.characterPrivateIds.includes(id)
-                        }
-
-                        return true
-                    }
-
-                    if (!item.characterGroupEnabled) {
-                        return false
-                    }
-
-                    if (item.characterGroupMode === 'allow') {
-                        return item.characterGroupIds.includes(id)
-                    }
-
-                    if (item.characterGroupMode === 'deny') {
-                        return !item.characterGroupIds.includes(id)
-                    }
-
-                    return true
-                }
-
-                return true
+                return this.isSessionAllowed(session, source, item)
             })
             .map((item) => item.name)
 
@@ -324,15 +280,93 @@ export class ChatLunaAgentPermissionService {
     }
 
     async createToolCallMask(session: Session, mask?: ToolMask) {
-        const auth = (session as Session<User.Field>).user?.['authority'] ?? 0
-
         const allNames = this.listTools()
             .map((item) => item.name)
             .filter((name) => applyToolMask(name, mask))
         const allow = allNames.filter(
-            (name) => auth >= (this.getTool(name)?.authority ?? 0)
+            (name) => this.hasAuthority(session, this.getTool(name)?.authority)
         )
         return buildToolMask(allNames, allow)
+    }
+
+    hasAuthority(session?: Session, authority = 0) {
+        const auth = (session as Session<User.Field> | undefined)?.user?.[
+            'authority'
+        ] ?? 0
+        return auth >= authority
+    }
+
+    isSessionAllowed(
+        session: Session | undefined,
+        source: 'chatluna' | 'character',
+        item: {
+            chatlunaEnabled: boolean
+            characterEnabled: boolean
+            characterGroupEnabled: boolean
+            characterPrivateEnabled: boolean
+            characterGroupMode: 'all' | 'allow' | 'deny'
+            characterPrivateMode: 'all' | 'allow' | 'deny'
+            characterGroupIds: string[]
+            characterPrivateIds: string[]
+        }
+    ) {
+        if (source === 'chatluna') {
+            return item.chatlunaEnabled
+        }
+
+        if (!item.characterEnabled) {
+            return false
+        }
+
+        const id = session?.isDirect
+            ? session.userId
+            : (session?.guildId ?? session?.channelId)
+
+        if (session?.isDirect === true) {
+            if (!item.characterPrivateEnabled) {
+                return false
+            }
+
+            if (item.characterPrivateMode === 'allow') {
+                return item.characterPrivateIds.includes(id)
+            }
+
+            if (item.characterPrivateMode === 'deny') {
+                return !item.characterPrivateIds.includes(id)
+            }
+
+            return true
+        }
+
+        if (!item.characterGroupEnabled) {
+            return false
+        }
+
+        if (item.characterGroupMode === 'allow') {
+            return item.characterGroupIds.includes(id)
+        }
+
+        if (item.characterGroupMode === 'deny') {
+            return !item.characterGroupIds.includes(id)
+        }
+
+        return true
+    }
+
+    canUseSubAgent(
+        info: SubAgentInfo,
+        session?: Session,
+        source: 'chatluna' | 'character' = 'chatluna'
+    ) {
+        if (!info.enabled || info.state !== 'ready') {
+            return false
+        }
+
+        if (!this.hasAuthority(session, info.authority)) {
+            return false
+        }
+
+        return this.isSessionAllowed(session, source, info)
     }
 
     canUseTool(info: SubAgentInfo, name: string): boolean {

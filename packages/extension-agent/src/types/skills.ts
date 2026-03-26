@@ -14,6 +14,7 @@ export type SkillMode = 'off' | 'description' | 'full'
 export interface SkillConfig {
     enabled: boolean
     mode?: SkillMode
+    authority?: number
     remote?: boolean
     main?: boolean
     chatluna?: boolean
@@ -74,6 +75,7 @@ export interface SkillInfo {
     state: SkillState
     enabled: boolean
     mode: SkillMode
+    authority: number
     main: boolean
     chatlunaEnabled: boolean
     characterEnabled: boolean

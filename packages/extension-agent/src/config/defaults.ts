@@ -45,6 +45,23 @@ export function createSubAgentItemConfig(
         enabled: input.enabled ?? true,
         name: input.name ?? '',
         description: input.description ?? '',
+        chatluna: input.chatluna !== false,
+        character: input.character !== false,
+        characterGroup: input.characterGroup !== false,
+        characterPrivate: input.characterPrivate !== false,
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
+        characterGroupIds: [...(input.characterGroupIds ?? [])],
+        characterPrivateIds: [...(input.characterPrivateIds ?? [])],
+        authority: input.authority ?? 0,
         source: input.source ?? 'markdown',
         format: input.format ?? 'chatluna',
         model: input.model,
@@ -101,6 +118,7 @@ export function createSkillItemConfig(
             input.mode === 'description' || input.mode === 'full'
                 ? input.mode
                 : 'description',
+        authority: input.authority ?? 0,
         remote: input.remote === true,
         main: input.main !== false,
         chatluna: input.chatluna !== false,

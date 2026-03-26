@@ -177,6 +177,14 @@
                             >
                                 <CopyDocument />
                             </el-icon>
+                            <el-icon
+                                v-if="currentIds.length > 0"
+                                class="copy-icon"
+                                title="清空所有 ID"
+                                @click="clearIds"
+                            >
+                                <Delete />
+                            </el-icon>
                         </div>
 
                         <div class="custom-id-input-wrapper">
@@ -200,6 +208,21 @@
                         </div>
                     </div>
                 </template>
+            </div>
+
+            <div v-else-if="tab === 'actor'" class="page-grid">
+                <div class="field-card flat-card">
+                    <div class="field-label" style="margin-bottom: 8px;">最低权限</div>
+                    <div class="field-help" style="margin-bottom: 16px;">
+                        基于 Koishi 用户 authority。0 表示不限制，3 通常表示管理员。
+                    </div>
+                    <el-input-number
+                        v-model="draft.authority"
+                        :min="0"
+                        :step="1"
+                        controls-position="right"
+                    />
+                </div>
             </div>
 
             <div v-else class="page-grid">
@@ -252,7 +275,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, Close, CopyDocument } from '@element-plus/icons-vue'
+import { ArrowLeft, Close, CopyDocument, Delete } from '@element-plus/icons-vue'
 import { computed, nextTick, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { SkillConfig, SkillInfo, SubAgentInfo } from '../../../src/types'
@@ -268,7 +291,7 @@ defineEmits<{
     save: []
 }>()
 
-const tab = ref<'info' | 'session' | 'subagent'>('info')
+const tab = ref<'info' | 'session' | 'actor' | 'subagent'>('info')
 const characterKind = ref<'private' | 'group'>('private')
 const idInput = ref('')
 const showCopyDialog = ref(false)
@@ -278,6 +301,7 @@ const copyInputRef = ref()
 const tabs = [
     { value: 'info', label: '详细信息' },
     { value: 'session', label: '会话权限' },
+    { value: 'actor', label: '触发者权限' },
     { value: 'subagent', label: 'Sub Agent 权限' }
 ] as const
 
@@ -396,6 +420,15 @@ function removeId(id: string) {
     }
 
     props.draft.characterGroupIds = (props.draft.characterGroupIds ?? []).filter((item) => item !== id)
+}
+
+function clearIds() {
+    if (characterKind.value === 'private') {
+        props.draft.characterPrivateIds = []
+        return
+    }
+
+    props.draft.characterGroupIds = []
 }
 
 function agentLabel(item: SubAgentInfo) {

@@ -255,6 +255,8 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         const skill = this._visibleByName.get(name)
         const conversationId = runConfig?.configurable?.conversationId
         const sub = runConfig?.configurable?.subagentContext
+        const session = runConfig?.configurable?.session
+        const source = (runConfig?.configurable as { source?: 'chatluna' | 'character' })?.source ?? 'chatluna'
 
         if (sub) {
             const agent = this.ctx.chatluna_agent?.subAgent
@@ -277,6 +279,10 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
         if (!skill?.enabled || skill.state !== 'ready') {
             throw new Error(`Skill not found: ${name}`)
+        }
+
+        if (!this.canUseSkill(skill.id, session, source)) {
+            throw new Error(`Skill is not available: ${name}`)
         }
 
         if (!skill.implicitInvocation) {
@@ -321,47 +327,11 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             return false
         }
 
-        if (source === 'chatluna') {
-            return item.chatlunaEnabled
-        }
-
-        if (!item.characterEnabled) {
+        if (!this.permission.hasAuthority(session, item.authority)) {
             return false
         }
 
-        const idValue = session?.isDirect
-            ? session.userId
-            : (session?.guildId ?? session?.channelId)
-
-        if (session?.isDirect === true) {
-            if (!item.characterPrivateEnabled) {
-                return false
-            }
-
-            if (item.characterPrivateMode === 'allow') {
-                return item.characterPrivateIds.includes(idValue)
-            }
-
-            if (item.characterPrivateMode === 'deny') {
-                return !item.characterPrivateIds.includes(idValue)
-            }
-
-            return true
-        }
-
-        if (!item.characterGroupEnabled) {
-            return false
-        }
-
-        if (item.characterGroupMode === 'allow') {
-            return item.characterGroupIds.includes(idValue)
-        }
-
-        if (item.characterGroupMode === 'deny') {
-            return !item.characterGroupIds.includes(idValue)
-        }
-
-        return true
+        return this.permission.isSessionAllowed(session, source, item)
     }
 
     private async renderActivatedSkill(
@@ -491,7 +461,13 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         this._toolDispose = this.ctx.chatluna.platform.registerTool('skill', {
             description: this.buildToolDescription(),
             createTool: () => new SkillTool(this),
-            selector: () => true
+            selector: () => true,
+            authorization: (session) =>
+                this._catalog.some(
+                    (item) =>
+                        item.modelEnabled &&
+                        this.canUseSkill(item.id, session, 'chatluna')
+                )
         })
     }
 
@@ -507,6 +483,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
                 const sub = runtime.configurable?.subagentContext
                 const session = runtime.configurable?.session
+                const source = (runtime.configurable as { source?: 'chatluna' | 'character' })?.source ?? 'chatluna'
                 const cwd =
                     this.ctx.chatluna_agent?.computer.getPromptWorkdir(
                         conversationId
@@ -525,7 +502,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     (s) =>
                         s.mode === 'full' &&
                         s.available &&
-                        this.canUseSkill(s.id, session, 'chatluna')
+                        this.canUseSkill(s.id, session, source)
                 )
                 const skills = sub || !hasTool
                     ? []
@@ -533,7 +510,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                           .filter(
                               (s) =>
                                   s.modelEnabled &&
-                                  this.canUseSkill(s.id, session, 'chatluna')
+                                  this.canUseSkill(s.id, session, source)
                           )
                           .map((item) => (remote ? { ...item, dir: '' } : item))
                 const active = await this.getPromptActiveSkills(
