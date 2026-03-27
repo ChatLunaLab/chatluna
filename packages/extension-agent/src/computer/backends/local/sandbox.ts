@@ -1,10 +1,13 @@
 /** @module computer/backends/local/sandbox */
 
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'path'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
 
 const PROTECTED_NAMES = ['.git', '.chatluna', '.agents', '.codex', '.claude']
+const BWRAP_PROBE_CACHE = new Map<string, boolean>()
 
 const WRITE_COMMAND_PATTERNS = [
     />/,
@@ -109,6 +112,10 @@ export function wrapCommandWithSandbox(
         return command
     }
 
+    if (!canUseBubblewrap(bwrap, tmp)) {
+        return command
+    }
+
     const scope = cfg.scopePath || workdir || process.cwd()
     const binds =
         cfg.sandboxMode === 'read-only'
@@ -152,4 +159,40 @@ function containsProtectedName(value: string) {
 
 function quote(value: string) {
     return `'${value.replaceAll("'", `'\\''`)}'`
+}
+
+function canUseBubblewrap(bwrap: string, tmp: string) {
+    const cached = BWRAP_PROBE_CACHE.get(bwrap)
+    if (cached != null) {
+        return cached
+    }
+
+    const probeTmp = path.join(tmp, 'bwrap-probe')
+    fs.mkdirSync(probeTmp, { recursive: true })
+
+    const result = spawnSync(
+        bwrap,
+        [
+            '--ro-bind',
+            '/',
+            '/',
+            '--bind',
+            probeTmp,
+            '/tmp',
+            '--dev',
+            '/dev',
+            '--proc',
+            '/proc',
+            'sh',
+            '-lc',
+            'true'
+        ],
+        {
+            stdio: 'ignore'
+        }
+    )
+
+    const ok = result.status === 0
+    BWRAP_PROBE_CACHE.set(bwrap, ok)
+    return ok
 }
