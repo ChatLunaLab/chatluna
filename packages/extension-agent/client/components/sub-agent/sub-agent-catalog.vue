@@ -313,11 +313,16 @@ function canExport(item: SubAgentInfo) {
     align-items: center;
     gap: 24px;
     flex-wrap: wrap;
+    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .catalog-header-info {
     display: flex;
     flex-direction: column;
+    flex: 0 0 auto;
+    min-width: 0;
 }
 
 .catalog-actions {
@@ -360,19 +365,28 @@ function canExport(item: SubAgentInfo) {
     -webkit-line-clamp: 2;
 }
 
-.search-input {
-    width: min(360px, 100%);
-}
-
 .search-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    width: auto;
+    flex-wrap: nowrap;
+    flex: 0 1 420px;
+    min-width: 220px;
 }
 
 .filter-trigger {
+    height: 32px;
+    min-width: 92px;
+    padding-inline: 12px;
     flex: 0 0 auto;
+}
+
+.search-input {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 260px;
 }
 
 .filter-panel {
