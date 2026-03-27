@@ -19,14 +19,15 @@
         </div>
 
         <div class="tabs-underline">
-            <div
+            <button
                 v-for="item in tabs"
                 :key="item.value"
+                type="button"
                 :class="['tab-item', { active: tab === item.value }]"
                 @click="tab = item.value"
             >
                 {{ item.label }}
-            </div>
+            </button>
         </div>
 
         <div class="editor-body">
@@ -121,19 +122,21 @@
                     <div class="section-title">伪装插件会话规则配置</div>
                     
                     <div class="inner-tabs" style="margin-bottom: 16px;">
-                        <div 
+                        <button
+                            type="button"
                             :class="['inner-tab', { active: characterKind === 'private' }]" 
                             @click="characterKind = 'private'"
                         >
                             私聊
-                        </div>
+                        </button>
                         <div class="inner-tab-divider"></div>
-                        <div 
+                        <button
+                            type="button"
                             :class="['inner-tab', { active: characterKind === 'group' }]" 
                             @click="characterKind = 'group'"
                         >
                             群聊
-                        </div>
+                        </button>
                     </div>
 
                     <div class="field-card flat-card">
@@ -178,22 +181,24 @@
                     >
                         <div class="field-subtitle" style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                             <span>{{ currentListLabel }}，可用英文逗号分隔多个 ID</span>
-                            <el-icon
+                            <button
                                 v-if="currentIdArray.length > 0"
+                                type="button"
                                 class="copy-icon"
                                 title="复制所有 ID"
                                 @click="copyIds"
                             >
-                                <CopyDocument />
-                            </el-icon>
-                            <el-icon
+                                <el-icon><CopyDocument /></el-icon>
+                            </button>
+                            <button
                                 v-if="currentIdArray.length > 0"
+                                type="button"
                                 class="copy-icon"
                                 title="清空所有 ID"
                                 @click="clearIds"
                             >
-                                <Delete />
-                            </el-icon>
+                                <el-icon><Delete /></el-icon>
+                            </button>
                         </div>
                         
                         <div class="custom-id-input-wrapper">
@@ -204,7 +209,14 @@
                                     class="id-tag"
                                 >
                                     {{ id }}
-                                    <el-icon class="id-tag-close" @click="removeId(id)"><Close /></el-icon>
+                                    <button
+                                        type="button"
+                                        class="id-tag-close"
+                                        title="移除 ID"
+                                        @click="removeId(id)"
+                                    >
+                                        <el-icon><Close /></el-icon>
+                                    </button>
                                 </div>
                             </div>
                             
@@ -515,6 +527,10 @@ function agentLabel(item: SubAgentInfo) {
 }
 
 .tab-item {
+    background: transparent;
+    border-left: none;
+    border-right: none;
+    border-top: none;
     padding: 12px 0;
     cursor: pointer;
     font-size: 14px;
@@ -609,6 +625,8 @@ function agentLabel(item: SubAgentInfo) {
 }
 
 .inner-tab {
+    border: none;
+    background: transparent;
     font-size: 14px;
     color: var(--k-text-light);
     cursor: pointer;
@@ -659,6 +677,13 @@ function agentLabel(item: SubAgentInfo) {
     font-size: 12px;
     opacity: 0.6;
     transition: opacity 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
 }
 
 .id-tag-close:hover {
@@ -789,6 +814,11 @@ function agentLabel(item: SubAgentInfo) {
     transition: color 0.2s, background-color 0.2s;
     padding: 4px;
     border-radius: 4px;
+    border: none;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .copy-icon:hover {

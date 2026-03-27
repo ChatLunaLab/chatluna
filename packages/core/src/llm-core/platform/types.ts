@@ -71,7 +71,7 @@ export interface ChatLunaTool {
 }
 
 export interface ChatLunaToolMeta {
-    source?: 'core' | 'extension' | 'mcp' | 'action' | string
+    source?: 'core' | 'extension' | 'mcp' | 'action' | (string & {})
     group?: string
     tags?: string[]
     isMcp?: boolean

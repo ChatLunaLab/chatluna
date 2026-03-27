@@ -136,7 +136,11 @@
                             :key="item.id"
                             class="skill-card"
                             :class="{ centered: hideDesc, muted: !item.enabled, invalid: item.state !== 'ready', readonly: isReadonly(item) }"
+                            :tabindex="isReadonly(item) ? -1 : 0"
+                            :role="isReadonly(item) ? undefined : 'button'"
+                            :aria-disabled="isReadonly(item)"
                             @click="!isReadonly(item) && openEditor(item.id)"
+                            @keydown="handleCardKeydown($event, item)"
                         >
                             <div class="skill-top">
                                 <div class="skill-brand">
@@ -580,6 +584,19 @@ function saveSelected() {
     scheduleSave()
 }
 
+function handleCardKeydown(event: KeyboardEvent, item: SkillInfo) {
+    if (isReadonly(item)) {
+        return
+    }
+
+    if (event.key !== 'Enter' && event.key !== ' ') {
+        return
+    }
+
+    event.preventDefault()
+    openEditor(item.id)
+}
+
 function saveDraft() {
     emit('save', normalizeConfig(draft.value))
 }
@@ -645,7 +662,7 @@ function createItem(item?: Partial<SkillConfig> | SkillInfo): SkillConfig {
 
 function cloneRule(rule?: PermissionRule): PermissionRule {
     return {
-        mode: rule?.mode === 'allow' || rule?.mode === 'deny' ? rule.mode : 'all',
+        mode: rule?.mode ?? 'all',
         allow: [...(rule?.allow ?? [])],
         deny: [...(rule?.deny ?? [])]
     }

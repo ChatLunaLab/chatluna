@@ -111,46 +111,44 @@
             </div>
 
             <div class="tab-content">
-                <Transition name="fade-slide" mode="out-in">
-                    <div v-if="activeTab === 'config'" key="config">
-                        <configuration-panel
-                            :config="draft"
-                            :hide-desc="hideDesc"
-                            :status="status"
-                            :testing="testing"
-                            @update:config="updateConfig"
-                            @test="testBackend"
-                        />
-                    </div>
+                <div v-if="activeTab === 'config'">
+                    <configuration-panel
+                        :config="draft"
+                        :hide-desc="hideDesc"
+                        :status="status"
+                        :testing="testing"
+                        @update:config="updateConfig"
+                        @test="testBackend"
+                    />
+                </div>
 
-                    <div v-else-if="activeTab === 'terminal'" key="terminal">
-                        <terminal-panel
-                            :config="draft"
-                            :status="status"
-                            :job="pendingJob"
-                            @job-handled="pendingJob = undefined"
-                        />
-                    </div>
+                <div v-else-if="activeTab === 'terminal'">
+                    <terminal-panel
+                        :config="draft"
+                        :status="status"
+                        :job="pendingJob"
+                        @job-handled="pendingJob = undefined"
+                    />
+                </div>
 
-                    <div v-else-if="activeTab === 'jobs'" key="jobs">
-                        <background-jobs-panel
-                            :hide-desc="hideDesc"
-                            @open="openJob"
-                        />
-                    </div>
+                <div v-else-if="activeTab === 'jobs'">
+                    <background-jobs-panel
+                        :hide-desc="hideDesc"
+                        @open="openJob"
+                    />
+                </div>
 
-                    <div v-else-if="activeTab === 'files'" key="files">
-                        <files-panel :config="draft" :status="status" />
-                    </div>
+                <div v-else-if="activeTab === 'files'">
+                    <files-panel :config="draft" :status="status" />
+                </div>
 
-                    <div v-else key="desktop">
-                        <desktop-panel
-                            :config="draft"
-                            :hide-desc="hideDesc"
-                            :status="status"
-                        />
-                    </div>
-                </Transition>
+                <div v-else>
+                    <desktop-panel
+                        :config="draft"
+                        :hide-desc="hideDesc"
+                        :status="status"
+                    />
+                </div>
             </div>
         </div>
     </div>

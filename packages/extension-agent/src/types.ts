@@ -173,6 +173,10 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/addSubAgent': (
             input: ManualSubAgentInput
         ) => Promise<SubAgentInfo>
+        'chatluna-agent/saveSubAgentContent': (
+            id: string,
+            input: ManualSubAgentInput
+        ) => Promise<SubAgentInfo>
         'chatluna-agent/exportSubAgent': (
             id: string
         ) => Promise<SubAgentExportResult | undefined>

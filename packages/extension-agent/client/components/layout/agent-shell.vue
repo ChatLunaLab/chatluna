@@ -99,6 +99,7 @@ import type { AgentConfig } from '../../../src/types'
 
 const activeTab = ref('mcp')
 const pending = ref(false)
+let refreshId = 0
 const data = computed(() => store.chatluna_agent_webui)
 const config = computed(() => data.value?.config)
 const status = computed(() => data.value?.status)
@@ -115,13 +116,16 @@ const toolStatus = computed(() => data.value?.status?.tool)
 const loading = computed(() => pending.value || !data.value)
 
 const refreshData = async () => {
+    const id = ++refreshId
     try {
         pending.value = true
         await send('chatluna-agent/refreshConsoleData')
     } catch {
         ElMessage.error('刷新 Agent 数据失败')
     } finally {
-        pending.value = false
+        if (id === refreshId) {
+            pending.value = false
+        }
     }
 }
 

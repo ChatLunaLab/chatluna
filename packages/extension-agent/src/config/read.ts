@@ -3,7 +3,11 @@
 import { Context } from 'koishi'
 import { readFile } from 'fs/promises'
 import { getConfigPath } from './path'
-import { createToolItemConfig, getDefaultConfig } from './defaults'
+import {
+    createSkillItemConfig,
+    createToolItemConfig,
+    getDefaultConfig
+} from './defaults'
 import { AgentConfig } from '../types'
 
 export async function readConfig(ctx: Context): Promise<AgentConfig> {
@@ -18,7 +22,12 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
             skills: {
                 ...base.skills,
                 ...(cfg.skills ?? {}),
-                items: { ...(cfg.skills?.items ?? {}) },
+                items: Object.fromEntries(
+                    Object.entries({
+                        ...(base.skills.items ?? {}),
+                        ...(cfg.skills?.items ?? {})
+                    }).map(([id, item]) => [id, createSkillItemConfig(item)])
+                ),
                 dirs: [...(cfg.skills?.dirs ?? base.skills.dirs)]
             },
             tool: {

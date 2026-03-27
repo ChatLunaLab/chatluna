@@ -334,6 +334,11 @@ function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
         async (input) => await agent().addSubAgent(input)
     )
 
+    ctx.console.addListener(
+        'chatluna-agent/saveSubAgentContent',
+        async (id, input) => await agent().saveSubAgentContent(id, input)
+    )
+
     ctx.console.addListener('chatluna-agent/exportSubAgent', async (id) =>
         agent().exportSubAgent(id)
     )

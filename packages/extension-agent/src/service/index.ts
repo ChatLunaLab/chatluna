@@ -358,6 +358,71 @@ export class ChatLunaAgentService extends Service {
         return info
     }
 
+    async saveSubAgentContent(id: string, input: ManualSubAgentInput) {
+        const info = this.subAgent
+            .getCatalogSync()
+            .find((item) => item.id === id)
+        if (!info) {
+            throw new Error(`Sub-agent not found: ${id}`)
+        }
+
+        if (info.source !== 'markdown') {
+            throw new Error('Only markdown sub-agents can save content here')
+        }
+
+        if (info.remote) {
+            throw new Error('Cannot edit remote sub-agent content')
+        }
+
+        if (!info.path) {
+            throw new Error('Sub-agent path is missing')
+        }
+
+        await writeFile(
+            info.path,
+            createSubAgentMarkdown({
+                name: input.name,
+                description: input.description,
+                promptContent: input.promptContent,
+                chatluna: input.chatluna ?? info.chatlunaEnabled,
+                character: input.character ?? info.characterEnabled,
+                characterGroup: input.characterGroup ?? info.characterGroupEnabled,
+                characterPrivate:
+                    input.characterPrivate ?? info.characterPrivateEnabled,
+                characterGroupMode:
+                    input.characterGroupMode ?? info.characterGroupMode,
+                characterPrivateMode:
+                    input.characterPrivateMode ?? info.characterPrivateMode,
+                characterGroupIds:
+                    input.characterGroupIds ?? info.characterGroupIds,
+                characterPrivateIds:
+                    input.characterPrivateIds ?? info.characterPrivateIds,
+                authority: input.authority ?? info.authority,
+                model: input.model ?? info.model,
+                maxTurns: input.maxTurns ?? info.maxTurns,
+                hidden: input.hidden ?? info.hidden,
+                enabled: input.enabled ?? info.enabled,
+                allowKoishiMessageTransform:
+                    input.allowKoishiMessageTransform ??
+                    info.allowKoishiMessageTransform,
+                permissions: input.permissions ?? info.permissions
+            }),
+            'utf-8'
+        )
+        await this.subAgent.reload()
+        await this.refreshConsoleData()
+
+        const path = resolve(info.path)
+        const next = this.subAgent
+            .getCatalogSync()
+            .find((item) => item.path && resolve(item.path) === path)
+        if (!next) {
+            throw new Error(`Sub-agent was saved but not found: ${id}`)
+        }
+
+        return next
+    }
+
     async exportSubAgent(
         id: string
     ): Promise<SubAgentExportResult | undefined> {

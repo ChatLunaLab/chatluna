@@ -141,8 +141,8 @@ export function parseAgentFrontmatter(
             frontmatter.characterPrivateMode === 'deny'
                 ? frontmatter.characterPrivateMode
                 : 'all'
-        characterGroupIds = readNames(frontmatter.characterGroupIds)
-        characterPrivateIds = readNames(frontmatter.characterPrivateIds)
+        characterGroupIds = readValues(frontmatter.characterGroupIds)
+        characterPrivateIds = readValues(frontmatter.characterPrivateIds)
         authority =
             typeof frontmatter.authority === 'number'
                 ? frontmatter.authority
@@ -423,6 +423,24 @@ function readNames(value: unknown) {
         .map((item) => item.trim())
         .filter(Boolean)
         .flatMap((item) => mapCompatToolName(item))
+}
+
+function readValues(value: unknown) {
+    if (typeof value === 'string') {
+        return value
+            .split(/\s*,\s*|\s+/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+    }
+
+    if (!Array.isArray(value)) {
+        return []
+    }
+
+    return value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
 }
 
 function mapCompatToolName(name: string) {

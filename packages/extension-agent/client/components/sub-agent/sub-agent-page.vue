@@ -48,24 +48,27 @@
             <Transition name="page-swap" mode="out-in">
                 <div v-if="currentView === 'list'" key="list-view">
                     <div class="tabs">
-                        <div
+                        <button
+                            type="button"
                             :class="['tab', { active: listTab === 'catalog' }]"
                             @click="listTab = 'catalog'"
                         >
                             列表
-                        </div>
-                        <div
+                        </button>
+                        <button
+                            type="button"
                             :class="['tab', { active: listTab === 'runs' }]"
                             @click="listTab = 'runs'"
                         >
                             运行记录
-                        </div>
-                        <div
+                        </button>
+                        <button
+                            type="button"
                             :class="['tab', { active: listTab === 'availability' }]"
                             @click="listTab = 'availability'"
                         >
                             工具可用性
-                        </div>
+                        </button>
                     </div>
 
                     <Transition name="fade-slide" mode="out-in">
@@ -781,6 +784,11 @@ async function savePreview() {
     const item = previewItem.value
     if (!item || !canSavePreview.value) return
 
+    if (item.scope !== 'data' && item.name !== previewDraft.name.trim()) {
+        ElMessage.warning('外部 Markdown Agent 暂不支持在这里改名，请保持原名称后再保存。')
+        return
+    }
+
     try {
         await ElMessageBox.confirm(
             item.name !== previewDraft.name.trim()
@@ -799,7 +807,7 @@ async function savePreview() {
 
     try {
         savingPreview.value = true
-        await send('chatluna-agent/addSubAgent', {
+        const input = {
             name: previewDraft.name.trim(),
             description: previewDraft.description.trim(),
             promptContent: previewDraft.promptContent.trim(),
@@ -818,7 +826,13 @@ async function savePreview() {
             enabled: item.enabled,
             allowKoishiMessageTransform: item.allowKoishiMessageTransform,
             permissions: item.permissions
-        })
+        }
+
+        if (item.scope === 'data') {
+            await send('chatluna-agent/addSubAgent', input)
+        } else {
+            await send('chatluna-agent/saveSubAgentContent', item.id, input)
+        }
         ElMessage.success('保存内容成功。')
         showPreview.value = false
         await loadExtraData()
@@ -945,6 +959,8 @@ function canRemoveAgent(item: SubAgentInfo) {
 }
 
 .tab {
+    border: none;
+    background: transparent;
     padding: 10px 16px;
     cursor: pointer;
     transition:

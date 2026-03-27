@@ -510,11 +510,20 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                         .getFilteredTools(mask)
                         .includes('skill')
                 const prompt = this._catalog.filter(
-                    (s) =>
-                        s.mode === 'full' &&
-                        s.available &&
-                        this.canUseSkill(s.id, session, source)
+                    (s) => s.mode === 'full' && s.available
                 )
+                const agent = sub
+                    ? this.ctx.chatluna_agent?.subAgent
+                          .getCatalogSync()
+                          .find((item) => item.id === sub.agentId)
+                    : undefined
+                const full = sub
+                    ? agent
+                        ? this.permission.filterSkills(agent, prompt)
+                        : []
+                    : prompt.filter((s) =>
+                          this.canUseSkill(s.id, session, source)
+                      )
                 const skills =
                     sub || !hasTool
                         ? []
@@ -532,7 +541,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                     remote
                 )
 
-                for (const item of prompt) {
+                for (const item of full) {
                     const skill = this._skills.get(item.id)
                     if (!skill) continue
 

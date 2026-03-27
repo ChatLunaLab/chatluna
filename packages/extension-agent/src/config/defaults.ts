@@ -38,6 +38,14 @@ export function createPermissionRule(
     }
 }
 
+function copyRule(rule?: PermissionRule, mode: PermissionRule['mode'] = 'all') {
+    return {
+        mode: rule?.mode ?? mode,
+        allow: [...(rule?.allow ?? [])],
+        deny: [...(rule?.deny ?? [])]
+    }
+}
+
 export function createSubAgentItemConfig(
     input: Partial<SubAgentItemConfig> = {}
 ): SubAgentItemConfig {
@@ -71,12 +79,10 @@ export function createSubAgentItemConfig(
         preset: input.preset,
         allowKoishiMessageTransform: input.allowKoishiMessageTransform ?? false,
         permissions: {
-            skills:
-                input.permissions?.skills ?? createPermissionRule('inherit'),
-            mcp: input.permissions?.mcp ?? createPermissionRule('inherit'),
-            tools: input.permissions?.tools ?? createPermissionRule('inherit'),
-            computer:
-                input.permissions?.computer ?? createPermissionRule('inherit')
+            skills: copyRule(input.permissions?.skills, 'inherit'),
+            mcp: copyRule(input.permissions?.mcp, 'inherit'),
+            tools: copyRule(input.permissions?.tools, 'inherit'),
+            computer: copyRule(input.permissions?.computer, 'inherit')
         }
     }
 }
@@ -104,7 +110,7 @@ export function createToolItemConfig(
                 : 'all',
         characterGroupIds: [...(input.characterGroupIds ?? [])],
         characterPrivateIds: [...(input.characterPrivateIds ?? [])],
-        subAgents: input.subAgents ?? createPermissionRule('all'),
+        subAgents: copyRule(input.subAgents, 'all'),
         authority: input.authority ?? getDefaultToolAuthority(name)
     }
 }
@@ -137,7 +143,7 @@ export function createSkillItemConfig(
                 : 'all',
         characterGroupIds: [...(input.characterGroupIds ?? [])],
         characterPrivateIds: [...(input.characterPrivateIds ?? [])],
-        subAgents: input.subAgents ?? createPermissionRule('all')
+        subAgents: copyRule(input.subAgents, 'all')
     }
 }
 
