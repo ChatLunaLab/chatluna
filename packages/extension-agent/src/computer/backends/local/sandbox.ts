@@ -1,13 +1,12 @@
 /** @module computer/backends/local/sandbox */
 
 import { spawnSync } from 'node:child_process'
-import fs from 'node:fs'
 import path from 'path'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
 
 const PROTECTED_NAMES = ['.git', '.chatluna', '.agents', '.codex', '.claude']
-const BWRAP_PROBE_CACHE = new Map<string, boolean>()
+const BWRAP_PROBE_CACHE = new Set<string>()
 
 const WRITE_COMMAND_PATTERNS = [
     />/,
@@ -109,11 +108,16 @@ export function wrapCommandWithSandbox(
 
     const bwrap = which.sync('bwrap', { nothrow: true })
     if (!bwrap) {
-        return command
+        throw new Error(
+            'Local backend sandbox requires bubblewrap (`bwrap`), but it is not installed.'
+        )
     }
 
-    if (!canUseBubblewrap(bwrap, tmp)) {
-        return command
+    const bwrapError = getBubblewrapError(bwrap, tmp)
+    if (bwrapError) {
+        throw new Error(
+            `Local backend sandbox requires bubblewrap, but the startup probe failed: ${bwrapError}`
+        )
     }
 
     const scope = cfg.scopePath || workdir || process.cwd()
@@ -161,14 +165,10 @@ function quote(value: string) {
     return `'${value.replaceAll("'", `'\\''`)}'`
 }
 
-function canUseBubblewrap(bwrap: string, tmp: string) {
-    const cached = BWRAP_PROBE_CACHE.get(bwrap)
-    if (cached != null) {
-        return cached
+function getBubblewrapError(bwrap: string, tmp: string) {
+    if (BWRAP_PROBE_CACHE.has(bwrap)) {
+        return ''
     }
-
-    const probeTmp = path.join(tmp, 'bwrap-probe')
-    fs.mkdirSync(probeTmp, { recursive: true })
 
     const result = spawnSync(
         bwrap,
@@ -177,7 +177,7 @@ function canUseBubblewrap(bwrap: string, tmp: string) {
             '/',
             '/',
             '--bind',
-            probeTmp,
+            tmp,
             '/tmp',
             '--dev',
             '/dev',
@@ -188,11 +188,18 @@ function canUseBubblewrap(bwrap: string, tmp: string) {
             'true'
         ],
         {
-            stdio: 'ignore'
+            encoding: 'utf8'
         }
     )
 
-    const ok = result.status === 0
-    BWRAP_PROBE_CACHE.set(bwrap, ok)
-    return ok
+    if (result.status === 0) {
+        BWRAP_PROBE_CACHE.add(bwrap)
+        return ''
+    }
+
+    return (
+        result.stderr?.trim() ||
+        result.error?.message ||
+        'bubblewrap startup probe failed.'
+    )
 }
