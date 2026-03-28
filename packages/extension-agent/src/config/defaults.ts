@@ -4,8 +4,10 @@ import {
     AgentConfig,
     ComputerConfig,
     PermissionRule,
+    SkillConfig,
     SubAgentConfig,
     SubAgentItemConfig,
+    createToolMetaOverride,
     ToolConfig,
     ToolItemConfig
 } from '../types'
@@ -37,6 +39,14 @@ export function createPermissionRule(
     }
 }
 
+function copyRule(rule?: PermissionRule, mode: PermissionRule['mode'] = 'all') {
+    return {
+        mode: rule?.mode ?? mode,
+        allow: [...(rule?.allow ?? [])],
+        deny: [...(rule?.deny ?? [])]
+    }
+}
+
 export function createSubAgentItemConfig(
     input: Partial<SubAgentItemConfig> = {}
 ): SubAgentItemConfig {
@@ -44,6 +54,23 @@ export function createSubAgentItemConfig(
         enabled: input.enabled ?? true,
         name: input.name ?? '',
         description: input.description ?? '',
+        chatluna: input.chatluna !== false,
+        character: input.character !== false,
+        characterGroup: input.characterGroup !== false,
+        characterPrivate: input.characterPrivate !== false,
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
+        characterGroupIds: [...(input.characterGroupIds ?? [])],
+        characterPrivateIds: [...(input.characterPrivateIds ?? [])],
+        authority: input.authority ?? 0,
         source: input.source ?? 'markdown',
         format: input.format ?? 'chatluna',
         model: input.model,
@@ -53,12 +80,10 @@ export function createSubAgentItemConfig(
         preset: input.preset,
         allowKoishiMessageTransform: input.allowKoishiMessageTransform ?? false,
         permissions: {
-            skills:
-                input.permissions?.skills ?? createPermissionRule('inherit'),
-            mcp: input.permissions?.mcp ?? createPermissionRule('inherit'),
-            tools: input.permissions?.tools ?? createPermissionRule('inherit'),
-            computer:
-                input.permissions?.computer ?? createPermissionRule('deny')
+            skills: copyRule(input.permissions?.skills, 'inherit'),
+            mcp: copyRule(input.permissions?.mcp, 'inherit'),
+            tools: copyRule(input.permissions?.tools, 'inherit'),
+            computer: copyRule(input.permissions?.computer, 'inherit')
         }
     }
 }
@@ -70,15 +95,175 @@ export function createToolItemConfig(
     return {
         enabled: input.enabled !== false,
         main: input.main !== false,
-        subAgents: input.subAgents ?? createPermissionRule('all'),
+        chatluna: input.chatluna !== false,
+        character: input.character !== false,
+        characterGroup: input.characterGroup !== false,
+        characterPrivate: input.characterPrivate !== false,
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
+        characterGroupIds: [...(input.characterGroupIds ?? [])],
+        characterPrivateIds: [...(input.characterPrivateIds ?? [])],
+        subAgents: copyRule(input.subAgents, 'all'),
         authority: input.authority ?? getDefaultToolAuthority(name)
+    }
+}
+
+export function createSkillItemConfig(
+    input: Partial<SkillConfig> = {}
+): SkillConfig {
+    return {
+        enabled: input.enabled !== false,
+        mode:
+            input.mode === 'description' || input.mode === 'full'
+                ? input.mode
+                : 'description',
+        authority: input.authority ?? 0,
+        remote: input.remote === true,
+        main: input.main !== false,
+        chatluna: input.chatluna !== false,
+        character: input.character !== false,
+        characterGroup: input.characterGroup !== false,
+        characterPrivate: input.characterPrivate !== false,
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
+        characterGroupIds: [...(input.characterGroupIds ?? [])],
+        characterPrivateIds: [...(input.characterPrivateIds ?? [])],
+        subAgents: copyRule(input.subAgents, 'all')
     }
 }
 
 export function createDefaultToolConfig(): ToolConfig {
     return {
         items: {},
-        registry: {}
+        registry: {
+            web_search: createToolMetaOverride({
+                source: 'extension',
+                group: 'search',
+                tags: ['search', 'web'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            web_browser: createToolMetaOverride({
+                source: 'extension',
+                group: 'search',
+                tags: ['search', 'web', 'browser'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            group_mute: createToolMetaOverride({
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'group', 'moderation'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'group'
+                }
+            }),
+            send_file: createToolMetaOverride({
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'file', 'onebot'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'none'
+                }
+            }),
+            file_read: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            file_write: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            file_edit: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            file_publish: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            grep: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            glob: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            bash: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            task: createToolMetaOverride({
+                source: 'extension',
+                group: 'agent',
+                tags: ['handoff'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            })
+        }
     }
 }
 
@@ -114,10 +299,10 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
         },
         presetAgents: {},
         defaults: {
-            skills: createPermissionRule('deny'),
+            skills: createPermissionRule('allow'),
             mcp: createPermissionRule('inherit'),
             tools: createPermissionRule('inherit'),
-            computer: createPermissionRule('deny')
+            computer: createPermissionRule('allow')
         }
     }
 }
@@ -184,7 +369,8 @@ export function getDefaultConfig(): AgentConfig {
         },
         skills: {
             dirs: [...DEFAULT_SKILL_DIRS],
-            items: {}
+            items: {},
+            githubToken: ''
         },
         computer: createDefaultComputerConfig(),
         subAgent: createDefaultSubAgentConfig(),

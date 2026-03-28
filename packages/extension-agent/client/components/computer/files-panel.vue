@@ -114,7 +114,7 @@
                                 {{ item.label }}
                             </button>
                             <span
-                                v-if="idx < crumbs.length - 1"
+                                v-if="idx < crumbs.length - 1 && item.label !== '/'"
                                 class="crumb-divider"
                             >
                                 /
@@ -1026,6 +1026,13 @@ function resetPanels() {
     color: var(--k-text-light);
 }
 
+.cell-copy {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .panel-copy {
     margin-top: 4px;
 }
@@ -1052,6 +1059,106 @@ function resetPanels() {
     overflow: auto;
     padding: 0 16px;
     background: var(--k-page-bg);
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.crumb-bar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.crumb-bar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.crumb-bar::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+}
+
+.list-body {
+    position: relative;
+    min-height: 240px;
+    max-height: clamp(260px, 44vh, 420px);
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.list-body::-webkit-scrollbar {
+    width: 10px;
+}
+
+.list-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.list-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.tabs-scroll {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    min-height: 48px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.tabs-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.tabs-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tabs-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+}
+
+.image-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 360px;
+    height: 100%;
+    padding: 20px;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.image-stage::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.image-stage::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.image-stage::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
 }
 
 .crumb-item {
@@ -1073,15 +1180,21 @@ function resetPanels() {
     color: var(--k-color-primary);
 }
 
+.crumb-item:first-child {
+    padding-left: 4px;
+    padding-right: 0;
+}
+
 .crumb-divider {
     flex-shrink: 0;
+    margin: 0 0 0 -2px;
     color: var(--k-text-light);
 }
 
 .list-head,
 .list-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.8fr) 128px 160px;
+    grid-template-columns: minmax(0, 2.6fr) minmax(72px, 0.9fr) minmax(88px, 1fr);
     gap: 12px;
     align-items: center;
 }

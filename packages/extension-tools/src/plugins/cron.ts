@@ -197,6 +197,17 @@ export async function apply(
                 ])
             )
         },
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'cron'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'none'
+            }
+        },
 
         createTool(params) {
             return new CronTool(ctx, config, scheduledTasks, prepareTask)

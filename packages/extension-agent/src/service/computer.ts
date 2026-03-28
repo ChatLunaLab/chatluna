@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import which from 'which'
+import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
@@ -1034,7 +1035,13 @@ export class ChatLunaAgentComputerService {
                     meta: {
                         source: 'extension',
                         group: 'computer',
-                        tags: ['computer']
+                        tags: ['computer'],
+                        defaultAvailability: {
+                            enabled: true,
+                            main: true,
+                            chatluna: true,
+                            characterScope: 'all'
+                        }
                     }
                 })
             )
@@ -1054,11 +1061,25 @@ export class ChatLunaAgentComputerService {
         this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
             'after_system_prompts',
             async (runtime: PromptContextRuntime, next) => {
+                const mask = (runtime.configurable as { toolMask?: ToolMask })
+                    ?.toolMask
+                const registry = this.ctx.chatluna.platform.getToolRegistry()
+                const names =
+                    mask != null
+                        ? this.ctx.chatluna.platform.getFilteredTools(mask)
+                        : Object.keys(registry)
+                const capabilities = names.filter((name) =>
+                    registry[name]?.meta?.tags?.includes('computer')
+                )
+                if (capabilities.length < 1) {
+                    return next()
+                }
+
                 const msg = new SystemMessage(
                     [
                         '<computer_use>',
                         `Default provider: ${this.resolveProvider() ?? this.config.computer.defaultProvider}`,
-                        `Available capabilities: ${this.getCapabilities().join(', ')}`,
+                        `Available capabilities: ${capabilities.join(', ')}`,
                         'Prefer isolated backends when available. ' +
                             'Local computer access runs directly on the host machine and should only be used when explicitly enabled.',
                         'Use these capabilities when file operations, code search, shell execution, terminal interaction, or preview access are needed.',

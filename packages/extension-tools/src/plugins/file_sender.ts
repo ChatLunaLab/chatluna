@@ -23,7 +23,13 @@ export async function apply(
         meta: {
             source: 'extension',
             group: 'plugin-common',
-            tags: ['plugin-common', 'file', 'onebot']
+            tags: ['plugin-common', 'file', 'onebot'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'none'
+            }
         },
         authorization(session) {
             return session.platform === 'onebot'
@@ -285,7 +291,7 @@ function validateFile(file: string) {
 function withTimeout<T>(promise: Promise<T>, timeout: number): Promise<T> {
     return Promise.race([
         promise,
-        new Promise<T>((_, reject) =>
+        new Promise<T>((_resolve, reject) =>
             setTimeout(() => reject(new Error('Timeout')), timeout)
         )
     ])

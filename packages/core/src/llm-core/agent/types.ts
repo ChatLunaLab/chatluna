@@ -254,6 +254,11 @@ export type AgentEvent =
           message?: AIMessage
       }
 
+export interface AgentRuntimeConfigurable {
+    messageQueue?: MessageQueue
+    onAgentEvent?: (event: AgentEvent) => Promise<void> | void
+}
+
 export class MessageQueue {
     private _queue: HumanMessage[] = []
 

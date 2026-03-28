@@ -1,7 +1,10 @@
 /** @module sub-agent/render */
 
 import { SystemMessage } from '@langchain/core/messages'
-import { SubagentContext } from 'koishi-plugin-chatluna/llm-core/agent'
+import {
+    renderAvailableAgents,
+    SubagentContext
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import { SubAgentInfo } from '../types'
 import { escapeXml } from '../utils/xml'
 
@@ -10,39 +13,7 @@ export function renderAvailableSubAgents(
     dir?: string,
     location: 'local' | 'remote' = 'local'
 ) {
-    const lines = [
-        '<available_sub_agents>',
-        'Delegate focused work to a specialist via the task tool when parallel work or a narrower prompt helps.',
-        'If delegated work may take a while or exceed the normal tool timeout, set background=true, then query it later with task action=list/status.',
-        'While a background sub-agent is running, you can send more guidance with task action=message.',
-        ''
-    ]
-
-    if (dir) {
-        lines.push(
-            `Sub-agents dir (${location}): ${escapeXml(dir)}`,
-            'When a task creates or updates a markdown sub-agent, place it under <sub-agents-dir>/<name>/index.md.',
-            ''
-        )
-    }
-
-    for (const item of agents) {
-        lines.push(
-            '  <sub_agent>',
-            `    <name>${escapeXml(item.name)}</name>`,
-            `    <description>${escapeXml(item.description)}</description>`,
-            '  </sub_agent>'
-        )
-    }
-
-    lines.push(
-        '',
-        'Use the exact sub-agent name. Provide a self-contained prompt with goal, context, and expected result.',
-        'Prefer background=true for long-running delegated work so it is not interrupted by the default timeout.',
-        '</available_sub_agents>'
-    )
-
-    return new SystemMessage(lines.join('\n'))
+    return renderAvailableAgents(agents, dir, location)
 }
 
 export function renderSubAgentSystemPrompt(

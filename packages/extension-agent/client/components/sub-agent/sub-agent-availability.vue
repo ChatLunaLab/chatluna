@@ -4,7 +4,7 @@
             <div>
                 <div class="panel-title">工具可用性</div>
                 <div class="panel-description">
-                    反向查看每个工具当前会被哪些 sub-agent 看到与允许。
+                    反向查看每个工具当前会被哪些 Sub Agent 看到与允许。
                 </div>
             </div>
         </div>
@@ -36,7 +36,7 @@
                         {{ agent }}
                     </el-tag>
                     <span v-if="item.agents.length === 0" class="grant-empty">
-                        当前没有 sub-agent 获得这个工具
+                        当前没有 Sub Agent 获得这个工具
                     </span>
                 </div>
             </div>
@@ -130,6 +130,29 @@ defineProps<{
     max-height: 84px;
     overflow: auto;
     align-content: flex-start;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.grant-tags::-webkit-scrollbar {
+    width: 10px;
+}
+
+.grant-tags::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.grant-tags::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.grant-tags::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 .empty-state {

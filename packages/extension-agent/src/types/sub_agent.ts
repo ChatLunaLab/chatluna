@@ -14,6 +14,15 @@ export interface SubAgentItemConfig {
     enabled: boolean
     name: string
     description: string
+    chatluna: boolean
+    character: boolean
+    characterGroup: boolean
+    characterPrivate: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
+    authority: number
     source: 'builtin' | 'markdown' | 'preset' | 'manual'
     format: 'chatluna' | 'claude' | 'opencode'
     model?: string
@@ -45,6 +54,15 @@ export interface SubAgentInfo {
     format: 'chatluna' | 'claude' | 'opencode'
     state: 'ready' | 'invalid' | 'missing'
     enabled: boolean
+    chatlunaEnabled: boolean
+    characterEnabled: boolean
+    characterGroupEnabled: boolean
+    characterPrivateEnabled: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
+    authority: number
     hidden: boolean
     remote?: boolean
     path?: string
@@ -78,6 +96,31 @@ export interface SubAgentRunInfo {
     turnCount: number
     error?: string
     output?: string
+    trace: SubAgentRunTraceEntry[]
+}
+
+export interface SubAgentRunTraceEntry {
+    id: string
+    type:
+        | 'prompt'
+        | 'message'
+        | 'thought'
+        | 'tool-call'
+        | 'tool-result'
+        | 'output'
+        | 'error'
+    at: number
+    text: string
+    tool?: string
+    title?: string
+    callId?: string
+}
+
+export interface SubAgentExportResult {
+    id: string
+    name: string
+    fileName: string
+    content: string
 }
 
 export interface SubAgentImportInput {
@@ -85,11 +128,31 @@ export interface SubAgentImportInput {
     data: string
 }
 
+export interface SubAgentImportPreviewResult {
+    state: 'ready' | 'invalid'
+    diagnostics: string[]
+    promptContent?: string
+    value?: {
+        format: 'chatluna' | 'claude' | 'opencode'
+        name: string
+        description: string
+    }
+}
+
 export interface ManualSubAgentInput {
     id?: string
     name: string
     description?: string
     promptContent?: string
+    chatluna?: boolean
+    character?: boolean
+    characterGroup?: boolean
+    characterPrivate?: boolean
+    characterGroupMode?: 'all' | 'allow' | 'deny'
+    characterPrivateMode?: 'all' | 'allow' | 'deny'
+    characterGroupIds?: string[]
+    characterPrivateIds?: string[]
+    authority?: number
     format?: SubAgentInfo['format']
     model?: string
     maxTurns?: number

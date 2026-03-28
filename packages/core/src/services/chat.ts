@@ -19,7 +19,17 @@ import { LRUCache } from 'lru-cache'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
-import { MessageQueue, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
+import {
+    type ChatLunaAgent,
+    createAgent,
+    type CreateChatLunaAgentOptions,
+    MessageQueue,
+    resolveAgentEmbeddings,
+    resolveAgentModel,
+    resolveAgentPreset,
+    resolveAgentTools,
+    ToolMask
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ClientConfig,
@@ -64,6 +74,7 @@ import { RunnableConfig } from '@langchain/core/runnables'
 import { randomUUID } from 'crypto'
 import type { Notifier } from '@koishijs/plugin-notifier'
 import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { createChatPrompt } from 'koishi-plugin-chatluna/utils/chatluna'
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -375,6 +386,43 @@ export class ChatLunaService extends Service<Config> {
                 `The model ${modelName} is not embeddings, return empty embeddings`
             )
             return emptyEmbeddings
+        })
+    }
+
+    async createAgent(
+        options: CreateChatLunaAgentOptions
+    ): Promise<ChatLunaAgent> {
+        const llm = await resolveAgentModel(options.model, (name) =>
+            this.createChatModel(name)
+        )
+        const embeddings = await resolveAgentEmbeddings(
+            options.embeddings,
+            (name) => this.createEmbeddings(name),
+            this.currentConfig.defaultEmbeddings
+        )
+        const tools = resolveAgentTools(options.tools, (name) =>
+            this.platform.getTool(name)
+        )
+        const { preset, instructions } = resolveAgentPreset(options, (name) =>
+            computed(() => this._preset.getPreset(name).value)
+        )
+        const prompt =
+            options.prompt ?? createChatPrompt(this.ctx, llm.value, preset)
+
+        return createAgent({
+            id: options.id,
+            name: options.name,
+            description: options.description,
+            llm,
+            embeddings,
+            tools,
+            prompt,
+            mode: options.mode,
+            maxSteps: options.maxSteps,
+            handleParsingErrors: options.handleParsingErrors,
+            instructions,
+            returnIntermediateSteps: options.returnIntermediateSteps,
+            toolMask: options.toolMask
         })
     }
 
@@ -1030,7 +1078,8 @@ class ChatInterfaceWrapper {
                 toolMask ??
                 (await this._service.resolveToolMask({
                     session,
-                    room
+                    room,
+                    source: 'chatluna'
                 }))
 
             const chainValues = await chatInterface.chat({

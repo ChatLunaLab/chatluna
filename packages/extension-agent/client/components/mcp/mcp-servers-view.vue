@@ -134,8 +134,8 @@
                             编辑
                         </el-button>
                         <el-button
+                            class="neutral-outline"
                             size="small"
-                            type="primary"
                             plain
                             :loading="item.updating"
                             :disabled="item.updating"
@@ -144,6 +144,7 @@
                             {{ item.updating ? '重连中' : '重连' }}
                         </el-button>
                         <el-button
+                            class="danger-soft"
                             size="small"
                             type="danger"
                             plain
@@ -1154,6 +1155,7 @@ async function saveTool() {
     border-radius: 16px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 20%);
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .panel-header {
@@ -1164,6 +1166,7 @@ async function saveTool() {
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
     gap: 16px;
+    box-sizing: border-box;
 }
 
 .panel-title {
@@ -1186,40 +1189,32 @@ async function saveTool() {
 }
 
 .card-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px 16px;
-    padding: 14px 14px 16px;
+    --card-cols: 4;
+    display: grid;
+    grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .card-list.compact {
-    gap: 14px 16px;
+    --card-cols: 3;
 }
 
 .server-card,
 .tool-card {
-    flex: 0 0 320px;
-    width: 320px;
-    max-width: 100%;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
     background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 18%);
     padding: 14px;
-    transition:
-        border-color 0.2s ease,
-        background-color 0.2s ease;
     display: flex;
     flex-direction: column;
-    min-width: 0;
+    gap: 10px;
     box-sizing: border-box;
-}
-
-.card-list.compact .server-card,
-.card-list.compact .tool-card {
-    flex-basis: 320px;
-    width: 320px;
-    padding: 14px;
+    transition: all 0.2s;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .server-card.busy,
@@ -1388,6 +1383,26 @@ async function saveTool() {
     word-break: break-word;
 }
 
+@media (max-width: 1680px) {
+    .card-list {
+        --card-cols: 3;
+    }
+
+    .card-list.compact {
+        --card-cols: 2;
+    }
+}
+
+@media (max-width: 1320px) {
+    .card-list {
+        --card-cols: 2;
+    }
+
+    .card-list.compact {
+        --card-cols: 1;
+    }
+}
+
 .detail-list {
     display: flex;
     flex-direction: column;
@@ -1445,6 +1460,89 @@ async function saveTool() {
     gap: 6px;
     margin-top: auto;
     padding-top: 10px;
+}
+
+.server-actions :deep(.neutral-outline.el-button) {
+    --el-button-bg-color: transparent;
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 12%
+    );
+    --el-button-text-color: var(--k-text-dark);
+    --el-button-hover-bg-color: color-mix(
+        in srgb,
+        var(--k-side-bg),
+        var(--k-page-bg) 18%
+    );
+    --el-button-hover-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 0%
+    );
+    --el-button-hover-text-color: var(--k-text-dark);
+    --el-button-active-bg-color: color-mix(
+        in srgb,
+        var(--k-side-bg),
+        var(--k-page-bg) 26%
+    );
+    --el-button-active-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 0%
+    );
+    --el-button-active-text-color: var(--k-text-dark);
+    --el-button-disabled-bg-color: color-mix(
+        in srgb,
+        var(--k-side-bg),
+        transparent 10%
+    );
+    --el-button-disabled-border-color: color-mix(
+        in srgb,
+        var(--k-color-divider),
+        transparent 24%
+    );
+    --el-button-disabled-text-color: var(--k-text-light);
+}
+
+.server-actions :deep(.danger-soft.el-button) {
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 92%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 68%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--k-text-dark) 22%
+    );
+    --el-button-hover-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 86%
+    );
+    --el-button-hover-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 52%
+    );
+    --el-button-hover-text-color: var(--el-color-danger);
+    --el-button-active-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 82%
+    );
+    --el-button-active-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 44%
+    );
+    --el-button-active-text-color: var(--el-color-danger);
 }
 
 .empty-state {
@@ -1626,6 +1724,11 @@ async function saveTool() {
 }
 
 @media (max-width: 768px) {
+    .card-list,
+    .card-list.compact {
+        --card-cols: 1;
+    }
+
     .panel-header {
         flex-direction: column;
         align-items: flex-start;

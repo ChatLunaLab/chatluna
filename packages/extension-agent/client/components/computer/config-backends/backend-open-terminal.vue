@@ -52,7 +52,9 @@
             </div>
         </div>
 
-        <el-alert type="warning" :closable="false" :description="warning" />
+        <div class="warning-box">
+            <div class="warning-desc">{{ warning }}</div>
+        </div>
     </el-form>
 </template>
 

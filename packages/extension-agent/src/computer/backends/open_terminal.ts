@@ -58,6 +58,14 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const root = current.cwd || '/'
         this._home = root
 
+        const home = await this.execute('printf %s "$HOME"', {
+            workdir: root,
+            timeout: 5000
+        }).catch(() => undefined)
+        if (home?.stdout?.startsWith('/')) {
+            this._home = home.stdout.trim()
+        }
+
         if (this.options.cwd) {
             try {
                 const result = readOpenTerminalData<OpenTerminalListData>(
@@ -92,21 +100,24 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
+        const target = this.resolvePath(filePath)
+
         try {
-            const result = await this.ctx.http(this.url('/files/list'), {
-                method: 'GET',
-                headers: this.headers(),
-                params: {
-                    directory: filePath
+            const result = readOpenTerminalData<
+                OpenTerminalListData & {
+                    entries?: { name?: string; type?: string }[]
                 }
-            })
-            const dir =
-                typeof result.data?.dir === 'string'
-                    ? result.data.dir
-                    : filePath
-            const entries = Array.isArray(result.data?.entries)
-                ? result.data.entries
-                : []
+            >(
+                await this.ctx.http(this.url('/files/list'), {
+                    method: 'GET',
+                    headers: this.headers(),
+                    params: {
+                        directory: target
+                    }
+                })
+            )
+            const dir = result.dir || target
+            const entries = Array.isArray(result.entries) ? result.entries : []
 
             return entries
                 .map((item) => {
@@ -122,7 +133,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 .join('\n')
         } catch {}
 
-        const params = new URLSearchParams({ path: filePath })
+        const params = new URLSearchParams({ path: target })
         if (offset != null) {
             params.set('start_line', String(offset))
         }
@@ -134,20 +145,22 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             )
         }
 
-        const result = await this.ctx.http(
-            this.url(`/files/read?${params.toString()}`),
-            {
+        const result = readOpenTerminalData<{
+            content?: string
+            total_lines?: number
+        }>(
+            await this.ctx.http(this.url(`/files/read?${params.toString()}`), {
                 method: 'GET',
                 headers: this.headers()
-            }
+            })
         )
 
         const text =
-            typeof result.data?.content === 'string'
-                ? result.data.content
-                : typeof result.data === 'string'
-                  ? result.data
-                  : JSON.stringify(result.data)
+            typeof result.content === 'string'
+                ? result.content
+                : typeof result === 'string'
+                  ? result
+                  : JSON.stringify(result)
 
         if (offset == null && limit == null) {
             return text
@@ -157,8 +170,8 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const lines = text.split('\n')
         const resultLines = lines.map((line, idx) => `${start + idx}: ${line}`)
         const total =
-            typeof result.data?.total_lines === 'number'
-                ? result.data.total_lines
+            typeof result.total_lines === 'number'
+                ? result.total_lines
                 : start + lines.length - 1
         if (start + lines.length - 1 >= total) {
             return resultLines.join('\n')
@@ -197,7 +210,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         await this.ctx.http.post(
             this.url('/files/write'),
             {
-                path: filePath,
+                path: this.resolvePath(filePath),
                 content
             },
             {
@@ -293,17 +306,16 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             params.append('include', include)
         }
 
-        const result = await this.ctx.http(
-            this.url(`/files/grep?${params.toString()}`),
-            {
+        const result = readOpenTerminalData<{
+            matches?: { file?: string; line?: number; content?: string }[]
+        }>(
+            await this.ctx.http(this.url(`/files/grep?${params.toString()}`), {
                 method: 'GET',
                 headers: this.headers()
-            }
+            })
         )
 
-        const matches = Array.isArray(result.data?.matches)
-            ? result.data.matches
-            : []
+        const matches = Array.isArray(result.matches) ? result.matches : []
 
         return matches
             .map((item) => {
@@ -326,17 +338,16 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             type: 'file',
             max_results: '500'
         })
-        const result = await this.ctx.http(
-            this.url(`/files/glob?${params.toString()}`),
-            {
+        const result = readOpenTerminalData<{
+            matches?: { path?: string }[]
+        }>(
+            await this.ctx.http(this.url(`/files/glob?${params.toString()}`), {
                 method: 'GET',
                 headers: this.headers()
-            }
+            })
         )
 
-        const matches = Array.isArray(result.data?.matches)
-            ? result.data.matches
-            : []
+        const matches = Array.isArray(result.matches) ? result.matches : []
 
         return matches
             .map((item) => {

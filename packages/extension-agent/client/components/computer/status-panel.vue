@@ -94,6 +94,7 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .panel.compact .panel-header {
@@ -104,6 +105,7 @@ function tagType(state: ComputerStatus['backends']['local']['state']) {
     padding: 16px 18px;
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    box-sizing: border-box;
 }
 
 .panel-title {

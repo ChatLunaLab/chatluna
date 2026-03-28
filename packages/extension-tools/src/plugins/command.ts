@@ -40,6 +40,17 @@ export async function apply(
         selector() {
             return true
         },
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'command'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
+        },
         createTool() {
             return new CommandExecuteTool(
                 ctx,

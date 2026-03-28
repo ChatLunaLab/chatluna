@@ -13,6 +13,7 @@ import {
     createSubAgentMarkdown,
     getSubAgentFileName
 } from '../sub-agent/markdown'
+import { parseAgentFrontmatter } from '../sub-agent/parse'
 import {
     AgentConfig,
     ManualSubAgentInput,
@@ -22,7 +23,9 @@ import {
     SkillImportInput,
     SkillImportPreviewResult,
     SkillImportResult,
+    SkillMode,
     SubAgentConfig,
+    SubAgentExportResult,
     SubAgentImportInput,
     SubAgentInfo,
     SubAgentItemConfig
@@ -41,6 +44,7 @@ export class ChatLunaAgentService extends Service {
     public permission: ChatLunaAgentPermissionService
     public skills: ChatLunaAgentSkillsService
     public subAgent: ChatLunaAgentSubAgentService
+    private _toolUpdateDispose?: () => void
 
     constructor(
         public ctx: Context,
@@ -66,6 +70,15 @@ export class ChatLunaAgentService extends Service {
     }
 
     async start() {
+        this._toolUpdateDispose?.()
+        this._toolUpdateDispose = this.ctx.on(
+            'chatluna/tool-updated',
+            async () => {
+                this.permission.invalidateCache()
+                await this.refreshConsoleData()
+            }
+        )
+
         await Promise.all([
             this.permission.start(),
             this.cli.start(),
@@ -78,6 +91,8 @@ export class ChatLunaAgentService extends Service {
     }
 
     async stop() {
+        this._toolUpdateDispose?.()
+        this._toolUpdateDispose = undefined
         await this.subAgent.stop()
         await this.mcp.stop()
         await this.skills.stop()
@@ -182,7 +197,8 @@ export class ChatLunaAgentService extends Service {
         const result = await this.skills.importSkills(input)
         const skills = {
             dirs: [...this.args.config.skills.dirs],
-            items: { ...this.args.config.skills.items }
+            items: { ...this.args.config.skills.items },
+            githubToken: this.args.config.skills.githubToken ?? ''
         }
 
         for (const name of result.imported) {
@@ -190,7 +206,7 @@ export class ChatLunaAgentService extends Service {
                 createHashId(
                     join(getSkillsRootPath(this.ctx), name, 'SKILL.md')
                 )
-            ] = { enabled: true, remote: false }
+            ] = { enabled: false, mode: 'off', remote: false }
         }
 
         await this.updateConfig('skills', skills, async () => {
@@ -247,13 +263,20 @@ export class ChatLunaAgentService extends Service {
     }
 
     async setSkillEnabled(id: string, enabled: boolean) {
+        return await this.setSkillMode(id, enabled ? 'description' : 'off')
+    }
+
+    async setSkillMode(id: string, mode: SkillMode) {
         const skills = {
             dirs: [...this.args.config.skills.dirs],
-            items: { ...this.args.config.skills.items }
+            items: { ...this.args.config.skills.items },
+            githubToken: this.args.config.skills.githubToken ?? ''
         }
         const info = this.skills.listSkills().find((item) => item.id === id)
         skills.items[id] = {
-            enabled,
+            ...skills.items[id],
+            enabled: mode !== 'off',
+            mode,
             remote: info?.remote === true || skills.items[id]?.remote === true
         }
         await this.updateConfig('skills', skills, async () => {
@@ -266,7 +289,8 @@ export class ChatLunaAgentService extends Service {
 
         const skills = {
             dirs: [...this.args.config.skills.dirs],
-            items: { ...this.args.config.skills.items }
+            items: { ...this.args.config.skills.items },
+            githubToken: this.args.config.skills.githubToken ?? ''
         }
         delete skills.items[id]
         await this.updateConfig('skills', skills, async () => {
@@ -308,6 +332,10 @@ export class ChatLunaAgentService extends Service {
         await this.refreshConsoleData()
     }
 
+    async previewSubAgentImport(data: string) {
+        return parseAgentFrontmatter(data, 'preview')
+    }
+
     async addSubAgent(input: ManualSubAgentInput) {
         const root = getSubAgentsRootPath(this.ctx)
         const file = join(root, getSubAgentFileName(input.name), 'index.md')
@@ -330,6 +358,108 @@ export class ChatLunaAgentService extends Service {
         return info
     }
 
+    async saveSubAgentContent(id: string, input: ManualSubAgentInput) {
+        const info = this.subAgent
+            .getCatalogSync()
+            .find((item) => item.id === id)
+        if (!info) {
+            throw new Error(`Sub-agent not found: ${id}`)
+        }
+
+        if (info.source !== 'markdown') {
+            throw new Error('Only markdown sub-agents can save content here')
+        }
+
+        if (info.remote) {
+            throw new Error('Cannot edit remote sub-agent content')
+        }
+
+        if (!info.path) {
+            throw new Error('Sub-agent path is missing')
+        }
+
+        await writeFile(
+            info.path,
+            createSubAgentMarkdown({
+                name: input.name,
+                description: input.description,
+                promptContent: input.promptContent,
+                chatluna: input.chatluna ?? info.chatlunaEnabled,
+                character: input.character ?? info.characterEnabled,
+                characterGroup: input.characterGroup ?? info.characterGroupEnabled,
+                characterPrivate:
+                    input.characterPrivate ?? info.characterPrivateEnabled,
+                characterGroupMode:
+                    input.characterGroupMode ?? info.characterGroupMode,
+                characterPrivateMode:
+                    input.characterPrivateMode ?? info.characterPrivateMode,
+                characterGroupIds:
+                    input.characterGroupIds ?? info.characterGroupIds,
+                characterPrivateIds:
+                    input.characterPrivateIds ?? info.characterPrivateIds,
+                authority: input.authority ?? info.authority,
+                model: input.model ?? info.model,
+                maxTurns: input.maxTurns ?? info.maxTurns,
+                hidden: input.hidden ?? info.hidden,
+                enabled: input.enabled ?? info.enabled,
+                allowKoishiMessageTransform:
+                    input.allowKoishiMessageTransform ??
+                    info.allowKoishiMessageTransform,
+                permissions: input.permissions ?? info.permissions
+            }),
+            'utf-8'
+        )
+        await this.subAgent.reload()
+        await this.refreshConsoleData()
+
+        const path = resolve(info.path)
+        const next = this.subAgent
+            .getCatalogSync()
+            .find((item) => item.path && resolve(item.path) === path)
+        if (!next) {
+            throw new Error(`Sub-agent was saved but not found: ${id}`)
+        }
+
+        return next
+    }
+
+    async exportSubAgent(
+        id: string
+    ): Promise<SubAgentExportResult | undefined> {
+        const info = this.subAgent
+            .getCatalogSync()
+            .find((item) => item.id === id)
+        if (!info || !info.promptContent.trim()) {
+            return undefined
+        }
+
+        return {
+            id: info.id,
+            name: info.name,
+            fileName: `${getSubAgentFileName(info.name)}.md`,
+            content: createSubAgentMarkdown({
+                name: info.name,
+                description: info.description,
+                chatluna: info.chatlunaEnabled,
+                character: info.characterEnabled,
+                characterGroup: info.characterGroupEnabled,
+                characterPrivate: info.characterPrivateEnabled,
+                characterGroupMode: info.characterGroupMode,
+                characterPrivateMode: info.characterPrivateMode,
+                characterGroupIds: info.characterGroupIds,
+                characterPrivateIds: info.characterPrivateIds,
+                authority: info.authority,
+                promptContent: info.promptContent,
+                model: info.model,
+                maxTurns: info.maxTurns,
+                hidden: info.hidden,
+                enabled: info.enabled,
+                allowKoishiMessageTransform: info.allowKoishiMessageTransform,
+                permissions: info.permissions
+            })
+        }
+    }
+
     async registerSubAgent(input: ManualSubAgentInput) {
         return await this.subAgent.registerManualAgent(input)
     }
@@ -344,6 +474,15 @@ export class ChatLunaAgentService extends Service {
             enabled: config.enabled ?? true,
             name,
             description: config.description ?? name,
+            chatluna: config.chatluna,
+            character: config.character,
+            characterGroup: config.characterGroup,
+            characterPrivate: config.characterPrivate,
+            characterGroupMode: config.characterGroupMode,
+            characterPrivateMode: config.characterPrivateMode,
+            characterGroupIds: config.characterGroupIds,
+            characterPrivateIds: config.characterPrivateIds,
+            authority: config.authority,
             source: 'preset',
             format: 'chatluna',
             model: config.model,
@@ -468,6 +607,15 @@ function itemFromInfo(info: SubAgentInfo, enabled: boolean) {
         enabled,
         name: info.name,
         description: info.description,
+        chatluna: info.chatlunaEnabled,
+        character: info.characterEnabled,
+        characterGroup: info.characterGroupEnabled,
+        characterPrivate: info.characterPrivateEnabled,
+        characterGroupMode: info.characterGroupMode,
+        characterPrivateMode: info.characterPrivateMode,
+        characterGroupIds: info.characterGroupIds,
+        characterPrivateIds: info.characterPrivateIds,
+        authority: info.authority,
         source: info.source,
         format: info.format,
         model: info.model,

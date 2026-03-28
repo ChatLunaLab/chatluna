@@ -37,6 +37,17 @@ export async function apply(
         selector(history) {
             return true
         },
+        meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'search'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'none'
+            }
+        },
 
         createTool(params) {
             return new MemorySearchTool(ctx, params)
@@ -47,6 +58,17 @@ export async function apply(
         description: new MemoryAddTool(ctx, params).description,
         selector(history) {
             return true
+        },
+        meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'add'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
         },
 
         createTool(params) {
@@ -59,6 +81,17 @@ export async function apply(
         selector(history) {
             return true
         },
+        meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'delete'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
+        },
 
         createTool(params) {
             return new MemoryDeleteTool(ctx, params)
@@ -69,6 +102,17 @@ export async function apply(
         description: new MemoryUpdateTool(ctx, params).description,
         selector(history) {
             return true
+        },
+        meta: {
+            source: 'extension',
+            group: 'long-memory',
+            tags: ['long-memory', 'update'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
         },
 
         createTool(params) {

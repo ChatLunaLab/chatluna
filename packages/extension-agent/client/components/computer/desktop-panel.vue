@@ -287,6 +287,30 @@ async function handleWheel(event: WheelEvent) {
 
 .desktop-stage {
     overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.desktop-stage::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.desktop-stage::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.desktop-stage::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.desktop-stage::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 .desktop-image {

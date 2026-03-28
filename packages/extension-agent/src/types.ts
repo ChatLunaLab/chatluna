@@ -23,13 +23,16 @@ import type {
     SkillImportPreviewResult,
     SkillImportResult,
     SkillInfo,
+    SkillMode,
     SkillsConfig,
     SkillsStatus
 } from './types/skills'
 import type {
     ManualSubAgentInput,
     SubAgentConfig,
+    SubAgentExportResult,
     SubAgentImportInput,
+    SubAgentImportPreviewResult,
     SubAgentInfo,
     SubAgentItemConfig,
     SubAgentRunInfo,
@@ -158,6 +161,10 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/getSkillContent': (
             id: string
         ) => Promise<SkillContentResult | undefined>
+        'chatluna-agent/saveSkillContent': (
+            id: string,
+            content: string
+        ) => Promise<ActionResult>
         'chatluna-agent/exportSkill': (
             id: string
         ) => Promise<SkillExportResult | undefined>
@@ -166,6 +173,13 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/addSubAgent': (
             input: ManualSubAgentInput
         ) => Promise<SubAgentInfo>
+        'chatluna-agent/saveSubAgentContent': (
+            id: string,
+            input: ManualSubAgentInput
+        ) => Promise<SubAgentInfo>
+        'chatluna-agent/exportSubAgent': (
+            id: string
+        ) => Promise<SubAgentExportResult | undefined>
         'chatluna-agent/getModelNames': () => Promise<string[]>
         'chatluna-agent/importSkills': (
             input: SkillImportInput
@@ -214,6 +228,10 @@ declare module '@koishijs/plugin-console' {
             id: string,
             enabled: boolean
         ) => Promise<ActionResult>
+        'chatluna-agent/setSkillMode': (
+            id: string,
+            mode: SkillMode
+        ) => Promise<ActionResult>
         'chatluna-agent/setSubAgentEnabled': (
             id: string,
             enabled: boolean
@@ -221,6 +239,9 @@ declare module '@koishijs/plugin-console' {
         'chatluna-agent/uploadSubAgent': (
             input: SubAgentImportInput
         ) => Promise<ActionResult>
+        'chatluna-agent/previewSubAgentImport': (
+            data: string
+        ) => Promise<SubAgentImportPreviewResult>
         'chatluna-agent/createPresetAgent': (
             name: string,
             preset: string,

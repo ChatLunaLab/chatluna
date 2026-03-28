@@ -464,7 +464,13 @@ export class ChatLunaAgentMcpService {
                         group: 'mcp',
                         tags: ['mcp', serverName],
                         isMcp: true,
-                        serverName
+                        serverName,
+                        defaultAvailability: {
+                            enabled: true,
+                            main: true,
+                            chatluna: true,
+                            characterScope: 'all'
+                        }
                     }
                 })
             )

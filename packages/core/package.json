@@ -207,6 +207,11 @@
             "import": "./lib/utils/base64.mjs",
             "require": "./lib/utils/base64.cjs"
         },
+        "./utils/chatluna": {
+            "types": "./lib/utils/chatluna.d.ts",
+            "import": "./lib/utils/chatluna.mjs",
+            "require": "./lib/utils/chatluna.cjs"
+        },
         "./package.json": "./package.json"
     },
     "author": "dingyi222666 <dingyi222666@foxmail.com>",

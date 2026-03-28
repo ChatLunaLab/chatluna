@@ -24,6 +24,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { applyToolMask, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import { Session } from 'koishi'
 import { SearchAction, SummaryType } from '../types'
 import { attemptToFixJSON, preprocessContent } from '../utils/parse'
@@ -94,6 +95,8 @@ export class ChatLunaBrowsingChain
     searchPrompt: string
 
     searchFailedPrompt: string
+
+    private _toolMask?: ToolMask
 
     constructor({
         botName,
@@ -203,7 +206,13 @@ export class ChatLunaBrowsingChain
     }
 
     private async _selectTool(name: string): Promise<StructuredTool> {
-        const chatLunaTool = this.tools.value.find((tool) => tool.name === name)
+        const chatLunaTool = this.tools.value.find(
+            (tool) => tool.name === name && applyToolMask(name, this._toolMask)
+        )
+
+        if (!chatLunaTool) {
+            throw new Error(`Tool not available in current room: ${name}`)
+        }
 
         return chatLunaTool.tool.createTool({
             embeddings: this.embeddings
@@ -218,8 +227,10 @@ export class ChatLunaBrowsingChain
         session,
         variables,
         maxToken,
-        signal
+        signal,
+        toolMask
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
+        this._toolMask = toolMask
         const requests: ChainValues = {
             input: message
         }

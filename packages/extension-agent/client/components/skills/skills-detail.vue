@@ -9,24 +9,13 @@
 
         <div class="page-header">
             <div class="headline">
-                <div class="page-title">{{ agent.name }} 配置</div>
-                <div class="page-description">调整当前 Sub Agent 的详细配置。</div>
+                <div class="page-title">{{ skill.name }} Skill 设置</div>
+                <div class="page-description">调整当前 Skill 的注入方式与可见范围。</div>
             </div>
 
-            <div class="editor-actions">
-                <el-button
-                    v-if="canRemove"
-                    class="danger-soft"
-                    type="danger"
-                    plain
-                    @click="$emit('remove')"
-                >
-                    删除
-                </el-button>
-                <el-button type="primary" @click="$emit('save')">
-                    保存
-                </el-button>
-            </div>
+            <el-button type="primary" class="save-btn" @click="$emit('save')">
+                保存
+            </el-button>
         </div>
 
         <div class="tabs-underline">
@@ -42,7 +31,6 @@
         </div>
 
         <div class="editor-body">
-            <!-- 详细信息 -->
             <div v-if="tab === 'info'" class="page-grid">
                 <div class="section-title">全局状态</div>
                 <div class="field-grid">
@@ -50,7 +38,7 @@
                         <div class="scope-row">
                             <div>
                                 <div class="field-label">全局启用</div>
-                                <div class="field-help">关闭后当前 Sub Agent 不会被主 Agent 调用。</div>
+                                <div class="field-help">关闭后这个 Skill 不会被主 Agent 和 Sub Agent 注入。</div>
                             </div>
                             <el-switch v-model="draft.enabled" />
                         </div>
@@ -58,109 +46,65 @@
                     <div class="field-card flat-card switch-card">
                         <div class="scope-row">
                             <div>
-                                <div class="field-label">隐藏</div>
-                                <div class="field-help">隐藏后该 Sub Agent 不会出现在 Agent 的工具描述里。</div>
+                                <div class="field-label">主 Agent 启用</div>
+                                <div class="field-help">控制主 Agent 是否允许看到并加载这个 Skill。</div>
                             </div>
-                            <el-switch v-model="draft.hidden" />
+                            <el-switch v-model="draft.main" />
                         </div>
                     </div>
                 </div>
 
                 <el-divider style="margin: 4px 0;" />
 
-                <div class="section-title">Sub Agent 信息</div>
+                <div class="section-title">注入模式</div>
+                <div class="field-card flat-card full-row">
+                    <div class="field-subtitle">切换注入方式</div>
+                    <div class="field-help">决定模型先看到 Skill 摘要，还是直接注入完整内容。</div>
+                    <div class="mode-row">
+                        <el-segmented v-model="draft.mode" :options="modeOptions" />
+                    </div>
+                    <div class="mode-hint-list">
+                        <div class="mode-hint-item">
+                            <div class="mode-hint-title">描述</div>
+                            <div class="field-help">仅把 Skill 名称、说明、路径等摘要注入给模型，模型需要时再主动加载。</div>
+                        </div>
+                        <div class="mode-hint-item">
+                            <div class="mode-hint-title">全文</div>
+                            <div class="field-help">在系统提示词阶段直接注入完整 Skill 内容，适合必须预先掌握完整规则的场景。</div>
+                        </div>
+                    </div>
+                </div>
+
+                <el-divider style="margin: 4px 0;" />
+
+                <div class="section-title">Skill 信息</div>
                 <div class="field-grid readonly-grid">
                     <div class="field-card flat-card">
                         <div class="field-label">名称</div>
-                        <div class="field-static">{{ agent.name }}</div>
+                        <div class="field-static">{{ skill.name }}</div>
                     </div>
                     <div class="field-card flat-card">
                         <div class="field-label">来源</div>
-                        <div class="field-static">
-                            {{ `${agent.source} / ${agent.format}` }}
-                        </div>
+                        <div class="field-static">{{ skill.source }} / {{ skill.scope }}</div>
                     </div>
                     <div class="field-card flat-card full-row">
                         <div class="field-label">说明</div>
-                        <div class="field-static">
-                            {{ agent.description || '暂无说明。' }}
-                        </div>
+                        <div class="field-static">{{ skill.description || '暂无说明。' }}</div>
                     </div>
                     <div class="field-card flat-card full-row">
-                        <div class="field-label">内容来源</div>
-                        <div class="field-static">
-                            {{ agent.path || agent.preset || '内置定义' }}
-                        </div>
-                    </div>
-                </div>
-
-                <el-divider style="margin: 4px 0;" />
-
-                <div class="section-title">高级配置</div>
-                <div class="field-grid option-grid">
-                    <div class="field-card flat-card option-card">
-                        <div class="field-label">模型覆盖</div>
-                        <el-select
-                            v-model="draft.model"
-                            clearable
-                            filterable
-                            placeholder="留空则继承父会话模型"
-                        >
-                            <el-option label="继承当前会话模型" value="" />
-                            <el-option
-                                v-for="item in modelOptions"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                    </div>
-                    <div class="field-card flat-card option-card">
-                        <div class="field-label">最大轮次</div>
-                        <el-input-number
-                            v-model="draft.maxTurns"
-                            :min="1"
-                            :max="100"
-                            :step="1"
-                        />
-                    </div>
-                </div>
-
-                <div class="field-grid">
-                    <div class="field-card flat-card switch-card">
-                        <div class="scope-row">
-                            <div>
-                                <div class="field-label">Koishi 消息解析</div>
-                                <div class="field-help">开启后会把输入中的 Koishi 元素转成多模态消息。</div>
-                            </div>
-                            <el-switch v-model="draft.allowKoishiMessageTransform" />
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    v-if="agent.diagnostics.length > 0"
-                    class="diagnostics-panel"
-                    style="margin-top: 16px;"
-                >
-                    <div class="field-label">诊断信息</div>
-                    <div
-                        v-for="line in agent.diagnostics"
-                        :key="line"
-                        class="diagnostic-line"
-                    >
-                        {{ line }}
+                        <div class="field-label">路径</div>
+                        <div class="field-static">{{ skill.path || '当前没有可用路径。' }}</div>
                     </div>
                 </div>
             </div>
 
             <div v-else-if="tab === 'session'" class="page-grid">
-                <div class="section-title">会话配置</div>
+                <div class="section-title">全局配置</div>
                 <div class="field-card flat-card">
                     <div class="scope-row">
                         <div>
                             <div class="field-subtitle">主插件</div>
-                            <div class="field-help">控制 `chatluna` 主插件是否允许调用当前 Sub Agent。</div>
+                            <div class="field-help">控制 `chatluna` 主插件整体是否允许注入这个 Skill。</div>
                         </div>
                         <el-switch v-model="draft.chatluna" />
                     </div>
@@ -170,7 +114,7 @@
                     <div class="scope-row">
                         <div>
                             <div class="field-subtitle">伪装插件</div>
-                            <div class="field-help">控制 `chatluna-character` 是否允许调用当前 Sub Agent。</div>
+                            <div class="field-help">控制 `chatluna-character` 是否允许注入这个 Skill。</div>
                         </div>
                         <el-switch v-model="draft.character" />
                     </div>
@@ -202,7 +146,7 @@
                         <div class="scope-row">
                             <div>
                                 <div class="field-subtitle">在此类型会话中启用</div>
-                                <div class="field-help">独立控制私聊或群聊的 Sub Agent 开关。</div>
+                                <div class="field-help">独立控制私聊或群聊的 Skill 开关。</div>
                             </div>
                             <el-switch
                                 v-if="characterKind === 'private'"
@@ -231,7 +175,7 @@
                             <button
                                 v-if="currentIds.length > 0"
                                 type="button"
-                                class="copy-icon"
+                                class="icon-button"
                                 title="复制所有 ID"
                                 @click="copyIds"
                             >
@@ -240,7 +184,7 @@
                             <button
                                 v-if="currentIds.length > 0"
                                 type="button"
-                                class="copy-icon"
+                                class="icon-button"
                                 title="清空所有 ID"
                                 @click="clearIds"
                             >
@@ -293,34 +237,40 @@
                 </div>
             </div>
 
-            <!-- 功能权限 -->
             <div v-else class="page-grid">
-                <div class="section-title">Skills 权限</div>
-                <permission-editor
-                    v-model="draft.skills"
-                    :options="skillOptions"
-                />
+                <div class="field-card flat-card scope-card">
+                    <div class="field-label" style="margin-bottom: 8px;">Sub Agent 范围</div>
+                    <div class="field-help" style="margin-bottom: 16px;">
+                        `all` 为全部 sub-agent，`allow` 为仅允许指定项，`deny` 为排除指定项。
+                    </div>
 
-                <el-divider style="margin: 16px 0;" />
-                <div class="section-title">MCP 权限</div>
-                <permission-editor
-                    v-model="draft.mcp"
-                    :options="mcpOptions"
-                />
+                    <div class="scope-grid">
+                        <el-select v-model="draft.subAgents.mode" style="width: 200px;">
+                            <el-option label="全部允许 (all)" value="all" />
+                            <el-option label="白名单 (allow)" value="allow" />
+                            <el-option label="黑名单 (deny)" value="deny" />
+                        </el-select>
 
-                <el-divider style="margin: 16px 0;" />
-                <div class="section-title">Tools 权限</div>
-                <permission-editor
-                    v-model="draft.tools"
-                    :options="toolOptions"
-                />
-
-                <el-divider style="margin: 16px 0;" />
-                <div class="section-title">Computer 权限</div>
-                <permission-editor
-                    v-model="draft.computer"
-                    :options="computerOptions"
-                />
+                        <el-select
+                            v-if="draft.subAgents.mode !== 'all'"
+                            v-model="scopeValues"
+                            multiple
+                            filterable
+                            clearable
+                            collapse-tags
+                            collapse-tags-tooltip
+                            placeholder="选择 sub-agent"
+                            style="flex: 1;"
+                        >
+                            <el-option
+                                v-for="item in agentOptions"
+                                :key="item.id"
+                                :label="agentLabel(item)"
+                                :value="item.id"
+                            />
+                        </el-select>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -340,62 +290,20 @@
 import { ArrowLeft, Close, CopyDocument, Delete } from '@element-plus/icons-vue'
 import { computed, nextTick, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import PermissionEditor from './permission-editor.vue'
-import type { SubAgentInfo, ToolInfo } from '../../../src/types'
-
-interface RuleDraft {
-    mode: string
-    allowText: string
-    denyText: string
-}
-
-interface AgentDraft {
-    enabled: boolean
-    name: string
-    description: string
-    promptContent: string
-    chatluna: boolean
-    character: boolean
-    characterGroup: boolean
-    characterPrivate: boolean
-    characterGroupMode: 'all' | 'allow' | 'deny'
-    characterPrivateMode: 'all' | 'allow' | 'deny'
-    characterGroupIds: string[]
-    characterPrivateIds: string[]
-    authority: number
-    model: string
-    maxTurns: number
-    hidden: boolean
-    allowKoishiMessageTransform: boolean
-    skills: RuleDraft
-    mcp: RuleDraft
-    tools: RuleDraft
-    computer: RuleDraft
-}
-
-interface RuleOption {
-    value: string
-    label: string
-}
+import type { SkillConfig, SkillInfo, SubAgentInfo } from '../../../src/types'
 
 const props = defineProps<{
-    agent: SubAgentInfo
-    draft: AgentDraft
-    modelNames: string[]
-    skillOptions: RuleOption[]
-    mcpOptions: RuleOption[]
-    computerOptions: RuleOption[]
-    tools: Record<string, ToolInfo>
-    canRemove: boolean
+    skill: SkillInfo
+    draft: SkillConfig
+    agentOptions: SubAgentInfo[]
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
     back: []
     save: []
-    remove: []
 }>()
 
-const tab = ref<'info' | 'session' | 'actor' | 'feature'>('info')
+const tab = ref<'info' | 'session' | 'actor' | 'subagent'>('info')
 const characterKind = ref<'private' | 'group'>('private')
 const idInput = ref('')
 const showCopyDialog = ref(false)
@@ -403,34 +311,22 @@ const copyContent = ref('')
 const copyInputRef = ref()
 
 const tabs = [
-    { value: 'info', label: '基础信息' },
+    { value: 'info', label: '详细信息' },
     { value: 'session', label: '会话权限' },
     { value: 'actor', label: '触发者权限' },
-    { value: 'feature', label: '功能权限' }
+    { value: 'subagent', label: 'Sub Agent 权限' }
 ] as const
+
+const modeOptions = [
+    { label: '描述', value: 'description' },
+    { label: '全文', value: 'full' }
+]
 
 const scopeOptions = [
     { label: '全局', value: 'all' },
     { label: '白名单', value: 'allow' },
     { label: '黑名单', value: 'deny' }
 ]
-
-const modelOptions = computed(() => {
-    const items = new Set(props.modelNames)
-    if (props.draft.model.trim()) {
-        items.add(props.draft.model.trim())
-    }
-    return [...items]
-})
-
-const toolOptions = computed(() => {
-    return Object.values(props.tools ?? {})
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((item) => ({
-            value: item.name,
-            label: item.group ? `${item.name} · ${item.group}` : item.name
-        }))
-})
 
 const currentEnabled = computed(() => {
     return characterKind.value === 'private'
@@ -456,8 +352,8 @@ const currentModeValue = computed({
 
 const currentIds = computed(() => {
     return characterKind.value === 'private'
-        ? props.draft.characterPrivateIds
-        : props.draft.characterGroupIds
+        ? (props.draft.characterPrivateIds ?? [])
+        : (props.draft.characterGroupIds ?? [])
 })
 
 const currentListLabel = computed(() => {
@@ -470,6 +366,27 @@ const currentListLabel = computed(() => {
     return currentModeValue.value === 'allow'
         ? '要启用的群聊 ID 列表'
         : '要禁用的群聊 ID 列表'
+})
+
+const scopeValues = computed({
+    get: () =>
+        props.draft.subAgents?.mode === 'deny'
+            ? (props.draft.subAgents?.deny ?? [])
+            : (props.draft.subAgents?.allow ?? []),
+    set: (value: string[]) => {
+        const next = value.filter(
+            (item, idx, list) => item.length > 0 && list.indexOf(item) === idx
+        )
+
+        if (props.draft.subAgents?.mode === 'deny') {
+            props.draft.subAgents.deny = next
+            props.draft.subAgents.allow = []
+            return
+        }
+
+        props.draft.subAgents.allow = next
+        props.draft.subAgents.deny = []
+    }
 })
 
 async function copyIds() {
@@ -510,11 +427,11 @@ function addId() {
 
 function removeId(id: string) {
     if (characterKind.value === 'private') {
-        props.draft.characterPrivateIds = props.draft.characterPrivateIds.filter((item) => item !== id)
+        props.draft.characterPrivateIds = (props.draft.characterPrivateIds ?? []).filter((item) => item !== id)
         return
     }
 
-    props.draft.characterGroupIds = props.draft.characterGroupIds.filter((item) => item !== id)
+    props.draft.characterGroupIds = (props.draft.characterGroupIds ?? []).filter((item) => item !== id)
 }
 
 function clearIds() {
@@ -526,6 +443,9 @@ function clearIds() {
     props.draft.characterGroupIds = []
 }
 
+function agentLabel(item: SubAgentInfo) {
+    return `${item.name} · ${item.source}${item.scope ? ` / ${item.scope}` : ''}`
+}
 </script>
 
 <style scoped>
@@ -549,10 +469,6 @@ function clearIds() {
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 32px;
-}
-
-.headline {
-    margin-bottom: 0;
 }
 
 .page-title {
@@ -591,9 +507,8 @@ function clearIds() {
     margin-top: 32px;
     margin-bottom: 32px;
     overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
     white-space: nowrap;
+    scrollbar-width: none;
 }
 
 .tabs-underline::-webkit-scrollbar {
@@ -611,13 +526,8 @@ function clearIds() {
     font-weight: 500;
     color: var(--k-text-light);
     border-bottom: 2px solid transparent;
-    transition: all 0.2s;
     margin-bottom: -1px;
     flex-shrink: 0;
-}
-
-.tab-item:hover {
-    color: var(--k-text-dark);
 }
 
 .tab-item.active {
@@ -646,18 +556,6 @@ function clearIds() {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.option-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-}
-
-.field-card {
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid color-mix(in srgb, var(--k-color-divider), transparent 20%);
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
-    box-sizing: border-box;
-}
-
 .flat-card {
     background: transparent;
     border: none;
@@ -668,18 +566,9 @@ function clearIds() {
     grid-column: 1 / -1;
 }
 
-.option-card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.option-card :deep(.el-select),
-.option-card :deep(.el-input-number) {
-    width: 100%;
-}
-
-.field-label {
+.field-label,
+.field-subtitle,
+.mode-hint-title {
     font-size: 15px;
     font-weight: 500;
     color: var(--k-text-dark);
@@ -700,11 +589,27 @@ function clearIds() {
     gap: 16px;
 }
 
-.field-subtitle,
-.field-static {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--k-text-dark);
+.scope-grid {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.mode-row {
+    margin-top: 16px;
+}
+
+.mode-hint-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mode-hint-item {
+    padding: 0;
+    border: none;
+    background: transparent;
 }
 
 .inner-tabs {
@@ -714,8 +619,33 @@ function clearIds() {
 }
 
 .inner-tab {
+    background: transparent;
+    border: none;
+}
+
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     border: none;
     background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.id-tag-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.inner-tab {
     font-size: 14px;
     color: var(--k-text-light);
     cursor: pointer;
@@ -759,13 +689,6 @@ function clearIds() {
 .id-tag-close,
 .copy-icon {
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: inherit;
 }
 
 .id-input-row {
@@ -825,78 +748,30 @@ function clearIds() {
     background-color: color-mix(in srgb, var(--k-side-bg), var(--k-text-light) 12%) !important;
 }
 
-.editor-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.editor-actions :deep(.danger-soft.el-button) {
-    --el-button-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 92%
-    );
-    --el-button-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 68%
-    );
-    --el-button-text-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        var(--k-text-dark) 22%
-    );
-    --el-button-hover-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 86%
-    );
-    --el-button-hover-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 52%
-    );
-    --el-button-hover-text-color: var(--el-color-danger);
-}
-
-.diagnostics-panel {
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--el-color-warning), transparent 95%);
-}
-
-.diagnostic-line {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-    word-break: break-word;
-}
-
 @media (max-width: 768px) {
-    .page-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .editor-actions {
-        width: 100%;
-        justify-content: flex-end;
+    .tabs-underline {
+        gap: 16px;
+        margin-top: 16px;
+        margin-bottom: 24px;
     }
 
     .field-grid {
         grid-template-columns: 1fr;
     }
 
-    .option-grid {
+    .mode-hint-list {
         grid-template-columns: 1fr;
     }
 
-    .scope-row {
+    .scope-row,
+    .scope-grid,
+    .page-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .scope-grid .el-select {
+        width: 100% !important;
     }
 
     .detail-view {

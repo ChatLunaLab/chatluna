@@ -1,23 +1,67 @@
 <template>
     <div class="panel catalog-panel">
         <div class="panel-header catalog-header">
-            <div>
-                <div class="panel-title">子 Agent 列表</div>
-                <div class="panel-description">
-                    ChatLuna 目前可用的全部子 Agent。
+            <div class="catalog-header-content">
+                <div class="catalog-header-info">
+                    <div class="panel-title">Sub Agent 列表</div>
+                    <div class="panel-description">
+                        ChatLuna 目前可用的全部 Sub Agent。
+                    </div>
+                </div>
+                <div class="catalog-actions">
+                    <slot name="actions"></slot>
                 </div>
             </div>
 
-            <el-input
-                v-model="keyword"
-                class="search-input"
-                placeholder="搜索名称、描述、路径或诊断"
-                clearable
-            >
-                <template #prefix>
-                    <el-icon><Search /></el-icon>
-                </template>
-            </el-input>
+            <div class="search-row">
+                <el-popover
+                    placement="bottom-start"
+                    trigger="click"
+                    popper-class="sub-agent-filter-popper"
+                >
+                    <template #reference>
+                        <el-button class="filter-trigger" plain>
+                            {{ filters.length > 0 ? `筛选 ${filters.length}` : '筛选' }}
+                        </el-button>
+                    </template>
+
+                    <div class="filter-panel">
+                        <el-checkbox-group v-model="filters">
+                            <div class="filter-list">
+                                <el-checkbox
+                                    v-for="item in filterOptions"
+                                    :key="item.value"
+                                    :label="item.value"
+                                >
+                                    {{ item.label }}
+                                </el-checkbox>
+                            </div>
+                        </el-checkbox-group>
+
+                        <div class="filter-panel-actions">
+                            <el-button
+                                size="small"
+                                text
+                                :disabled="filters.length === 0"
+                                @click="filters = []"
+                            >
+                                清空
+                            </el-button>
+                        </div>
+                    </div>
+                </el-popover>
+
+                <el-input
+                    v-model="keyword"
+                    class="search-input"
+                    placeholder="搜索名称、描述、路径或诊断"
+                    clearable
+                >
+                    <template #prefix>
+                        <el-icon><Search /></el-icon>
+                    </template>
+                </el-input>
+            </div>
         </div>
 
         <div
@@ -76,6 +120,21 @@
                         <el-tag
                             size="small"
                             effect="plain"
+                            :type="item.enabled ? 'success' : 'info'"
+                        >
+                            {{ item.enabled ? '启用' : '禁用' }}
+                        </el-tag>
+                        <el-tag
+                            v-if="item.hidden"
+                            size="small"
+                            effect="plain"
+                            type="warning"
+                        >
+                            已隐藏
+                        </el-tag>
+                        <el-tag
+                            size="small"
+                            effect="plain"
                             :type="
                                 item.state === 'ready' &&
                                 !item.hidden &&
@@ -94,8 +153,20 @@
                         </el-tag>
                     </div>
 
-                    <div v-if="canRemove(item)" class="agent-actions">
+                    <div class="agent-actions" @click.stop>
+                        <el-button size="small" plain @click="$emit('preview', item)">
+                            查看/修改内容
+                        </el-button>
                         <el-button
+                            size="small"
+                            plain
+                            :disabled="!canExport(item)"
+                            @click="$emit('export', item)"
+                        >
+                            导出 MD
+                        </el-button>
+                        <el-button
+                            v-if="canRemove(item)"
                             class="danger-soft"
                             size="small"
                             plain
@@ -123,10 +194,11 @@
         </div>
 
         <div v-else class="empty-state">
-            <el-empty description="没有匹配的 sub-agent。" />
+            <el-empty description="没有匹配的 Sub Agent。" />
         </div>
     </div>
 </template>
+
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Search, UserFilled } from '@element-plus/icons-vue'
@@ -142,18 +214,51 @@ const props = defineProps<{
 defineEmits<{
     select: [id: string]
     toggle: [item: SubAgentInfo, enabled: boolean]
+    preview: [item: SubAgentInfo]
+    export: [item: SubAgentInfo]
     remove: [item: SubAgentInfo]
 }>()
 
 const keyword = ref('')
+const filters = ref<string[]>([])
+const filterOptions = [
+    { label: '启用', value: 'enabled:yes' },
+    { label: '禁用', value: 'enabled:no' },
+    { label: '可用', value: 'state:ready' },
+    { label: '不可用', value: 'state:not-ready' },
+    { label: '已隐藏', value: 'hidden:yes' },
+    { label: '内置 Agent', value: 'source:builtin' },
+    { label: 'Markdown Agent', value: 'source:markdown' },
+    { label: '预设 Agent', value: 'source:preset' },
+    { label: '手动 Agent', value: 'source:manual' }
+]
 
 const filteredAgents = computed(() => {
     const text = keyword.value.trim().toLowerCase()
-    if (!text) {
-        return props.agents
-    }
 
     return props.agents.filter((item) => {
+        if (
+            filters.value.length > 0 &&
+            !filters.value.every((value) => {
+                if (value === 'enabled:yes') return item.enabled
+                if (value === 'enabled:no') return !item.enabled
+                if (value === 'state:ready') return item.state === 'ready'
+                if (value === 'state:not-ready') return item.state !== 'ready'
+                if (value === 'hidden:yes') return item.hidden
+                if (value === 'source:builtin') return item.source === 'builtin'
+                if (value === 'source:markdown') return item.source === 'markdown'
+                if (value === 'source:preset') return item.source === 'preset'
+                if (value === 'source:manual') return item.source === 'manual'
+                return true
+            })
+        ) {
+            return false
+        }
+
+        if (!text) {
+            return true
+        }
+
         return [
             item.name,
             item.description,
@@ -170,20 +275,12 @@ const filteredAgents = computed(() => {
     })
 })
 
-function stateLabel(state: SubAgentInfo['state']) {
-    if (state === 'ready') return '可用'
-    if (state === 'invalid') return '无效'
-    return '缺失'
-}
-
-function stateTag(state: SubAgentInfo['state']) {
-    if (state === 'ready') return 'success'
-    if (state === 'invalid') return 'warning'
-    return 'info'
-}
-
 function canRemove(item: SubAgentInfo) {
     return props.removableIds.includes(item.id)
+}
+
+function canExport(item: SubAgentInfo) {
+    return item.promptContent.trim().length > 0
 }
 </script>
 
@@ -195,6 +292,7 @@ function canRemove(item: SubAgentInfo) {
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
     min-height: 420px;
+    box-sizing: border-box;
 }
 
 .panel-header,
@@ -202,10 +300,40 @@ function canRemove(item: SubAgentInfo) {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 16px;
     padding: 16px 18px;
     border-bottom: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    box-sizing: border-box;
+}
+
+.catalog-header-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.catalog-header-info {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.catalog-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.catalog-actions :deep(.el-button) {
+    margin: 0;
 }
 
 .panel-title {
@@ -237,17 +365,58 @@ function canRemove(item: SubAgentInfo) {
     -webkit-line-clamp: 2;
 }
 
+.search-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: auto;
+    flex-wrap: nowrap;
+    flex: 0 1 420px;
+    min-width: 220px;
+}
+
+.filter-trigger {
+    height: 32px;
+    min-width: 92px;
+    padding-inline: 12px;
+    flex: 0 0 auto;
+}
+
 .search-input {
-    width: min(360px, 100%);
+    width: auto;
+    min-width: 0;
+    flex: 1 1 260px;
+}
+
+.filter-panel {
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
 }
 
 .card-list {
     --card-cols: 5;
-    --card-gap: 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px var(--card-gap);
+    display: grid;
+    grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
+    gap: 16px;
     padding: 16px;
+    box-sizing: border-box;
 }
 
 .card-list.compact {
@@ -255,15 +424,6 @@ function canRemove(item: SubAgentInfo) {
 }
 
 .agent-card {
-    flex: 0 1
-        calc(
-            (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-        );
-    max-width: calc(
-        (100% - (var(--card-cols) - 1) * var(--card-gap)) / var(--card-cols)
-    );
-    min-width: 0;
-    box-sizing: border-box;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
@@ -273,6 +433,8 @@ function canRemove(item: SubAgentInfo) {
     flex-direction: column;
     gap: 12px;
     cursor: pointer;
+    overflow: hidden;
+    box-sizing: border-box;
     transition:
         border-color 0.2s ease,
         transform 0.2s ease;
@@ -296,6 +458,7 @@ function canRemove(item: SubAgentInfo) {
     gap: 12px;
     justify-content: space-between;
     align-items: flex-start;
+    min-width: 0;
 }
 
 .agent-card.centered .agent-top {
@@ -370,8 +533,15 @@ function canRemove(item: SubAgentInfo) {
 }
 
 .agent-actions {
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+    gap: 8px;
+}
+
+.agent-actions :deep(.el-button) {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
 }
 
 .agent-actions :deep(.danger-soft.el-button) {
@@ -390,17 +560,6 @@ function canRemove(item: SubAgentInfo) {
         var(--el-color-danger),
         var(--k-text-dark) 22%
     );
-    --el-button-hover-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 86%
-    );
-    --el-button-hover-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 52%
-    );
-    --el-button-hover-text-color: var(--el-color-danger);
 }
 
 .diagnostic-box {
@@ -422,7 +581,7 @@ function canRemove(item: SubAgentInfo) {
     }
 
     .card-list.compact {
-        --card-cols: 4;
+        --card-cols: 3;
     }
 }
 
@@ -432,7 +591,7 @@ function canRemove(item: SubAgentInfo) {
     }
 
     .card-list.compact {
-        --card-cols: 4;
+        --card-cols: 2;
     }
 }
 
@@ -442,7 +601,7 @@ function canRemove(item: SubAgentInfo) {
     }
 
     .card-list.compact {
-        --card-cols: 3;
+        --card-cols: 1;
     }
 }
 
@@ -452,28 +611,63 @@ function canRemove(item: SubAgentInfo) {
         align-items: flex-start;
     }
 
+    .catalog-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .catalog-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
     .search-input {
         width: 100%;
     }
 
-    .card-list {
-        --card-cols: 1;
-        flex-direction: column;
+    .search-row {
+        width: 100%;
+        min-width: 0;
+        flex: none;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
         align-items: stretch;
     }
 
+    .filter-trigger {
+        min-width: 0;
+        width: 100%;
+        flex: none;
+    }
+
+    .search-input {
+        width: 100% !important;
+        min-width: 0;
+        flex: none;
+    }
+
+    .search-input :deep(.el-input__wrapper) {
+        min-height: 32px;
+    }
+
+    .card-list,
     .card-list.compact {
         --card-cols: 1;
+        grid-template-columns: 1fr;
     }
 
     .agent-card {
-        flex-basis: 100%;
-        max-width: none;
+        width: 100%;
+        min-width: 0;
     }
 
-    .agent-top,
+    .agent-top {
+        align-items: flex-start;
+    }
+
     .agent-brand {
-        flex-direction: column;
         align-items: flex-start;
     }
 }

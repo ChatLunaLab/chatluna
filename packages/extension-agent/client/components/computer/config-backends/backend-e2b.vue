@@ -62,13 +62,10 @@
                 </div>
             </div>
         </div>
-
-        <el-alert
-            type="info"
-            effect="dark"
-            :closable="false"
-            description="推荐优先把 E2B 作为默认后端；配置会被保存，但实际可用性仍取决于状态检测结果。"
-        />
+        
+        <div class="info-box">
+            <div class="info-desc">推荐优先把 E2B 作为默认后端；配置会被保存，但实际可用性仍取决于状态检测结果。</div>
+        </div>
     </el-form>
 </template>
 

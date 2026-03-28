@@ -17,6 +17,17 @@ export async function apply(
             selector(_) {
                 return true
             },
+            meta: {
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'interaction'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'none'
+                }
+            },
 
             createTool(params) {
                 return new BuiltQuestionTool()
@@ -27,6 +38,17 @@ export async function apply(
             description: new BuiltUserConfirmTool().description,
             selector(_) {
                 return true
+            },
+            meta: {
+                source: 'extension',
+                group: 'plugin-common',
+                tags: ['plugin-common', 'interaction'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'none'
+                }
             },
 
             createTool(params) {

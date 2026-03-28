@@ -34,6 +34,17 @@ export async function apply(
                     )
             )
         },
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'music'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
+        },
 
         createTool(params) {
             return new MusicTool()

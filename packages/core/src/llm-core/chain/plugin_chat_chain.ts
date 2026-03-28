@@ -13,8 +13,8 @@ import {
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     AgentAction,
-    AgentExecutor,
-    createAgentExecutor,
+    AgentRunner,
+    createAgentRunner,
     createToolsRef,
     ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -50,7 +50,7 @@ export class ChatLunaPluginChain
     extends ChatLunaLLMChainWrapper
     implements ChatLunaPluginChainInput
 {
-    executor: ComputedRef<AgentExecutor>
+    runner: ComputedRef<AgentRunner>
 
     historyMemory: BufferMemory
 
@@ -108,7 +108,7 @@ export class ChatLunaPluginChain
             toolMask: this.toolMask
         })
 
-        this.executor = this._createExecutor()
+        this.runner = this._createRunner()
     }
 
     static fromLLMAndTools(
@@ -148,8 +148,8 @@ export class ChatLunaPluginChain
         })
     }
 
-    private _createExecutor() {
-        return createAgentExecutor({
+    private _createRunner() {
+        return createAgentRunner({
             llm: computed(() => this.llm),
             tools: this._toolsRef.tools,
             prompt: this.prompt,
@@ -219,14 +219,19 @@ export class ChatLunaPluginChain
         this._toolsRef.update(session, messages.concat(message), toolMask)
 
         const preset = this.preset.value
-        const executor = this.executor.value
+        const runner = this.runner.value.withConfig({
+            configurable: {
+                messageQueue,
+                onAgentEvent
+            }
+        })
 
         let usedToken = 0
         let response: ChainValues | undefined
         let error
 
         const request = () => {
-            return executor.invoke(
+            return runner.invoke(
                 {
                     ...requests,
                     maxTokens: maxToken
@@ -271,8 +276,6 @@ export class ChatLunaPluginChain
                         preset: preset.triggerKeyword[0],
                         userId: session.userId,
                         toolMask,
-                        messageQueue,
-                        onAgentEvent,
                         subagentContext
                     }
                 }

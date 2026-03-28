@@ -515,12 +515,29 @@ function formatJobTitle(command: string) {
     border-bottom: 1px solid var(--k-card-border);
     background: var(--k-side-bg);
     overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
 }
 
 .terminal-tabs::-webkit-scrollbar {
-    display: none;
+    height: 6px;
+}
+
+.terminal-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.terminal-tabs::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+}
+
+.terminal-tabs::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 .terminal-tab-shell {
@@ -724,12 +741,29 @@ function formatJobTitle(command: string) {
 }
 
 :deep(.xterm-viewport) {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar) {
-    display: none;
+    width: 10px;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-track) {
+    background: transparent;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-thumb) {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 @media (max-width: 768px) {

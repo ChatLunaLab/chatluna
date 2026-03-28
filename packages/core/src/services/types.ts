@@ -58,6 +58,7 @@ export * from '@chatluna/shared-prompt-renderer'
 export interface ToolMaskArg {
     session: Session
     room?: ConversationRoom
+    source?: 'chatluna' | 'character'
 }
 
 export type ToolMaskResolver = (

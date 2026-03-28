@@ -64,12 +64,34 @@ export async function apply(
     plugin.registerTool(requestGetTool.name, {
         description: requestGetTool.description,
         selector: requestSelector,
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'request', 'http'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'none'
+            }
+        },
         createTool: () => requestGetTool
     })
 
     plugin.registerTool(requestPostTool.name, {
         description: requestPostTool.description,
         selector: requestSelector,
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'request', 'http'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'none'
+            }
+        },
         createTool: () => requestPostTool
     })
 }

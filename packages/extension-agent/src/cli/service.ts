@@ -115,7 +115,13 @@ export class ChatLunaAgentCliService {
                 meta: {
                     source: 'extension',
                     group: 'agent',
-                    tags: ['config']
+                    tags: ['config'],
+                    defaultAvailability: {
+                        enabled: true,
+                        main: true,
+                        chatluna: true,
+                        characterScope: 'all'
+                    }
                 }
             }
         )

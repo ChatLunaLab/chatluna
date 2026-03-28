@@ -1,6 +1,7 @@
 /** @module skills/catalog */
 
 import { AgentConfig, SkillInfo } from '../types'
+import { createSkillItemConfig } from '../config/defaults'
 import { applyShadowing } from '../utils/shadow'
 import { ScannedSkill } from './scan'
 
@@ -12,11 +13,15 @@ export function buildSkillCatalog(
     const catalog: SkillInfo[] = []
 
     for (const skill of applyShadowing(skills)) {
+        const cfg = createSkillItemConfig(configItems[skill.id])
+        const mode = cfg.mode
         const visible =
             !skill.shadowedBy &&
             skill.enabled &&
             skill.available &&
-            skill.state === 'ready'
+            skill.state === 'ready' &&
+            cfg.enabled &&
+            mode === 'description'
         catalog.push({
             id: skill.id,
             name: skill.name,
@@ -27,7 +32,19 @@ export function buildSkillCatalog(
             source: skill.source,
             scope: skill.scope,
             state: skill.state,
-            enabled: skill.enabled,
+            enabled: cfg.enabled,
+            mode,
+            authority: cfg.authority ?? 0,
+            main: cfg.main,
+            chatlunaEnabled: cfg.chatluna,
+            characterEnabled: cfg.character,
+            characterGroupEnabled: cfg.characterGroup,
+            characterPrivateEnabled: cfg.characterPrivate,
+            characterGroupMode: cfg.characterGroupMode,
+            characterPrivateMode: cfg.characterPrivateMode,
+            characterGroupIds: cfg.characterGroupIds,
+            characterPrivateIds: cfg.characterPrivateIds,
+            subAgents: cfg.subAgents,
             available: skill.available,
             visible,
             modelEnabled: visible && skill.implicitInvocation,
@@ -57,6 +74,12 @@ export function buildSkillCatalog(
             continue
         }
 
+        const cfg = createSkillItemConfig(item)
+        const mode = cfg.mode
+        if (!cfg.enabled && cfg.mode !== 'description' && cfg.mode !== 'full') {
+            continue
+        }
+
         catalog.push({
             id,
             name: id,
@@ -67,7 +90,19 @@ export function buildSkillCatalog(
             source: 'chatluna',
             scope: 'data',
             state: 'missing',
-            enabled: item.enabled,
+            enabled: cfg.enabled,
+            mode,
+            authority: cfg.authority ?? 0,
+            main: cfg.main,
+            chatlunaEnabled: cfg.chatluna,
+            characterEnabled: cfg.character,
+            characterGroupEnabled: cfg.characterGroup,
+            characterPrivateEnabled: cfg.characterPrivate,
+            characterGroupMode: cfg.characterGroupMode,
+            characterPrivateMode: cfg.characterPrivateMode,
+            characterGroupIds: cfg.characterGroupIds,
+            characterPrivateIds: cfg.characterPrivateIds,
+            subAgents: cfg.subAgents,
             available: false,
             visible: false,
             modelEnabled: false,

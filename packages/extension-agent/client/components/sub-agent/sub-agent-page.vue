@@ -2,112 +2,135 @@
     <div
         class="sub-agent-page"
         :class="{ compact: compactMode }"
-        v-loading="loading || busy"
     >
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
-                    <div class="page-title">子 Agent</div>
-                </div>
-
-                <div class="actions-section">
+                    <div class="page-title">Sub Agent</div>
                     <el-button
+                        v-if="currentView === 'list' && listTab === 'catalog'"
                         size="small"
-                        :type="compactMode ? 'primary' : 'default'"
-                        plain
-                        @click="compactMode = !compactMode"
-                    >
-                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
-                    </el-button>
-                    <el-button
-                        size="small"
+                        class="mobile-only-desc-toggle"
                         :type="hideDesc ? 'primary' : 'default'"
                         plain
                         @click="hideDesc = !hideDesc"
                     >
                         {{ hideDesc ? '显示描述' : '隐藏描述' }}
                     </el-button>
-                    <input
-                        ref="fileInput"
-                        type="file"
-                        accept=".md,text/markdown"
-                        class="hidden-input"
-                        @change="handleUpload"
-                    />
-                    <el-button @click="showPresetDialog = true">
-                        从预设创建
-                    </el-button>
-                    <el-button @click="fileInput?.click()">
-                        上传 Markdown
-                    </el-button>
-                    <el-button @click="reloadSubAgents">重新扫描</el-button>
+                </div>
+
+                <div class="actions-section">
+                    <template v-if="currentView === 'list' && listTab === 'catalog'">
+                        <el-button
+                            size="small"
+                            class="hidden-mobile"
+                            :type="compactMode ? 'primary' : 'default'"
+                            plain
+                            @click="compactMode = !compactMode"
+                        >
+                            {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                        </el-button>
+                        <el-button
+                            size="small"
+                            class="hidden-mobile"
+                            :type="hideDesc ? 'primary' : 'default'"
+                            plain
+                            @click="hideDesc = !hideDesc"
+                        >
+                            {{ hideDesc ? '显示描述' : '隐藏描述' }}
+                        </el-button>
+                    </template>
                 </div>
             </div>
         </div>
 
-        <Transition name="page-swap" mode="out-in">
-            <div v-if="currentView === 'list'" key="list-view">
-                <div class="tabs">
-                    <div
-                        :class="['tab', { active: listTab === 'catalog' }]"
-                        @click="listTab = 'catalog'"
-                    >
-                        列表
+        <div class="page-content" v-loading="loading || busy">
+            <Transition name="page-swap" mode="out-in">
+                <div v-if="currentView === 'list'" key="list-view">
+                    <div class="tabs">
+                        <button
+                            type="button"
+                            :class="['tab', { active: listTab === 'catalog' }]"
+                            @click="listTab = 'catalog'"
+                        >
+                            列表
+                        </button>
+                        <button
+                            type="button"
+                            :class="['tab', { active: listTab === 'runs' }]"
+                            @click="listTab = 'runs'"
+                        >
+                            运行记录
+                        </button>
+                        <button
+                            type="button"
+                            :class="['tab', { active: listTab === 'availability' }]"
+                            @click="listTab = 'availability'"
+                        >
+                            工具可用性
+                        </button>
                     </div>
-                    <div
-                        :class="['tab', { active: listTab === 'runs' }]"
-                        @click="listTab = 'runs'"
-                    >
-                        运行记录
-                    </div>
-                    <div
-                        :class="['tab', { active: listTab === 'availability' }]"
-                        @click="listTab = 'availability'"
-                    >
-                        工具可用性
-                    </div>
+
+                    <Transition name="fade-slide" mode="out-in">
+                        <sub-agent-catalog
+                            v-if="listTab === 'catalog'"
+                            key="catalog"
+                            :agents="agents"
+                            :compact-mode="compactMode"
+                            :hide-desc="hideDesc"
+                            :removable-ids="removableIds"
+                            @select="openDetail"
+                            @preview="previewAgent"
+                            @export="exportSubAgent"
+                            @toggle="toggleAgent"
+                            @remove="removeAgent"
+                        >
+                            <template #actions>
+                                <el-button @click="showPresetDialog = true">
+                                    从预设创建
+                                </el-button>
+                                <el-button @click="showMarkdownDialog = true">
+                                    从 Markdown 创建
+                                </el-button>
+                            </template>
+                        </sub-agent-catalog>
+                        <sub-agent-runs
+                            v-else-if="listTab === 'runs'"
+                            key="runs"
+                            :runs="runs"
+                        />
+                        <sub-agent-availability
+                            v-else
+                            key="availability"
+                            :availability="toolAvailability"
+                        />
+                    </Transition>
                 </div>
 
-                <Transition name="fade-slide" mode="out-in">
-                    <sub-agent-catalog
-                        v-if="listTab === 'catalog'"
-                        key="catalog"
-                        :agents="agents"
-                        :compact-mode="compactMode"
-                        :hide-desc="hideDesc"
-                        :removable-ids="removableIds"
-                        @select="openDetail"
-                        @toggle="toggleAgent"
-                        @remove="removeAgent"
-                    />
-                    <sub-agent-runs
-                        v-else-if="listTab === 'runs'"
-                        key="runs"
-                        :runs="runs"
-                    />
-                    <sub-agent-availability
-                        v-else
-                        key="availability"
-                        :availability="toolAvailability"
-                    />
-                </Transition>
-            </div>
-
-            <sub-agent-detail
-                v-else-if="selectedAgent"
-                key="detail-view"
-                :agent="selectedAgent"
-                :draft="draft"
-                :model-names="modelNames"
-                :skill-options="skillOptions"
-                :computer-options="computerOptions"
-                :tools="tools"
-                :can-remove="canRemoveSelected"
-                @back="currentView = 'list'"
-                @save="saveSelected"
-                @remove="removeSelected"
-            />
-        </Transition>
+                <sub-agent-detail
+                    v-else-if="selectedAgent"
+                    :key="[
+                        'detail-view',
+                        selectedAgent.id,
+                        skillOptions.length,
+                        mcpOptions.length,
+                        computerOptions.length,
+                        Object.keys(props.tools ?? {}).length
+                    ].join(':')"
+                    :agent="selectedAgent"
+                    :draft="draft"
+                    :model-names="modelNames"
+                    :skill-options="skillOptions"
+                    :mcp-options="mcpOptions"
+                    :computer-options="computerOptions"
+                    :tools="tools"
+                    :can-remove="canRemoveSelected"
+                    @back="currentView = 'list'"
+                    @save="saveSelected"
+                    @remove="removeSelected"
+                />
+            </Transition>
+        </div>
 
         <preset-dialog
             v-model:visible="showPresetDialog"
@@ -115,18 +138,71 @@
             :model-names="modelNames"
             @create="createPresetAgent"
         />
+
+        <sub-agent-import-markdown-dialog
+            v-model:visible="showMarkdownDialog"
+            @refresh="reloadSubAgents"
+            @created="onAgentCreated"
+        />
+
+        <el-dialog
+            v-model="showPreview"
+            title="查看/修改 Sub Agent 内容"
+            width="860px"
+            destroy-on-close
+            :close-on-click-modal="false"
+            :fullscreen="mobile"
+        >
+            <div class="preview-meta">{{ previewTitle }}</div>
+            <div class="preview-form">
+                <div class="field-label">Agent 名称</div>
+                <el-input
+                    v-model="previewDraft.name"
+                    placeholder="例如：my-agent"
+                    :disabled="!canEditPreview"
+                />
+
+                <div class="field-label" style="margin-top: 12px">简介</div>
+                <el-input
+                    v-model="previewDraft.description"
+                    placeholder="一句简短的描述"
+                    :disabled="!canEditPreview"
+                />
+
+                <div class="field-label" style="margin-top: 12px">指令</div>
+                <code-editor
+                    v-model="previewDraft.promptContent"
+                    language="markdown"
+                    :min-height="320"
+                    :readonly="!canEditPreview"
+                />
+            </div>
+            <template #footer>
+                <el-button @click="showPreview = false">取消</el-button>
+                <el-button
+                    type="primary"
+                    :loading="savingPreview"
+                    :disabled="!canSavePreview"
+                    @click="savePreview"
+                >
+                    保存内容
+                </el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
+import CodeEditor from '../shared/code-editor.vue'
 import SubAgentCatalog from './sub-agent-catalog.vue'
 import SubAgentDetail from './sub-agent-detail.vue'
 import SubAgentRuns from './sub-agent-runs.vue'
 import SubAgentAvailability from './sub-agent-availability.vue'
+import SubAgentImportMarkdownDialog from './sub-agent-import-markdown-dialog.vue'
 import PresetDialog from './preset-dialog.vue'
 import type {
     ComputerStatus,
@@ -156,6 +232,7 @@ const props = withDefaults(
             runs: SubAgentRunInfo[]
         }
         skills?: Record<string, SkillInfo>
+        mcp?: Record<string, any>
         computer?: ComputerStatus
         tools: Record<string, ToolInfo>
         loading?: boolean
@@ -169,6 +246,15 @@ const props = withDefaults(
                     enabled: false,
                     name: 'plan',
                     description: '',
+                    chatluna: true,
+                    character: true,
+                    characterGroup: true,
+                    characterPrivate: true,
+                    characterGroupMode: 'all',
+                    characterPrivateMode: 'all',
+                    characterGroupIds: [],
+                    characterPrivateIds: [],
+                    authority: 0,
                     source: 'builtin',
                     format: 'chatluna',
                     maxTurns: 100,
@@ -186,6 +272,15 @@ const props = withDefaults(
                     enabled: false,
                     name: 'general',
                     description: '',
+                    chatluna: true,
+                    character: true,
+                    characterGroup: true,
+                    characterPrivate: true,
+                    characterGroupMode: 'all',
+                    characterPrivateMode: 'all',
+                    characterGroupIds: [],
+                    characterPrivateIds: [],
+                    authority: 0,
                     source: 'builtin',
                     format: 'chatluna',
                     maxTurns: 100,
@@ -203,6 +298,15 @@ const props = withDefaults(
                     enabled: false,
                     name: 'explore',
                     description: '',
+                    chatluna: true,
+                    character: true,
+                    characterGroup: true,
+                    characterPrivate: true,
+                    characterGroupMode: 'all',
+                    characterPrivateMode: 'all',
+                    characterGroupIds: [],
+                    characterPrivateIds: [],
+                    authority: 0,
                     source: 'builtin',
                     format: 'chatluna',
                     maxTurns: 100,
@@ -232,6 +336,7 @@ const props = withDefaults(
             runs: []
         }),
         skills: () => ({}),
+        mcp: () => ({}),
         computer: undefined,
         tools: () => ({}),
         loading: false
@@ -242,7 +347,6 @@ defineEmits<{
     refresh: []
 }>()
 
-const fileInput = ref<HTMLInputElement>()
 const busy = ref(false)
 const compactMode = useCompactMode('subAgent')
 const hideDesc = useHideDesc('subAgent')
@@ -255,16 +359,40 @@ const presetNames = ref<string[]>([])
 const modelNames = ref<string[]>([])
 const selectedId = ref('')
 const showPresetDialog = ref(false)
+const showMarkdownDialog = ref(false)
+const showPreview = ref(false)
+const previewTitle = ref('')
+const previewItem = ref<SubAgentInfo>()
+const savingPreview = ref(false)
+const mobile = ref(false)
+const previewDraft = reactive({
+    name: '',
+    description: '',
+    promptContent: ''
+})
 
 const draft = reactive({
+    enabled: false,
+    name: '',
+    description: '',
+    promptContent: '',
+    chatluna: true,
+    character: true,
+    characterGroup: true,
+    characterPrivate: true,
+    characterGroupMode: 'all' as const,
+    characterPrivateMode: 'all' as const,
+    characterGroupIds: [] as string[],
+    characterPrivateIds: [] as string[],
+    authority: 0,
     model: '',
     maxTurns: 100,
     hidden: false,
     allowKoishiMessageTransform: false,
-    skills: createRuleDraft(),
-    mcp: createRuleDraft(),
-    tools: createRuleDraft(),
-    computer: createRuleDraft('deny')
+    skills: createRuleDraft('inherit'),
+    mcp: createRuleDraft('inherit'),
+    tools: createRuleDraft('inherit'),
+    computer: createRuleDraft('inherit')
 })
 
 watch(
@@ -298,6 +426,19 @@ watch(
     (value) => {
         if (!value) return
 
+        draft.enabled = value.enabled
+        draft.name = value.name ?? ''
+        draft.description = value.description ?? ''
+        draft.promptContent = value.promptContent ?? ''
+        draft.chatluna = value.chatlunaEnabled
+        draft.character = value.characterEnabled
+        draft.characterGroup = value.characterGroupEnabled
+        draft.characterPrivate = value.characterPrivateEnabled
+        draft.characterGroupMode = value.characterGroupMode
+        draft.characterPrivateMode = value.characterPrivateMode
+        draft.characterGroupIds = [...value.characterGroupIds]
+        draft.characterPrivateIds = [...value.characterPrivateIds]
+        draft.authority = value.authority
         draft.model = value.model ?? ''
         draft.maxTurns = value.maxTurns ?? 100
         draft.hidden = value.hidden
@@ -315,6 +456,17 @@ const canRemoveSelected = computed(() => {
     if (!item) return false
     return canRemoveAgent(item)
 })
+const canEditPreview = computed(() => {
+    return previewItem.value?.source === 'markdown' && !previewItem.value.remote
+})
+const canSavePreview = computed(() => {
+    return (
+        canEditPreview.value &&
+        previewDraft.name.trim().length > 0 &&
+        previewDraft.description.trim().length > 0 &&
+        previewDraft.promptContent.trim().length > 0
+    )
+})
 const removableIds = computed(() => {
     return agents.value
         .filter((item) => canRemoveAgent(item))
@@ -323,6 +475,14 @@ const removableIds = computed(() => {
 const skillOptions = computed(() => {
     return Object.values(props.skills ?? {})
         .filter((item) => item.visible && item.state === 'ready')
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((item) => ({
+            value: item.name,
+            label: item.name
+        }))
+})
+const mcpOptions = computed(() => {
+    return Object.values(props.mcp ?? {})
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((item) => ({
             value: item.name,
@@ -354,12 +514,38 @@ const computerOptions = computed(() => {
 })
 
 onMounted(async () => {
+    mobile.value = window.innerWidth <= 768
+    window.addEventListener('resize', onResize)
     await loadExtraData()
 })
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', onResize)
+})
+
+watch(
+    [
+        () => props.status.catalog,
+        () => props.tools,
+        () => props.skills
+    ],
+    async () => {
+        await loadDynamicData()
+    },
+    { deep: true }
+)
 
 function openDetail(id: string) {
     selectedId.value = id
     currentView.value = 'detail'
+}
+
+function onResize() {
+    mobile.value = window.innerWidth <= 768
+}
+
+function onAgentCreated(id: string) {
+    openDetail(id)
 }
 
 async function loadExtraData() {
@@ -380,9 +566,25 @@ async function loadExtraData() {
         presetNames.value = [...presets]
         modelNames.value = [...models]
     } catch {
-        ElMessage.error('读取 sub-agent 数据失败，请稍后重试。')
+        ElMessage.error('读取 Sub Agent 数据失败，请稍后重试。')
     } finally {
         busy.value = false
+    }
+}
+
+async function loadDynamicData() {
+    try {
+        const [catalog, runList, availability] = await Promise.all([
+            send('chatluna-agent/getSubAgents'),
+            send('chatluna-agent/getSubAgentRuns'),
+            send('chatluna-agent/getToolAvailability')
+        ])
+
+        agents.value = [...catalog]
+        runs.value = [...runList]
+        toolAvailability.value = [...availability]
+    } catch {
+        ElMessage.error('同步 Sub Agent 动态数据失败，请稍后重试。')
     }
 }
 
@@ -391,7 +593,7 @@ async function reloadSubAgents() {
         busy.value = true
         await send('chatluna-agent/reloadSubAgents')
         await loadExtraData()
-        ElMessage.success('已重新扫描 sub-agent 目录。')
+        ElMessage.success('已重新扫描 Sub Agent 目录。')
     } catch {
         ElMessage.error('重新扫描失败，请稍后重试。')
     } finally {
@@ -418,14 +620,24 @@ async function saveSelected() {
         busy.value = true
         const next = structuredClone(toRaw(props.config))
         const saved = {
-            enabled: item.enabled,
-            name: item.name,
-            description: item.description,
+            enabled: draft.enabled,
+            name: draft.name,
+            description: draft.description,
+            chatluna: draft.chatluna,
+            character: draft.character,
+            characterGroup: draft.characterGroup,
+            characterPrivate: draft.characterPrivate,
+            characterGroupMode: draft.characterGroupMode,
+            characterPrivateMode: draft.characterPrivateMode,
+            characterGroupIds: [...draft.characterGroupIds],
+            characterPrivateIds: [...draft.characterPrivateIds],
+            authority: draft.authority,
             source: item.source,
             format: item.format,
             model: draft.model.trim() || undefined,
             maxTurns: draft.maxTurns,
             hidden: draft.hidden,
+            promptContent: draft.promptContent,
             promptMode: item.promptMode,
             preset: item.preset,
             allowKoishiMessageTransform: draft.allowKoishiMessageTransform,
@@ -451,7 +663,7 @@ async function saveSelected() {
 
         await send('chatluna-agent/saveSubAgentConfig', next)
         await loadExtraData()
-        ElMessage.success('已保存 sub-agent 配置。')
+        ElMessage.success('已保存 Sub Agent 配置。')
     } catch {
         ElMessage.error('保存失败，请稍后重试。')
     } finally {
@@ -485,7 +697,7 @@ async function removeAgent(item: SubAgentInfo) {
             currentView.value = 'list'
         }
         await loadExtraData()
-        ElMessage.success('已删除该 sub-agent。')
+        ElMessage.success('已删除该 Sub Agent。')
     } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
             ElMessage.error('删除失败，请稍后重试。')
@@ -496,11 +708,20 @@ async function removeAgent(item: SubAgentInfo) {
 async function createPresetAgent(
     name: string,
     preset: string,
-    options: {
-        description: string
-        model: string | undefined
-        maxTurns: number
-        hidden: boolean
+        options: {
+            description: string
+            chatluna?: boolean
+            character?: boolean
+            characterGroup?: boolean
+            characterPrivate?: boolean
+            characterGroupMode?: 'all' | 'allow' | 'deny'
+            characterPrivateMode?: 'all' | 'allow' | 'deny'
+            characterGroupIds?: string[]
+            characterPrivateIds?: string[]
+            authority?: number
+            model: string | undefined
+            maxTurns: number
+            hidden: boolean
         allowKoishiMessageTransform: boolean
     }
 ) {
@@ -522,25 +743,105 @@ async function createPresetAgent(
     }
 }
 
-async function handleUpload(event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    input.value = ''
-
-    if (!file) return
+async function exportSubAgent(item?: SubAgentInfo) {
+    if (!item) return
 
     try {
-        busy.value = true
-        await send('chatluna-agent/uploadSubAgent', {
-            name: file.name,
-            data: await file.text()
+        const result = await send('chatluna-agent/exportSubAgent', item.id)
+        if (!result) {
+            ElMessage.warning('这个 Sub Agent 暂时不能导出。')
+            return
+        }
+
+        const blob = new Blob([result.content], {
+            type: 'text/markdown;charset=utf-8'
         })
-        await loadExtraData()
-        ElMessage.success('已导入 markdown agent。')
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+
+        link.href = url
+        link.download = result.fileName
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+        ElMessage.success('已开始下载 Sub Agent Markdown。')
     } catch {
-        ElMessage.error('上传失败，请稍后重试。')
+        ElMessage.error('导出失败，请稍后重试。')
+    }
+}
+
+function previewAgent(item: SubAgentInfo) {
+    previewItem.value = item
+    previewTitle.value = item.name
+    previewDraft.name = item.name
+    previewDraft.description = item.description
+    previewDraft.promptContent = item.promptContent
+    showPreview.value = true
+}
+
+async function savePreview() {
+    const item = previewItem.value
+    if (!item || !canSavePreview.value) return
+
+    if (item.scope !== 'data' && item.name !== previewDraft.name.trim()) {
+        ElMessage.warning('外部 Markdown Agent 暂不支持在这里改名，请保持原名称后再保存。')
+        return
+    }
+
+    try {
+        await ElMessageBox.confirm(
+            item.name !== previewDraft.name.trim()
+                ? '您修改了 Agent 名称，这将会创建一个新的副本。确定要继续吗？'
+                : '确定要保存修改后的内容吗？',
+            '确认保存',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }
+        )
+    } catch {
+        return
+    }
+
+    try {
+        savingPreview.value = true
+        const input = {
+            name: previewDraft.name.trim(),
+            description: previewDraft.description.trim(),
+            promptContent: previewDraft.promptContent.trim(),
+            chatluna: item.chatlunaEnabled,
+            character: item.characterEnabled,
+            characterGroup: item.characterGroupEnabled,
+            characterPrivate: item.characterPrivateEnabled,
+            characterGroupMode: item.characterGroupMode,
+            characterPrivateMode: item.characterPrivateMode,
+            characterGroupIds: item.characterGroupIds,
+            characterPrivateIds: item.characterPrivateIds,
+            authority: item.authority,
+            model: item.model,
+            maxTurns: item.maxTurns,
+            hidden: item.hidden,
+            enabled: item.enabled,
+            allowKoishiMessageTransform: item.allowKoishiMessageTransform,
+            permissions: item.permissions
+        }
+
+        if (item.scope === 'data') {
+            await send('chatluna-agent/addSubAgent', input)
+        } else {
+            await send('chatluna-agent/saveSubAgentContent', item.id, input)
+        }
+        ElMessage.success('保存内容成功。')
+        showPreview.value = false
+        await loadExtraData()
+    } catch (error) {
+        ElMessage.error(
+            `保存失败：${error instanceof Error ? error.message : String(error)}`
+        )
     } finally {
-        busy.value = false
+        savingPreview.value = false
     }
 }
 
@@ -593,21 +894,11 @@ function canRemoveAgent(item: SubAgentInfo) {
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
+    box-sizing: border-box;
 }
 
 .toolbar-container {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background: linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--k-page-bg), var(--k-side-bg) 18%) 0%,
-        color-mix(in srgb, var(--k-page-bg), transparent 12%) 76%,
-        transparent 100%
-    );
-    padding: 10px 0 14px;
-    margin-bottom: 10px;
-    backdrop-filter: blur(8px);
+    margin-bottom: 16px;
 }
 
 .toolbar-main {
@@ -618,7 +909,24 @@ function canRemoveAgent(item: SubAgentInfo) {
 }
 
 .headline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     min-width: 0;
+}
+
+.mobile-only-desc-toggle {
+    display: none;
+}
+
+.page-content {
+    position: relative;
+    min-height: 200px;
+}
+
+:deep(.el-loading-mask) {
+    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
+    z-index: 10;
 }
 
 .page-title {
@@ -647,9 +955,12 @@ function canRemoveAgent(item: SubAgentInfo) {
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 48%);
     width: fit-content;
     max-width: 100%;
+    box-sizing: border-box;
 }
 
 .tab {
+    border: none;
+    background: transparent;
     padding: 10px 16px;
     cursor: pointer;
     transition:
@@ -674,6 +985,23 @@ function canRemoveAgent(item: SubAgentInfo) {
 
 .hidden-input {
     display: none;
+}
+
+.preview-meta {
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--k-text-light);
+}
+
+.preview-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.field-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--k-text-dark);
 }
 
 .fade-slide-enter-active,
@@ -704,18 +1032,43 @@ function canRemoveAgent(item: SubAgentInfo) {
         align-items: flex-start;
     }
 
+    .headline {
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
     .actions-section {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: flex-start;
+    }
+
+    .actions-section .el-button {
+        margin-left: 0;
+        margin-bottom: 4px;
+    }
+
+    .hidden-mobile {
+        display: none;
+    }
+
+    .mobile-only-desc-toggle {
+        display: inline-flex;
     }
 
     .tabs {
         width: 100%;
+        justify-content: center;
+        overflow: hidden;
     }
 
     .tab {
         flex: 1 1 0;
         text-align: center;
+    }
+
+    :deep(.el-dialog.is-fullscreen .el-dialog__body) {
+        padding-top: 12px;
     }
 }
 </style>

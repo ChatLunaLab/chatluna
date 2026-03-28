@@ -20,7 +20,21 @@ export async function apply(
         selector(history) {
             return true
         },
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'group', 'moderation'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'group'
+            }
+        },
         authorization(session) {
+            if (session.isDirect) {
+                return false
+            }
             // Check if group whitelist is enabled
             if (config.groupWhitelist && config.groupWhitelist.length > 0) {
                 // Only allow in whitelisted groups

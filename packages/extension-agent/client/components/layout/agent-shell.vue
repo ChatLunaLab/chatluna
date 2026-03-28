@@ -26,9 +26,11 @@
                             <skills-page
                                 :config="skillsCfg"
                                 :status="skillsStatus"
+                                :agents="subAgentStatus?.catalog"
                                 :computer="computerStatus"
                                 :loading="loading"
                                 @refresh="refreshData"
+                                @save="(value) => saveSection('skills', value)"
                             />
                         </div>
 
@@ -53,6 +55,7 @@
                                 :config="subAgentCfg"
                                 :status="subAgentStatus"
                                 :skills="skillsStatus?.catalog"
+                                :mcp="mcpStatus?.servers"
                                 :computer="computerStatus"
                                 :tools="toolStatus?.catalog"
                                 :loading="loading"
@@ -83,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { send, store } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
 import AgentSidebar from './agent-sidebar.vue'
@@ -96,6 +99,7 @@ import type { AgentConfig } from '../../../src/types'
 
 const activeTab = ref('mcp')
 const pending = ref(false)
+let refreshId = 0
 const data = computed(() => store.chatluna_agent_webui)
 const config = computed(() => data.value?.config)
 const status = computed(() => data.value?.status)
@@ -112,19 +116,28 @@ const toolStatus = computed(() => data.value?.status?.tool)
 const loading = computed(() => pending.value || !data.value)
 
 const refreshData = async () => {
+    const id = ++refreshId
     try {
         pending.value = true
         await send('chatluna-agent/refreshConsoleData')
     } catch {
         ElMessage.error('刷新 Agent 数据失败')
     } finally {
-        pending.value = false
+        if (id === refreshId) {
+            pending.value = false
+        }
     }
 }
 
 const handleTabChange = (tab: string) => {
     activeTab.value = tab
 }
+
+watch(activeTab, async (tab) => {
+    if (tab === 'skills' || tab === 'subAgent' || tab === 'tool') {
+        await refreshData()
+    }
+})
 
 const saveMcp = async (value: AgentConfig['mcp']) => {
     try {
@@ -139,8 +152,8 @@ const saveMcp = async (value: AgentConfig['mcp']) => {
 }
 
 const saveSection = async (
-    key: 'subAgent' | 'tool',
-    value: AgentConfig['subAgent'] | AgentConfig['tool']
+    key: 'skills' | 'subAgent' | 'tool',
+    value: AgentConfig['skills'] | AgentConfig['subAgent'] | AgentConfig['tool']
 ) => {
     if (!config.value) {
         return
@@ -204,5 +217,76 @@ const saveSection = async (
         padding: 16px;
         padding-bottom: 112px;
     }
+}
+
+:deep(.el-tag) {
+    background-color: transparent !important;
+    border-radius: 6px;
+    height: 24px;
+    padding: 0 10px;
+    border-width: 1px;
+    border-style: solid;
+    line-height: 22px;
+}
+
+:deep(.el-tag.el-tag--primary),
+:deep(.el-tag:not(.el-tag--success):not(.el-tag--info):not(.el-tag--warning):not(.el-tag--danger)) {
+    border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%) !important;
+    color: var(--k-color-primary) !important;
+}
+
+:deep(.el-tag.el-tag--success) {
+    border-color: color-mix(in srgb, var(--el-color-success), transparent 40%) !important;
+    color: var(--el-color-success) !important;
+}
+
+:deep(.el-tag.el-tag--warning) {
+    border-color: color-mix(in srgb, var(--el-color-warning), transparent 40%) !important;
+    color: var(--el-color-warning) !important;
+}
+
+:deep(.el-tag.el-tag--danger) {
+    border-color: color-mix(in srgb, var(--el-color-danger), transparent 40%) !important;
+    color: var(--el-color-danger) !important;
+}
+
+:deep(.el-tag.el-tag--info) {
+    border-color: color-mix(in srgb, var(--k-text-light), transparent 50%) !important;
+    color: var(--k-text-light) !important;
+}
+
+:deep(.warning-box) {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--el-color-warning), transparent 92%);
+    border: 1px solid color-mix(in srgb, var(--el-color-warning), transparent 60%);
+    margin-bottom: 20px;
+    color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 40%);
+}
+
+:deep(.warning-title) {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 20%);
+}
+
+:deep(.warning-desc) {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+:deep(.info-box) {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-text-light), transparent 90%);
+    border: 1px solid color-mix(in srgb, var(--k-text-light), transparent 60%);
+    margin-bottom: 20px;
+    color: color-mix(in srgb, var(--k-text-light), var(--k-text-dark) 40%);
+}
+
+:deep(.info-desc) {
+    font-size: 13px;
+    line-height: 1.5;
 }
 </style>

@@ -11,7 +11,7 @@ import { ChatLunaTool } from '../platform/types'
 import { BaseMessage } from '@langchain/core/messages'
 import { Session } from 'koishi'
 import type { Runnable } from '@langchain/core/runnables'
-import { AgentExecutor } from './executor'
+import { AgentRunner } from './executor'
 import { applyToolMask, ToolMask } from './types'
 
 export interface CreateAgentConfigOptions {
@@ -20,7 +20,7 @@ export interface CreateAgentConfigOptions {
 
     prompt: ChatLunaChatPrompt
     agentMode: 'react' | 'tool-calling'
-    instructions?: ComputedRef<string>
+    instructions?: ComputedRef<string | undefined>
 }
 
 export interface AgentConfig {
@@ -29,16 +29,18 @@ export interface AgentConfig {
     agentMode: 'react' | 'tool-calling'
 }
 
-export interface CreateAgentExecutorOptions {
+export interface CreateAgentRunnerOptions {
     llm: ComputedRef<ChatLunaChatModel>
     tools: ComputedRef<StructuredTool[]>
     prompt: ChatLunaChatPrompt
     agentMode: 'react' | 'tool-calling'
     maxIterations?: number
     returnIntermediateSteps?: boolean
-    handleParsingErrors?: boolean
-    instructions?: ComputedRef<string>
+    handleParsingErrors?: boolean | string | ((e: Error) => string)
+    instructions?: ComputedRef<string | undefined>
 }
+
+export type CreateAgentExecutorOptions = CreateAgentRunnerOptions
 
 export function createAgentConfig(options: CreateAgentConfigOptions) {
     if (options.agentMode === 'react') {
@@ -76,13 +78,13 @@ export function createAgentConfig(options: CreateAgentConfigOptions) {
     }))
 }
 
-export function createAgentExecutor(
-    options: CreateAgentExecutorOptions
-): ComputedRef<AgentExecutor> {
+export function createAgentRunner(
+    options: CreateAgentRunnerOptions
+): ComputedRef<AgentRunner> {
     const cfg = createAgentConfig(options)
 
     return computed(() =>
-        AgentExecutor.fromAgentAndTools({
+        AgentRunner.fromAgentAndTools({
             agent: cfg.value.agent,
             tools: cfg.value.tools,
             maxIterations: options.maxIterations,
@@ -91,6 +93,8 @@ export function createAgentExecutor(
         })
     )
 }
+
+export const createAgentExecutor = createAgentRunner
 
 export interface CreateToolsRefOptions {
     tools: ComputedRef<ChatLunaTool[]>

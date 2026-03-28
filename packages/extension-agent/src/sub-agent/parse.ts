@@ -8,6 +8,15 @@ export interface ParsedAgentFrontmatter {
     format: 'chatluna' | 'claude' | 'opencode'
     name: string
     description: string
+    chatluna: boolean
+    character: boolean
+    characterGroup: boolean
+    characterPrivate: boolean
+    characterGroupMode: 'all' | 'allow' | 'deny'
+    characterPrivateMode: 'all' | 'allow' | 'deny'
+    characterGroupIds: string[]
+    characterPrivateIds: string[]
+    authority: number
     model?: string
     maxTurns?: number
     hidden: boolean
@@ -53,6 +62,15 @@ export function parseAgentFrontmatter(
     let promptContent = parsed.body
     let enabled = true
     let hidden = false
+    let chatluna = true
+    let character = true
+    let characterGroup = true
+    let characterPrivate = true
+    let characterGroupMode: 'all' | 'allow' | 'deny' = 'all'
+    let characterPrivateMode: 'all' | 'allow' | 'deny' = 'all'
+    let characterGroupIds: string[] = []
+    let characterPrivateIds: string[] = []
+    let authority = 0
     let model: string | undefined
     let maxTurns: number | undefined
     let allowKoishiMessageTransform = false
@@ -109,6 +127,26 @@ export function parseAgentFrontmatter(
     } else {
         hidden = frontmatter.hidden === true
         enabled = frontmatter.enabled !== false
+        chatluna = frontmatter.chatluna !== false
+        character = frontmatter.character !== false
+        characterGroup = frontmatter.characterGroup !== false
+        characterPrivate = frontmatter.characterPrivate !== false
+        characterGroupMode =
+            frontmatter.characterGroupMode === 'allow' ||
+            frontmatter.characterGroupMode === 'deny'
+                ? frontmatter.characterGroupMode
+                : 'all'
+        characterPrivateMode =
+            frontmatter.characterPrivateMode === 'allow' ||
+            frontmatter.characterPrivateMode === 'deny'
+                ? frontmatter.characterPrivateMode
+                : 'all'
+        characterGroupIds = readValues(frontmatter.characterGroupIds)
+        characterPrivateIds = readValues(frontmatter.characterPrivateIds)
+        authority =
+            typeof frontmatter.authority === 'number'
+                ? frontmatter.authority
+                : 0
         model =
             typeof frontmatter.model === 'string'
                 ? frontmatter.model
@@ -128,7 +166,7 @@ export function parseAgentFrontmatter(
             permissions.skills = createRule(item.skills, 'inherit')
             permissions.mcp = createRule(item.mcp, 'inherit')
             permissions.tools = createRule(item.tools, 'inherit')
-            permissions.computer = createRule(item.computer, 'deny')
+            permissions.computer = createRule(item.computer, 'inherit')
         }
     }
 
@@ -149,6 +187,15 @@ export function parseAgentFrontmatter(
             format,
             name,
             description,
+            chatluna,
+            character,
+            characterGroup,
+            characterPrivate,
+            characterGroupMode,
+            characterPrivateMode,
+            characterGroupIds,
+            characterPrivateIds,
+            authority,
             model,
             maxTurns,
             hidden,
@@ -376,6 +423,24 @@ function readNames(value: unknown) {
         .map((item) => item.trim())
         .filter(Boolean)
         .flatMap((item) => mapCompatToolName(item))
+}
+
+function readValues(value: unknown) {
+    if (typeof value === 'string') {
+        return value
+            .split(/\s*,\s*|\s+/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+    }
+
+    if (!Array.isArray(value)) {
+        return []
+    }
+
+    return value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
 }
 
 function mapCompatToolName(name: string) {

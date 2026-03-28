@@ -9,10 +9,10 @@
         <div class="settings-body">
             <div class="setting-row info-row">
                 <div class="setting-copy">
-                    <div class="setting-title">Computer 提示</div>
-                    <div class="setting-description">由 backend 自动决定。</div>
+                    <div class="setting-title">电脑使用权限 (Computer Use)</div>
+                    <div class="setting-description">指示 AI 是否具备操作终端、文件系统或桌面环境的能力。</div>
                     <div class="setting-description setting-hint">
-                        {{ computerHint }}
+                        状态：{{ computerHint }} (由当前配置的执行后端自动注入提示词)
                     </div>
                 </div>
             </div>
@@ -37,10 +37,47 @@
                 <el-button @click="addDraftDir()">添加位置</el-button>
             </div>
 
+            <div class="setting-row">
+                <div class="setting-copy">
+                    <div class="setting-title">GitHub Token（可选）</div>
+                    <div class="setting-description">
+                        配置后，Skills 从 GitHub 导入会优先使用这个 Token，能显著降低匿名请求限流问题。
+                    </div>
+                    <div class="setting-description setting-link-row">
+                        <el-link
+                            href="https://github.com/settings/tokens?type=beta"
+                            target="_blank"
+                            type="primary"
+                        >
+                            申请 GitHub Token
+                        </el-link>
+                    </div>
+                </div>
+
+                <el-input
+                    v-model="tokenDraft"
+                    class="token-input"
+                    name="chatluna-settings-github-token"
+                    type="password"
+                    autocomplete="new-password"
+                    autocapitalize="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    show-password
+                    clearable
+                    placeholder="ghp_xxx / github_pat_xxx"
+                />
+            </div>
+
             <div v-if="dirDraft.length > 0" class="dir-list">
                 <div v-for="(item, idx) in dirDraft" :key="idx" class="dir-row">
                     <el-input
                         :model-value="item"
+                        :name="`chatluna-skill-dir-${idx}`"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        autocorrect="off"
+                        spellcheck="false"
                         placeholder="例如：~/.agents/skills"
                         @update:model-value="updateDraftDir(idx, $event)"
                     />
@@ -87,7 +124,8 @@ const props = withDefaults(
                 '~/.claude/skills',
                 '~/.config/opencode/skills'
             ],
-            items: {}
+            items: {},
+            githubToken: ''
         }),
         status: () => ({
             enabled: true,
@@ -108,16 +146,18 @@ const emit = defineEmits<{
 }>()
 
 const dirDraft = ref<string[]>([])
+const tokenDraft = ref('')
 const saving = ref(false)
 
 watch(
-    () => [props.visible, props.config.dirs] as const,
+    () => [props.visible, props.config.dirs, props.config.githubToken] as const,
     ([visible]) => {
         if (!visible) {
             return
         }
 
         dirDraft.value = [...(props.config.dirs ?? [])]
+        tokenDraft.value = props.config.githubToken ?? ''
     },
     {
         immediate: true,
@@ -145,7 +185,8 @@ async function saveSettings() {
 
         await send('chatluna-agent/saveSkills', {
             items: { ...props.config.items },
-            dirs
+            dirs,
+            githubToken: tokenDraft.value.trim()
         } satisfies SkillsConfig)
 
         emit('update:visible', false)
@@ -177,6 +218,31 @@ function updateDraftDir(idx: number, value: string) {
     flex-direction: column;
     gap: 14px;
     padding: 18px;
+    max-height: 50vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--k-color-divider), #71717a 40%)
+        transparent;
+}
+
+.settings-body::-webkit-scrollbar {
+    width: 10px;
+}
+
+.settings-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.settings-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--k-color-divider), #71717a 40%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.settings-body::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--k-color-divider), #52525b 58%);
+    background-clip: content-box;
 }
 
 .setting-row {
@@ -236,6 +302,14 @@ function updateDraftDir(idx: number, value: string) {
     gap: 10px;
 }
 
+.setting-link-row {
+    margin-top: 8px;
+}
+
+.token-input {
+    width: min(320px, 100%);
+}
+
 @media (max-width: 768px) {
     .setting-row,
     .dialog-section-header {
@@ -243,9 +317,8 @@ function updateDraftDir(idx: number, value: string) {
         align-items: flex-start;
     }
 
-    .dir-row {
-        grid-template-columns: 1fr;
-        align-items: stretch;
+    .token-input {
+        width: 100%;
     }
 }
 </style>

@@ -7,6 +7,7 @@ import { resolve } from 'path'
 import { getSkillsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import type { ChatLunaAgentService } from '../service'
+import type { SkillMode } from '../types'
 import { AgentConsoleData, AgentStatus, McpServerConfig } from '../types'
 
 class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
@@ -251,6 +252,11 @@ function registerSkillsListeners(ctx: Context, agent: AgentRef) {
         agent().skills.getSkillContent(id)
     )
 
+    ctx.console.addListener(
+        'chatluna-agent/saveSkillContent',
+        ok((id, content) => agent().skills.saveSkillContent(id, content))
+    )
+
     ctx.console.addListener('chatluna-agent/exportSkill', async (id) =>
         agent().exportSkill(id)
     )
@@ -288,6 +294,11 @@ function registerSkillsListeners(ctx: Context, agent: AgentRef) {
             agent().setSkillEnabled(id, enabled)
         )
     )
+
+    ctx.console.addListener(
+        'chatluna-agent/setSkillMode',
+        ok((id: string, mode: SkillMode) => agent().setSkillMode(id, mode))
+    )
 }
 
 function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
@@ -324,8 +335,22 @@ function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
     )
 
     ctx.console.addListener(
+        'chatluna-agent/saveSubAgentContent',
+        async (id, input) => await agent().saveSubAgentContent(id, input)
+    )
+
+    ctx.console.addListener('chatluna-agent/exportSubAgent', async (id) =>
+        agent().exportSubAgent(id)
+    )
+
+    ctx.console.addListener(
         'chatluna-agent/uploadSubAgent',
         ok((input) => agent().uploadSubAgent(input))
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/previewSubAgentImport',
+        async (data) => agent().previewSubAgentImport(data)
     )
 
     ctx.console.addListener(
