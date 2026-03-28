@@ -7,6 +7,7 @@ import {
     SkillConfig,
     SubAgentConfig,
     SubAgentItemConfig,
+    createToolMetaOverride,
     ToolConfig,
     ToolItemConfig
 } from '../types'
@@ -151,105 +152,117 @@ export function createDefaultToolConfig(): ToolConfig {
     return {
         items: {},
         registry: {
-            web_search: {
+            web_search: createToolMetaOverride({
                 source: 'extension',
                 group: 'search',
                 tags: ['search', 'web'],
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            web_browser: {
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            web_browser: createToolMetaOverride({
                 source: 'extension',
                 group: 'search',
                 tags: ['search', 'web', 'browser'],
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            group_mute: {
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            group_mute: createToolMetaOverride({
                 source: 'extension',
                 group: 'plugin-common',
                 tags: ['plugin-common', 'group', 'moderation'],
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: false
-            },
-            send_file: {
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'group'
+                }
+            }),
+            send_file: createToolMetaOverride({
                 source: 'extension',
                 group: 'plugin-common',
                 tags: ['plugin-common', 'file', 'onebot'],
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: false,
-                defaultCharacterGroup: false,
-                defaultCharacterPrivate: false
-            },
-            file_read: {
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            file_write: {
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            file_edit: {
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            file_publish: {
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            grep: {
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            glob: {
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            bash: {
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            },
-            task: {
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'none'
+                }
+            }),
+            file_read: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            file_write: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            file_edit: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            file_publish: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            grep: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            glob: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            bash: createToolMetaOverride({
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            }),
+            task: createToolMetaOverride({
                 source: 'extension',
                 group: 'agent',
                 tags: ['handoff'],
-                defaultMain: true,
-                defaultChatluna: true,
-                defaultCharacter: true,
-                defaultCharacterGroup: true,
-                defaultCharacterPrivate: true
-            }
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
+            })
         }
     }
 }

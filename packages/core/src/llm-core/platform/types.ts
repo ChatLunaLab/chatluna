@@ -70,17 +70,33 @@ export interface ChatLunaTool {
     meta?: ChatLunaToolMeta
 }
 
+export type ChatLunaToolCharacterScope = 'all' | 'group' | 'private' | 'none'
+
+export interface ChatLunaToolDefaultAvailability {
+    enabled?: boolean
+    main?: boolean
+    chatluna?: boolean
+    characterScope?: ChatLunaToolCharacterScope
+}
+
 export interface ChatLunaToolMeta {
     source?: 'core' | 'extension' | 'mcp' | 'action' | (string & {})
     group?: string
     tags?: string[]
     isMcp?: boolean
     serverName?: string
+    defaultAvailability?: ChatLunaToolDefaultAvailability
+    /** @deprecated use defaultAvailability */
     defaultEnabled?: boolean
+    /** @deprecated use defaultAvailability */
     defaultMain?: boolean
+    /** @deprecated use defaultAvailability */
     defaultChatluna?: boolean
+    /** @deprecated use defaultAvailability */
     defaultCharacter?: boolean
+    /** @deprecated use defaultAvailability */
     defaultCharacterGroup?: boolean
+    /** @deprecated use defaultAvailability */
     defaultCharacterPrivate?: boolean
 }
 

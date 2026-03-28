@@ -24,11 +24,12 @@ export async function apply(
             source: 'extension',
             group: 'plugin-common',
             tags: ['plugin-common', 'group', 'moderation'],
-            defaultMain: true,
-            defaultChatluna: true,
-            defaultCharacter: true,
-            defaultCharacterGroup: true,
-            defaultCharacterPrivate: false
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'group'
+            }
         },
         authorization(session) {
             if (session.isDirect) {

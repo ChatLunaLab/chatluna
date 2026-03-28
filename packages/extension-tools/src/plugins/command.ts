@@ -44,11 +44,12 @@ export async function apply(
             source: 'extension',
             group: 'plugin-common',
             tags: ['plugin-common', 'command'],
-            defaultMain: true,
-            defaultChatluna: true,
-            defaultCharacter: true,
-            defaultCharacterGroup: true,
-            defaultCharacterPrivate: true
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
         },
         createTool() {
             return new CommandExecuteTool(

@@ -2,13 +2,17 @@
 
 import { Context } from 'koishi'
 import { readFile } from 'fs/promises'
+import {
+    AgentConfig,
+    createToolDefaultAvailability,
+    createToolMetaOverride
+} from '../types'
 import { getConfigPath } from './path'
 import {
     createSkillItemConfig,
     createToolItemConfig,
     getDefaultConfig
 } from './defaults'
-import { AgentConfig } from '../types'
 
 export async function readConfig(ctx: Context): Promise<AgentConfig> {
     const path = getConfigPath(ctx)
@@ -32,10 +36,29 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
             },
             tool: {
                 ...base.tool,
-                registry: {
-                    ...(base.tool.registry ?? {}),
-                    ...(cfg.tool?.registry ?? {})
-                },
+                registry: Object.fromEntries(
+                    Object.keys({
+                        ...(base.tool.registry ?? {}),
+                        ...(cfg.tool?.registry ?? {})
+                    }).map((name) => {
+                        const baseItem = base.tool.registry?.[name]
+                        const saved = cfg.tool?.registry?.[name]
+                        return [
+                            name,
+                            createToolMetaOverride({
+                                ...(baseItem ?? {}),
+                                ...(saved ?? {}),
+                                defaultAvailability: {
+                                    ...(createToolDefaultAvailability(
+                                        baseItem
+                                    ) ?? {}),
+                                    ...(createToolDefaultAvailability(saved) ??
+                                        {})
+                                }
+                            })
+                        ]
+                    })
+                ),
                 items: Object.fromEntries(
                     Object.entries(cfg.tool?.items ?? {}).map(
                         ([name, item]) => [

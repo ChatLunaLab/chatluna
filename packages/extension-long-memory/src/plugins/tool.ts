@@ -41,11 +41,12 @@ export async function apply(
             source: 'extension',
             group: 'long-memory',
             tags: ['long-memory', 'search'],
-            defaultMain: true,
-            defaultChatluna: true,
-            defaultCharacter: false,
-            defaultCharacterGroup: false,
-            defaultCharacterPrivate: false
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'none'
+            }
         },
 
         createTool(params) {
@@ -62,11 +63,12 @@ export async function apply(
             source: 'extension',
             group: 'long-memory',
             tags: ['long-memory', 'add'],
-            defaultMain: true,
-            defaultChatluna: true,
-            defaultCharacter: true,
-            defaultCharacterGroup: true,
-            defaultCharacterPrivate: true
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
         },
 
         createTool(params) {
@@ -83,11 +85,12 @@ export async function apply(
             source: 'extension',
             group: 'long-memory',
             tags: ['long-memory', 'delete'],
-            defaultMain: true,
-            defaultChatluna: true,
-            defaultCharacter: true,
-            defaultCharacterGroup: true,
-            defaultCharacterPrivate: true
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
         },
 
         createTool(params) {
@@ -104,11 +107,12 @@ export async function apply(
             source: 'extension',
             group: 'long-memory',
             tags: ['long-memory', 'update'],
-            defaultMain: true,
-            defaultChatluna: true,
-            defaultCharacter: true,
-            defaultCharacterGroup: true,
-            defaultCharacterPrivate: true
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
         },
 
         createTool(params) {

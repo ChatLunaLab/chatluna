@@ -1035,7 +1035,13 @@ export class ChatLunaAgentComputerService {
                     meta: {
                         source: 'extension',
                         group: 'computer',
-                        tags: ['computer']
+                        tags: ['computer'],
+                        defaultAvailability: {
+                            enabled: true,
+                            main: true,
+                            chatluna: true,
+                            characterScope: 'all'
+                        }
                     }
                 })
             )

@@ -1,333 +1,28 @@
+/* eslint-disable generator-star-spacing */
 import { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager'
-import { AIMessage, AIMessageChunk } from '@langchain/core/messages'
-import { OutputParserException } from '@langchain/core/output_parsers'
-import {
-    patchConfig,
-    Runnable,
-    type RunnableConfig
-} from '@langchain/core/runnables'
-import {
-    StructuredTool,
-    ToolInputParsingException
-} from '@langchain/core/tools'
+import { AIMessage } from '@langchain/core/messages'
+import { Runnable, RunnableConfig } from '@langchain/core/runnables'
+import type { StructuredTool } from '@langchain/core/tools'
 import type { ChainValues } from '@langchain/core/utils/types'
-import { logger } from 'koishi-plugin-chatluna'
-import {
-    BaseChain,
-    ChainInputs
-} from 'koishi-plugin-chatluna/llm-core/chain/base'
-import {
-    isMessageContentComplex,
-    isMessageContentText
-} from 'koishi-plugin-chatluna/utils/langchain'
-import {
-    AgentAction,
-    AgentEvent,
-    AgentFinish,
-    AgentObservation,
-    AgentStep,
-    applyToolMask,
-    MessageQueue,
-    ScratchpadEntry
-} from './types'
+import type { AgentRuntimeConfigurable } from './types'
+import { runAgent } from './legacy-executor'
+import type { AgentExecutorInput, AgentExecutorOutput } from './legacy-executor'
 
-async function executeTools(
-    actions: AgentAction[],
-    toolMap: Record<string, StructuredTool>,
-    config: RunnableConfig | undefined,
-    signal: AbortSignal | undefined,
-    handleParsingErrors: boolean | string | ((e: Error) => string),
-    handleToolRuntimeErrors?: (e: Error) => string
-) {
-    return Promise.all(
-        actions.map(async (action) => {
-            checkAborted(signal)
+export {
+    coerceToAgentObservation,
+    LegacyAgentExecutor,
+    runAgent,
+    toToolInputErrorObservation,
+    type AgentExecutorInput,
+    type AgentExecutorOutput,
+    type RunAgentOptions
+} from './legacy-executor'
 
-            if (action.tool === '_Exception') {
-                return {
-                    action,
-                    observation: coerceToAgentObservation(
-                        typeof action.toolInput === 'string'
-                            ? action.toolInput
-                            : (JSON.stringify(action.toolInput) ?? '')
-                    )
-                } as AgentStep
-            }
-
-            const tool = toolMap[action.tool?.toLowerCase()]
-
-            if (tool == null) {
-                return {
-                    action,
-                    observation: `${action.tool} is not a valid tool, try another one.`
-                } as AgentStep
-            }
-
-            const mask =
-                config?.configurable?.['toolMask'] ??
-                config?.configurable?.['subagentContext']?.['toolMask']
-            if (mask && !applyToolMask(action.tool, mask)) {
-                const allowed = Object.values(toolMap)
-                    .map((item) => item.name)
-                    .filter((name) => applyToolMask(name, mask))
-
-                return {
-                    action,
-                    observation: `Tool '${action.tool}' is not allowed for the current sub-agent. Available tools: ${allowed.join(', ')}`
-                } as AgentStep
-            }
-
-            const callMask =
-                config?.configurable?.['toolMask']?.toolCallMask ??
-                config?.configurable?.['subagentContext']?.['toolMask']
-                    ?.toolCallMask
-            if (callMask && !applyToolMask(action.tool, callMask)) {
-                return {
-                    action,
-                    observation: `You do not have permission to call tool '${action.tool}'. Try another tool.`
-                } as AgentStep
-            }
-
-            try {
-                const observation = await tool.invoke(action.toolInput, config)
-                return {
-                    action,
-                    observation: coerceToAgentObservation(
-                        observation,
-                        tool.name
-                    )
-                } as AgentStep
-            } catch (e) {
-                if (e instanceof ToolInputParsingException) {
-                    return {
-                        action,
-                        observation: coerceToAgentObservation(
-                            toToolInputErrorObservation(handleParsingErrors, e)
-                        )
-                    } as AgentStep
-                }
-
-                if (handleToolRuntimeErrors != null) {
-                    return {
-                        action,
-                        observation: coerceToAgentObservation(
-                            handleToolRuntimeErrors(e as Error),
-                            tool.name
-                        )
-                    } as AgentStep
-                }
-
-                return {
-                    action,
-                    observation: coerceToAgentObservation(
-                        `Something went wrong. Please Try Again. ${String(e)}`,
-                        tool.name
-                    )
-                } as AgentStep
-            }
-        })
-    )
-}
-
-async function plan(
-    agent: Runnable,
-    input: ChainValues,
-    steps: AgentStep[],
-    scratchpad: ScratchpadEntry[],
-    config: RunnableConfig | undefined
-) {
-    const stream = await agent.stream(
-        {
-            ...input,
-            steps,
-            scratchpadEntries: scratchpad
-        },
-        config
-    )
-
-    let result: AgentAction[] | AgentAction | AgentFinish | undefined
-
-    for await (const chunk of stream) {
-        if (result !== undefined) {
-            throw new Error('Multiple outputs from agent stream')
-        }
-
-        result = chunk as AgentAction[] | AgentAction | AgentFinish
-    }
-
-    if (result == null) {
-        throw new Error('No output from agent stream')
-    }
-
-    if (isAgentFinish(result)) {
-        return result
-    }
-
-    return Array.isArray(result) ? result : [result]
-}
-
-// eslint-disable-next-line generator-star-spacing
-export async function* runAgent(
-    options: RunAgentOptions
-): AsyncGenerator<AgentEvent> {
-    const steps: AgentStep[] = []
-    const scratchpad: ScratchpadEntry[] = []
-    const signal =
-        options.signal ?? (options.config?.signal as AbortSignal | undefined)
-    const config =
-        signal == null
-            ? options.config
-            : patchConfig(options.config, { signal })
-    const toolMap = Object.fromEntries(
-        options.tools.map((tool) => [tool.name.toLowerCase(), tool])
-    )
-    const maxIterations = options.maxIterations ?? 105
-    const handleParsingErrors = options.handleParsingErrors ?? true
-
-    let iterations = 0
-
-    while (iterations < maxIterations) {
-        checkAborted(signal)
-
-        const pending = options.messageQueue?.drain() ?? []
-        if (pending.length > 0) {
-            scratchpad.push({
-                type: 'human_update',
-                messages: pending
-            })
-
-            yield {
-                type: 'human-update',
-                messages: pending
-            }
-        }
-
-        yield {
-            type: 'round-decision'
-        }
-
-        let output: AgentAction[] | AgentFinish
-
-        try {
-            output = await plan(
-                options.agent,
-                options.input,
-                steps,
-                scratchpad,
-                config
-            )
-        } catch (e) {
-            if (!(e instanceof OutputParserException)) {
-                throw e
-            }
-
-            output = [toParsingErrorAction(handleParsingErrors, e)]
-        }
-
-        checkAborted(signal)
-
-        if (isAgentFinish(output)) {
-            const message = output.returnValues['message'] as AIMessageChunk
-
-            yield {
-                type: 'round-decision',
-                canContinue: false
-            }
-
-            const pending = options.messageQueue?.drain() ?? []
-            if (pending.length > 0) {
-                yield {
-                    type: 'human-update',
-                    messages: pending
-                }
-            }
-
-            yield {
-                type: 'done',
-                output: toOutput(output.returnValues['output']),
-                log: output.log,
-                steps,
-                message
-            }
-
-            return
-        }
-
-        if (output.length > 0) {
-            const last = output[output.length - 1]
-            const tool = toolMap[last.tool?.toLowerCase()]
-
-            yield {
-                type: 'round-decision',
-                canContinue: !tool?.returnDirect
-            }
-
-            yield {
-                type: 'tool-call',
-                actions: output
-            }
-        }
-
-        const newSteps = await executeTools(
-            output,
-            toolMap,
-            config,
-            signal,
-            handleParsingErrors,
-            options.handleToolRuntimeErrors
-        )
-
-        steps.push(...newSteps)
-        scratchpad.push(...newSteps)
-
-        if (newSteps.length > 0) {
-            yield {
-                type: 'tool-result',
-                steps: newSteps
-            }
-        }
-
-        const last = newSteps[newSteps.length - 1]
-        const tool = last ? toolMap[last.action.tool?.toLowerCase()] : undefined
-
-        if (tool?.returnDirect && last != null) {
-            const pending = options.messageQueue?.drain() ?? []
-            if (pending.length > 0) {
-                yield {
-                    type: 'human-update',
-                    messages: pending
-                }
-            }
-
-            yield {
-                type: 'done',
-                output: toOutput(last.observation),
-                log: last.action.log,
-                steps
-            }
-
-            return
-        }
-
-        iterations += 1
-    }
-
-    yield {
-        type: 'round-decision',
-        canContinue: false
-    }
-
-    yield {
-        type: 'done',
-        output: 'Agent stopped due to iteration limit.',
-        log: '',
-        steps
-    }
-}
-
-export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
+export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
+
+    lc_namespace = ['chatluna', 'agent']
 
     agent: Runnable
 
@@ -341,7 +36,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
     handleToolRuntimeErrors?: (e: Error) => string
 
-    constructor(fields: AgentExecutorInput) {
+    constructor(fields: AgentRunnerInput) {
         super(fields)
         this.agent = fields.agent
         this.tools = fields.tools
@@ -351,33 +46,22 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
         this.handleToolRuntimeErrors = fields.handleToolRuntimeErrors
     }
 
-    get inputKeys() {
-        return ['input']
+    static fromAgentAndTools(fields: AgentRunnerInput) {
+        return new AgentRunner(fields)
     }
 
-    get outputKeys() {
-        return ['output']
-    }
-
-    static fromAgentAndTools(fields: AgentExecutorInput) {
-        return new AgentExecutor(fields)
-    }
-
-    async _call(
-        inputs: ChainValues,
-        runManager?: CallbackManagerForChainRun,
-        config?: RunnableConfig
-    ): Promise<AgentExecutorOutput> {
-        const configurable = (config?.configurable ?? {}) as {
-            messageQueue?: MessageQueue
-            onAgentEvent?: (event: AgentEvent) => Promise<void> | void
-        }
+    private async *_run(
+        input: ChainValues,
+        config?: RunnableConfig,
+        runManager?: CallbackManagerForChainRun
+    ): AsyncGenerator<AgentRunnerOutput> {
+        const configurable = (config?.configurable ??
+            {}) as AgentRunnerConfigurable
 
         const runner = runAgent({
             agent: this.agent,
             tools: this.tools,
-            input: inputs,
-            messageQueue: configurable.messageQueue,
+            input,
             signal: config?.signal as AbortSignal | undefined,
             maxIterations: this.maxIterations,
             handleParsingErrors: this.handleParsingErrors,
@@ -394,182 +78,106 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
             await configurable.onAgentEvent?.(event)
 
-            if (event.type === 'done') {
-                const returnValues = event.message
-                    ? {
-                          output: event.output,
-                          message: event.message
-                      }
-                    : {
-                          output: event.output
-                      }
-
-                await runManager?.handleAgentEnd({
-                    returnValues,
-                    log: event.log
-                })
-
-                return {
-                    output: event.output,
-                    ...(this.returnIntermediateSteps
-                        ? {
-                              intermediateSteps: event.steps
-                          }
-                        : {}),
-                    message: event.message ?? new AIMessage(event.output)
-                }
+            if (event.type !== 'done') {
+                continue
             }
+
+            const returnValues = event.message
+                ? {
+                      output: event.output,
+                      message: event.message
+                  }
+                : {
+                      output: event.output
+                  }
+
+            await runManager?.handleAgentEnd({
+                returnValues,
+                log: event.log
+            })
+
+            yield {
+                output: event.output,
+                ...(this.returnIntermediateSteps
+                    ? {
+                          intermediateSteps: event.steps
+                      }
+                    : {}),
+                message: event.message ?? new AIMessage(event.output)
+            }
+            return
         }
 
-        throw new Error('Agent executor did not return a final output')
+        throw new Error('Agent runner did not return a final output')
     }
 
-    _chainType() {
-        return 'agent_executor' as const
-    }
-}
+    async invoke(
+        input: ChainValues,
+        options?: RunnableConfig
+    ): Promise<AgentRunnerOutput> {
+        return this._callWithConfig(
+            async (values, config, runManager) => {
+                let result: AgentRunnerOutput | undefined
 
-export interface RunAgentOptions {
-    agent: Runnable
-    tools: StructuredTool[]
-    input: ChainValues
-    messageQueue?: MessageQueue
-    signal?: AbortSignal
-    maxIterations?: number
-    handleParsingErrors?: boolean | string | ((e: Error) => string)
-    handleToolRuntimeErrors?: (e: Error) => string
-    config?: RunnableConfig
-}
+                for await (const chunk of this._run(
+                    values,
+                    config,
+                    runManager
+                )) {
+                    result = chunk
+                }
 
-export interface AgentExecutorInput extends ChainInputs {
-    agent: Runnable
-    tools: StructuredTool[]
-    returnIntermediateSteps?: boolean
-    maxIterations?: number
-    handleParsingErrors?: boolean | string | ((e: Error) => string)
-    handleToolRuntimeErrors?: (e: Error) => string
-}
+                if (result == null) {
+                    throw new Error(
+                        'Agent runner did not return a final output'
+                    )
+                }
 
-export interface AgentExecutorOutput extends ChainValues {
-    output: string
-    intermediateSteps?: AgentStep[]
-    message: AIMessage
-}
-
-function isAgentObservation(value: unknown): value is AgentObservation {
-    if (typeof value === 'string') {
-        return true
-    }
-
-    if (!Array.isArray(value)) {
-        return false
-    }
-
-    return value.every((item) => isMessageContentComplex(item))
-}
-
-export function coerceToAgentObservation(
-    observation: unknown,
-    toolName?: string
-): AgentObservation {
-    if (isAgentObservation(observation)) {
-        if (
-            Array.isArray(observation) &&
-            observation.every(isMessageContentText)
-        ) {
-            return observation.map((item) => item.text).join('')
-        }
-
-        return observation
-    }
-
-    logger.warn(
-        `Tool ${toolName ?? 'unknown'} returned unsupported observation type`,
-        observation
-    )
-
-    try {
-        return JSON.stringify(observation) ?? String(observation)
-    } catch {
-        return String(observation)
-    }
-}
-
-export function toToolInputErrorObservation(
-    handleParsingErrors: boolean | string | ((e: Error) => string),
-    error: ToolInputParsingException
-): AgentObservation {
-    if (handleParsingErrors === true || handleParsingErrors === false) {
-        return (
-            'Invalid or incomplete tool input.' +
-            error.message +
-            ' ' +
-            error.output +
-            'Please try again.'
+                return result
+            },
+            input,
+            options
         )
     }
 
-    if (typeof handleParsingErrors === 'string') {
-        return handleParsingErrors
-    }
+    async *_streamIterator(
+        input: ChainValues,
+        options?: RunnableConfig
+    ): AsyncGenerator<AgentRunnerOutput> {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const outer = this
 
-    return handleParsingErrors(error)
-}
+        yield* this._transformStreamWithConfig(
+            (async function* () {
+                yield input
+            })(),
+            async function* (generator, runManager, config) {
+                let values: ChainValues | undefined
 
-function toOutput(value: unknown): string {
-    if (typeof value === 'string') {
-        return value
-    }
+                for await (const chunk of generator) {
+                    values =
+                        values == null
+                            ? chunk
+                            : Object.assign({}, values, chunk)
+                }
 
-    if (Array.isArray(value) && value.every(isMessageContentText)) {
-        return value.map((item) => item.text).join('')
-    }
+                if (values == null) {
+                    throw new Error('Agent runner requires input')
+                }
 
-    try {
-        return JSON.stringify(value) ?? String(value)
-    } catch {
-        return String(value)
-    }
-}
-
-function isAgentFinish(
-    output: AgentAction[] | AgentAction | AgentFinish
-): output is AgentFinish {
-    return !Array.isArray(output) && 'returnValues' in output
-}
-
-function checkAborted(signal?: AbortSignal) {
-    if (!signal?.aborted) {
-        return
-    }
-
-    throw signal.reason ?? new Error('Aborted')
-}
-
-function toParsingErrorAction(
-    handleParsingErrors: boolean | string | ((e: Error) => string),
-    error: OutputParserException
-): AgentAction {
-    let observation: AgentObservation
-    let text = error.message
-
-    if (handleParsingErrors === true) {
-        observation = coerceToAgentObservation(error.observation)
-        text = error.llmOutput ?? ''
-    } else if (typeof handleParsingErrors === 'string') {
-        observation = handleParsingErrors
-    } else if (typeof handleParsingErrors === 'function') {
-        observation = handleParsingErrors(error)
-    } else {
-        throw error
-    }
-
-    return {
-        tool: '_Exception',
-        toolInput:
-            typeof observation === 'string'
-                ? observation
-                : (JSON.stringify(observation) ?? ''),
-        log: text
+                yield* outer._run(values, config, runManager)
+            },
+            options
+        )
     }
 }
+
+export const AgentExecutor = AgentRunner
+
+export type AgentExecutor = AgentRunner
+
+export type AgentRunnerInput = AgentExecutorInput
+
+export type AgentRunnerOutput = AgentExecutorOutput
+
+type AgentRunnerConfigurable = AgentRuntimeConfigurable

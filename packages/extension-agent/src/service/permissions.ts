@@ -14,6 +14,7 @@ import {
     SkillInfo,
     SubAgentInfo,
     SubAgentPermissionConfig,
+    createToolDefaultAvailability,
     ToolAvailabilityInfo,
     ToolInfo,
     ToolStatus
@@ -151,24 +152,43 @@ export class ChatLunaAgentPermissionService {
         const list = Object.values(registry)
             .map((item) => {
                 const saved = this.config.tool.items[item.name]
-                const meta = this.config.tool.registry?.[item.name]
+                const defaultAvailability = createToolDefaultAvailability(
+                    item.meta
+                )
                 const cfg = createToolItemConfig(
                     {
                         ...saved,
-                        enabled: saved?.enabled ?? meta?.defaultEnabled ?? true,
-                        main: saved?.main ?? meta?.defaultMain ?? true,
+                        enabled:
+                            saved?.enabled ??
+                            defaultAvailability?.enabled ??
+                            true,
+                        main: saved?.main ?? defaultAvailability?.main ?? true,
                         chatluna:
-                            saved?.chatluna ?? meta?.defaultChatluna ?? true,
+                            saved?.chatluna ??
+                            defaultAvailability?.chatluna ??
+                            true,
                         character:
-                            saved?.character ?? meta?.defaultCharacter ?? true,
+                            saved?.character ??
+                            (defaultAvailability?.characterScope == null
+                                ? true
+                                : defaultAvailability.characterScope !==
+                                  'none'),
                         characterGroup:
                             saved?.characterGroup ??
-                            meta?.defaultCharacterGroup ??
-                            true,
+                            (defaultAvailability?.characterScope == null
+                                ? true
+                                : defaultAvailability.characterScope ===
+                                      'all' ||
+                                  defaultAvailability.characterScope ===
+                                      'group'),
                         characterPrivate:
                             saved?.characterPrivate ??
-                            meta?.defaultCharacterPrivate ??
-                            true,
+                            (defaultAvailability?.characterScope == null
+                                ? true
+                                : defaultAvailability.characterScope ===
+                                      'all' ||
+                                  defaultAvailability.characterScope ===
+                                      'private'),
                         characterGroupMode: saved?.characterGroupMode ?? 'all',
                         characterPrivateMode:
                             saved?.characterPrivateMode ?? 'all',
@@ -426,7 +446,11 @@ export class ChatLunaAgentPermissionService {
         const registry = this.ctx.chatluna.platform.getToolRegistry()
         return Object.fromEntries(
             Object.values(registry).map((item) => {
-                const meta = this.config.tool.registry?.[item.name]
+                const saved = this.config.tool.registry?.[item.name]
+                const defaultAvailability = {
+                    ...(createToolDefaultAvailability(item.meta) ?? {}),
+                    ...(createToolDefaultAvailability(saved) ?? {})
+                }
                 return [
                     item.name,
                     {
@@ -434,19 +458,16 @@ export class ChatLunaAgentPermissionService {
                         description: item.description,
                         meta: {
                             ...item.meta,
-                            source: meta?.source ?? item.meta?.source,
-                            group: meta?.group ?? item.meta?.group,
+                            source: saved?.source ?? item.meta?.source,
+                            group: saved?.group ?? item.meta?.group,
                             tags:
-                                meta?.tags && meta.tags.length > 0
-                                    ? meta.tags
+                                saved?.tags && saved.tags.length > 0
+                                    ? saved.tags
                                     : item.meta?.tags,
-                            defaultEnabled: meta?.defaultEnabled,
-                            defaultMain: meta?.defaultMain,
-                            defaultChatluna: meta?.defaultChatluna,
-                            defaultCharacter: meta?.defaultCharacter,
-                            defaultCharacterGroup: meta?.defaultCharacterGroup,
-                            defaultCharacterPrivate:
-                                meta?.defaultCharacterPrivate
+                            defaultAvailability:
+                                Object.keys(defaultAvailability).length > 0
+                                    ? defaultAvailability
+                                    : undefined
                         }
                     }
                 ]

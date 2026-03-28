@@ -24,11 +24,12 @@ export async function apply(
             source: 'extension',
             group: 'plugin-common',
             tags: ['plugin-common', 'file', 'onebot'],
-            defaultMain: true,
-            defaultChatluna: true,
-            defaultCharacter: false,
-            defaultCharacterGroup: false,
-            defaultCharacterPrivate: false
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'none'
+            }
         },
         authorization(session) {
             return session.platform === 'onebot'

@@ -76,6 +76,17 @@ export function apply(ctx: Context, config: Config) {
             },
             selector() {
                 return true
+            },
+            meta: {
+                source: 'extension',
+                group: 'search',
+                tags: ['search', 'web'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
             }
         })
 
@@ -92,6 +103,17 @@ export function apply(ctx: Context, config: Config) {
             },
             selector() {
                 return true
+            },
+            meta: {
+                source: 'extension',
+                group: 'search',
+                tags: ['search', 'web', 'browser'],
+                defaultAvailability: {
+                    enabled: true,
+                    main: true,
+                    chatluna: true,
+                    characterScope: 'all'
+                }
             }
         })
 
