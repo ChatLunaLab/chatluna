@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-plugin-common",
     "description": "plugin service for agent mode of chatluna",
-    "version": "1.3.9",
+    "version": "1.3.10",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -68,8 +68,8 @@
     },
     "peerDependencies": {
         "koishi": "^4.18.9",
-        "koishi-plugin-chatluna": "^1.3.35",
-        "koishi-plugin-chatluna-agent": "^1.0.13",
+        "koishi-plugin-chatluna": "^1.3.36",
+        "koishi-plugin-chatluna-agent": "^1.0.14",
         "koishi-plugin-chatluna-storage-service": "^1.0.6"
     },
     "peerDependenciesMeta": {
