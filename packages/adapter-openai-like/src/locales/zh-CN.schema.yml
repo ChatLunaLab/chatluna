@@ -14,6 +14,10 @@ $inner:
                 $inner:
                     - 工具调用
                     - 图片视觉输入
+      blacklistModels:
+          $desc: 关键词黑名单模型列表。将隐藏 ID 中含有以下关键词的模型。
+          $inner:
+              - 关键词
 
     - $desc: 请求设置
       apiKeys:
