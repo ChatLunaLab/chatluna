@@ -72,11 +72,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 .map((keyword) => keyword.trim().toLowerCase())
                 .filter((keyword) => keyword.length > 0)
 
-            const models = filteredModels.filter((model) => {
-                const id = model.toLowerCase()
-                return !blacklist.some((keyword) => id.includes(keyword))
-            })
-
             const supportToolCalling = (model: string) => {
                 // const lower = model.toLowerCase()
 
@@ -90,16 +85,21 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                 }
             }
 
-            const formattedModels = models.map(
-                (model) =>
-                    ({
-                        name: model,
-                        type: isEmbeddingModel(model)
-                            ? ModelType.embeddings
-                            : ModelType.llm,
-                        ...supportToolCalling(model)
-                    }) as ModelInfo
-            )
+            const formattedModels = filteredModels
+                .filter((model) => {
+                    const id = model.toLowerCase()
+                    return !blacklist.some((keyword) => id.includes(keyword))
+                })
+                .map(
+                    (model) =>
+                        ({
+                            name: model,
+                            type: isEmbeddingModel(model)
+                                ? ModelType.embeddings
+                                : ModelType.llm,
+                            ...supportToolCalling(model)
+                        }) as ModelInfo
+                )
 
             return additionalModels.concat(
                 formattedModels.filter(
