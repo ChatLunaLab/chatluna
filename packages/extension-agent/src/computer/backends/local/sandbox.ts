@@ -1,10 +1,12 @@
 /** @module computer/backends/local/sandbox */
 
+import { spawnSync } from 'node:child_process'
 import path from 'path'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
 
 const PROTECTED_NAMES = ['.git', '.chatluna', '.agents', '.codex', '.claude']
+const BWRAP_PROBE_CACHE = new Set<string>()
 
 const WRITE_COMMAND_PATTERNS = [
     />/,
@@ -106,7 +108,16 @@ export function wrapCommandWithSandbox(
 
     const bwrap = which.sync('bwrap', { nothrow: true })
     if (!bwrap) {
-        return command
+        throw new Error(
+            'Local backend sandbox requires bubblewrap (`bwrap`), but it is not installed.'
+        )
+    }
+
+    const bwrapError = getBubblewrapError(bwrap, tmp)
+    if (bwrapError) {
+        throw new Error(
+            `Local backend sandbox requires bubblewrap, but the startup probe failed: ${bwrapError}`
+        )
     }
 
     const scope = cfg.scopePath || workdir || process.cwd()
@@ -152,4 +163,43 @@ function containsProtectedName(value: string) {
 
 function quote(value: string) {
     return `'${value.replaceAll("'", `'\\''`)}'`
+}
+
+function getBubblewrapError(bwrap: string, tmp: string) {
+    if (BWRAP_PROBE_CACHE.has(bwrap)) {
+        return ''
+    }
+
+    const result = spawnSync(
+        bwrap,
+        [
+            '--ro-bind',
+            '/',
+            '/',
+            '--bind',
+            tmp,
+            '/tmp',
+            '--dev',
+            '/dev',
+            '--proc',
+            '/proc',
+            'sh',
+            '-lc',
+            'true'
+        ],
+        {
+            encoding: 'utf8'
+        }
+    )
+
+    if (result.status === 0) {
+        BWRAP_PROBE_CACHE.add(bwrap)
+        return ''
+    }
+
+    return (
+        result.stderr?.trim() ||
+        result.error?.message ||
+        'bubblewrap startup probe failed.'
+    )
 }
