@@ -399,8 +399,10 @@ const guide = computed<GuideContent>(() => {
                         'docker run -d --name open-terminal --restart unless-stopped \\',
                         '  -p 8000:8000 \\',
                         '  -v open-terminal:/home/user \\',
+                        '  -e HOME=/home/user \\',
                         '  -e OPEN_TERMINAL_API_KEY=your-secret-key \\',
                         '  -e OPEN_TERMINAL_BINARY_MIME_PREFIXES=image,audio,video,application/pdf,application/zip,application/vnd.openxmlformats-officedocument.,application/octet-stream \\',
+                        '  -w /home/user \\',
                         '  ghcr.io/open-webui/open-terminal'
                     ].join('\n')
                 },
@@ -410,6 +412,7 @@ const guide = computed<GuideContent>(() => {
                         '基础 URL：填写 open-terminal 对外地址，通常是 http://host:8000。',
                         'API 密钥：推荐使用 env:OPEN_TERMINAL_API_KEY，便于统一管理。',
                         '部署模式：按真实部署情况选 Docker / 裸机 / 未知。',
+                        '如果你用 Docker，建议把 HOME 和工作目录都固定到 /home/user，避免新版本 open-terminal 按会话 cwd 解析相对路径时落到 /app 之类的镜像目录。',
                         '用户隔离：只有你明确启用了 open-terminal 的 multi-user 模式时再打开；这个开关主要是配置标记，不会替代底层隔离。',
                         '如果你需要每个用户更强隔离，官方 README 也建议考虑每用户单独容器的方案。'
                     ],
