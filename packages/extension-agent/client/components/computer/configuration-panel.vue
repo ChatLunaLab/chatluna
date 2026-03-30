@@ -399,10 +399,10 @@ const guide = computed<GuideContent>(() => {
                         'docker run -d --name open-terminal --restart unless-stopped \\',
                         '  -p 8000:8000 \\',
                         '  -v open-terminal:/home/user \\',
+                        '  -w /home/user \\',
                         '  -e HOME=/home/user \\',
                         '  -e OPEN_TERMINAL_API_KEY=your-secret-key \\',
                         '  -e OPEN_TERMINAL_BINARY_MIME_PREFIXES=image,audio,video,application/pdf,application/zip,application/vnd.openxmlformats-officedocument.,application/octet-stream \\',
-                        '  -w /home/user \\',
                         '  ghcr.io/open-webui/open-terminal'
                     ].join('\n')
                 },
