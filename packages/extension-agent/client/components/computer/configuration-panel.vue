@@ -420,6 +420,8 @@ const guide = computed<GuideContent>(() => {
                         '基础 URL: http://localhost:8000',
                         'API 密钥: env:OPEN_TERMINAL_API_KEY',
                         '部署模式: docker',
+                        'Docker 环境变量: HOME=/home/user',
+                        'Docker 工作目录: /home/user',
                         '用户隔离: false'
                     ].join('\n')
                 },
