@@ -134,7 +134,7 @@ export class ConversationService {
             routeMode,
             routed?.routeKey
         )
-        let bindingKey =
+        const bindingKey =
             options.bindingKey == null
                 ? applyPresetLane(baseKey, options.presetLane)
                 : options.bindingKey.includes(':preset:')
