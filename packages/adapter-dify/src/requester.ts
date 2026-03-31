@@ -741,6 +741,12 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         }
         const conversationId = id
         const config = this._config.value.additionalModel.get(model)
+        if (config == null || config.workflowName == null) {
+            this.ctx.logger.warn(
+                `Dify clear: config not found for model ${model}`
+            )
+            return
+        }
         const cacheKey = 'dify/' + conversationId + '/' + config.workflowName
         const cached = await this.ctx.chatluna.cache.get(
             'chatluna/keys',

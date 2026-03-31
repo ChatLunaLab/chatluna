@@ -37,8 +37,8 @@ import { apply as clone_preset } from './middlewares/preset/clone_preset'
 import { apply as delete_preset } from './middlewares/preset/delete_preset'
 import { apply as list_all_preset } from './middlewares/preset/list_all_preset'
 import { apply as set_preset } from './middlewares/preset/set_preset'
-import { apply as conversation_manage } from './middlewares/system/conversation_manage'
 import { apply as clear_balance } from './middlewares/system/clear_balance'
+import { apply as conversation_manage } from './middlewares/system/conversation_manage'
 import { apply as lifecycle } from './middlewares/system/lifecycle'
 import { apply as query_balance } from './middlewares/system/query_balance'
 import { apply as restart } from './middlewares/system/restart'
@@ -89,8 +89,8 @@ export async function middleware(ctx: Context, config: Config) {
             delete_preset,
             list_all_preset,
             set_preset,
-            conversation_manage,
             clear_balance,
+            conversation_manage,
             lifecycle,
             query_balance,
             restart,

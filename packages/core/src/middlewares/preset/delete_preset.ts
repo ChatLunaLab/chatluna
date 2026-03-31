@@ -84,7 +84,11 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 ctx.chatluna.currentConfig.defaultPreset = nextPreset
             }
 
-            await fs.rm(presetTemplate.path)
+            try {
+                await fs.rm(presetTemplate.path)
+            } catch (e) {
+                ctx.logger.error(e)
+            }
 
             context.message = session.text('.success', [presetName])
 

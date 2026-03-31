@@ -491,6 +491,10 @@ export class ConversationService {
             conversation.bindingKey
         )
 
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
+
         if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation switch is locked by constraint.')
         }
@@ -555,6 +559,10 @@ export class ConversationService {
         const target = await this.getManagedConstraintByBindingKey(
             conversation.bindingKey
         )
+
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
 
         if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation restore is locked by constraint.')
@@ -669,6 +677,10 @@ export class ConversationService {
             conversation.bindingKey
         )
 
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
+
         if (!(target?.allowExport ?? resolved.constraint.allowExport)) {
             throw new Error('Conversation export is disabled by constraint.')
         }
@@ -709,6 +721,10 @@ export class ConversationService {
         const target = await this.getManagedConstraintByBindingKey(
             conversation.bindingKey
         )
+
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
 
         if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation archive is locked by constraint.')
@@ -884,6 +900,10 @@ export class ConversationService {
             conversation.bindingKey
         )
 
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
+
         if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation restore is locked by constraint.')
         }
@@ -994,7 +1014,27 @@ export class ConversationService {
     }
 
     async exportMarkdown(conversation: ConversationRecord) {
-        const messages = await this.listMessages(conversation.id)
+        let messages: MessageRecord[]
+
+        if (conversation.status === 'archived' && conversation.archiveId) {
+            const archive = await this.getArchive(conversation.archiveId)
+            if (archive != null) {
+                try {
+                    const payload = await this.readArchivePayload(archive.path)
+                    messages = payload.messages.map((msg) => ({
+                        ...msg,
+                        createdAt: new Date(msg.createdAt),
+                        conversationId: conversation.id
+                    })) as unknown as MessageRecord[]
+                } catch {
+                    messages = await this.listMessages(conversation.id)
+                }
+            } else {
+                messages = await this.listMessages(conversation.id)
+            }
+        } else {
+            messages = await this.listMessages(conversation.id)
+        }
 
         return [
             `# ${conversation.title}`,
@@ -1037,6 +1077,9 @@ export class ConversationService {
         const target = await this.getManagedConstraintByBindingKey(
             conversation.bindingKey
         )
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
         if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation rename is locked by constraint.')
         }
@@ -1066,6 +1109,9 @@ export class ConversationService {
         const target = await this.getManagedConstraintByBindingKey(
             conversation.bindingKey
         )
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
         if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation delete is locked by constraint.')
         }
@@ -1337,6 +1383,20 @@ export class ConversationService {
             )
 
             if (conversation == null) {
+                return null
+            }
+
+            if (
+                conversation.status === 'deleted' ||
+                conversation.status === 'broken'
+            ) {
+                return null
+            }
+
+            if (
+                conversation.status === 'archived' &&
+                !options.includeArchived
+            ) {
                 return null
             }
 
@@ -1641,7 +1701,7 @@ export class ConversationService {
 
     private async assertManageAllowed(
         session: Session,
-        constraint: ResolvedConstraint
+        constraint: ResolvedConstraint | ConstraintRecord
     ) {
         if (constraint.manageMode !== 'admin') {
             return
