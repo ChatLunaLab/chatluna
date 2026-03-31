@@ -170,6 +170,7 @@ export class ConversationRuntime {
 
                 return {
                     content: aiMessage.content as string,
+                    additional_kwargs: aiMessage.additional_kwargs,
                     additionalReplyMessages
                 }
             } finally {
@@ -200,6 +201,21 @@ export class ConversationRuntime {
             return await callback()
         } finally {
             await this.conversationQueue.remove(conversationId, requestId)
+        }
+    }
+
+    async withConversationSync<T>(
+        conversation: ConversationRecord,
+        callback: () => Promise<T>
+    ): Promise<T> {
+        const requestId = randomUUID()
+        try {
+            await this.conversationQueue.add(conversation.id, requestId)
+            this.stopConversationRequest(conversation.id)
+            await this.conversationQueue.wait(conversation.id, requestId, 0)
+            return await callback()
+        } finally {
+            await this.conversationQueue.remove(conversation.id, requestId)
         }
     }
 
@@ -328,6 +344,15 @@ export class ConversationRuntime {
         return true
     }
 
+    stopConversationRequest(conversationId: string) {
+        const activeRequest = this.activeByConversation.get(conversationId)
+        if (activeRequest == null) {
+            return false
+        }
+
+        return this.stopRequest(activeRequest.requestId)
+    }
+
     getRequestIdBySession(session: Session) {
         if (session.sid == null) {
             return undefined
@@ -408,25 +433,29 @@ export class ConversationRuntime {
         })
     }
 
+    async clearConversationInterfaceLocked(conversation: ConversationRecord) {
+        const cached = this.interfaces.get(conversation.id)
+        const existed = cached != null
+        await this.service.ctx.root.parallel(
+            'chatluna/conversation-before-cache-clear',
+            {
+                conversation,
+                chatInterface: cached?.chatInterface
+            }
+        )
+        this.interfaces.delete(conversation.id)
+        await this.service.ctx.root.parallel(
+            'chatluna/conversation-after-cache-clear',
+            {
+                conversation
+            }
+        )
+        return existed
+    }
+
     async clearConversationInterface(conversation: ConversationRecord) {
         return this.withConversationLock(conversation.id, async () => {
-            const cached = this.interfaces.get(conversation.id)
-            const existed = cached != null
-            await this.service.ctx.root.parallel(
-                'chatluna/conversation-before-cache-clear',
-                {
-                    conversation,
-                    chatInterface: cached?.chatInterface
-                }
-            )
-            this.interfaces.delete(conversation.id)
-            await this.service.ctx.root.parallel(
-                'chatluna/conversation-after-cache-clear',
-                {
-                    conversation
-                }
-            )
-            return existed
+            return this.clearConversationInterfaceLocked(conversation)
         })
     }
 
@@ -452,6 +481,10 @@ export class ConversationRuntime {
             const active = this.activeByConversation.get(conversationId)
             if (active != null) {
                 this.stopRequest(active.requestId)
+                this.activeByConversation.delete(conversationId)
+                if (active.sessionId != null) {
+                    this.requestBySession.delete(active.sessionId)
+                }
             }
             this.interfaces.delete(conversationId)
         }
