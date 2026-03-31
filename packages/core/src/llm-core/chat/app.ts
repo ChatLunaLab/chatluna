@@ -234,6 +234,14 @@ export class ChatInterface {
             await this.handleChatError(arg, wrapper, error, false)
         }
 
+        autoSummarizeTitle(
+            this.ctx,
+            arg.conversationId,
+            wrapper,
+            arg.message,
+            displayResponse as AIMessage
+        ).catch((e) => logger.error('autoSummarizeTitle error:', e))
+
         return { message: displayResponse }
     }
 
@@ -440,6 +448,43 @@ export class ChatInterface {
 
         return this._infiniteContextManager
     }
+}
+
+async function autoSummarizeTitle(
+    ctx: Context,
+    conversationId: string,
+    wrapper: ChatLunaLLMChainWrapper,
+    humanMsg: HumanMessage,
+    aiMsg: AIMessage
+) {
+    const conversation =
+        await ctx.chatluna.conversation.getConversation(conversationId)
+    if (conversation == null || !conversation.autoTitle) {
+        return
+    }
+
+    const humanContent = getMessageContent(humanMsg.content)
+    const aiContent = getMessageContent(aiMsg.content)
+
+    const prompt =
+        `Generate a concise title for the following conversation.\n` +
+        `Requirements:\n` +
+        `- Length: 5 to 20 characters\n` +
+        `- Use the same language as the user's message\n` +
+        `- Output ONLY the title, no punctuation, no quotes, no explanation\n\n` +
+        `User: ${humanContent}\n` +
+        `Assistant: ${aiContent}`
+
+    const result = await wrapper.model.invoke([new HumanMessage(prompt)])
+    const title = getMessageContent(result.content).trim().slice(0, 20)
+    if (title.length < 5) {
+        return
+    }
+
+    await ctx.chatluna.conversation.touchConversation(conversationId, {
+        title,
+        autoTitle: false
+    })
 }
 
 export interface ChatInterfaceInput {

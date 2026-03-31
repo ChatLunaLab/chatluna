@@ -27,6 +27,8 @@ export type ChatUsageMetadataPart = {
         completionTokens: number
         totalTokens: number
         inputAudioTokens?: number
+        inputImageTokens?: number
+        outputImageTokens?: number
         outputAudioTokens?: number
         cacheReadTokens?: number
         reasoningTokens?: number

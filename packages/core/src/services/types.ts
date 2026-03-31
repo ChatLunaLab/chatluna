@@ -3,10 +3,12 @@ import {
     ACLRecord,
     ArchiveRecord,
     BindingRecord,
+    ConstraintPermission,
     ConstraintRecord,
     ConversationRecord,
     MessageRecord,
-    MetaRecord
+    MetaRecord,
+    ResolveConversationContextOptions
 } from './conversation_types'
 import { ChatLunaService } from './chat'
 import {
@@ -20,6 +22,8 @@ import {
     SubagentContext,
     ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
+import type { ChatInterface } from '../llm-core/chat/app'
+import { MessageQueue } from '../llm-core/agent/types'
 
 export interface LegacyConversationRecord {
     id: string
@@ -89,6 +93,66 @@ export interface ChatEvents {
         log: string
     ) => Promise<void>
     'llm-new-chunk'?: (chunk: BaseMessageChunk) => Promise<void>
+}
+
+export interface RuntimeConversationEntry {
+    conversation: ConversationRecord
+    chatInterface: ChatInterface
+}
+
+export interface ActiveRequest {
+    requestId: string
+    conversationId: string
+    sessionId?: string
+    abortController: AbortController
+    chatMode: string
+    messageQueue: MessageQueue
+    roundDecisionResolvers: ((canContinue: boolean) => void)[]
+    lastDecision?: boolean
+}
+
+export interface ListConversationsOptions extends ResolveConversationContextOptions {
+    includeArchived?: boolean
+}
+
+export interface ResolveTargetConversationOptions extends ResolveConversationContextOptions {
+    targetConversation?: string
+    includeArchived?: boolean
+    permission?: ConstraintPermission
+}
+
+export interface SerializedMessageRecord extends Omit<
+    MessageRecord,
+    'content' | 'additional_kwargs_binary' | 'createdAt'
+> {
+    content?: string | null
+    additional_kwargs_binary?: string | null
+    createdAt?: string | null
+}
+
+export interface ConversationArchivePayload {
+    formatVersion: number
+    exportedAt: string
+    conversation: Omit<
+        ConversationRecord,
+        'createdAt' | 'updatedAt' | 'lastChatAt' | 'archivedAt'
+    > & {
+        createdAt: string
+        updatedAt: string
+        lastChatAt?: string | null
+        archivedAt?: string | null
+    }
+    messages: SerializedMessageRecord[]
+}
+
+export interface ArchiveManifest {
+    format: 'chatluna-archive'
+    formatVersion: number
+    conversationId: string
+    messageCount: number
+    checksum?: string | null
+    size: number
+    createdAt: string
 }
 
 declare module 'koishi' {

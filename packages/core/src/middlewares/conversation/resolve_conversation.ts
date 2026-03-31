@@ -1,23 +1,23 @@
 import { Context } from 'koishi'
-import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../../chains/chain'
 import { Config } from '../../config'
 import type {
     ConversationRecord,
     ResolvedConversationContext
 } from '../../services/conversation_types'
 
-function getPresetLane(
-    context: import('../../chains/chain').ChainMiddlewareContext
-) {
+function getPresetLane(context: ChainMiddlewareContext) {
     return (
         context.options.conversation_manage?.presetLane ??
         context.options.presetLane
     )
 }
 
-function getTargetConversation(
-    context: import('../../chains/chain').ChainMiddlewareContext
-) {
+function getTargetConversation(context: ChainMiddlewareContext) {
     return (
         context.options.conversation_manage?.targetConversation ??
         context.options.targetConversation

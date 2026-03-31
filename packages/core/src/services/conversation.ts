@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
-import type { Session } from 'koishi'
+import type { Context, Session, User } from 'koishi'
 import type { Config } from '../config'
 import {
     bufferToArrayBuffer,
@@ -13,116 +13,64 @@ import {
     applyPresetLane,
     ArchiveRecord,
     BindingRecord,
-    ConversationCompressionRecord,
     computeBaseBindingKey,
+    ConstraintPermission,
     ConstraintRecord,
+    ConversationCompressionRecord,
     ConversationRecord,
     MessageRecord,
-    ConstraintPermission,
     ResolveConversationContextOptions,
     ResolvedConstraint,
     ResolvedConversationContext,
     RouteMode
 } from './conversation_types'
-
-interface ListConversationsOptions extends ResolveConversationContextOptions {
-    includeArchived?: boolean
-}
-
-interface ResolveTargetConversationOptions extends ResolveConversationContextOptions {
-    targetConversation?: string
-    includeArchived?: boolean
-    permission?: ConstraintPermission
-}
-
-interface SerializedMessageRecord extends Omit<
-    MessageRecord,
-    'content' | 'additional_kwargs_binary' | 'createdAt'
-> {
-    content?: string | null
-    additional_kwargs_binary?: string | null
-    createdAt?: string | null
-}
-
-interface ConversationArchivePayload {
-    formatVersion: number
-    exportedAt: string
-    conversation: Omit<
-        ConversationRecord,
-        'createdAt' | 'updatedAt' | 'lastChatAt' | 'archivedAt'
-    > & {
-        createdAt: string
-        updatedAt: string
-        lastChatAt?: string | null
-        archivedAt?: string | null
-    }
-    messages: SerializedMessageRecord[]
-}
-
-interface ArchiveManifest {
-    format: 'chatluna-archive'
-    formatVersion: number
-    conversationId: string
-    messageCount: number
-    checksum?: string | null
-    size: number
-    createdAt: string
-}
+import {
+    ArchiveManifest,
+    ConversationArchivePayload,
+    ListConversationsOptions,
+    ResolveTargetConversationOptions,
+    SerializedMessageRecord
+} from './types'
 
 export class ConversationService {
     constructor(
-        private readonly ctx: import('koishi').Context,
+        private readonly ctx: Context,
         private readonly config: Config
     ) {}
 
     async getConversation(id: string) {
         return (
-            await this.ctx.database.get('chatluna_conversation', {
-                id
-            })
+            await this.ctx.database.get('chatluna_conversation', { id })
         )[0] as ConversationRecord | undefined
     }
 
     async getBinding(bindingKey: string) {
         return (
-            await this.ctx.database.get('chatluna_binding', {
-                bindingKey
-            })
+            await this.ctx.database.get('chatluna_binding', { bindingKey })
         )[0] as BindingRecord | undefined
     }
 
     async getArchive(id: string) {
-        return (
-            await this.ctx.database.get('chatluna_archive', {
-                id
-            })
-        )[0] as ArchiveRecord | undefined
+        return (await this.ctx.database.get('chatluna_archive', { id }))[0] as
+            | ArchiveRecord
+            | undefined
     }
 
     async getArchiveByConversationId(conversationId: string) {
         return (
-            await this.ctx.database.get('chatluna_archive', {
-                conversationId
-            })
+            await this.ctx.database.get('chatluna_archive', { conversationId })
         )[0] as ArchiveRecord | undefined
     }
 
     async listConstraints() {
-        const constraints = (await this.ctx.database.get(
-            'chatluna_constraint',
-            {}
-        )) as ConstraintRecord[]
-
-        return constraints
-            .filter((constraint) => constraint.enabled !== false)
-            .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
-    }
-
-    async matchConstraints(session: Session) {
-        const constraints = await this.listConstraints()
-        return constraints.filter((constraint) =>
-            this.isConstraintMatched(constraint, session)
+        return (
+            (await this.ctx.database.get(
+                'chatluna_constraint',
+                {}
+            )) as ConstraintRecord[]
         )
+            .filter((c) => c.enabled !== false)
+            .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
     }
 
     isConstraintMatched(constraint: ConstraintRecord, session: Session) {
@@ -155,12 +103,12 @@ export class ConversationService {
         }
 
         const users = parseJsonArray(constraint.users)
-        if (users && !users.includes(session.userId)) {
+        if (users != null && !users.includes(session.userId)) {
             return false
         }
 
         const excludeUsers = parseJsonArray(constraint.excludeUsers)
-        if (excludeUsers && excludeUsers.includes(session.userId)) {
+        if (excludeUsers != null && excludeUsers.includes(session.userId)) {
             return false
         }
 
@@ -171,11 +119,10 @@ export class ConversationService {
         session: Session,
         options: ResolveConversationContextOptions = {}
     ): Promise<ResolvedConstraint> {
-        const constraints = await this.matchConstraints(session)
-        const routed = constraints.find(
-            (constraint) => constraint.routeMode != null
+        const constraints = (await this.listConstraints()).filter((c) =>
+            this.isConstraintMatched(c, session)
         )
-
+        const routed = constraints.find((c) => c.routeMode != null)
         const routeMode = routed?.routeMode ?? this.getDefaultRouteMode(session)
         const baseKey = computeBaseBindingKey(
             session,
@@ -225,6 +172,7 @@ export class ConversationService {
             constraint.bindingKey
         )
         const binding = matched?.binding
+        const bindingKey = matched?.bindingKey ?? constraint.bindingKey
         const conversation = options.conversationId
             ? await this.getConversation(options.conversationId)
             : binding?.activeConversationId
@@ -236,13 +184,13 @@ export class ConversationService {
                 session,
                 conversation,
                 'view',
-                matched?.bindingKey ?? constraint.bindingKey
+                bindingKey
             ))
                 ? conversation
                 : null
 
         return {
-            bindingKey: matched?.bindingKey ?? constraint.bindingKey,
+            bindingKey,
             presetLane: options.presetLane,
             binding: binding ?? null,
             conversation: allowedConversation,
@@ -276,24 +224,24 @@ export class ConversationService {
             }
         }
 
-        const suffix = bindingKey.includes(':preset:')
-            ? bindingKey.slice(bindingKey.indexOf(':preset:'))
-            : ''
+        const idx = bindingKey.indexOf(':preset:')
+        const suffix = idx >= 0 ? bindingKey.slice(idx) : ''
 
         if (bindingKey.startsWith('custom:')) {
             return null
         }
 
+        const guildOrChannel = session.guildId ?? session.channelId ?? 'unknown'
         const keys = session.isDirect
             ? [`personal:legacy:legacy:direct:${session.userId}${suffix}`]
             : bindingKey.startsWith('shared:')
               ? [
-                    `shared:legacy:legacy:${session.guildId ?? session.channelId ?? 'unknown'}${suffix}`,
-                    `personal:legacy:legacy:${session.guildId ?? session.channelId ?? 'unknown'}:${session.userId}${suffix}`
+                    `shared:legacy:legacy:${guildOrChannel}${suffix}`,
+                    `personal:legacy:legacy:${guildOrChannel}:${session.userId}${suffix}`
                 ]
               : [
-                    `personal:legacy:legacy:${session.guildId ?? session.channelId ?? 'unknown'}:${session.userId}${suffix}`,
-                    `shared:legacy:legacy:${session.guildId ?? session.channelId ?? 'unknown'}${suffix}`
+                    `personal:legacy:legacy:${guildOrChannel}:${session.userId}${suffix}`,
+                    `shared:legacy:legacy:${guildOrChannel}${suffix}`
                 ]
 
         for (const key of keys) {
@@ -328,12 +276,6 @@ export class ConversationService {
             if (resolved.conversation.status === 'archived') {
                 await this.assertManageAllowed(session, resolved.constraint)
 
-                if (resolved.constraint.lockConversation) {
-                    throw new Error(
-                        'Conversation restore is locked by constraint.'
-                    )
-                }
-
                 if (!resolved.constraint.allowArchive) {
                     throw new Error(
                         'Conversation restore is disabled by constraint.'
@@ -366,9 +308,9 @@ export class ConversationService {
 
         const conversation = await this.createConversation(session, {
             bindingKey: resolved.bindingKey,
-            preset: resolved.effectivePreset ?? this.config.defaultPreset,
-            model: resolved.effectiveModel ?? this.config.defaultModel,
-            chatMode: resolved.effectiveChatMode ?? this.config.defaultChatMode,
+            preset: resolved.effectivePreset,
+            model: resolved.effectiveModel,
+            chatMode: resolved.effectiveChatMode,
             title: options.presetLane ?? 'New Conversation'
         })
 
@@ -408,7 +350,8 @@ export class ConversationService {
             archivedAt: null,
             archiveId: null,
             legacyRoomId: null,
-            legacyMeta: null
+            legacyMeta: null,
+            autoTitle: true
         }
 
         await this.ctx.root.parallel('chatluna/conversation-before-create', {
@@ -426,13 +369,13 @@ export class ConversationService {
 
     async setActiveConversation(bindingKey: string, conversationId: string) {
         const current = await this.getBinding(bindingKey)
+        const prev = current?.activeConversationId
         const payload: BindingRecord = {
             bindingKey,
             activeConversationId: conversationId,
             lastConversationId:
-                current?.activeConversationId != null &&
-                current.activeConversationId !== conversationId
-                    ? current.activeConversationId
+                prev != null && prev !== conversationId
+                    ? prev
                     : (current?.lastConversationId ?? null),
             updatedAt: new Date()
         }
@@ -453,7 +396,6 @@ export class ConversationService {
         const updated: ConversationRecord = {
             ...current,
             ...patch,
-            id: current.id,
             updatedAt: patch.updatedAt ?? new Date()
         }
 
@@ -473,18 +415,17 @@ export class ConversationService {
             }
         )) as ConversationRecord[]
 
-        const includeArchived = options.includeArchived === true
-
         return conversations
             .filter(
                 (conversation) =>
                     conversation.status !== 'deleted' &&
                     conversation.status !== 'broken' &&
-                    (includeArchived || conversation.status !== 'archived')
+                    (options.includeArchived ||
+                        conversation.status !== 'archived')
             )
             .sort((a, b) => {
-                const left = a.lastChatAt ?? a.updatedAt ?? a.createdAt
-                const right = b.lastChatAt ?? b.updatedAt ?? b.createdAt
+                const left = a.lastChatAt ?? a.updatedAt
+                const right = b.lastChatAt ?? b.updatedAt
                 return right.getTime() - left.getTime()
             })
     }
@@ -598,7 +539,7 @@ export class ConversationService {
         conversationId: string,
         records: Omit<ACLRecord, 'conversationId'>[]
     ) {
-        if (records.length < 1) {
+        if (records.length === 0) {
             return [] as ACLRecord[]
         }
 
@@ -628,7 +569,7 @@ export class ConversationService {
         conversationId: string,
         records?: Partial<Omit<ACLRecord, 'conversationId'>>[]
     ) {
-        if (records == null || records.length < 1) {
+        if (records == null || records.length === 0) {
             await this.ctx.database.remove('chatluna_acl', {
                 conversationId
             })
@@ -637,30 +578,15 @@ export class ConversationService {
 
         const current = await this.listAcl(conversationId)
         const removed = current.filter((item) =>
-            records.some((record) => {
-                if (
-                    record.principalType != null &&
-                    record.principalType !== item.principalType
-                ) {
-                    return false
-                }
-
-                if (
-                    record.principalId != null &&
-                    record.principalId !== item.principalId
-                ) {
-                    return false
-                }
-
-                if (
-                    record.permission != null &&
-                    record.permission !== item.permission
-                ) {
-                    return false
-                }
-
-                return true
-            })
+            records.some(
+                (record) =>
+                    (record.principalType == null ||
+                        record.principalType === item.principalType) &&
+                    (record.principalId == null ||
+                        record.principalId === item.principalId) &&
+                    (record.permission == null ||
+                        record.permission === item.permission)
+            )
         )
 
         for (const item of removed) {
@@ -693,21 +619,19 @@ export class ConversationService {
         }
 
         const markdown = await this.exportMarkdown(conversation)
-        const exportDir = await this.ensureDataDir('export')
         const outputPath =
             options.outputPath ??
-            path.join(exportDir, `${conversation.id}-${Date.now()}.md`)
+            path.join(
+                await this.ensureDataDir('export'),
+                `${conversation.id}-${Date.now()}.md`
+            )
 
         await fs.writeFile(outputPath, markdown, 'utf8')
-
-        const size = Buffer.byteLength(markdown)
-        const checksum = createHash('sha256').update(markdown).digest('hex')
 
         return {
             conversation,
             path: outputPath,
-            size,
-            checksum
+            size: Buffer.byteLength(markdown)
         }
     }
 
@@ -762,14 +686,17 @@ export class ConversationService {
             }
         }
 
-        const archiveDir = path.resolve(
-            this.ctx.baseDir,
-            'data/chatluna/archive',
-            conversation.id
+        const archiveDir = await this.ensureDataDir(
+            path.join('archive', conversation.id)
         )
-        await fs.mkdir(archiveDir, { recursive: true })
 
-        const payload = await this.buildArchivePayload(conversation)
+        const messages = await this.listMessages(conversation.id)
+        const payload: ConversationArchivePayload = {
+            formatVersion: 1,
+            exportedAt: new Date().toISOString(),
+            conversation: serializeConversation(conversation),
+            messages: messages.map(serializeMessage)
+        }
         const messageLines = payload.messages
             .map((message) => JSON.stringify(message))
             .join('\n')
@@ -788,6 +715,7 @@ export class ConversationService {
             messageBuffer
         )
 
+        const now = new Date()
         const manifest: ArchiveManifest = {
             format: 'chatluna-archive',
             formatVersion: payload.formatVersion,
@@ -795,7 +723,7 @@ export class ConversationService {
             messageCount: payload.messages.length,
             checksum,
             size: messageBuffer.byteLength,
-            createdAt: new Date().toISOString()
+            createdAt: now.toISOString()
         }
         await fs.writeFile(
             path.join(archiveDir, 'manifest.json'),
@@ -805,21 +733,21 @@ export class ConversationService {
 
         const archive: ArchiveRecord = {
             id: randomUUID(),
-            conversationId: conversation.id,
+            conversationId: manifest.conversationId,
             path: archiveDir,
-            formatVersion: payload.formatVersion,
-            messageCount: payload.messages.length,
-            checksum,
-            size: messageBuffer.byteLength,
+            formatVersion: manifest.formatVersion,
+            messageCount: manifest.messageCount,
+            checksum: manifest.checksum,
+            size: manifest.size,
             state: 'ready',
-            createdAt: new Date(),
+            createdAt: now,
             restoredAt: null
         }
 
         await this.ctx.database.upsert('chatluna_archive', [archive])
         await this.touchConversation(conversation.id, {
             status: 'archived',
-            archivedAt: new Date(),
+            archivedAt: now,
             archiveId: archive.id
         })
         await this.unbindConversation(conversation.id)
@@ -852,10 +780,10 @@ export class ConversationService {
         } = {}
     ) {
         const resolved = await this.resolveContext(session, options)
-        const targetConversation = options.conversationId
-            ? await this.getConversation(options.conversationId)
+        const conversation = options.conversationId
+            ? ((await this.getConversation(options.conversationId)) ??
+              resolved.conversation)
             : resolved.conversation
-        const conversation = targetConversation ?? resolved.conversation
 
         if (conversation == null) {
             throw new Error('Conversation not found.')
@@ -965,19 +893,6 @@ export class ConversationService {
         }
     }
 
-    private async buildArchivePayload(
-        conversation: ConversationRecord
-    ): Promise<ConversationArchivePayload> {
-        const messages = await this.listMessages(conversation.id)
-
-        return {
-            formatVersion: 1,
-            exportedAt: new Date().toISOString(),
-            conversation: serializeConversation(conversation),
-            messages: messages.map(serializeMessage)
-        }
-    }
-
     async exportMarkdown(conversation: ConversationRecord) {
         const messages = await this.listMessages(conversation.id)
 
@@ -1026,10 +941,7 @@ export class ConversationService {
         const updated = await this.touchConversation(conversation.id, {
             title: options.title.trim()
         })
-        if (updated == null) {
-            throw new Error('Conversation not found.')
-        }
-        return updated
+        return updated!
     }
 
     async deleteConversation(
@@ -1088,31 +1000,22 @@ export class ConversationService {
             throw new Error('Conversation update is locked by constraint.')
         }
 
-        if (options.model != null && resolved.constraint.fixedModel != null) {
-            throw new Error(
-                `Model is fixed to ${resolved.constraint.fixedModel}.`
-            )
-        }
-
-        if (options.preset != null && resolved.constraint.fixedPreset != null) {
-            throw new Error(
-                `Preset is fixed to ${resolved.constraint.fixedPreset}.`
-            )
-        }
-
-        if (
-            options.chatMode != null &&
-            resolved.constraint.fixedChatMode != null
-        ) {
-            throw new Error(
-                `Chat mode is fixed to ${resolved.constraint.fixedChatMode}.`
-            )
+        for (const [key, fixedKey] of [
+            ['model', 'fixedModel'],
+            ['preset', 'fixedPreset'],
+            ['chatMode', 'fixedChatMode']
+        ] as const) {
+            if (options[key] != null && resolved.constraint[fixedKey] != null) {
+                throw new Error(
+                    `${key} is fixed to ${resolved.constraint[fixedKey]}.`
+                )
+            }
         }
 
         const updated = await this.touchConversation(resolved.conversation.id, {
-            model: options.model ?? resolved.conversation.model,
-            preset: options.preset ?? resolved.conversation.preset,
-            chatMode: options.chatMode ?? resolved.conversation.chatMode
+            model: options.model,
+            preset: options.preset,
+            chatMode: options.chatMode
         })
 
         if (updated == null) {
@@ -1137,11 +1040,11 @@ export class ConversationService {
             remainingMessageCount: number
         }
     ) {
+        const conversation = await this.getConversation(conversationId)
         if (!result.compressed) {
-            return await this.getConversation(conversationId)
+            return conversation
         }
 
-        const conversation = await this.getConversation(conversationId)
         if (conversation == null) {
             return undefined
         }
@@ -1200,14 +1103,11 @@ export class ConversationService {
             : `guild:${session.guildId ?? session.channelId ?? 'unknown'}`
         const record: ConstraintRecord = {
             id: current?.id,
-            name:
-                current?.name ??
-                `managed:${session.platform}:${session.selfId}:${route}`,
-            enabled: current?.enabled ?? true,
-            priority: current?.priority ?? 1000,
-            createdBy: current?.createdBy ?? session.userId,
-            createdAt: current?.createdAt ?? now,
-            updatedAt: now,
+            name: `managed:${session.platform}:${session.selfId}:${route}`,
+            enabled: true,
+            priority: 1000,
+            createdBy: session.userId,
+            createdAt: now,
             platform: session.platform,
             selfId: session.selfId,
             guildId: session.isDirect
@@ -1217,21 +1117,23 @@ export class ConversationService {
             direct: session.isDirect,
             users: session.isDirect ? JSON.stringify([session.userId]) : null,
             excludeUsers: null,
-            routeMode: current?.routeMode ?? null,
-            routeKey: current?.routeKey ?? null,
-            defaultModel: current?.defaultModel ?? null,
-            defaultPreset: current?.defaultPreset ?? null,
-            defaultChatMode: current?.defaultChatMode ?? null,
-            fixedModel: current?.fixedModel ?? null,
-            fixedPreset: current?.fixedPreset ?? null,
-            fixedChatMode: current?.fixedChatMode ?? null,
-            lockConversation: current?.lockConversation ?? null,
-            allowNew: current?.allowNew ?? null,
-            allowSwitch: current?.allowSwitch ?? null,
-            allowArchive: current?.allowArchive ?? null,
-            allowExport: current?.allowExport ?? null,
-            manageMode: current?.manageMode ?? 'admin',
-            ...patch
+            routeMode: null,
+            routeKey: null,
+            defaultModel: null,
+            defaultPreset: null,
+            defaultChatMode: null,
+            fixedModel: null,
+            fixedPreset: null,
+            fixedChatMode: null,
+            lockConversation: null,
+            allowNew: null,
+            allowSwitch: null,
+            allowArchive: null,
+            allowExport: null,
+            manageMode: 'admin',
+            ...current,
+            ...patch,
+            updatedAt: now
         }
 
         await this.ctx.database.upsert('chatluna_constraint', [record])
@@ -1247,27 +1149,21 @@ export class ConversationService {
     }
 
     private async allocateConversationSeq(bindingKey: string) {
-        const conversations = (await this.ctx.database.get(
+        const [latest] = (await this.ctx.database.get(
             'chatluna_conversation',
-            {
-                bindingKey
-            }
+            { bindingKey },
+            { sort: { seq: 'desc' }, limit: 1 }
         )) as ConversationRecord[]
-
-        const maxSeq = conversations.reduce((current, conversation) => {
-            const seq = conversation.seq ?? 0
-            return seq > current ? seq : current
-        }, 0)
-
-        return maxSeq + 1
+        return (latest?.seq ?? 0) + 1
     }
 
     async resolveTargetConversation(
         session: Session,
         options: ResolveTargetConversationOptions = {}
     ) {
+        const resolved = await this.resolveContext(session, options)
+
         if (options.conversationId != null) {
-            const resolved = await this.resolveContext(session, options)
             const conversation = await this.getConversation(
                 options.conversationId
             )
@@ -1292,7 +1188,6 @@ export class ConversationService {
             return conversation
         }
 
-        const resolved = await this.resolveContext(session, options)
         const target = options.targetConversation?.trim()
 
         if (target == null || target.length === 0) {
@@ -1304,18 +1199,14 @@ export class ConversationService {
             includeArchived: options.includeArchived
         })
 
-        const byId = conversations.find(
-            (conversation) => conversation.id === target
-        )
+        const byId = conversations.find((c) => c.id === target)
         if (byId != null) {
             return byId
         }
 
         if (/^\d+$/.test(target)) {
             const seq = Number(target)
-            const bySeq = conversations.find(
-                (conversation) => conversation.seq === seq
-            )
+            const bySeq = conversations.find((c) => c.seq === seq)
             if (bySeq != null) {
                 return bySeq
             }
@@ -1323,15 +1214,14 @@ export class ConversationService {
 
         const normalized = target.toLocaleLowerCase()
         const exactTitle = conversations.find(
-            (conversation) =>
-                conversation.title.toLocaleLowerCase() === normalized
+            (c) => c.title.toLocaleLowerCase() === normalized
         )
         if (exactTitle != null) {
             return exactTitle
         }
 
-        const partialMatches = conversations.filter((conversation) =>
-            conversation.title.toLocaleLowerCase().includes(normalized)
+        const partialMatches = conversations.filter((c) =>
+            c.title.toLocaleLowerCase().includes(normalized)
         )
 
         if (partialMatches.length === 1) {
@@ -1350,23 +1240,20 @@ export class ConversationService {
             seq: /^\d+$/.test(target) ? Number(target) : undefined
         })
 
-        const globalById = globalMatches.find(
-            (conversation) => conversation.id === target
-        )
+        const globalById = globalMatches.find((c) => c.id === target)
         if (globalById != null) {
             return globalById
         }
 
         const globalExactTitle = globalMatches.find(
-            (conversation) =>
-                conversation.title.toLocaleLowerCase() === normalized
+            (c) => c.title.toLocaleLowerCase() === normalized
         )
         if (globalExactTitle != null) {
             return globalExactTitle
         }
 
-        const globalPartialMatches = globalMatches.filter((conversation) =>
-            conversation.title.toLocaleLowerCase().includes(normalized)
+        const globalPartialMatches = globalMatches.filter((c) =>
+            c.title.toLocaleLowerCase().includes(normalized)
         )
 
         if (globalPartialMatches.length === 1) {
@@ -1439,10 +1326,7 @@ export class ConversationService {
         session: Session,
         options: ResolveTargetConversationOptions = {}
     ) {
-        return this.resolveTargetConversation(session, {
-            ...options,
-            permission: options.permission ?? 'view'
-        })
+        return this.resolveTargetConversation(session, options)
     }
 
     private async readArchivePayload(archivePath: string) {
@@ -1477,6 +1361,7 @@ export class ConversationService {
             }
         }
 
+        // Legacy format: single gzip file containing the full payload JSON
         const compressed = await fs.readFile(archivePath)
         const content = await gzipDecode(compressed)
         return JSON.parse(content) as ConversationArchivePayload
@@ -1489,6 +1374,7 @@ export class ConversationService {
     }
 
     private async unbindConversation(conversationId: string) {
+        // Full table scan needed as minari doesn't support OR conditions in queries
         const bindings = (await this.ctx.database.get(
             'chatluna_binding',
             {}
@@ -1583,8 +1469,12 @@ function serializeConversation(
         ...conversation,
         createdAt: conversation.createdAt.toISOString(),
         updatedAt: conversation.updatedAt.toISOString(),
-        lastChatAt: conversation.lastChatAt?.toISOString() ?? null,
-        archivedAt: conversation.archivedAt?.toISOString() ?? null
+        lastChatAt: conversation.lastChatAt
+            ? conversation.lastChatAt.toISOString()
+            : null,
+        archivedAt: conversation.archivedAt
+            ? conversation.archivedAt.toISOString()
+            : null
     }
 }
 
@@ -1668,25 +1558,9 @@ function parseCompressionRecord(value?: string | null) {
 }
 
 async function isAdmin(session: Session) {
-    if (
-        (session as Session & { user?: { authority?: number } }).user
-            ?.authority != null
-    ) {
-        return (
-            ((session as Session & { user?: { authority?: number } }).user
-                ?.authority ?? 0) >= 3
-        )
-    }
-
-    if ((session as Session & { authority?: number }).authority != null) {
-        return (
-            ((session as Session & { authority?: number }).authority ?? 0) >= 3
-        )
-    }
-
-    if (typeof session.getUser === 'function') {
-        const user = await session.getUser(session.userId, ['authority'])
-        return (user?.authority ?? 0) >= 3
+    const s = session as Session<User.Field>
+    if (s.user?.authority != null) {
+        return s.user.authority >= 3
     }
 
     return false

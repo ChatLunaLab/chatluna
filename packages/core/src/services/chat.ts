@@ -1,4 +1,3 @@
-import { type UsageMetadata } from '@langchain/core/messages'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import fs from 'fs'
 import path from 'path'
@@ -73,8 +72,8 @@ import type { Notifier } from '@koishijs/plugin-notifier'
 import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { createChatPrompt } from 'koishi-plugin-chatluna/utils/chatluna'
 import {
-    LEGACY_MIGRATION_TABLES,
-    getLegacySchemaSentinel
+    getLegacySchemaSentinel,
+    LEGACY_MIGRATION_TABLES
 } from '../migration/legacy_tables'
 
 export class ChatLunaService extends Service<Config> {
@@ -759,6 +758,10 @@ export class ChatLunaService extends Service<Config> {
                 legacyMeta: {
                     type: 'text',
                     nullable: true
+                },
+                autoTitle: {
+                    type: 'boolean',
+                    nullable: true
                 }
             },
             {
@@ -1371,37 +1374,6 @@ export class ChatLunaPlugin<
 
         return webSocket
     }
-}
-
-function formatUsageMetadataMessage(usage: UsageMetadata) {
-    const input = [
-        ...(usage.input_token_details?.audio != null
-            ? [`audio=${usage.input_token_details.audio}`]
-            : []),
-        ...(usage.input_token_details?.cache_read != null
-            ? [`cache_read=${usage.input_token_details.cache_read}`]
-            : []),
-        ...(usage.input_token_details?.cache_creation != null
-            ? [`cache_creation=${usage.input_token_details.cache_creation}`]
-            : [])
-    ]
-    const output = [
-        ...(usage.output_token_details?.audio != null
-            ? [`audio=${usage.output_token_details.audio}`]
-            : []),
-        ...(usage.output_token_details?.reasoning != null
-            ? [`reasoning=${usage.output_token_details.reasoning}`]
-            : [])
-    ]
-
-    return [
-        'Token usage:',
-        `- input: ${usage.input_tokens}`,
-        `- output: ${usage.output_tokens}`,
-        `- total: ${usage.total_tokens}`,
-        ...(input.length > 0 ? [`- input details: ${input.join(', ')}`] : []),
-        ...(output.length > 0 ? [`- output details: ${output.join(', ')}`] : [])
-    ].join('\n')
 }
 
 // eslint-disable-next-line @typescript-eslint/no-namespace

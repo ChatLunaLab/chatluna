@@ -1,6 +1,9 @@
-import { ChatLunaError, ChatLunaErrorCode } from './error'
-import { ObjectLock } from './lock'
-import { withResolver } from './promise'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
+import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 const TIME_MINUTE = 60 * 1000
 
 interface QueueItem {

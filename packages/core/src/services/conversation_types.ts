@@ -41,6 +41,7 @@ export interface ConversationRecord {
     archiveId?: string | null
     legacyRoomId?: number | null
     legacyMeta?: string | null
+    autoTitle?: boolean | null
 }
 
 export interface MessageRecord {

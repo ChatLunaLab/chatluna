@@ -1,57 +1,20 @@
-import {
-    AIMessage,
-    BaseMessageChunk,
-    HumanMessage
-} from '@langchain/core/messages'
+import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import type { Session } from 'koishi'
 import { LRUCache } from 'lru-cache'
-import type { ChatInterface } from '../llm-core/chat/app'
-import {
-    type AgentAction,
-    MessageQueue,
-    type ToolMask
-} from '../llm-core/agent/types'
-import { RequestIdQueue } from '../utils/queue'
+import { MessageQueue, type ToolMask } from '../llm-core/agent/types'
+import { RequestIdQueue } from 'koishi-plugin-chatluna/utils/queue'
 import { randomUUID } from 'crypto'
 import type { ChatLunaService } from './chat'
-import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { parseRawModelName } from '../utils/model'
 import { ConversationRecord } from './conversation_types'
 import { Message } from '../types'
 import type { PostHandler } from '../utils/types'
-
-export interface ChatEvents {
-    'llm-new-token'?: (token: string) => Promise<void>
-    'llm-queue-waiting'?: (size: number) => Promise<void>
-    'llm-used-token-count'?: (token: number) => Promise<void>
-    'llm-call-tool'?: (
-        tool: string,
-        args: any,
-        content: AgentAction['content'],
-        log: string
-    ) => Promise<void>
-    'llm-new-chunk'?: (chunk: BaseMessageChunk) => Promise<void>
-}
-
-export interface RuntimeConversationEntry {
-    conversation: ConversationRecord
-    chatInterface: ChatInterface
-}
-
-export interface ActiveRequest {
-    requestId: string
-    conversationId: string
-    sessionId?: string
-    abortController: AbortController
-    chatMode: string
-    messageQueue: MessageQueue
-    roundDecisionResolvers: ((canContinue: boolean) => void)[]
-    lastDecision?: boolean
-}
-
-function createAbortError() {
-    return new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
-}
+import { ActiveRequest, ChatEvents, RuntimeConversationEntry } from './types'
+import { type UsageMetadata } from '@langchain/core/messages'
 
 export class ConversationRuntime {
     readonly interfaces = new LRUCache<string, RuntimeConversationEntry>({
@@ -203,7 +166,6 @@ export class ConversationRuntime {
         const cached = this.interfaces.get(conversation.id)
         if (cached != null) {
             cached.conversation = conversation
-            this.interfaces.set(conversation.id, cached)
         }
     }
 
@@ -337,7 +299,9 @@ export class ConversationRuntime {
         if (abortController == null) {
             return false
         }
-        abortController.abort(createAbortError())
+        abortController.abort(
+            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+        )
         this.requestsById.delete(requestId)
         return true
     }
@@ -401,7 +365,6 @@ export class ConversationRuntime {
                 chatInterface
             )
             await chatInterface.clearChatHistory()
-            chatInterface.dispose?.()
             this.interfaces.delete(conversation.id)
             await this.service.ctx.root.parallel(
                 'chatluna/conversation-after-clear-history',
@@ -448,7 +411,9 @@ export class ConversationRuntime {
 
     dispose(platform?: string) {
         for (const controller of this.requestsById.values()) {
-            controller.abort(createAbortError())
+            controller.abort(
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
         }
 
         if (platform == null) {
@@ -478,15 +443,59 @@ export class ConversationRuntime {
     }
 }
 
-function formatUsageMetadataMessage(usage: {
-    input_tokens?: number
-    output_tokens?: number
-    total_tokens?: number
-}) {
+function formatUsageMetadataMessage(usage: UsageMetadata) {
+    const input = [
+        ...(usage.input_token_details?.audio != null &&
+        usage.input_token_details?.audio > 0
+            ? [`audio=${usage.input_token_details.audio}`]
+            : []),
+        ...(usage.input_token_details?.image != null &&
+        usage.input_token_details?.image > 0
+            ? [`image=${usage.input_token_details.image}`]
+            : []),
+        ...(usage.input_token_details?.video != null &&
+        usage.input_token_details?.video > 0
+            ? [`video=${usage.input_token_details.video}`]
+            : []),
+        ...(usage.input_token_details?.document > 0
+            ? [`document=${usage.input_token_details.document}`]
+            : []),
+        ...(usage.input_token_details?.cache_read != null
+            ? [`cache_read=${usage.input_token_details.cache_read}`]
+            : []),
+        ...(usage.input_token_details?.cache_creation != null
+            ? [`cache_creation=${usage.input_token_details.cache_creation}`]
+            : [])
+    ]
+    const output = [
+        ...(usage.input_token_details?.audio != null &&
+        usage.input_token_details?.audio > 0
+            ? [`audio=${usage.input_token_details.audio}`]
+            : []),
+        ...(usage.input_token_details?.image != null &&
+        usage.input_token_details?.image > 0
+            ? [`image=${usage.input_token_details.image}`]
+            : []),
+        ...(usage.input_token_details?.video != null &&
+        usage.input_token_details?.video > 0
+            ? [`video=${usage.input_token_details.video}`]
+            : []),
+        ...(usage.input_token_details?.document > 0
+            ? [`document=${usage.input_token_details.document}`]
+            : []),
+        ...(usage.output_token_details?.reasoning != null
+            ? [`reasoning=${usage.output_token_details.reasoning}`]
+            : [])
+    ]
+
     return [
         'Token usage:',
-        `- input: ${usage.input_tokens ?? 0}`,
-        `- output: ${usage.output_tokens ?? 0}`,
-        `- total: ${usage.total_tokens ?? 0}`
+        `- input: ${usage.input_tokens}`,
+        `- output: ${usage.output_tokens}`,
+        `- total: ${usage.total_tokens}`,
+        ...(input.length > 0 ? [`- input details: ${input.join(', ')}`] : []),
+        ...(output.length > 0 ? [`- output details: ${output.join(', ')}`] : [])
     ].join('\n')
 }
+
+export { ChatEvents, RuntimeConversationEntry, ActiveRequest } from './types'

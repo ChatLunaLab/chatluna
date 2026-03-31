@@ -1,9 +1,8 @@
 import { Context, h } from 'koishi'
-import { gzipDecode } from 'koishi-plugin-chatluna/utils/string'
+import { gzipDecode, getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { MessageRecord } from '../../services/conversation_types'
-import { getMessageContent } from '../../utils/string'
 import { logger } from '../..'
 
 async function decodeMessageContent(message: MessageRecord) {

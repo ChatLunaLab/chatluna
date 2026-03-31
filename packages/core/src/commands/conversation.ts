@@ -1,4 +1,4 @@
-import { Command, Context } from 'koishi'
+import { Command, Context, Session } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -21,7 +21,7 @@ function setOptionChoices(cmd: Command, name: string, values: string[]) {
 
 async function completeConversationTarget(
     ctx: Context,
-    session: import('koishi').Session,
+    session: Session,
     target?: string,
     presetLane?: string,
     includeArchived = true
@@ -62,9 +62,6 @@ async function completeConversationTarget(
 }
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const presets = ctx.chatluna.preset
-        .getAllPreset(true)
-        .value.flatMap((entry) => entry.split(',').map((item) => item.trim()))
     const modes = ['chat', 'plugin', 'browsing']
     const shares = ['personal', 'shared', 'reset']
     const locks = ['on', 'off', 'toggle', 'reset']
@@ -88,7 +85,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         authority: 1
     })
     newCommand
-        .alias('chatluna.chat.new')
         .alias('chatluna.clear')
         .option('preset', '-p <preset:string>')
         .option('model', '-m <model:string>')
@@ -108,7 +104,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(newCommand, 'preset', presets)
     setOptionChoices(newCommand, 'model', models)
     setOptionChoices(newCommand, 'chatMode', modes)
 
@@ -116,7 +111,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         authority: 1
     })
     switchCommand
-        .alias('chatluna.chat.switch')
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
             const presetLane = normalizeTarget(options.preset)
@@ -138,12 +132,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(switchCommand, 'preset', presets)
 
     ctx.command('chatluna.list', {
         authority: 1
     })
-        .alias('chatluna.chat.list')
         .option('page', '-p <page:number>')
         .option('limit', '-l <limit:number>')
         .option('archived', '-a')
@@ -170,7 +162,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         authority: 1
     })
     currentCommand
-        .alias('chatluna.chat.current')
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }) => {
             await chain.receiveCommand(
@@ -184,7 +175,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(currentCommand, 'preset', presets)
 
     const archiveCommand = ctx.command(
         'chatluna.archive [conversation:string]',
@@ -193,7 +183,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
     archiveCommand
-        .alias('chatluna.chat.archive')
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
             const presetLane = normalizeTarget(options.preset)
@@ -214,7 +203,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(archiveCommand, 'preset', presets)
 
     const restoreCommand = ctx.command(
         'chatluna.restore [conversation:string]',
@@ -223,7 +211,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
     restoreCommand
-        .alias('chatluna.chat.restore')
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
             const presetLane = normalizeTarget(options.preset)
@@ -244,13 +231,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(restoreCommand, 'preset', presets)
 
     const exportCommand = ctx.command('chatluna.export [conversation:string]', {
         authority: 1
     })
     exportCommand
-        .alias('chatluna.chat.export')
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
             const presetLane = normalizeTarget(options.preset)
@@ -271,7 +256,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(exportCommand, 'preset', presets)
 
     const compressCommand = ctx.command(
         'chatluna.compress [conversation:string]',
@@ -280,8 +264,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
     compressCommand
-        .alias('chatluna.chat.compress')
-        .alias('chatluna.chat.compress-current')
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
             const presetLane = normalizeTarget(options.preset)
@@ -304,7 +286,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(compressCommand, 'preset', presets)
 
     const renameCommand = ctx
         .command('chatluna.rename <title:text>', {
@@ -324,7 +305,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(renameCommand, 'preset', presets)
 
     const deleteCommand = ctx
         .command('chatluna.delete [conversation:string]', {
@@ -350,7 +330,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setOptionChoices(deleteCommand, 'preset', presets)
 
     const useModelCommand = ctx
         .command('chatluna.use.model <model:string>', {
@@ -373,7 +352,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
     setChoices(useModelCommand, 0, models)
-    setOptionChoices(useModelCommand, 'preset', presets)
 
     const usePresetCommand = ctx
         .command('chatluna.use.preset <preset:string>', {
@@ -395,8 +373,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setChoices(usePresetCommand, 0, presets)
-    setOptionChoices(usePresetCommand, 'lane', presets)
 
     const useModeCommand = ctx
         .command('chatluna.use.mode <mode:string>', {
@@ -419,7 +395,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
     setChoices(useModeCommand, 0, modes)
-    setOptionChoices(useModeCommand, 'preset', presets)
 
     const ruleModelCommand = ctx
         .command('chatluna.rule.model <model:string>', {
@@ -455,8 +430,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx
             )
         })
-    setChoices(rulePresetCommand, 0, [...presets, 'reset'])
-
     const ruleModeCommand = ctx
         .command('chatluna.rule.mode <mode:string>', {
             authority: 3

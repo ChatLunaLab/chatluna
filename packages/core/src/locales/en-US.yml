@@ -45,12 +45,81 @@ commands:
                 description: Delete the current or target conversation.
                 arguments:
                     conversation: Target conversation by seq, ID, or title.
+        new:
+            description: Create and switch to a new conversation.
+            arguments:
+                title: Conversation title.
+            options:
+                preset: Preset lane.
+                model: Target model name.
+                chatMode: Target chat mode.
+        switch:
+            description: Switch the active conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        list:
+            description: List conversations in the current route.
+            options:
+                page: Page number.
+                limit: Items per page.
+                archived: Include archived conversations.
+                all: Include archived conversations.
+                preset: Preset lane.
+        current:
+            description: Show the current active conversation.
+            options:
+                preset: Preset lane.
+        rename:
+            description: Rename the current or target conversation.
+            arguments:
+                title: New conversation title.
+            options:
+                preset: Preset lane.
+        archive:
+            description: Archive a conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        restore:
+            description: Restore an archived conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        export:
+            description: Export a conversation as a markdown transcript.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        compress:
+            description: Compress a conversation without referencing rooms.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+            messages:
+                success: '{0} -> {1}, {2}%'
+                skipped: 'Compression skipped. {0} -> {1}, {2}%'
+                no_conversation: 'No conversation is available to compress.'
+                failed: 'Failed to compress chat history for conversation {0} ({1}): {2}'
+        delete:
+            description: Delete the current or target conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
         use:
             description: Update the active conversation usage settings.
             model:
                 description: Switch the conversation model.
                 arguments:
                     model: Target model name.
+                options:
+                    preset: Preset lane.
             preset:
                 description: Switch the conversation preset.
                 arguments:
@@ -61,6 +130,8 @@ commands:
                 description: Switch the conversation chat mode.
                 arguments:
                     mode: Target chat mode.
+                options:
+                    preset: Preset lane.
         rule:
             description: Manage route-level conversation rules.
             model:
@@ -87,10 +158,13 @@ commands:
                 description: Show the current route rule state.
         chat:
             description: ChatLuna conversation commands.
+            messages:
+                conversation_not_exist: 'Conversation does not exist.'
             text:
                 description: Initiate a text conversation with the AI model.
                 options:
                     conversation: Target conversation by seq, ID, or title.
+                    preset: Preset lane.
                     type: Message rendering type.
                 examples:
                     - chatluna chat text -t text Hello, world!
@@ -104,6 +178,7 @@ commands:
                 description: Regenerate last conversation content.
                 options:
                     conversation: Target conversation by seq, ID, or title.
+                    i: Number of rounds to roll back.
                 arguments:
                     message: New message content.
                 messages:
@@ -156,6 +231,10 @@ commands:
             messages:
                 success: Successfully restarted ChatLuna.
 
+        admin:
+            purge-legacy:
+                description: Purge migrated legacy ChatLuna data.
+
         auth:
             description: ChatLuna authentication commands.
             list:
@@ -165,20 +244,16 @@ commands:
                     limit: Items per page
                     platform: Specify platform
                 messages:
-                    header: 'Available quota groups:'
-                    footer: 'Use chatluna.auth.add [name/id] to join a quota group.'
+                    header: 'Quota groups:'
+                    footer: 'Use chatluna.auth.add [name] to join a quota group.'
                     pages: 'Page: [page] / [total]'
-                    name: 'Name: {0}'
-                    platform: 'Model platform: {0}'
-                    cost: 'Cost: {0} / 1000 tokens'
-                    priority: 'Priority: {0}'
-                    support_models: 'Allowed models: {0}'
-                    limit_per_min: 'Limit: {0} messages/minute'
-                    limit_per_day: 'Limit: {0} messages/day'
+                    line: '{0} [{1}] priority:{2} limit:{3}/min {4}/day'
                     general: 'General'
             add:
                 description: Add user to quota group.
                 usage: 'Usage: chatluna auth add [group] name -u @user'
+                arguments:
+                    name: Quota group name.
                 options:
                     user: Target user
                 messages:
@@ -187,6 +262,8 @@ commands:
             kick:
                 description: Remove user from quota group.
                 usage: 'Usage: chatluna auth kick [group name] -u @user'
+                arguments:
+                    name: Quota group name.
                 options:
                     user: Target user
                 messages:
@@ -281,8 +358,11 @@ commands:
                     success: 'User {0} balance reset to {1}'
             set:
                 description: 'Adjust user balance.'
+                options:
+                    user: 'Target user'
                 arguments:
                     user: 'Target user'
+                    balance: 'New balance'
                     amount: 'New balance'
                 examples:
                     - 'chatluna balance set --user @username --amount 1000'
@@ -599,6 +679,10 @@ chatluna:
     middleware_error: 'Error in {0}: {1}'
     not_available_model: 'No models are currently available. Please check your configuration to ensure model adapters are properly installed and configured.'
     chat_limit_exceeded: 'Daily chat limit reached. Please try again in {0} minutes.'
+    insufficient_balance: 'Insufficient balance. Current balance: {0}.'
+    unsupported_model: 'Quota group {0} does not support model {1}.'
+    limit_per_minute_exceeded: 'Quota group {0} reached the per-minute limit ({2}/{1}).'
+    limit_per_day_exceeded: 'Quota group {0} reached the daily limit ({2}/{1}).'
     conversation:
         default_title: 'New Conversation'
         active: 'active'
@@ -667,34 +751,14 @@ chatluna:
             delete: 'delete'
             update: 'update'
             compress: 'compression'
+        conversation_line: '#{0} {1} [{2}] {3}'
         conversation_seq: 'Seq: {0}'
-        conversation_scope: 'Scope: {0}'
-        conversation_base_scope: 'Base scope: {0}'
-        conversation_route_mode: 'Route mode: {0}'
-        conversation_active: 'Active conversation: {0}'
-        conversation_last: 'Previous conversation: {0}'
         conversation_title: 'Title: {0}'
         conversation_id: 'ID: {0}'
         conversation_status: 'Status: {0}'
-        conversation_model: 'Model: {0}'
-        conversation_preset: 'Preset: {0}'
-        conversation_chat_mode: 'Chat mode: {0}'
         conversation_effective_model: 'Effective model: {0}'
         conversation_effective_preset: 'Effective preset: {0}'
         conversation_effective_chat_mode: 'Effective chat mode: {0}'
-        conversation_default_model: 'Route default model: {0}'
-        conversation_default_preset: 'Route default preset: {0}'
-        conversation_default_chat_mode: 'Route default chat mode: {0}'
-        conversation_fixed_model: 'Route fixed model: {0}'
-        conversation_fixed_preset: 'Route fixed preset: {0}'
-        conversation_fixed_chat_mode: 'Route fixed chat mode: {0}'
-        conversation_lock: 'Lock: {0}'
-        conversation_allow_new: 'Allow new: {0}'
-        conversation_allow_switch: 'Allow switch: {0}'
-        conversation_allow_archive: 'Allow archive: {0}'
-        conversation_allow_export: 'Allow export: {0}'
-        conversation_manage_mode: 'Manage mode: {0}'
-        conversation_preset_lane: 'Preset lane: {0}'
         conversation_compression_count: 'Compression count: {0}'
         conversation_updated_at: 'Updated at: {0}'
         rule_share: 'Route rule: {0}'

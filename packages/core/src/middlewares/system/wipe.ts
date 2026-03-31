@@ -5,11 +5,10 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import fs from 'fs/promises'
 import {
     createLegacyTableRetention,
-    getLegacySchemaSentinel,
-    getLegacySchemaSentinelDir,
     LEGACY_MIGRATION_TABLES,
     LEGACY_RETENTION_META_KEY,
     LEGACY_RUNTIME_TABLES,
+    purgeLegacyTables,
     readMetaValue,
     writeMetaValue
 } from '../../migration/validators'
@@ -34,23 +33,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            for (const table of LEGACY_MIGRATION_TABLES) {
-                try {
-                    await ctx.database.drop(table)
-                } catch (error) {
-                    logger.warn(`purge legacy ${table}: ${error}`)
-                }
-            }
-
-            const sentinel = getLegacySchemaSentinel(ctx.baseDir)
-            await fs.mkdir(getLegacySchemaSentinelDir(ctx.baseDir), {
-                recursive: true
-            })
-            await fs.writeFile(
-                sentinel,
-                JSON.stringify({ purgedAt: new Date().toISOString() })
-            )
-
+            await purgeLegacyTables(ctx)
             await writeMetaValue(
                 ctx,
                 'legacy_purged_at',

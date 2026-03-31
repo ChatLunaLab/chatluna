@@ -36,7 +36,9 @@ export function createUsageMetadata(data: {
     outputTokens: number
     totalTokens: number
     inputAudioTokens?: number
+    inputImageTokens?: number
     outputAudioTokens?: number
+    outputImageTokens?: number
     cacheReadTokens?: number
     cacheCreationTokens?: number
     reasoningTokens?: number
@@ -44,6 +46,9 @@ export function createUsageMetadata(data: {
     const inputTokenDetails = {
         ...(data.inputAudioTokens != null
             ? { audio: data.inputAudioTokens }
+            : {}),
+        ...(data.inputImageTokens != null
+            ? { image: data.inputImageTokens }
             : {}),
         ...(data.cacheReadTokens != null
             ? { cache_read: data.cacheReadTokens }
@@ -55,6 +60,9 @@ export function createUsageMetadata(data: {
     const outputTokenDetails = {
         ...(data.outputAudioTokens != null
             ? { audio: data.outputAudioTokens }
+            : {}),
+        ...(data.outputImageTokens != null
+            ? { image: data.outputImageTokens }
             : {}),
         ...(data.reasoningTokens != null
             ? { reasoning: data.reasoningTokens }

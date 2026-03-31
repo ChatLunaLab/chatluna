@@ -1,4 +1,8 @@
 import path from 'path'
+import fs from 'fs/promises'
+import type { Context } from 'koishi'
+import type { LegacyTableRetention } from './types'
+export type { LegacyTableRetention } from './types'
 
 export const LEGACY_SCHEMA_SENTINEL =
     'data/chatluna/temp/legacy-schema-disabled.json'
@@ -20,12 +24,6 @@ export const LEGACY_RUNTIME_TABLES = [
 
 export const LEGACY_RETENTION_META_KEY = 'legacy_table_retention'
 
-export interface LegacyTableRetention {
-    state: 'migration-visible' | 'purged'
-    migrationTables: readonly string[]
-    runtimeTables: readonly string[]
-}
-
 export function createLegacyTableRetention(
     state: LegacyTableRetention['state']
 ) {
@@ -42,4 +40,24 @@ export function getLegacySchemaSentinel(baseDir: string) {
 
 export function getLegacySchemaSentinelDir(baseDir: string) {
     return path.dirname(getLegacySchemaSentinel(baseDir))
+}
+
+export async function purgeLegacyTables(ctx: Context) {
+    for (const table of [
+        ...LEGACY_MIGRATION_TABLES,
+        ...LEGACY_RUNTIME_TABLES
+    ]) {
+        try {
+            await ctx.database.drop(table)
+        } catch (error) {
+            ctx.logger.warn(`purge legacy ${table}: ${error}`)
+        }
+    }
+
+    const sentinel = getLegacySchemaSentinel(ctx.baseDir)
+    await fs.mkdir(getLegacySchemaSentinelDir(ctx.baseDir), { recursive: true })
+    await fs.writeFile(
+        sentinel,
+        JSON.stringify({ purgedAt: new Date().toISOString() })
+    )
 }

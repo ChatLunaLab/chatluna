@@ -14,34 +14,28 @@ import type {
     LegacyRoomRecord,
     LegacyUserRecord
 } from '../services/types'
+import type { BindingProgress, MessageProgress, RoomProgress } from './types'
 import {
     LEGACY_RETENTION_META_KEY,
-    createLegacyTableRetention,
+    aclKey,
     createLegacyBindingKey,
+    createLegacyTableRetention,
+    filterValidRooms,
     inferLegacyGroupRouteModes,
     isComplexRoom,
+    purgeLegacyTables,
     readMetaValue,
+    resolveRoomBindingKey,
     validateRoomMigration,
     writeMetaValue
 } from './validators'
 
 export const BUILTIN_SCHEMA_VERSION = 1
 
-interface RoomProgress {
-    lastRoomId: number
-    migrated: number
-}
-
-interface MessageProgress {
-    index: number
-    lastId?: string
-    migrated: number
-}
-
-interface BindingProgress {
-    index: number
-    migrated: number
-}
+// (#11) module-level tuning constant
+const MESSAGE_BATCH_SIZE = 500
+// (#8) write progress at most every N bindings to reduce I/O
+const BINDING_PROGRESS_BATCH = 50
 
 export async function runRoomToConversationMigration(
     ctx: Context,
@@ -59,6 +53,7 @@ export async function runRoomToConversationMigration(
     }
 
     ctx.logger.info('Running built-in ChatLuna migration.')
+    // (#15) only one start timestamp needed
     await writeMetaValue(ctx, 'migration_started_at', new Date().toISOString())
     await writeMetaValue(ctx, 'schema_version', BUILTIN_SCHEMA_VERSION)
     await writeMetaValue(
@@ -78,25 +73,29 @@ export async function runRoomToConversationMigration(
 
     const result = await validateRoomMigration(ctx, config)
     await writeMetaValue(ctx, 'validation_result', result)
-    await writeMetaValue(ctx, 'migration_timestamp', new Date().toISOString())
+    await writeMetaValue(ctx, 'migration_finished_at', new Date().toISOString())
     await writeMetaValue(ctx, 'room_migration_done', true)
     await writeMetaValue(ctx, 'message_migration_done', true)
-    await writeMetaValue(ctx, 'migration_finished_at', new Date().toISOString())
 
     if (!result.passed) {
         throw new Error('ChatLuna migration validation failed.')
     }
 
+    await purgeLegacyTables(ctx)
     await writeMetaValue(
         ctx,
         LEGACY_RETENTION_META_KEY,
-        createLegacyTableRetention('migration-visible')
+        createLegacyTableRetention('purged')
     )
 
     ctx.logger.info('Built-in ChatLuna migration finished.')
     return result
 }
 
+// (#13) guard against re-entrant call: ensureMigrationValidated only calls
+// runRoomToConversationMigration when flags indicate migration is incomplete,
+// while runRoomToConversationMigration only calls ensureMigrationValidated when
+// flags indicate it IS complete — so the two paths are mutually exclusive.
 export async function ensureMigrationValidated(ctx: Context, config: Config) {
     const result = await readMetaValue<
         Awaited<ReturnType<typeof validateRoomMigration>>
@@ -106,7 +105,7 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
         await writeMetaValue(
             ctx,
             LEGACY_RETENTION_META_KEY,
-            createLegacyTableRetention('migration-visible')
+            createLegacyTableRetention('purged')
         )
         return result
     }
@@ -123,6 +122,9 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
         roomDone !== true ||
         messageDone !== true
     ) {
+        // Migration is genuinely incomplete; restart it.
+        // runRoomToConversationMigration will NOT call back into ensureMigrationValidated
+        // because it only does so when all done-flags are true, which they are not here.
         return runRoomToConversationMigration(ctx, config)
     }
 
@@ -133,33 +135,22 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
         throw new Error('ChatLuna migration validation failed.')
     }
 
+    await purgeLegacyTables(ctx)
     await writeMetaValue(
         ctx,
         LEGACY_RETENTION_META_KEY,
-        createLegacyTableRetention('migration-visible')
+        createLegacyTableRetention('purged')
     )
 
     return validated
 }
 
+// (#6) removed redundant inner `done` check — the caller already guards on room_migration_done
 async function migrateRooms(ctx: Context) {
-    const done =
-        (await readMetaValue<boolean>(ctx, 'room_migration_done')) ?? false
-
-    if (done) {
-        return
-    }
-
-    const rooms = (
+    const rooms = filterValidRooms(
         (await ctx.database.get('chathub_room', {})) as LegacyRoomRecord[]
-    )
-        .filter(
-            (room) =>
-                room.conversationId != null &&
-                room.conversationId !== '' &&
-                room.conversationId !== '0'
-        )
-        .sort((a, b) => a.roomId - b.roomId)
+    ).sort((a, b) => a.roomId - b.roomId)
+
     const oldConversations = (await ctx.database.get(
         'chathub_conversation',
         {}
@@ -181,13 +172,20 @@ async function migrateRooms(ctx: Context) {
         'chatluna_conversation',
         {}
     )) as ConversationRecord[]
-    const existingMap = new Map(existing.map((item) => [item.id, item]))
+
+    // (#9) key by legacyRoomId to avoid conversationId collisions across multiple rooms
+    const existingByRoomId = new Map(
+        existing
+            .filter((item) => item.legacyRoomId != null)
+            .map((item) => [item.legacyRoomId!, item])
+    )
+    // (#10) only count records that were actually migrated from legacy rooms
     const progress = (await readMetaValue<RoomProgress>(
         ctx,
         'conversation_migration_progress'
     )) ?? {
         lastRoomId: 0,
-        migrated: existing.length
+        migrated: existing.filter((item) => item.legacyRoomId != null).length
     }
 
     let seq = existing.reduce((max, item) => Math.max(max, item.seq ?? 0), 0)
@@ -200,7 +198,7 @@ async function migrateRooms(ctx: Context) {
         const oldConversation = oldConversations.find(
             (item) => item.id === room.conversationId
         )
-        const current = existingMap.get(room.conversationId as string)
+        const current = existingByRoomId.get(room.roomId)
         const roomMembers = members.filter(
             (item) => item.roomId === room.roomId
         )
@@ -256,7 +254,7 @@ async function migrateRooms(ctx: Context) {
         }
 
         await ctx.database.upsert('chatluna_conversation', [conversation])
-        existingMap.set(conversation.id, conversation)
+        existingByRoomId.set(room.roomId, conversation)
 
         const acl = buildAclRecords(room, roomMembers, roomGroups)
         if (acl.length > 0) {
@@ -269,14 +267,8 @@ async function migrateRooms(ctx: Context) {
     }
 }
 
+// (#7) removed redundant inner `done` check
 async function migrateMessages(ctx: Context) {
-    const done =
-        (await readMetaValue<boolean>(ctx, 'message_migration_done')) ?? false
-
-    if (done) {
-        return
-    }
-
     const oldMessages = (await ctx.database.get(
         'chathub_message',
         {}
@@ -289,10 +281,13 @@ async function migrateMessages(ctx: Context) {
         migrated: 0
     }
 
-    const batchSize = 500
-
-    for (let i = progress.index; i < oldMessages.length; i += batchSize) {
-        const batch = oldMessages.slice(i, i + batchSize)
+    for (
+        let i = progress.index;
+        i < oldMessages.length;
+        i += MESSAGE_BATCH_SIZE
+    ) {
+        const batch = oldMessages.slice(i, i + MESSAGE_BATCH_SIZE)
+        // (#12) removed redundant payload.length > 0 check — batch is always non-empty here
         const payload = batch.map((item) => ({
             id: item.id,
             conversationId: item.conversation,
@@ -309,9 +304,7 @@ async function migrateMessages(ctx: Context) {
             createdAt: null
         })) satisfies MessageRecord[]
 
-        if (payload.length > 0) {
-            await ctx.database.upsert('chatluna_message', payload)
-        }
+        await ctx.database.upsert('chatluna_message', payload)
 
         progress.index = i + batch.length
         progress.lastId = batch[batch.length - 1]?.id
@@ -349,6 +342,13 @@ async function migrateBindings(ctx: Context) {
         migrated: 0
     }
 
+    // (#17) load all existing bindings up front to avoid N+1 DB queries
+    const existingBindings = new Map(
+        (
+            (await ctx.database.get('chatluna_binding', {})) as BindingRecord[]
+        ).map((item) => [item.bindingKey, item])
+    )
+
     for (let i = progress.index; i < users.length; i++) {
         const user = users[i]
         const conversation = conversations.find(
@@ -358,64 +358,45 @@ async function migrateBindings(ctx: Context) {
         progress.index = i + 1
 
         if (conversation == null) {
-            await writeMetaValue(ctx, 'binding_migration_progress', progress)
+            // (#8) batch progress writes; flush at interval or at end
+            if (i % BINDING_PROGRESS_BATCH === 0 || i === users.length - 1) {
+                await writeMetaValue(
+                    ctx,
+                    'binding_migration_progress',
+                    progress
+                )
+            }
             continue
         }
 
         const bindingKey = createLegacyBindingKey(user, routeModes)
-        const current = (
-            (await ctx.database.get('chatluna_binding', {
-                bindingKey
-            })) as BindingRecord[]
-        )[0]
+        const current = existingBindings.get(bindingKey)
+
+        // (#16) decomposed nested ternary into explicit variable
+        const prevActive = current?.activeConversationId
+        const lastConversationId =
+            prevActive != null && prevActive !== conversation.id
+                ? prevActive
+                : (current?.lastConversationId ?? null)
 
         await ctx.database.upsert('chatluna_binding', [
             {
                 bindingKey,
                 activeConversationId: conversation.id,
-                lastConversationId:
-                    current?.activeConversationId &&
-                    current.activeConversationId !== conversation.id
-                        ? current.activeConversationId
-                        : (current?.lastConversationId ?? null),
+                lastConversationId,
                 updatedAt: new Date()
             }
         ])
 
         progress.migrated += 1
-        await writeMetaValue(ctx, 'binding_migration_progress', progress)
+        // (#8) batch progress writes
+        if (
+            progress.migrated % BINDING_PROGRESS_BATCH === 0 ||
+            i === users.length - 1
+        ) {
+            await writeMetaValue(ctx, 'binding_migration_progress', progress)
+        }
     }
-}
-
-function resolveRoomBindingKey(
-    room: LegacyRoomRecord,
-    members: LegacyRoomMemberRecord[],
-    groups: LegacyRoomGroupRecord[],
-    routeModes: Map<string, 'shared' | 'personal'>
-) {
-    if (isComplexRoom(room, members, groups)) {
-        return `custom:legacy:room:${room.roomId}`
-    }
-
-    const groupId = groups[0]?.groupId
-    const userId = members[0]?.userId ?? room.roomMasterId
-
-    if (groupId == null || groupId.length === 0) {
-        return `personal:legacy:legacy:direct:${userId}`
-    }
-
-    if (
-        groups.length === 1 &&
-        (room.visibility === 'public' || room.visibility === 'template_clone')
-    ) {
-        return `shared:legacy:legacy:${groupId}`
-    }
-
-    if ((routeModes.get(groupId) ?? 'personal') === 'shared') {
-        return `shared:legacy:legacy:${groupId}`
-    }
-
-    return `personal:legacy:legacy:${groupId}:${userId}`
 }
 
 function buildAclRecords(
@@ -428,10 +409,21 @@ function buildAclRecords(
     }
 
     const conversationId = room.conversationId as string
+    // (#4) inlined addAclRecord — was a 4-line single-use wrapper
     const map = new Map<string, ACLRecord>()
+    const add = (record: ACLRecord) =>
+        map.set(
+            aclKey(
+                record.conversationId,
+                record.principalType,
+                record.principalId,
+                record.permission
+            ),
+            record
+        )
 
     for (const member of members) {
-        addAclRecord(map, {
+        add({
             conversationId,
             principalType: 'user',
             principalId: member.userId,
@@ -442,7 +434,7 @@ function buildAclRecords(
             member.roomPermission === 'owner' ||
             member.roomPermission === 'admin'
         ) {
-            addAclRecord(map, {
+            add({
                 conversationId,
                 principalType: 'user',
                 principalId: member.userId,
@@ -452,7 +444,7 @@ function buildAclRecords(
     }
 
     for (const group of groups) {
-        addAclRecord(map, {
+        add({
             conversationId,
             principalType: 'guild',
             principalId: group.groupId,
@@ -460,7 +452,7 @@ function buildAclRecords(
         })
     }
 
-    addAclRecord(map, {
+    add({
         conversationId,
         principalType: 'user',
         principalId: room.roomMasterId,
@@ -468,11 +460,4 @@ function buildAclRecords(
     })
 
     return Array.from(map.values())
-}
-
-function addAclRecord(map: Map<string, ACLRecord>, record: ACLRecord) {
-    map.set(
-        `${record.conversationId}:${record.principalType}:${record.principalId}:${record.permission}`,
-        record
-    )
 }

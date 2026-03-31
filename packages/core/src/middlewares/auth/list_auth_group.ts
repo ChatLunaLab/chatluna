@@ -48,25 +48,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 }
 
 function formatAuthGroup(session: Session, group: ChatHubAuthGroup) {
-    const buffer: string[] = []
-
-    buffer.push(session.text('.name', [group.name]))
-    buffer.push(
-        session.text('.platform', [group.platform ?? session.text('.general')])
-    )
-    buffer.push(session.text('.cost', [group.costPerToken]))
-    buffer.push(session.text('.priority', [group.priority]))
-    buffer.push(
-        session.text('.support_models', [
-            group.supportModels?.join(', ') ?? session.text('.general')
-        ])
-    )
-    buffer.push(session.text('.limit_per_min', [group.limitPerMin]))
-    buffer.push(session.text('.limit_per_day', [group.limitPerDay]))
-
-    buffer.push('\n')
-
-    return buffer.join('\n')
+    return session.text('.line', [
+        group.name,
+        group.platform ?? session.text('.general'),
+        group.priority,
+        group.limitPerMin,
+        group.limitPerDay
+    ])
 }
 
 declare module '../../chains/chain' {

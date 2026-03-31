@@ -45,12 +45,81 @@ commands:
                 description: 删除当前会话或目标会话。
                 arguments:
                     conversation: 目标会话，可使用序号、ID 或标题。
+        new:
+            description: 创建并切换到一个新会话。
+            arguments:
+                title: 会话标题。
+            options:
+                preset: 预设分流。
+                model: 目标模型名称。
+                chatMode: 目标聊天模式。
+        switch:
+            description: 切换当前活跃会话。
+            arguments:
+                conversation: 目标会话，可使用序号、ID 或标题。
+            options:
+                preset: 预设分流。
+        list:
+            description: 列出当前路由下的会话。
+            options:
+                page: 页码。
+                limit: 每页数量。
+                archived: 包含已归档会话。
+                all: 包含已归档会话。
+                preset: 预设分流。
+        current:
+            description: 查看当前活跃会话。
+            options:
+                preset: 预设分流。
+        rename:
+            description: 重命名当前会话或目标会话。
+            arguments:
+                title: 新的会话标题。
+            options:
+                preset: 预设分流。
+        archive:
+            description: 归档一个会话。
+            arguments:
+                conversation: 目标会话，可使用序号、ID 或标题。
+            options:
+                preset: 预设分流。
+        restore:
+            description: 恢复一个已归档会话。
+            arguments:
+                conversation: 目标会话，可使用序号、ID 或标题。
+            options:
+                preset: 预设分流。
+        export:
+            description: 将会话导出为 Markdown 记录。
+            arguments:
+                conversation: 目标会话，可使用序号、ID 或标题。
+            options:
+                preset: 预设分流。
+        compress:
+            description: 在不引用房间的情况下压缩一个会话。
+            arguments:
+                conversation: 目标会话，可使用序号、ID 或标题。
+            options:
+                preset: 预设分流。
+            messages:
+                success: '{0} -> {1}, {2}%'
+                skipped: '未执行压缩。{0} -> {1}, {2}%'
+                no_conversation: '没有可压缩的会话。'
+                failed: '压缩会话 {0}（{1}）的聊天记录失败：{2}'
+        delete:
+            description: 删除当前会话或目标会话。
+            arguments:
+                conversation: 目标会话，可使用序号、ID 或标题。
+            options:
+                preset: 预设分流。
         use:
             description: 调整当前会话的使用配置。
             model:
                 description: 切换当前会话使用的模型。
                 arguments:
                     model: 目标模型名称。
+                options:
+                    preset: 预设分流。
             preset:
                 description: 切换当前会话使用的预设。
                 arguments:
@@ -61,6 +130,8 @@ commands:
                 description: 切换当前会话使用的聊天模式。
                 arguments:
                     mode: 目标聊天模式。
+                options:
+                    preset: 预设分流。
         rule:
             description: 管理当前路由的会话规则。
             model:
@@ -87,10 +158,13 @@ commands:
                 description: 查看当前路由的规则状态。
         chat:
             description: ChatLuna 对话相关指令。
+            messages:
+                conversation_not_exist: '会话不存在。'
             text:
                 description: 与大语言模型进行文本对话。
                 options:
                     conversation: 指定目标会话，可使用序号、ID 或标题。
+                    preset: 预设分流。
                     type: 设置消息的渲染类型。
                 examples:
                     - chatluna chat text -t text 你好，世界！
@@ -104,6 +178,7 @@ commands:
                 description: 重新生成上一次的对话内容。
                 options:
                     conversation: 指定目标会话，可使用序号、ID 或标题。
+                    i: 回滚轮数。
                 arguments:
                     message: 新的消息内容。
                 messages:
@@ -156,6 +231,10 @@ commands:
             messages:
                 success: '已成功重启 ChatLuna。'
 
+        admin:
+            purge-legacy:
+                description: 清理已迁移的旧版 ChatLuna 数据。
+
         auth:
             description: ChatLuna 鉴权相关指令。
             list:
@@ -165,20 +244,16 @@ commands:
                     limit: 每页显示的数量。
                     platform: 指定平台。
                 messages:
-                    header: '以下是查询到目前可用的配额组列表：'
-                    footer: '你可以使用 chatluna.auth.add [name/id] 来加入某个配额组。'
-                    pages: '当前为第 [page] / [total] 页'
-                    name: '名称：{0}'
-                    platform: '适用模型平台：{0}'
-                    cost: '计费：{0} / 1000 token'
-                    priority: '优先级: {0}'
-                    support_models: '限制模型：{0}'
-                    limit_per_min: '并发限制每 {0} 条消息/分'
-                    limit_per_day: '并发限制每 {0} 条消息/天'
+                    header: '配额组列表：'
+                    footer: '使用 chatluna.auth.add [name] 加入配额组。'
+                    pages: '第 [page] / [total] 页'
+                    line: '{0} [{1}] 优先级:{2} 限额:{3}/min {4}/day'
                     general: '通用'
             add:
                 description: 将用户加入到指定配额组。
                 usage: '使用方法：chatluna auth add [组名] -u @用户'
+                arguments:
+                    name: 配额组名称。
                 options:
                     user: 目标用户。
                 messages:
@@ -187,6 +262,8 @@ commands:
             kick:
                 description: 将用户从指定配额组中移除。
                 usage: '使用方法：chatluna auth kick [组名] -u @用户'
+                arguments:
+                    name: 配额组名称。
                 options:
                     user: 目标用户。
                 messages:
@@ -282,8 +359,11 @@ commands:
                     success: '已将用户 {0} 账户余额修改为 {1}'
             set:
                 description: '设置指定用户的余额。可以增加或减少用户的余额。'
+                options:
+                    user: '目标用户。'
                 arguments:
                     user: '目标用户。'
+                    balance: '要设置的余额数量。'
                     amount: '要设置的余额数量。'
                 examples:
                     - 'chatluna balance set --user @用户名 --amount 1000'
@@ -599,6 +679,10 @@ chatluna:
     middleware_error: '执行 {0} 时出现错误: {1}'
     not_available_model: '当前没有可用的模型，请检查你的配置，是否正常安装了模型适配器并配置。'
     chat_limit_exceeded: '你的聊天次数已经用完了喵，还需要等待 {0} 分钟才能继续聊天喵 >_<'
+    insufficient_balance: '余额不足，当前余额为 {0}。'
+    unsupported_model: '配额组 {0} 不支持模型 {1}。'
+    limit_per_minute_exceeded: '配额组 {0} 已达到每分钟限制（{2}/{1}）。'
+    limit_per_day_exceeded: '配额组 {0} 已达到每日限制（{2}/{1}）。'
     conversation:
         default_title: '新会话'
         active: '当前活跃'
@@ -667,34 +751,14 @@ chatluna:
             delete: '删除'
             update: '更新设置'
             compress: '压缩'
+        conversation_line: '#{0} {1} [{2}] {3}'
         conversation_seq: '序号：{0}'
-        conversation_scope: '作用域：{0}'
-        conversation_base_scope: '基础作用域：{0}'
-        conversation_route_mode: '路由模式：{0}'
-        conversation_active: '当前活跃会话：{0}'
-        conversation_last: '上一个会话：{0}'
         conversation_title: '标题：{0}'
         conversation_id: 'ID：{0}'
         conversation_status: '状态：{0}'
-        conversation_model: '模型：{0}'
-        conversation_preset: '预设：{0}'
-        conversation_chat_mode: '聊天模式：{0}'
         conversation_effective_model: '生效模型：{0}'
         conversation_effective_preset: '生效预设：{0}'
         conversation_effective_chat_mode: '生效聊天模式：{0}'
-        conversation_default_model: '路由默认模型：{0}'
-        conversation_default_preset: '路由默认预设：{0}'
-        conversation_default_chat_mode: '路由默认聊天模式：{0}'
-        conversation_fixed_model: '路由固定模型：{0}'
-        conversation_fixed_preset: '路由固定预设：{0}'
-        conversation_fixed_chat_mode: '路由固定聊天模式：{0}'
-        conversation_lock: '锁定状态：{0}'
-        conversation_allow_new: '允许新建：{0}'
-        conversation_allow_switch: '允许切换：{0}'
-        conversation_allow_archive: '允许归档：{0}'
-        conversation_allow_export: '允许导出：{0}'
-        conversation_manage_mode: '管理模式：{0}'
-        conversation_preset_lane: '预设分流：{0}'
         conversation_compression_count: '压缩次数：{0}'
         conversation_updated_at: '更新时间：{0}'
         rule_share: '路由规则：{0}'
