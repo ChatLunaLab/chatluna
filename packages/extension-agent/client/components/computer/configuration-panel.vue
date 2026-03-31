@@ -390,6 +390,8 @@ const guide = computed<GuideContent>(() => {
                     title: '最快启动方式',
                     steps: [
                         '用 Docker 启动 open-terminal，并显式设置 API Key。',
+                        '建议同时设置 `HOME=/home/user`，让 `~` 和相对路径都稳定落在挂载卷里。',
+                        '如果你需要让图片、音频、视频、PDF、压缩包等二进制文件在 Agent 场景里正常读写或传递，记得保留 `OPEN_TERMINAL_BINARY_MIME_PREFIXES`。',
                         '启动后把“基础 URL”填成你的服务地址，例如 http://localhost:8000。',
                         '把“API 密钥”填成 env:OPEN_TERMINAL_API_KEY 或直接填密钥。',
                         '如果服务跑在 Docker 里，把“部署模式”设为 Docker；如果是 pip/uvx 裸机启动，就选裸机。',
@@ -399,6 +401,8 @@ const guide = computed<GuideContent>(() => {
                         'docker run -d --name open-terminal --restart unless-stopped \\',
                         '  -p 8000:8000 \\',
                         '  -v open-terminal:/home/user \\',
+                        '  -w /home/user \\',
+                        '  -e HOME=/home/user \\',
                         '  -e OPEN_TERMINAL_API_KEY=your-secret-key \\',
                         '  -e OPEN_TERMINAL_BINARY_MIME_PREFIXES=image,audio,video,application/pdf,application/zip,application/vnd.openxmlformats-officedocument.,application/octet-stream \\',
                         '  ghcr.io/open-webui/open-terminal'
@@ -409,14 +413,20 @@ const guide = computed<GuideContent>(() => {
                     items: [
                         '基础 URL：填写 open-terminal 对外地址，通常是 http://host:8000。',
                         'API 密钥：推荐使用 env:OPEN_TERMINAL_API_KEY，便于统一管理。',
+                        '`OPEN_TERMINAL_BINARY_MIME_PREFIXES`：用于声明哪些二进制 MIME 类型允许按文件处理；推荐至少保留 image、audio、video、application/pdf、application/zip。',
                         '部署模式：按真实部署情况选 Docker / 裸机 / 未知。',
+                        '如果你用 Docker，建议把 HOME 和工作目录都固定到 /home/user；其中 HOME 会影响 `~` 的展开位置，工作目录会影响部分相对路径和会话 cwd 的初始位置。',
+                        '这样可以避免新版本 open-terminal 按会话 cwd 解析相对路径时落到 /app 之类的镜像目录。',
                         '用户隔离：只有你明确启用了 open-terminal 的 multi-user 模式时再打开；这个开关主要是配置标记，不会替代底层隔离。',
                         '如果你需要每个用户更强隔离，官方 README 也建议考虑每用户单独容器的方案。'
                     ],
                     code: [
                         '基础 URL: http://localhost:8000',
                         'API 密钥: env:OPEN_TERMINAL_API_KEY',
+                        '二进制类型: image,audio,video,application/pdf,application/zip,...',
                         '部署模式: docker',
+                        'Docker 环境变量: HOME=/home/user（影响 ~ 的展开位置）',
+                        'Docker 工作目录: /home/user',
                         '用户隔离: false'
                     ].join('\n')
                 },
