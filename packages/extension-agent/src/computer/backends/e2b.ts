@@ -653,8 +653,9 @@ export class E2BComputerSession implements ComputerSessionApi {
 
         try {
             handle = (await current.commands.run(command, {
-                ...options
-            } as CommandStartOpts & { background: true })) as CommandHandle
+                ...options,
+                background: true
+            })) as CommandHandle
             result = await handle.wait()
         } catch (err) {
             if (err instanceof CommandExitError) {
