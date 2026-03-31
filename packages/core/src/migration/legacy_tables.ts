@@ -42,6 +42,31 @@ export function getLegacySchemaSentinelDir(baseDir: string) {
     return path.dirname(getLegacySchemaSentinel(baseDir))
 }
 
+function isMissingTableError(error: unknown) {
+    const message = String(error).toLowerCase()
+    return (
+        message.includes('no such table') ||
+        message.includes('unknown table') ||
+        message.includes('not found') ||
+        message.includes("doesn't exist") ||
+        message.includes('does not exist')
+    )
+}
+
+export async function dropTableIfExists(ctx: Context, table: string) {
+    try {
+        await ctx.database.drop(table as never)
+        return true
+    } catch (error) {
+        if (!isMissingTableError(error)) {
+            throw error
+        }
+
+        ctx.logger.warn(`drop ${table}: ${error}`)
+        return false
+    }
+}
+
 export async function purgeLegacyTables(ctx: Context) {
     const failed: string[] = []
 
@@ -50,7 +75,7 @@ export async function purgeLegacyTables(ctx: Context) {
         ...LEGACY_RUNTIME_TABLES
     ]) {
         try {
-            await ctx.database.drop(table)
+            await dropTableIfExists(ctx, table)
         } catch (error) {
             ctx.logger.warn(`purge legacy ${table}: ${error}`)
             failed.push(table)

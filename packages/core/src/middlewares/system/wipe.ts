@@ -5,6 +5,7 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import fs from 'fs/promises'
 import {
     createLegacyTableRetention,
+    dropTableIfExists,
     LEGACY_MIGRATION_TABLES,
     LEGACY_RETENTION_META_KEY,
     LEGACY_RUNTIME_TABLES,
@@ -78,30 +79,31 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
 
             // drop database tables
 
-            await ctx.database.drop('chatluna_conversation')
-            await ctx.database.drop('chatluna_message')
-            await ctx.database.drop('chatluna_binding')
-            await ctx.database.drop('chatluna_constraint')
-            await ctx.database.drop('chatluna_archive')
-            await ctx.database.drop('chatluna_acl')
-            await ctx.database.drop('chatluna_meta')
+            for (const table of [
+                'chatluna_conversation',
+                'chatluna_message',
+                'chatluna_binding',
+                'chatluna_constraint',
+                'chatluna_archive',
+                'chatluna_acl',
+                'chatluna_meta'
+            ]) {
+                await dropTableIfExists(ctx, table)
+            }
+
             for (const table of LEGACY_MIGRATION_TABLES) {
-                await ctx.database.drop(table)
+                await dropTableIfExists(ctx, table)
             }
 
             for (const table of LEGACY_RUNTIME_TABLES) {
-                await ctx.database.drop(table)
+                await dropTableIfExists(ctx, table)
             }
 
-            await ctx.database.drop('chatluna_docstore')
+            await dropTableIfExists(ctx, 'chatluna_docstore')
             // knowledge
 
-            try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await ctx.database.drop('chathub_knowledge' as any)
-            } catch (e) {
-                logger.warn(`wipe: ${e}`)
-            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await dropTableIfExists(ctx, 'chathub_knowledge' as any)
 
             // drop caches
 

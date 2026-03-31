@@ -617,7 +617,7 @@ commands:
                 messages:
                     only_one_preset: 'Cannot delete the only existing preset.'
                     not_found: 'Preset not found. Check the name and try again.'
-                    confirm_delete: 'Delete preset {0}? Y to confirm, any other key to cancel. Note: Associated sessions will be deleted.'
+                    confirm_delete: 'Delete preset {0}? Y to confirm, any other key to cancel. Note: Associated sessions will switch to another available preset.'
                     timeout: 'Operation timed out. Cancelled deleting preset: {0}.'
                     cancelled: 'Cancelled deleting preset: {0}'
                     success: 'Preset {0} deleted. Restarting to apply changes.'

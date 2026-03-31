@@ -205,9 +205,9 @@ export class ConversationService {
                 constraint.defaultModel ??
                 this.config.defaultModel,
             effectivePreset:
-                options.presetLane ??
                 constraint.fixedPreset ??
                 allowedConversation?.preset ??
+                options.presetLane ??
                 constraint.defaultPreset ??
                 this.config.defaultPreset,
             effectiveChatMode:
@@ -502,17 +502,27 @@ export class ConversationService {
         const previousConversation = resolved.binding?.activeConversationId
             ? await this.getConversation(resolved.binding.activeConversationId)
             : null
+        const targetBinding =
+            conversation.bindingKey === resolved.bindingKey
+                ? resolved.binding
+                : await this.getBinding(conversation.bindingKey)
+        const targetPreviousConversation = targetBinding?.activeConversationId
+            ? await this.getConversation(targetBinding.activeConversationId)
+            : null
 
         await this.ctx.root.parallel('chatluna/conversation-before-switch', {
             bindingKey: resolved.bindingKey,
             conversation,
             previousConversation
         })
-        await this.setActiveConversation(resolved.bindingKey, conversation.id)
+        await this.setActiveConversation(
+            conversation.bindingKey,
+            conversation.id
+        )
         await this.ctx.root.parallel('chatluna/conversation-after-switch', {
-            bindingKey: resolved.bindingKey,
+            bindingKey: conversation.bindingKey,
             conversation,
-            previousConversation
+            previousConversation: targetPreviousConversation
         })
 
         return conversation
@@ -552,7 +562,7 @@ export class ConversationService {
 
         if (conversation.status !== 'archived') {
             await this.setActiveConversation(
-                resolved.bindingKey,
+                conversation.bindingKey,
                 conversation.id
             )
             return conversation
@@ -717,109 +727,125 @@ export class ConversationService {
             throw new Error('Conversation not found.')
         }
 
-        await this.ctx.root.parallel('chatluna/conversation-before-archive', {
-            conversation
-        })
+        return this.ctx.chatluna.conversationRuntime.withConversationSync(
+            conversation,
+            async () => {
+                const current = await this.getConversation(conversationId)
+                if (current == null) {
+                    throw new Error('Conversation not found.')
+                }
 
-        if (
-            conversation.status === 'archived' &&
-            conversation.archiveId != null
-        ) {
-            const archive = await this.getArchive(conversation.archiveId)
-            if (archive != null) {
+                if (
+                    current.status === 'archived' &&
+                    current.archiveId != null
+                ) {
+                    const archive = await this.getArchive(current.archiveId)
+                    if (archive != null) {
+                        return {
+                            conversation: current,
+                            archive,
+                            path: archive.path
+                        }
+                    }
+                }
+
+                await this.ctx.root.parallel(
+                    'chatluna/conversation-before-archive',
+                    {
+                        conversation: current
+                    }
+                )
+
+                const archiveDir = await this.ensureDataDir(
+                    path.join('archive', current.id)
+                )
+                const messages = await this.listMessages(current.id)
+                const payload: ConversationArchivePayload = {
+                    formatVersion: 1,
+                    exportedAt: new Date().toISOString(),
+                    conversation: serializeConversation(current),
+                    messages: messages.map(serializeMessage)
+                }
+                const messageLines = payload.messages
+                    .map((message) => JSON.stringify(message))
+                    .join('\n')
+                const messageBuffer = await gzipEncode(messageLines)
+                const checksum = createHash('sha256')
+                    .update(messageBuffer)
+                    .digest('hex')
+
+                await fs.writeFile(
+                    path.join(archiveDir, 'conversation.json'),
+                    JSON.stringify(payload.conversation, null, 2),
+                    'utf8'
+                )
+                await fs.writeFile(
+                    path.join(archiveDir, 'messages.jsonl.gz'),
+                    messageBuffer
+                )
+
+                const now = new Date()
+                const manifest: ArchiveManifest = {
+                    format: 'chatluna-archive',
+                    formatVersion: payload.formatVersion,
+                    conversationId: current.id,
+                    messageCount: payload.messages.length,
+                    checksum,
+                    size: messageBuffer.byteLength,
+                    createdAt: now.toISOString()
+                }
+                await fs.writeFile(
+                    path.join(archiveDir, 'manifest.json'),
+                    JSON.stringify(manifest, null, 2),
+                    'utf8'
+                )
+
+                const archive: ArchiveRecord = {
+                    id: randomUUID(),
+                    conversationId: manifest.conversationId,
+                    path: archiveDir,
+                    formatVersion: manifest.formatVersion,
+                    messageCount: manifest.messageCount,
+                    checksum: manifest.checksum,
+                    size: manifest.size,
+                    state: 'ready',
+                    createdAt: now,
+                    restoredAt: null
+                }
+
+                await this.ctx.database.upsert('chatluna_archive', [archive])
+                await this.touchConversation(current.id, {
+                    status: 'archived',
+                    archivedAt: now,
+                    archiveId: archive.id
+                })
+                await this.unbindConversation(current.id)
+                await this.ctx.database.remove('chatluna_message', {
+                    conversationId: current.id
+                })
+
+                const updatedConversation = await this.getConversation(
+                    current.id
+                )
+                await this.ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+                    updatedConversation ?? current
+                )
+                await this.ctx.root.parallel(
+                    'chatluna/conversation-after-archive',
+                    {
+                        conversation: updatedConversation ?? current,
+                        archive,
+                        path: archiveDir
+                    }
+                )
+
                 return {
-                    conversation,
+                    conversation: updatedConversation ?? current,
                     archive,
-                    path: archive.path
+                    path: archiveDir
                 }
             }
-        }
-
-        const archiveDir = await this.ensureDataDir(
-            path.join('archive', conversation.id)
         )
-
-        const messages = await this.listMessages(conversation.id)
-        const payload: ConversationArchivePayload = {
-            formatVersion: 1,
-            exportedAt: new Date().toISOString(),
-            conversation: serializeConversation(conversation),
-            messages: messages.map(serializeMessage)
-        }
-        const messageLines = payload.messages
-            .map((message) => JSON.stringify(message))
-            .join('\n')
-        const messageBuffer = await gzipEncode(messageLines)
-        const checksum = createHash('sha256')
-            .update(messageBuffer)
-            .digest('hex')
-
-        await fs.writeFile(
-            path.join(archiveDir, 'conversation.json'),
-            JSON.stringify(payload.conversation, null, 2),
-            'utf8'
-        )
-        await fs.writeFile(
-            path.join(archiveDir, 'messages.jsonl.gz'),
-            messageBuffer
-        )
-
-        const now = new Date()
-        const manifest: ArchiveManifest = {
-            format: 'chatluna-archive',
-            formatVersion: payload.formatVersion,
-            conversationId: conversation.id,
-            messageCount: payload.messages.length,
-            checksum,
-            size: messageBuffer.byteLength,
-            createdAt: now.toISOString()
-        }
-        await fs.writeFile(
-            path.join(archiveDir, 'manifest.json'),
-            JSON.stringify(manifest, null, 2),
-            'utf8'
-        )
-
-        const archive: ArchiveRecord = {
-            id: randomUUID(),
-            conversationId: manifest.conversationId,
-            path: archiveDir,
-            formatVersion: manifest.formatVersion,
-            messageCount: manifest.messageCount,
-            checksum: manifest.checksum,
-            size: manifest.size,
-            state: 'ready',
-            createdAt: now,
-            restoredAt: null
-        }
-
-        await this.ctx.database.upsert('chatluna_archive', [archive])
-        await this.touchConversation(conversation.id, {
-            status: 'archived',
-            archivedAt: now,
-            archiveId: archive.id
-        })
-        await this.unbindConversation(conversation.id)
-        await this.ctx.database.remove('chatluna_message', {
-            conversationId: conversation.id
-        })
-        await this.ctx.chatluna.conversationRuntime.clearConversationInterface(
-            conversation
-        )
-
-        const updatedConversation = await this.getConversation(conversation.id)
-
-        await this.ctx.root.parallel('chatluna/conversation-after-archive', {
-            conversation: updatedConversation ?? conversation,
-            archive,
-            path: archiveDir
-        })
-
-        return {
-            conversation: updatedConversation ?? conversation,
-            archive,
-            path: archiveDir
-        }
     }
 
     async restoreConversation(
@@ -848,6 +874,10 @@ export class ConversationService {
             throw new Error('Archive not found.')
         }
 
+        if (archive.conversationId !== conversation.id) {
+            throw new Error('Archive does not belong to conversation.')
+        }
+
         await this.assertManageAllowed(session, resolved.constraint)
 
         const target = await this.getManagedConstraintByBindingKey(
@@ -862,88 +892,105 @@ export class ConversationService {
             throw new Error('Conversation restore is disabled by constraint.')
         }
 
-        await this.ctx.root.parallel('chatluna/conversation-before-restore', {
+        return this.ctx.chatluna.conversationRuntime.withConversationSync(
             conversation,
-            archive
-        })
+            async () => {
+                const current = await this.getConversation(conversation.id)
+                if (current == null) {
+                    throw new Error('Conversation not found.')
+                }
 
-        await this.ctx.database.upsert('chatluna_archive', [
-            {
-                ...archive,
-                state: 'restoring'
-            }
-        ])
-
-        try {
-            const payload = await this.readArchivePayload(archive.path)
-            const restoredConversation = deserializeConversation(
-                payload.conversation
-            )
-            const restoredMessages = payload.messages.map(deserializeMessage)
-
-            await this.ctx.database.remove('chatluna_message', {
-                conversationId: conversation.id
-            })
-
-            if (restoredMessages.length > 0) {
-                await this.ctx.database.upsert(
-                    'chatluna_message',
-                    restoredMessages
+                await this.ctx.root.parallel(
+                    'chatluna/conversation-before-restore',
+                    {
+                        conversation: current,
+                        archive
+                    }
                 )
+
+                await this.ctx.database.upsert('chatluna_archive', [
+                    {
+                        ...archive,
+                        state: 'restoring'
+                    }
+                ])
+
+                try {
+                    const payload = await this.readArchivePayload(archive.path)
+                    const restoredConversation = deserializeConversation(
+                        payload.conversation
+                    )
+                    const restoredMessages = payload.messages.map(
+                        (message) => ({
+                            ...deserializeMessage(message),
+                            conversationId: current.id
+                        })
+                    )
+
+                    await this.ctx.database.remove('chatluna_message', {
+                        conversationId: current.id
+                    })
+
+                    if (restoredMessages.length > 0) {
+                        await this.ctx.database.upsert(
+                            'chatluna_message',
+                            restoredMessages
+                        )
+                    }
+
+                    await this.ctx.database.upsert('chatluna_conversation', [
+                        {
+                            ...current,
+                            ...restoredConversation,
+                            id: current.id,
+                            status: 'active',
+                            archivedAt: null,
+                            archiveId: null,
+                            updatedAt: new Date()
+                        }
+                    ])
+                    await this.ctx.database.upsert('chatluna_archive', [
+                        {
+                            ...archive,
+                            state: 'ready',
+                            restoredAt: new Date()
+                        }
+                    ])
+
+                    const updatedConversation = await this.getConversation(
+                        current.id
+                    )
+                    if (updatedConversation == null) {
+                        throw new Error('Conversation restore failed.')
+                    }
+
+                    await this.setActiveConversation(
+                        updatedConversation.bindingKey,
+                        updatedConversation.id
+                    )
+                    await this.ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+                        updatedConversation
+                    )
+                    await this.ctx.root.parallel(
+                        'chatluna/conversation-after-restore',
+                        {
+                            conversation: updatedConversation,
+                            archive
+                        }
+                    )
+
+                    return updatedConversation
+                } catch (error) {
+                    await this.ctx.database.upsert('chatluna_archive', [
+                        {
+                            ...archive,
+                            state: 'broken'
+                        }
+                    ])
+                    throw error
+                }
             }
-
-            await this.ctx.database.upsert('chatluna_conversation', [
-                {
-                    ...conversation,
-                    ...restoredConversation,
-                    id: conversation.id,
-                    status: 'active',
-                    archivedAt: null,
-                    archiveId: null,
-                    updatedAt: new Date()
-                }
-            ])
-
-            await this.setActiveConversation(
-                restoredConversation.bindingKey,
-                conversation.id
-            )
-            await this.ctx.database.upsert('chatluna_archive', [
-                {
-                    ...archive,
-                    state: 'ready',
-                    restoredAt: new Date()
-                }
-            ])
-
-            const updatedConversation = await this.getConversation(
-                conversation.id
-            )
-            if (updatedConversation == null) {
-                throw new Error('Conversation restore failed.')
-            }
-
-            await this.ctx.chatluna.conversationRuntime.clearConversationInterface(
-                updatedConversation
-            )
-            await this.ctx.root.parallel(
-                'chatluna/conversation-after-restore',
-                {
-                    conversation: updatedConversation,
-                    archive
-                }
-            )
-
-            return updatedConversation
-        } catch (error) {
-            await this.ctx.database.upsert('chatluna_archive', [
-                {
-                    ...archive,
-                    state: 'broken'
-                }
-            ])
-            throw error
-        }
+        )
     }
 
     async exportMarkdown(conversation: ConversationRecord) {
@@ -1023,25 +1070,42 @@ export class ConversationService {
             throw new Error('Conversation delete is locked by constraint.')
         }
 
-        const updated = await this.touchConversation(conversation.id, {
-            status: 'deleted',
-            archivedAt: null
-        })
-        await this.ctx.root.parallel('chatluna/conversation-before-delete', {
-            conversation
-        })
-        await this.unbindConversation(conversation.id)
-        await this.ctx.database.remove('chatluna_message', {
-            conversationId: conversation.id
-        })
-        await this.removeAcl(conversation.id)
-        await this.ctx.chatluna.conversationRuntime.clearConversationInterface(
-            conversation
+        return this.ctx.chatluna.conversationRuntime.withConversationSync(
+            conversation,
+            async () => {
+                const current = await this.getConversation(conversation.id)
+                if (current == null) {
+                    throw new Error('Conversation not found.')
+                }
+
+                await this.ctx.root.parallel(
+                    'chatluna/conversation-before-delete',
+                    {
+                        conversation: current
+                    }
+                )
+
+                const updated = await this.touchConversation(current.id, {
+                    status: 'deleted',
+                    archivedAt: null
+                })
+                await this.unbindConversation(current.id)
+                await this.ctx.database.remove('chatluna_message', {
+                    conversationId: current.id
+                })
+                await this.removeAcl(current.id)
+                await this.ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+                    updated ?? current
+                )
+                await this.ctx.root.parallel(
+                    'chatluna/conversation-after-delete',
+                    {
+                        conversation: updated ?? current
+                    }
+                )
+                return updated ?? current
+            }
         )
-        await this.ctx.root.parallel('chatluna/conversation-after-delete', {
-            conversation: updated ?? conversation
-        })
-        return updated ?? conversation
     }
 
     async updateConversationUsage(

@@ -316,12 +316,20 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         let currentMessageId = this._latestId
 
         let isBad = false
+        const seen = new Set<string>()
 
         if (currentMessageId == null && queried.length > 0) {
             isBad = true
         }
 
         while (currentMessageId != null && !isBad) {
+            if (seen.has(currentMessageId)) {
+                isBad = true
+                break
+            }
+
+            seen.add(currentMessageId)
+
             const currentMessage = queried.find(
                 (item) => item.id === currentMessageId
             )
@@ -422,12 +430,13 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 id: this.conversationId,
                 bindingKey: this.conversationId,
                 title: 'Conversation',
-                model: '',
-                preset: '',
-                chatMode: '',
+                model: this._ctx.chatluna.config.defaultModel,
+                preset: this._ctx.chatluna.config.defaultPreset,
+                chatMode: this._ctx.chatluna.config.defaultChatMode,
                 createdBy: 'system',
                 createdAt: new Date(),
                 updatedAt: new Date(),
+                lastChatAt: new Date(),
                 status: 'active',
                 latestMessageId: null,
                 additional_kwargs: null,

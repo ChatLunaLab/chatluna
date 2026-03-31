@@ -2,6 +2,7 @@ import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { getRequestId } from '../../utils/chat_request'
+import { checkAdmin } from '../../utils/koishi'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -10,45 +11,68 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'stop_chat') return ChainMiddlewareRunStatus.SKIPPED
 
-            const resolved =
-                context.options.resolvedConversation !== undefined
-                    ? {
-                          conversation: context.options.resolvedConversation
-                      }
-                    : context.options.conversationId != null ||
-                        context.options.targetConversation != null
-                      ? {
-                            conversation:
-                                await ctx.chatluna.conversation.resolveCommandConversation(
-                                    session,
-                                    {
-                                        conversationId:
-                                            context.options.conversationId,
-                                        targetConversation:
-                                            context.options.targetConversation,
-                                        presetLane: context.options.presetLane,
-                                        permission: 'manage'
-                                    }
-                                )
-                        }
-                      : await ctx.chatluna.conversation.getCurrentConversation(
-                            session
+            let conversation =
+                context.options.resolvedConversation != null
+                    ? await ctx.chatluna.conversation.resolveCommandConversation(
+                          session,
+                          {
+                              conversationId:
+                                  context.options.resolvedConversation.id,
+                              presetLane: context.options.presetLane,
+                              permission: 'manage'
+                          }
+                      )
+                    : await ctx.chatluna.conversation.resolveCommandConversation(
+                          session,
+                          {
+                              conversationId: context.options.conversationId,
+                              targetConversation:
+                                  context.options.targetConversation,
+                              presetLane: context.options.presetLane,
+                              permission: 'manage'
+                          }
+                      )
+
+            if (conversation == null) {
+                conversation = (
+                    await ctx.chatluna.conversation.getCurrentConversation(
+                        session
+                    )
+                ).conversation
+
+                if (conversation != null) {
+                    conversation =
+                        await ctx.chatluna.conversation.resolveCommandConversation(
+                            session,
+                            {
+                                conversationId: conversation.id,
+                                presetLane: context.options.presetLane,
+                                permission: 'manage'
+                            }
                         )
-            const conversation = resolved.conversation
+                }
+            }
 
             if (conversation == null) {
                 context.message = session.text('.no_active_chat')
                 return ChainMiddlewareRunStatus.STOP
             }
 
+            const resolvedContext =
+                await ctx.chatluna.conversation.resolveContext(session, {
+                    conversationId: conversation.id,
+                    presetLane: context.options.presetLane
+                })
+
             if (
-                (
-                    await ctx.chatluna.conversation.resolveContext(session, {
-                        conversationId: conversation.id,
-                        presetLane: context.options.presetLane
-                    })
-                ).constraint.lockConversation
+                resolvedContext.constraint.manageMode === 'admin' &&
+                !(await checkAdmin(session))
             ) {
+                context.message = session.text('.stop_failed')
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            if (resolvedContext.constraint.lockConversation) {
                 context.message = session.text('.stop_failed')
                 return ChainMiddlewareRunStatus.STOP
             }

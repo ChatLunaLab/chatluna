@@ -1,13 +1,13 @@
 - id: bc0pa1
   name: yakumo
   config:
-    pipeline:
-      build:
-        - esbuild
-        - tsc
-        - client
-      clean:
-        - tsc --clean
+      pipeline:
+          build:
+              - esbuild
+              - tsc
+              - client
+          clean:
+              - tsc --clean
 - id: wxc6xn
   name: yakumo-esbuild
 - id: a502x9
@@ -22,3 +22,5 @@
   name: yakumo/upgrade
 - id: ac2tqc
   name: yakumo/run
+- id: aavbcc
+  name: yakumo-mocha

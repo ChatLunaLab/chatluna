@@ -43,13 +43,19 @@ export async function checkAdmin(session: Session) {
         if (tested) {
             return true
         }
-    } catch {}
+    } catch (error) {
+        session.app.logger.debug(`checkAdmin permission test failed: ${error}`)
+    }
 
     const user = await session.getUser<User.Field>(session.userId, [
         'authority'
     ])
 
-    return user?.authority >= 3
+    if (user == null) {
+        return false
+    }
+
+    return user.authority >= 3
 }
 
 const tagRegExp = /<(\/?)([^!\s>/]+)([^>]*?)\s*(\/?)>/

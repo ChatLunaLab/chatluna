@@ -17,6 +17,7 @@ import type {
 import type { MigrationValidationResult } from './types'
 export type { MigrationValidationResult } from './types'
 export {
+    dropTableIfExists,
     getLegacySchemaSentinelDir,
     getLegacySchemaSentinel,
     LEGACY_MIGRATION_TABLES,
@@ -59,14 +60,19 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
         ctx,
         'chathub_message',
         (rows) => {
-            legacyMessageCount += rows.length
+            legacyMessageCount += rows.filter((row) =>
+                validConversationIds.has(row.conversation)
+            ).length
         }
     )
 
     let migratedLegacyMessageCount = 0
     await readTableBatches<MessageRecord>(ctx, 'chatluna_message', (rows) => {
         for (const row of rows) {
-            if (row.createdAt == null) {
+            if (
+                row.createdAt == null &&
+                validConversationIds.has(row.conversationId)
+            ) {
                 migratedLegacyMessageCount += 1
             }
         }
@@ -182,10 +188,13 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
     const missingBindingConversationIds: string[] = []
 
     for (const user of users) {
+        if (user.defaultRoomId == null || user.defaultRoomId === 0) {
+            continue
+        }
+
         const conversation = conversationsByRoomId.get(user.defaultRoomId)
 
         if (conversation == null) {
-            missingBindingConversationIds.push(String(user.defaultRoomId))
             continue
         }
 

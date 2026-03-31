@@ -75,7 +75,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ).value
 
                     if (preset != null) {
-                        context.options.presetLane = preset.triggerKeyword[0]
+                        context.options.presetLane = parsed.preset
 
                         if (
                             parsed.queryOnly &&
@@ -86,7 +86,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             context.command = 'conversation_current'
                             context.options.conversation_manage = {
                                 ...context.options.conversation_manage,
-                                presetLane: preset.triggerKeyword[0]
+                                presetLane: parsed.preset
                             }
                             context.message = null
                             return ChainMiddlewareRunStatus.CONTINUE

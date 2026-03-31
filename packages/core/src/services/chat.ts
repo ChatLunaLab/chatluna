@@ -52,7 +52,7 @@ import { MessageTransformer } from './message_transform'
 import { ChatEvents, ToolMaskArg, ToolMaskResolver } from './types'
 import { ConversationService } from './conversation'
 import { ConversationRuntime } from './conversation_runtime'
-import { ConversationRecord } from './conversation_types'
+import { ConstraintRecord, ConversationRecord } from './conversation_types'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
@@ -113,6 +113,9 @@ export class ChatLunaService extends Service<Config> {
 
         this._createTempDir()
         this._defineDatabase()
+        this.ctx.on('ready', async () => {
+            await this._dedupeConstraintNames()
+        })
     }
 
     async installPlugin(plugin: ChatLunaPlugin) {
@@ -445,6 +448,49 @@ export class ChatLunaService extends Service<Config> {
         if (!fs.existsSync(tempPath)) {
             fs.mkdirSync(tempPath, { recursive: true })
         }
+    }
+
+    private async _dedupeConstraintNames() {
+        const rows = (await this.ctx.database.get(
+            'chatluna_constraint',
+            {}
+        )) as ConstraintRecord[]
+
+        if (rows.length < 2) {
+            return
+        }
+
+        const names = new Set<string>()
+        const ids = [...rows]
+            .sort((left, right) => {
+                const leftTime = left.updatedAt?.getTime() ?? 0
+                const rightTime = right.updatedAt?.getTime() ?? 0
+                if (leftTime !== rightTime) {
+                    return rightTime - leftTime
+                }
+
+                return (right.id ?? 0) - (left.id ?? 0)
+            })
+            .filter((row) => {
+                if (!names.has(row.name)) {
+                    names.add(row.name)
+                    return false
+                }
+
+                return row.id != null
+            })
+            .map((row) => row.id!)
+
+        if (ids.length === 0) {
+            return
+        }
+
+        this.ctx.logger.warn(
+            `Removing ${ids.length} duplicate chatluna_constraint rows.`
+        )
+        await this.ctx.database.remove('chatluna_constraint', {
+            id: ids
+        })
     }
 
     private _defineDatabase() {
@@ -1003,7 +1049,8 @@ export class ChatLunaService extends Service<Config> {
             },
             {
                 autoInc: true,
-                primary: 'id'
+                primary: 'id',
+                unique: ['name']
             }
         )
 

@@ -300,7 +300,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error(
-                        'error when calling qwen completion, Result: ' + chunk
+                        'error when calling dify completion, Result: ' + chunk
                     )
                 )
             }

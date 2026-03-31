@@ -41,6 +41,9 @@ export async function runRoomToConversationMigration(
     ctx: Context,
     config: Config
 ) {
+    const result = await readMetaValue<
+        Awaited<ReturnType<typeof validateRoomMigration>>
+    >(ctx, 'validation_result')
     const schemaVersion =
         (await readMetaValue<number>(ctx, 'schema_version')) ?? 0
     const roomDone =
@@ -48,7 +51,10 @@ export async function runRoomToConversationMigration(
     const messageDone =
         (await readMetaValue<boolean>(ctx, 'message_migration_done')) ?? false
 
-    if (schemaVersion >= BUILTIN_SCHEMA_VERSION && roomDone && messageDone) {
+    if (
+        schemaVersion >= BUILTIN_SCHEMA_VERSION &&
+        (result?.passed === true || (roomDone && messageDone))
+    ) {
         return await ensureMigrationValidated(ctx, config)
     }
 
@@ -71,25 +77,18 @@ export async function runRoomToConversationMigration(
     await migrateMessages(ctx)
     await migrateBindings(ctx)
 
-    const result = await validateRoomMigration(ctx, config)
-    await writeMetaValue(ctx, 'validation_result', result)
-    await writeMetaValue(ctx, 'migration_finished_at', new Date().toISOString())
-    await writeMetaValue(ctx, 'room_migration_done', true)
-    await writeMetaValue(ctx, 'message_migration_done', true)
+    const validated = await validateRoomMigration(ctx, config)
+    await writeMetaValue(ctx, 'validation_result', validated)
 
-    if (!result.passed) {
+    if (!validated.passed) {
         throw new Error('ChatLuna migration validation failed.')
     }
 
     await purgeLegacyTables(ctx)
-    await writeMetaValue(
-        ctx,
-        LEGACY_RETENTION_META_KEY,
-        createLegacyTableRetention('purged')
-    )
+    await writeMigrationFinished(ctx)
 
     ctx.logger.info('Built-in ChatLuna migration finished.')
-    return result
+    return validated
 }
 
 // (#13) guard against re-entrant call: ensureMigrationValidated only calls
@@ -100,13 +99,16 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
     const result = await readMetaValue<
         Awaited<ReturnType<typeof validateRoomMigration>>
     >(ctx, 'validation_result')
+    const retention = await readMetaValue<{
+        state?: string
+    }>(ctx, LEGACY_RETENTION_META_KEY)
 
     if (result?.passed === true) {
-        await writeMetaValue(
-            ctx,
-            LEGACY_RETENTION_META_KEY,
-            createLegacyTableRetention('purged')
-        )
+        if (retention?.state !== 'purged') {
+            await purgeLegacyTables(ctx)
+        }
+
+        await writeMigrationFinished(ctx)
         return result
     }
 
@@ -136,13 +138,20 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
     }
 
     await purgeLegacyTables(ctx)
+    await writeMigrationFinished(ctx)
+
+    return validated
+}
+
+async function writeMigrationFinished(ctx: Context) {
+    await writeMetaValue(ctx, 'migration_finished_at', new Date().toISOString())
+    await writeMetaValue(ctx, 'room_migration_done', true)
+    await writeMetaValue(ctx, 'message_migration_done', true)
     await writeMetaValue(
         ctx,
         LEGACY_RETENTION_META_KEY,
         createLegacyTableRetention('purged')
     )
-
-    return validated
 }
 
 // (#6) removed redundant inner `done` check — the caller already guards on room_migration_done
@@ -459,12 +468,14 @@ function buildAclRecords(
         })
     }
 
-    add({
-        conversationId,
-        principalType: 'user',
-        principalId: room.roomMasterId,
-        permission: 'manage'
-    })
+    if (room.roomMasterId.length > 0) {
+        add({
+            conversationId,
+            principalType: 'user',
+            principalId: room.roomMasterId,
+            permission: 'manage'
+        })
+    }
 
     return Array.from(map.values())
 }
