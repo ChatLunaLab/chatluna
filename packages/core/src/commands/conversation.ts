@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
-import { completeConversationTarget } from './utils'
+import { completeConversationTarget } from '../utils/conversation'
 
 export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     ctx.command('chatluna.conversation', {

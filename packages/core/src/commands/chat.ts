@@ -2,7 +2,7 @@ import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
-import { completeConversationTarget } from './utils'
+import { completeConversationTarget } from '../utils/conversation'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command('chatluna', {
