@@ -124,17 +124,44 @@ export class ConversationService {
         session: Session,
         options: ResolveConversationContextOptions = {}
     ): Promise<ResolvedConstraint> {
-        const constraints = (await this.listConstraints()).filter((c) =>
+        let constraints = (await this.listConstraints()).filter((c) =>
             this.isConstraintMatched(c, session)
         )
         const routed = constraints.find((c) => c.routeMode != null)
-        const routeMode = routed?.routeMode ?? this.getDefaultRouteMode(session)
-        const baseKey = computeBaseBindingKey(
+        let routeMode = routed?.routeMode ?? this.getDefaultRouteMode(session)
+        let baseKey = computeBaseBindingKey(
             session,
             routeMode,
             routed?.routeKey
         )
-        const bindingKey = applyPresetLane(baseKey, options.presetLane)
+        let bindingKey =
+            options.bindingKey == null
+                ? applyPresetLane(baseKey, options.presetLane)
+                : options.bindingKey.includes(':preset:')
+                  ? options.bindingKey
+                  : applyPresetLane(options.bindingKey, options.presetLane)
+
+        if (options.bindingKey != null) {
+            constraints = constraints.filter(
+                (c) => !c.name.startsWith('managed:')
+            )
+
+            const managed =
+                await this.getManagedConstraintByBindingKey(bindingKey)
+
+            if (managed != null) {
+                constraints.unshift(managed)
+            }
+
+            baseKey = bindingKey.includes(':preset:')
+                ? bindingKey.slice(0, bindingKey.indexOf(':preset:'))
+                : bindingKey
+            routeMode = baseKey.startsWith('shared:')
+                ? 'shared'
+                : baseKey.startsWith('personal:')
+                  ? 'personal'
+                  : 'custom'
+        }
 
         return {
             routeMode,
@@ -172,10 +199,16 @@ export class ConversationService {
         options: ResolveConversationContextOptions = {}
     ): Promise<ResolvedConversationContext> {
         const constraint = await this.resolveConstraint(session, options)
-        const matched = await this.resolveBindingForKey(
-            session,
-            constraint.bindingKey
-        )
+        const matched =
+            options.bindingKey == null
+                ? await this.resolveBindingForKey(
+                      session,
+                      constraint.bindingKey
+                  )
+                : {
+                      bindingKey: constraint.bindingKey,
+                      binding: await this.getBinding(constraint.bindingKey)
+                  }
         const binding = matched?.binding
         const bindingKey = matched?.bindingKey ?? constraint.bindingKey
         const conversation = options.conversationId

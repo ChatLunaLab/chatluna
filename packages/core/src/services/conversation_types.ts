@@ -157,6 +157,7 @@ export interface ResolvedConversationContext {
 export interface ResolveConversationContextOptions {
     presetLane?: string
     conversationId?: string
+    bindingKey?: string
 }
 
 export function computeBaseBindingKey(

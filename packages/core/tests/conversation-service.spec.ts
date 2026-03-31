@@ -104,6 +104,93 @@ it('ConversationService gives fixed preset precedence over preset lane', async (
     assert.equal(resolved.effectivePreset, 'fixed-preset')
 })
 
+it('ConversationService resolveContext uses explicit binding key constraints', async () => {
+    const remote = createConversation({
+        id: 'conversation-remote-binding',
+        bindingKey: 'shared:discord:bot:other-guild'
+    })
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [remote as unknown as TableRow],
+            chatluna_constraint: [
+                {
+                    id: 1,
+                    name: 'managed:discord:bot:guild:guild',
+                    enabled: true,
+                    priority: 1000,
+                    createdBy: 'admin',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    platform: 'discord',
+                    selfId: 'bot',
+                    guildId: 'guild',
+                    channelId: null,
+                    direct: false,
+                    users: null,
+                    excludeUsers: null,
+                    routeMode: null,
+                    routeKey: null,
+                    defaultModel: null,
+                    defaultPreset: null,
+                    defaultChatMode: null,
+                    fixedModel: null,
+                    fixedPreset: null,
+                    fixedChatMode: null,
+                    lockConversation: false,
+                    allowNew: true,
+                    allowSwitch: true,
+                    allowArchive: true,
+                    allowExport: true,
+                    manageMode: 'admin'
+                } as unknown as TableRow,
+                {
+                    id: 2,
+                    name: 'managed:discord:bot:guild:other-guild',
+                    enabled: true,
+                    priority: 1000,
+                    createdBy: 'admin',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    platform: 'discord',
+                    selfId: 'bot',
+                    guildId: 'other-guild',
+                    channelId: null,
+                    direct: false,
+                    users: null,
+                    excludeUsers: null,
+                    routeMode: null,
+                    routeKey: null,
+                    defaultModel: null,
+                    defaultPreset: null,
+                    defaultChatMode: null,
+                    fixedModel: null,
+                    fixedPreset: null,
+                    fixedChatMode: null,
+                    lockConversation: true,
+                    allowNew: true,
+                    allowSwitch: true,
+                    allowArchive: true,
+                    allowExport: true,
+                    manageMode: 'anyone'
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = await service.resolveContext(
+        createSession({ authority: 1 }),
+        {
+            conversationId: remote.id,
+            bindingKey: remote.bindingKey
+        }
+    )
+
+    assert.equal(resolved.bindingKey, remote.bindingKey)
+    assert.equal(resolved.conversation?.id, remote.id)
+    assert.equal(resolved.constraint.manageMode, 'anyone')
+    assert.equal(resolved.constraint.lockConversation, true)
+})
+
 it('ConversationService ensureActiveConversation creates conversation and binding on default route', async () => {
     const { service, database } = await createService()
 

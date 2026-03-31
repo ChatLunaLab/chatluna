@@ -81,7 +81,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const resolvedContext =
                 await ctx.chatluna.conversation.resolveContext(session, {
                     conversationId: conversation.id,
-                    presetLane: context.options.presetLane
+                    presetLane: context.options.presetLane,
+                    bindingKey: conversation.bindingKey
                 })
 
             if (
