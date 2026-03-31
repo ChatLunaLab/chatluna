@@ -8,7 +8,6 @@ import type {
     MetaRecord
 } from '../services/conversation_types'
 import type {
-    LegacyConversationRecord,
     LegacyMessageRecord,
     LegacyRoomGroupRecord,
     LegacyRoomMemberRecord,
@@ -27,77 +26,129 @@ export {
     createLegacyTableRetention,
     purgeLegacyTables
 } from './legacy_tables'
-export async function validateRoomMigration(ctx: Context, config: Config) {
-    // All queries are independent — run in parallel (#20)
-    const [
-        rooms,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _,
-        oldMessages,
-        users,
-        members,
-        groups,
-        conversations,
-        messages,
-        bindings,
-        acl
-    ] = (await Promise.all([
-        ctx.database.get('chathub_room', {}),
-        ctx.database.get('chathub_conversation', {}),
-        ctx.database.get('chathub_message', {}),
-        ctx.database.get('chathub_user', {}),
-        ctx.database.get('chathub_room_member', {}),
-        ctx.database.get('chathub_room_group_member', {}),
-        ctx.database.get('chatluna_conversation', {}),
-        ctx.database.get('chatluna_message', {}),
-        ctx.database.get('chatluna_binding', {}),
-        ctx.database.get('chatluna_acl', {})
-    ])) as [
-        LegacyRoomRecord[],
-        LegacyConversationRecord[],
-        LegacyMessageRecord[],
-        LegacyUserRecord[],
-        LegacyRoomMemberRecord[],
-        LegacyRoomGroupRecord[],
-        ConversationRecord[],
-        MessageRecord[],
-        BindingRecord[],
-        ACLRecord[]
-    ]
+
+const VALIDATION_BATCH_SIZE = 500
+
+export async function validateRoomMigration(ctx: Context, _config: Config) {
+    const rooms = (await ctx.database.get(
+        'chathub_room',
+        {}
+    )) as LegacyRoomRecord[]
+    const users = (await ctx.database.get(
+        'chathub_user',
+        {}
+    )) as LegacyUserRecord[]
+    const members = (await ctx.database.get(
+        'chathub_room_member',
+        {}
+    )) as LegacyRoomMemberRecord[]
+    const groups = (await ctx.database.get(
+        'chathub_room_group_member',
+        {}
+    )) as LegacyRoomGroupRecord[]
 
     const routeModes = inferLegacyGroupRouteModes(users, rooms, groups)
 
-    // Shared filter logic (#21)
     const validRooms = filterValidRooms(rooms)
     const validConversationIds = new Set(
         validRooms.map((room) => room.conversationId as string)
     )
-    const migratedLegacyConversations = conversations.filter(
-        (item) => item.legacyRoomId != null || validConversationIds.has(item.id)
-    )
-    const migratedLegacyMessages = messages.filter(
-        (item) => item.createdAt == null
-    )
-    const migratedMessageIds = new Set(messages.map((item) => item.id))
-    const migratedBindingKeys = new Set(bindings.map((item) => item.bindingKey))
-    const migratedAclKeys = new Set(
-        acl.map((item) =>
-            aclKey(
-                item.conversationId,
-                item.principalType,
-                item.principalId,
-                item.permission
-            )
-        )
+
+    let legacyMessageCount = 0
+    await readTableBatches<LegacyMessageRecord>(
+        ctx,
+        'chathub_message',
+        (rows) => {
+            legacyMessageCount += rows.length
+        }
     )
 
-    const missingLatestMessageIds = migratedLegacyConversations
-        .filter(
-            (item) =>
-                item.latestMessageId != null &&
-                !migratedMessageIds.has(item.latestMessageId)
-        )
-        .map((item) => item.id)
+    let migratedLegacyMessageCount = 0
+    await readTableBatches<MessageRecord>(ctx, 'chatluna_message', (rows) => {
+        for (const row of rows) {
+            if (row.createdAt == null) {
+                migratedLegacyMessageCount += 1
+            }
+        }
+    })
+
+    const conversationsById = new Map<string, ConversationRecord>()
+    const conversationsByRoomId = new Map<number, ConversationRecord>()
+    const missingLatestMessageIds: string[] = []
+    let migratedLegacyConversationCount = 0
+
+    await readTableBatches<ConversationRecord>(
+        ctx,
+        'chatluna_conversation',
+        async (rows) => {
+            const checked = rows.filter(
+                (row) =>
+                    row.legacyRoomId != null || validConversationIds.has(row.id)
+            )
+
+            if (checked.length === 0) {
+                return
+            }
+
+            migratedLegacyConversationCount += checked.length
+
+            for (const row of checked) {
+                conversationsById.set(row.id, row)
+                if (row.legacyRoomId != null) {
+                    conversationsByRoomId.set(row.legacyRoomId, row)
+                }
+            }
+
+            const latestMessageIds = checked
+                .map((row) => row.latestMessageId)
+                .filter((id) => id != null)
+
+            if (latestMessageIds.length === 0) {
+                return
+            }
+
+            const existing = new Set(
+                (
+                    (await ctx.database.get('chatluna_message', {
+                        id: { $in: latestMessageIds }
+                    })) as MessageRecord[]
+                ).map((row) => row.id)
+            )
+
+            for (const row of checked) {
+                if (
+                    row.latestMessageId != null &&
+                    !existing.has(row.latestMessageId)
+                ) {
+                    missingLatestMessageIds.push(row.id)
+                }
+            }
+        }
+    )
+
+    const migratedBindingKeys = new Set<string>()
+    await readTableBatches<BindingRecord>(ctx, 'chatluna_binding', (rows) => {
+        for (const row of rows) {
+            migratedBindingKeys.add(row.bindingKey)
+        }
+    })
+
+    const migratedAclKeys = new Set<string>()
+    let migratedAclCount = 0
+    await readTableBatches<ACLRecord>(ctx, 'chatluna_acl', (rows) => {
+        migratedAclCount += rows.length
+        for (const row of rows) {
+            migratedAclKeys.add(
+                aclKey(
+                    row.conversationId,
+                    row.principalType,
+                    row.principalId,
+                    row.permission
+                )
+            )
+        }
+    })
+
     const inconsistentBindingConversationIds = validRooms
         .map((room) => {
             const roomMembers = members.filter(
@@ -106,8 +157,8 @@ export async function validateRoomMigration(ctx: Context, config: Config) {
             const roomGroups = groups.filter(
                 (item) => item.roomId === room.roomId
             )
-            const conversation = migratedLegacyConversations.find(
-                (item) => item.id === room.conversationId
+            const conversation = conversationsById.get(
+                room.conversationId as string
             )
 
             if (conversation == null) {
@@ -131,14 +182,9 @@ export async function validateRoomMigration(ctx: Context, config: Config) {
     const missingBindingConversationIds: string[] = []
 
     for (const user of users) {
-        const conversation = conversations.find(
-            (item) => item.legacyRoomId === user.defaultRoomId
-        )
+        const conversation = conversationsByRoomId.get(user.defaultRoomId)
 
         if (conversation == null) {
-            // (#23) push the conversation id (derived from defaultRoomId match), not the raw roomId
-            // When no conversation was migrated for this user's defaultRoomId, record it as missing.
-            // We record String(user.defaultRoomId) as a sentinel since no conversationId exists yet.
             missingBindingConversationIds.push(String(user.defaultRoomId))
             continue
         }
@@ -200,14 +246,14 @@ export async function validateRoomMigration(ctx: Context, config: Config) {
         checkedAt: new Date().toISOString(),
         conversation: {
             legacy: validConversationIds.size,
-            migrated: migratedLegacyConversations.length,
+            migrated: migratedLegacyConversationCount,
             matched:
-                validConversationIds.size === migratedLegacyConversations.length
+                validConversationIds.size === migratedLegacyConversationCount
         },
         message: {
-            legacy: oldMessages.length,
-            migrated: migratedLegacyMessages.length,
-            matched: oldMessages.length === migratedLegacyMessages.length
+            legacy: legacyMessageCount,
+            migrated: migratedLegacyMessageCount,
+            matched: legacyMessageCount === migratedLegacyMessageCount
         },
         latestMessageId: {
             missingConversationIds: missingLatestMessageIds,
@@ -226,7 +272,7 @@ export async function validateRoomMigration(ctx: Context, config: Config) {
         },
         acl: {
             expected: expectedAclKeys.length,
-            migrated: acl.length,
+            migrated: migratedAclCount,
             missing: missingAclKeys,
             matched: missingAclKeys.length === 0
         }
@@ -242,6 +288,37 @@ export async function validateRoomMigration(ctx: Context, config: Config) {
             result.binding.matched &&
             result.acl.matched
     } satisfies MigrationValidationResult
+}
+
+async function readTableBatches<T>(
+    ctx: Context,
+    table:
+        | 'chathub_message'
+        | 'chatluna_message'
+        | 'chatluna_conversation'
+        | 'chatluna_binding'
+        | 'chatluna_acl',
+    callback: (rows: T[]) => Promise<void> | void
+) {
+    let offset = 0
+
+    while (true) {
+        const rows = (await ctx.database.get(
+            table,
+            {},
+            {
+                offset,
+                limit: VALIDATION_BATCH_SIZE
+            }
+        )) as T[]
+
+        if (rows.length === 0) {
+            return
+        }
+
+        await callback(rows)
+        offset += rows.length
+    }
 }
 
 export async function readMetaValue<T>(ctx: Context, key: string) {

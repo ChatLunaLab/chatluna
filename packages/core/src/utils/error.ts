@@ -1,3 +1,5 @@
+import { logger } from 'koishi-plugin-chatluna'
+
 // eslint-disable-next-line prefer-const
 export let ERROR_FORMAT_TEMPLATE =
     '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
@@ -18,17 +20,17 @@ export class ChatLunaError extends Error {
 
         this.name = 'ChatLunaError'
         if (!isTimeout) {
-            console.error(
+            logger?.error(
                 '='.repeat(20) + 'ChatLunaError:' + errorCode + '='.repeat(20)
             )
         }
         if (originError && !isTimeout) {
-            console.error(originError)
+            logger?.error(originError)
             if (originError.cause) {
-                console.error(originError.cause)
+                logger?.error(originError.cause)
             }
         } else if (!isTimeout) {
-            console.error(this)
+            logger?.error(this)
         }
     }
 

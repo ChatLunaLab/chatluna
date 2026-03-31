@@ -830,9 +830,15 @@ class ChatChainDependencyGraph {
 
                 while (currentLevel.length > 0) {
                     levels.push(
-                        currentLevel.map(
-                            (name) => this._tasks.get(name)!.middleware!
-                        )
+                        currentLevel.map((name) => {
+                            const task = this._tasks.get(name)
+                            if (task?.middleware == null) {
+                                throw new Error(
+                                    `Missing middleware for task ${name}`
+                                )
+                            }
+                            return task.middleware
+                        })
                     )
 
                     const nextLevel: string[] = []

@@ -1,7 +1,8 @@
-import { Context, h, Session } from 'koishi'
+import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
+import { completeConversationTarget } from './utils'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command('chatluna', {
@@ -14,7 +15,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('type', '-t <type: string>')
         .action(async ({ options, session }, message) => {
             const renderType = options.type ?? config.outputMode
-            const presetLane = normalizeTarget(options.preset)
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
 
             if (
                 !ctx.chatluna.renderer.rendererTypeList.some(
@@ -139,50 +143,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     ctx.command('chatluna.restart').action(async ({ session }) => {
         await chain.receiveCommand(session, 'restart')
-    })
-}
-
-function normalizeTarget(value?: string | null) {
-    return value == null || value.trim().length < 1 ? undefined : value.trim()
-}
-
-async function completeConversationTarget(
-    ctx: Context,
-    session: Session,
-    target?: string,
-    presetLane?: string,
-    includeArchived = true
-) {
-    const value = normalizeTarget(target)
-    if (value == null) {
-        return undefined
-    }
-
-    const conversations = await ctx.chatluna.conversation.listConversations(
-        session,
-        {
-            presetLane,
-            includeArchived
-        }
-    )
-    const expect = Array.from(
-        new Set(
-            conversations.flatMap((conversation) => [
-                conversation.id,
-                String(conversation.seq ?? ''),
-                conversation.title
-            ])
-        )
-    ).filter((item) => item.length > 0)
-
-    if (expect.length === 0) {
-        return value
-    }
-
-    return session.suggest({
-        actual: value,
-        expect,
-        suffix: session.text('commands.chatluna.chat.text.options.conversation')
     })
 }
 

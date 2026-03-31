@@ -56,13 +56,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.resolvedConversation = conversation
             }
 
-            const resolved = await ctx.chatluna.conversation.resolveContext(
-                session,
-                {
+            const resolved =
+                context.options.resolvedConversationContext ??
+                (await ctx.chatluna.conversation.resolveContext(session, {
                     conversationId: context.options.conversationId,
                     presetLane
-                }
-            )
+                }))
 
             context.options.resolvedConversation =
                 context.options.resolvedConversation ?? resolved.conversation

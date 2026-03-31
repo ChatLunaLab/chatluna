@@ -15,11 +15,11 @@ import {
     parsePresetLaneInput
 } from '../src/utils/message_content'
 import {
-    applyPresetLane,
     type ACLRecord,
-    computeBaseBindingKey,
+    applyPresetLane,
     type ArchiveRecord,
     type BindingRecord,
+    computeBaseBindingKey,
     type ConstraintRecord,
     type ConversationRecord,
     type MessageRecord
@@ -48,7 +48,7 @@ type BindingSessionShape = {
     authority?: number
 }
 
-type TableRow = Record<string, any>
+type TableRow = Record<string, unknown>
 type Tables = Record<string, TableRow[]>
 
 class FakeDatabase {
@@ -68,7 +68,7 @@ class FakeDatabase {
         chathub_conversation: []
     }
 
-    async get(table: string, query: Record<string, any>) {
+    async get(table: string, query: Record<string, unknown>) {
         return (this.tables[table] ?? []).filter((row) =>
             Object.entries(query).every(([key, expected]) => {
                 const actual = row[key]
@@ -78,7 +78,9 @@ class FakeDatabase {
                     typeof expected === 'object' &&
                     '$in' in expected
                 ) {
-                    return expected.$in.includes(actual)
+                    return Array.isArray(expected.$in)
+                        ? expected.$in.includes(actual)
+                        : false
                 }
 
                 if (Array.isArray(expected)) {
@@ -109,7 +111,7 @@ class FakeDatabase {
         }
     }
 
-    async remove(table: string, query: Record<string, any>) {
+    async remove(table: string, query: Record<string, unknown>) {
         const target = (this.tables[table] ??= [])
         this.tables[table] = target.filter(
             (row) =>
@@ -175,7 +177,7 @@ function createSession(overrides: Partial<BindingSessionShape> = {}) {
     } as BindingSessionShape as never
 }
 
-function createConfig(overrides: Record<string, any> = {}) {
+function createConfig(overrides: Record<string, unknown> = {}) {
     return {
         defaultModel: 'test-platform/test-model',
         defaultPreset: 'default-preset',
@@ -190,7 +192,7 @@ async function createService(
         tables?: Partial<Tables>
         baseDir?: string
         clearCache?: (conversation: ConversationRecord) => Promise<void>
-        config?: Record<string, any>
+        config?: Record<string, unknown>
     } = {}
 ) {
     const database = new FakeDatabase()
@@ -397,9 +399,11 @@ test('pagination normalizes page and limit bounds', async () => {
 test('gzip helpers round-trip archived payload content', async () => {
     const json = JSON.stringify({ text: 'hello', values: [1, 2, 3] })
     const compressed = await gzipEncode(json)
+    const base64 = await gzipEncode(json, 'base64')
     const arrayBuffer = bufferToArrayBuffer(compressed)
 
     assert.equal(await gzipDecode(arrayBuffer), json)
+    assert.equal(await gzipDecode(base64), json)
 })
 
 test('getMessageContent flattens structured text parts', () => {
@@ -1381,7 +1385,7 @@ test('purgeArchivedConversation removes archive directory and clears both bindin
 
     await purgeArchivedConversation(ctx, conversation)
 
-    assert.rejects(fs.access(archiveDir))
+    await assert.rejects(fs.access(archiveDir))
     assert.equal(database.tables.chatluna_conversation.length, 0)
     assert.equal(database.tables.chatluna_archive.length, 0)
     assert.equal(database.tables.chatluna_message.length, 0)

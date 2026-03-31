@@ -111,7 +111,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const target = await resolveConversationTarget(session, context)
 
         if (target == null) {
-            return
+            return ChainMiddlewareRunStatus.CONTINUE
         }
 
         const { model, conversationId } = target

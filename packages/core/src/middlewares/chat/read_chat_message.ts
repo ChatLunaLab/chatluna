@@ -77,7 +77,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     if (preset != null) {
                         context.options.presetLane = preset.triggerKeyword[0]
 
-                        if (parsed.queryOnly) {
+                        if (
+                            parsed.queryOnly &&
+                            (message as h[]).every(
+                                (element) => element.type === 'text'
+                            )
+                        ) {
                             context.command = 'conversation_current'
                             context.options.conversation_manage = {
                                 ...context.options.conversation_manage,
@@ -87,7 +92,31 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             return ChainMiddlewareRunStatus.CONTINUE
                         }
 
-                        message = [h.text(parsed.content)]
+                        let skip = text.length - (parsed.content?.length ?? 0)
+                        const next: h[] = []
+
+                        for (const element of message as h[]) {
+                            if (element.type !== 'text') {
+                                next.push(element)
+                                continue
+                            }
+
+                            const content = String(element.attrs.content ?? '')
+                            if (skip >= content.length) {
+                                skip -= content.length
+                                continue
+                            }
+
+                            next.push(
+                                h('text', {
+                                    ...element.attrs,
+                                    content: content.slice(skip)
+                                })
+                            )
+                            skip = 0
+                        }
+
+                        message = next
                     }
                 }
             }
@@ -250,7 +279,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ) {
                 if (!isInstalledImageService) {
                     logger.warn(
-                        `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-multimodal-service plugin to enable image description.`
+                        `Model "${model}" does not support image input. ` +
+                            'Please use a model that supports vision capabilities, ' +
+                            'or install chatluna-multimodal-service plugin to enable image description.'
                     )
                 }
                 return false

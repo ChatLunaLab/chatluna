@@ -2,7 +2,6 @@
 
 import { Context } from 'koishi'
 import {
-    type AgentTaskResolveContext,
     type AgentTaskToolRuntime,
     createTaskTool,
     renderAvailableAgents,

@@ -3,6 +3,11 @@ import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { Marked, Token } from 'marked'
 import type { MessageContent } from '@langchain/core/messages'
 import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/langchain'
+import {
+    isMessageContentAudio,
+    isMessageContentFileUrl,
+    isMessageContentVideo
+} from './langchain'
 
 const marked = new Marked({
     tokenizer: {
@@ -29,11 +34,16 @@ export function forkScopeToDisposable(scope: ForkScope): PromiseLikeDisposable {
 }
 
 export async function checkAdmin(session: Session) {
-    const tested = await session.app.permissions.test('chatluna:admin', session)
+    try {
+        const tested = await session.app.permissions.test(
+            'chatluna:admin',
+            session
+        )
 
-    if (tested) {
-        return true
-    }
+        if (tested) {
+            return true
+        }
+    } catch {}
 
     const user = await session.getUser<User.Field>(session.userId, [
         'authority'
@@ -175,7 +185,24 @@ export function transformMessageContentToElements(content: MessageContent) {
                 : h.image(imageUrl.url)
         }
 
-        // TODO: support other message types (audio)
+        if (isMessageContentFileUrl(message)) {
+            return typeof message.file_url === 'string'
+                ? h.file(message.file_url)
+                : h.file(message.file_url.url)
+        }
+
+        if (isMessageContentAudio(message)) {
+            return typeof message.audio_url === 'string'
+                ? h.audio(message.audio_url)
+                : h.audio(message.audio_url.url)
+        }
+
+        if (isMessageContentVideo(message)) {
+            return typeof message.video_url === 'string'
+                ? h.video(message.video_url)
+                : h.video(message.video_url.url)
+        }
+
         return h.text(message.text)
     })
 }

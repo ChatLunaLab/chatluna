@@ -16,13 +16,13 @@ import type {
 } from '../services/types'
 import type { BindingProgress, MessageProgress, RoomProgress } from './types'
 import {
-    LEGACY_RETENTION_META_KEY,
     aclKey,
     createLegacyBindingKey,
     createLegacyTableRetention,
     filterValidRooms,
     inferLegacyGroupRouteModes,
     isComplexRoom,
+    LEGACY_RETENTION_META_KEY,
     purgeLegacyTables,
     readMetaValue,
     resolveRoomBindingKey,
@@ -221,6 +221,7 @@ async function migrateRooms(ctx: Context) {
         }
 
         const conversation: ConversationRecord = {
+            // filterValidRooms() guarantees conversationId is present here.
             id: room.conversationId as string,
             seq: conversationSeq,
             bindingKey,
@@ -269,10 +270,6 @@ async function migrateRooms(ctx: Context) {
 
 // (#7) removed redundant inner `done` check
 async function migrateMessages(ctx: Context) {
-    const oldMessages = (await ctx.database.get(
-        'chathub_message',
-        {}
-    )) as LegacyMessageRecord[]
     const progress = (await readMetaValue<MessageProgress>(
         ctx,
         'message_migration_progress'
@@ -281,13 +278,23 @@ async function migrateMessages(ctx: Context) {
         migrated: 0
     }
 
-    for (
-        let i = progress.index;
-        i < oldMessages.length;
-        i += MESSAGE_BATCH_SIZE
-    ) {
-        const batch = oldMessages.slice(i, i + MESSAGE_BATCH_SIZE)
-        // (#12) removed redundant payload.length > 0 check — batch is always non-empty here
+    while (true) {
+        const batch = (await ctx.database.get(
+            'chathub_message',
+            {},
+            {
+                offset: progress.index,
+                limit: MESSAGE_BATCH_SIZE,
+                sort: {
+                    id: 'asc'
+                }
+            }
+        )) as LegacyMessageRecord[]
+
+        if (batch.length === 0) {
+            break
+        }
+
         const payload = batch.map((item) => ({
             id: item.id,
             conversationId: item.conversation,
@@ -306,7 +313,7 @@ async function migrateMessages(ctx: Context) {
 
         await ctx.database.upsert('chatluna_message', payload)
 
-        progress.index = i + batch.length
+        progress.index += batch.length
         progress.lastId = batch[batch.length - 1]?.id
         progress.migrated += batch.length
         await writeMetaValue(ctx, 'message_migration_progress', progress)
@@ -334,6 +341,11 @@ async function migrateBindings(ctx: Context) {
         {}
     )) as LegacyRoomGroupRecord[]
     const routeModes = inferLegacyGroupRouteModes(users, rooms, groups)
+    const conversationsByRoomId = new Map(
+        conversations
+            .filter((item) => item.legacyRoomId != null)
+            .map((item) => [item.legacyRoomId!, item])
+    )
     const progress = (await readMetaValue<BindingProgress>(
         ctx,
         'binding_migration_progress'
@@ -342,18 +354,9 @@ async function migrateBindings(ctx: Context) {
         migrated: 0
     }
 
-    // (#17) load all existing bindings up front to avoid N+1 DB queries
-    const existingBindings = new Map(
-        (
-            (await ctx.database.get('chatluna_binding', {})) as BindingRecord[]
-        ).map((item) => [item.bindingKey, item])
-    )
-
     for (let i = progress.index; i < users.length; i++) {
         const user = users[i]
-        const conversation = conversations.find(
-            (item) => item.legacyRoomId === user.defaultRoomId
-        )
+        const conversation = conversationsByRoomId.get(user.defaultRoomId)
 
         progress.index = i + 1
 
@@ -370,7 +373,11 @@ async function migrateBindings(ctx: Context) {
         }
 
         const bindingKey = createLegacyBindingKey(user, routeModes)
-        const current = existingBindings.get(bindingKey)
+        const current = (
+            (await ctx.database.get('chatluna_binding', {
+                bindingKey
+            })) as BindingRecord[]
+        )[0]
 
         // (#16) decomposed nested ternary into explicit variable
         const prevActive = current?.activeConversationId

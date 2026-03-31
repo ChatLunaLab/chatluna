@@ -18,7 +18,14 @@ import { type UsageMetadata } from '@langchain/core/messages'
 
 export class ConversationRuntime {
     readonly interfaces = new LRUCache<string, RuntimeConversationEntry>({
-        max: 20
+        max: 20,
+        dispose: (value, key) => {
+            const [platform] = parseRawModelName(value.conversation.model)
+            if (platform != null) {
+                this.unregisterPlatformConversation(platform, key)
+            }
+            value.chatInterface.dispose?.()
+        }
     })
 
     readonly modelQueue = new RequestIdQueue()
@@ -37,6 +44,7 @@ export class ConversationRuntime {
     async ensureChatInterface(conversation: ConversationRecord) {
         const cached = this.interfaces.get(conversation.id)
         if (cached != null) {
+            cached.conversation = conversation
             return cached.chatInterface
         }
 
@@ -63,6 +71,14 @@ export class ConversationRuntime {
     ): Promise<Message> {
         return this.withConversationAndPlatformLock(conversation, async () => {
             const [platform] = parseRawModelName(conversation.model)
+            if (platform == null) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.UNKNOWN_ERROR,
+                    new Error(
+                        `Invalid conversation model: ${conversation.model}`
+                    )
+                )
+            }
             this.registerPlatformConversation(platform, conversation.id)
 
             const chatInterface = await this.ensureChatInterface(conversation)
@@ -194,6 +210,12 @@ export class ConversationRuntime {
         const requestId = randomUUID()
         const modelRequestId = randomUUID()
         const [platform] = parseRawModelName(conversation.model)
+        if (platform == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                new Error(`Invalid conversation model: ${conversation.model}`)
+            )
+        }
         const client = await this.platformService.getClient(platform)
 
         if (client.value == null) {
@@ -397,7 +419,6 @@ export class ConversationRuntime {
                     chatInterface: cached?.chatInterface
                 }
             )
-            cached?.chatInterface?.dispose?.()
             this.interfaces.delete(conversation.id)
             await this.service.ctx.root.parallel(
                 'chatluna/conversation-after-cache-clear',
@@ -410,15 +431,9 @@ export class ConversationRuntime {
     }
 
     dispose(platform?: string) {
-        for (const controller of this.requestsById.values()) {
-            controller.abort(
-                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
-            )
-        }
-
         if (platform == null) {
-            for (const value of this.interfaces.values()) {
-                value.chatInterface.dispose?.()
+            for (const requestId of Array.from(this.requestsById.keys())) {
+                this.stopRequest(requestId)
             }
             this.interfaces.clear()
             this.requestsById.clear()
@@ -433,10 +448,12 @@ export class ConversationRuntime {
             return
         }
 
-        for (const conversationId of conversationIds) {
-            this.interfaces.get(conversationId)?.chatInterface.dispose?.()
+        for (const conversationId of Array.from(conversationIds)) {
+            const active = this.activeByConversation.get(conversationId)
+            if (active != null) {
+                this.stopRequest(active.requestId)
+            }
             this.interfaces.delete(conversationId)
-            this.activeByConversation.delete(conversationId)
         }
 
         this.platformIndex.delete(platform)
@@ -453,13 +470,6 @@ function formatUsageMetadataMessage(usage: UsageMetadata) {
         usage.input_token_details?.image > 0
             ? [`image=${usage.input_token_details.image}`]
             : []),
-        ...(usage.input_token_details?.video != null &&
-        usage.input_token_details?.video > 0
-            ? [`video=${usage.input_token_details.video}`]
-            : []),
-        ...(usage.input_token_details?.document > 0
-            ? [`document=${usage.input_token_details.document}`]
-            : []),
         ...(usage.input_token_details?.cache_read != null
             ? [`cache_read=${usage.input_token_details.cache_read}`]
             : []),
@@ -468,20 +478,13 @@ function formatUsageMetadataMessage(usage: UsageMetadata) {
             : [])
     ]
     const output = [
-        ...(usage.input_token_details?.audio != null &&
-        usage.input_token_details?.audio > 0
-            ? [`audio=${usage.input_token_details.audio}`]
+        ...(usage.output_token_details?.audio != null &&
+        usage.output_token_details?.audio > 0
+            ? [`audio=${usage.output_token_details.audio}`]
             : []),
-        ...(usage.input_token_details?.image != null &&
-        usage.input_token_details?.image > 0
-            ? [`image=${usage.input_token_details.image}`]
-            : []),
-        ...(usage.input_token_details?.video != null &&
-        usage.input_token_details?.video > 0
-            ? [`video=${usage.input_token_details.video}`]
-            : []),
-        ...(usage.input_token_details?.document > 0
-            ? [`document=${usage.input_token_details.document}`]
+        ...(usage.output_token_details?.image != null &&
+        usage.output_token_details?.image > 0
+            ? [`image=${usage.output_token_details.image}`]
             : []),
         ...(usage.output_token_details?.reasoning != null
             ? [`reasoning=${usage.output_token_details.reasoning}`]
@@ -498,4 +501,8 @@ function formatUsageMetadataMessage(usage: UsageMetadata) {
     ].join('\n')
 }
 
-export { ChatEvents, RuntimeConversationEntry, ActiveRequest } from './types'
+export type {
+    ChatEvents,
+    RuntimeConversationEntry,
+    ActiveRequest
+} from './types'

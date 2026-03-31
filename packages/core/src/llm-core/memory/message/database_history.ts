@@ -5,7 +5,6 @@ import {
     FunctionMessage,
     HumanMessage,
     MessageContent,
-    MessageType,
     SystemMessage,
     ToolMessage
 } from '@langchain/core/messages'
@@ -381,7 +380,8 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 content,
                 id: item.rawId ?? undefined,
                 name: item.name ?? undefined,
-                tool_calls: (item.tool_calls as AIMessage['tool_calls']) ?? undefined,
+                tool_calls:
+                    (item.tool_calls as AIMessage['tool_calls']) ?? undefined,
                 tool_call_id: item.tool_call_id ?? undefined,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 additional_kwargs: args as any
@@ -435,7 +435,8 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 archivedAt: null,
                 archiveId: null,
                 legacyRoomId: null,
-                legacyMeta: null
+                legacyMeta: null,
+                autoTitle: true
             })
         }
 

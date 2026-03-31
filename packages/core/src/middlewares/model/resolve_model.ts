@@ -1,7 +1,7 @@
 import { Context } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { ChatChain, ChainMiddlewareRunStatus } from '../../chains/chain'
+import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { logger } from '../..'
 import { Config } from '../../config'
 
@@ -39,18 +39,30 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 const [platformName, rawModelName] =
                     parseRawModelName(modelName)
-                const platformModels = ctx.chatluna.platform.listPlatformModels(
-                    platformName,
-                    ModelType.llm
-                ).value
                 const presetExists =
                     ctx.chatluna.preset.getPreset(conversation.preset, false)
                         .value != null
 
                 if (
-                    modelName !== 'empty' &&
-                    platformName != null &&
-                    rawModelName != null &&
+                    modelName === 'empty' ||
+                    platformName == null ||
+                    rawModelName == null
+                ) {
+                    await context.send(
+                        session.text(
+                            'chatluna.conversation.messages.unavailable',
+                            [modelName]
+                        )
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                const platformModels = ctx.chatluna.platform.listPlatformModels(
+                    platformName,
+                    ModelType.llm
+                ).value
+
+                if (
                     platformModels.length > 0 &&
                     platformModels.some((it) => it.name === rawModelName) &&
                     presetExists

@@ -2127,7 +2127,9 @@ function helpLines(args: string[] = []) {
             usage: ['agentcli sync [skills|subagents|all]'],
             notes: [
                 'Sync reads files from the current remote computer session.',
-                'Skill sync fans out to ChatLuna and compatibility directories such as .agents/skills, .openclaw/skills, .codex/skills, .claude/skills, and OpenCode skill roots.',
+                'Skill sync fans out to ChatLuna and compatibility directories ' +
+                    'such as .agents/skills, .openclaw/skills, .codex/skills, ' +
+                    '.claude/skills, and OpenCode skill roots.',
                 'Files are staged as a preview first; use `agentcli apply last` to write them locally.',
                 'If the preview shows overwrites, confirm with the user before applying it.'
             ],

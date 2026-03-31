@@ -164,21 +164,45 @@ export function computeBaseBindingKey(
     routeMode: RouteMode,
     routeKey?: string | null
 ): string {
-    const platform = session.platform ?? 'unknown'
-    const selfId = session.selfId ?? 'unknown'
-    const guildId = session.guildId ?? 'unknown'
-    const userId = session.userId ?? 'unknown'
+    const platform = session.platform
+    if (platform == null) {
+        throw new Error('Session platform is missing.')
+    }
+
+    const selfId = session.selfId
+    if (selfId == null) {
+        throw new Error('Session selfId is missing.')
+    }
 
     if (routeMode === 'custom') {
-        return `custom:${routeKey ?? 'default'}`
+        if (routeKey == null || routeKey.length === 0) {
+            throw new Error('Custom route key is missing.')
+        }
+
+        return `custom:${routeKey}`
     }
 
     if (routeMode === 'shared') {
+        const guildId = session.guildId ?? session.channelId
+        if (guildId == null) {
+            throw new Error('Shared conversation route requires guildId.')
+        }
+
         return `shared:${platform}:${selfId}:${guildId}`
+    }
+
+    const userId = session.userId
+    if (userId == null) {
+        throw new Error('Personal conversation route requires userId.')
     }
 
     if (session.isDirect) {
         return `personal:${platform}:${selfId}:direct:${userId}`
+    }
+
+    const guildId = session.guildId ?? session.channelId
+    if (guildId == null) {
+        throw new Error('Personal conversation route requires guildId.')
     }
 
     return `personal:${platform}:${selfId}:${guildId}:${userId}`

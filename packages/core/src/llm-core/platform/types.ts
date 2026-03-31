@@ -80,7 +80,12 @@ export interface ChatLunaToolDefaultAvailability {
 }
 
 export interface ChatLunaToolMeta {
-    source?: 'core' | 'extension' | 'mcp' | 'action' | (string & {})
+    source?:
+        | 'core'
+        | 'extension'
+        | 'mcp'
+        | 'action'
+        | (string & Record<never, never>)
     group?: string
     tags?: string[]
     isMcp?: boolean

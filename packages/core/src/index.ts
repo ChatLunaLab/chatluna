@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Context, Logger, Time, User } from 'koishi'
-import fs from 'fs/promises'
 import { ChatLunaService } from 'koishi-plugin-chatluna/services/chat'
 import { forkScopeToDisposable } from 'koishi-plugin-chatluna/utils/koishi'
 import {
@@ -199,37 +198,43 @@ async function setupAutoArchive(ctx: Context, config: Config) {
         if (!ctx.scope.isActive) {
             return
         }
-        const conversations = await ctx.database.get('chatluna_conversation', {
-            updatedAt: {
-                $lt: new Date(Date.now() - config.autoArchiveTimeout * 1000)
-            },
-            status: 'active'
-        })
 
-        if (conversations.length === 0) {
-            return
-        }
+        try {
+            const conversations = await ctx.database.get(
+                'chatluna_conversation',
+                {
+                    updatedAt: {
+                        $lt: new Date(
+                            Date.now() - config.autoArchiveTimeout * 1000
+                        )
+                    },
+                    status: 'active'
+                }
+            )
 
-        logger.info('Auto archive task running')
-
-        const success: string[] = []
-
-        for (const conversation of conversations) {
-            try {
-                await ctx.chatluna.conversation.archiveConversationById(
-                    conversation.id
-                )
-                success.push(conversation.title)
-            } catch (e) {
-                logger.error(e)
+            if (conversations.length === 0) {
+                return
             }
-        }
 
-        logger.success(
-            `Successfully archived %d conversations: %s`,
-            success.length,
-            success.join(',')
-        )
+            logger.info('Auto archive task running')
+
+            let success = 0
+
+            for (const conversation of conversations) {
+                try {
+                    await ctx.chatluna.conversation.archiveConversationById(
+                        conversation.id
+                    )
+                    success += 1
+                } catch (e) {
+                    logger.error(e)
+                }
+            }
+
+            logger.success(`Successfully archived %d conversations`, success)
+        } catch (e) {
+            logger.error(e)
+        }
     }
 
     await execute()
@@ -249,37 +254,43 @@ async function setupAutoPurgeArchive(ctx: Context, config: Config) {
             return
         }
 
-        const conversations = await ctx.database.get('chatluna_conversation', {
-            archivedAt: {
-                $lt: new Date(
-                    Date.now() - config.autoPurgeArchiveTimeout * 1000
-                )
-            },
-            status: 'archived'
-        })
+        try {
+            const conversations = await ctx.database.get(
+                'chatluna_conversation',
+                {
+                    archivedAt: {
+                        $lt: new Date(
+                            Date.now() - config.autoPurgeArchiveTimeout * 1000
+                        )
+                    },
+                    status: 'archived'
+                }
+            )
 
-        if (conversations.length === 0) {
-            return
-        }
-
-        logger.info('Auto purge archive task running')
-
-        const success: string[] = []
-
-        for (const conversation of conversations) {
-            try {
-                await purgeArchivedConversation(ctx, conversation)
-                success.push(conversation.title)
-            } catch (e) {
-                logger.error(e)
+            if (conversations.length === 0) {
+                return
             }
-        }
 
-        logger.success(
-            `Successfully purged %d archived conversations: %s`,
-            success.length,
-            success.join(',')
-        )
+            logger.info('Auto purge archive task running')
+
+            let success = 0
+
+            for (const conversation of conversations) {
+                try {
+                    await purgeArchivedConversation(ctx, conversation)
+                    success += 1
+                } catch (e) {
+                    logger.error(e)
+                }
+            }
+
+            logger.success(
+                `Successfully purged %d archived conversations`,
+                success
+            )
+        } catch (e) {
+            logger.error(e)
+        }
     }
 
     await execute()

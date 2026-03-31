@@ -21,17 +21,7 @@ export async function command(ctx: Context, config: Config) {
 
     const middlewares: Command[] =
         // middleware start
-        [
-            auth,
-            chat,
-            conversation,
-            mcp,
-            memory,
-            model,
-            preset,
-            providers,
-            tool
-        ] // middleware end
+        [auth, chat, conversation, mcp, memory, model, preset, providers, tool] // middleware end
 
     for (const middleware of middlewares) {
         await middleware(ctx, config, ctx.chatluna.chatChain)

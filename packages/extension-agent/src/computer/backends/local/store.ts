@@ -463,7 +463,9 @@ function replaceSubstring(
         )
         if (secondIdx !== -1) {
             throw new Error(
-                'Found multiple matches for oldString. Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
+                'Found multiple matches for oldString. Provide more surrounding ' +
+                    'lines in oldString to identify the correct match, or set ' +
+                    'replaceAll to change every instance.'
             )
         }
     }

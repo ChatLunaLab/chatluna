@@ -92,12 +92,6 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
             clear(payload.conversation.id)
         })
-        ctx.on('chatluna/conversation-after-archive', async (payload) => {
-            clear(payload.conversation.id)
-        })
-        ctx.on('chatluna/conversation-after-restore', async (payload) => {
-            clear(payload.conversation.id)
-        })
         ctx.on('chatluna/conversation-after-delete', async (payload) => {
             clear(payload.conversation.id)
         })

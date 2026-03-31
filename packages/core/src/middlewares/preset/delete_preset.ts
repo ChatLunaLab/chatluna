@@ -1,15 +1,9 @@
-import { Context, Logger } from 'koishi'
+import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import fs from 'fs/promises'
-import { PresetTemplate } from '../../llm-core/prompt'
 
-let logger: Logger
-
-export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    logger = createLogger(ctx)
-
+export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     chain
         .middleware('delete_preset', async (session, context) => {
             const { command } = context
@@ -20,20 +14,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const presetName = context.options.deletePreset
             const preset = ctx.chatluna.preset
 
-            let presetTemplate: PresetTemplate
-
-            try {
-                presetTemplate = preset.getPreset(presetName).value
-
-                const allPreset = preset.getAllPreset().value
-
-                if (allPreset.length === 1) {
-                    await context.send(session.text('.only_one_preset'))
-                    return ChainMiddlewareRunStatus.STOP
-                }
-            } catch (e) {
-                logger.error(e)
+            const presetTemplate = preset.getPreset(presetName).value
+            if (presetTemplate == null) {
                 await context.send(session.text('.not_found'))
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            const allPreset = preset.getAllPreset().value
+
+            if (allPreset.length === 1) {
+                await context.send(session.text('.only_one_preset'))
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -52,18 +42,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             await fs.rm(presetTemplate.path)
-
-            let defaultPreset: PresetTemplate
-            try {
-                defaultPreset = preset.getDefaultPreset().value
-                if (!defaultPreset || !defaultPreset.triggerKeyword?.length) {
-                    throw new Error('Default preset is invalid')
-                }
-            } catch (e) {
-                logger.error('Failed to get default preset:', e)
-                await context.send(session.text('.failed_to_get_default'))
-                return ChainMiddlewareRunStatus.STOP
-            }
 
             context.message = session.text('.success', [presetName])
 

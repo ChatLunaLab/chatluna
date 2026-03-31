@@ -349,76 +349,67 @@ function sortContentByType(content: MessageContentComplex[]) {
     )
 }
 
-function setupRegularMessageStream(
+async function setupRegularMessageStream(
     context: ChainMiddlewareContext,
     config: Config,
     textStream: ReadableStream<Element>
 ) {
-    return new Promise<void>(async (resolve) => {
-        const reader = textStream.getReader()
-        try {
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
+    const reader = textStream.getReader()
+    try {
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
 
-                await sendMessage(context, value, config)
-            }
-        } catch (error) {
-            logger.error('Error in message stream:', error)
-        } finally {
-            reader.releaseLock()
-            resolve()
+            await sendMessage(context, value, config)
         }
-    })
+    } catch (error) {
+        logger.error('Error in message stream:', error)
+    } finally {
+        reader.releaseLock()
+    }
 }
 
-function setupEditMessageStream(
+async function setupEditMessageStream(
     context: ChainMiddlewareContext,
     session: Session,
     config: Config,
     bufferText: StreamingBufferText
 ) {
     const cachedStream = bufferText.getCached()
-    return new Promise<void>(async (resolve) => {
-        const { ctx } = context
-        let messageId: string | null = null
-        const messageQueue = new MessageEditQueue()
+    const { ctx } = context
+    let messageId: string | null = null
+    const messageQueue = new MessageEditQueue()
 
-        const reader = cachedStream.getReader()
-        try {
-            while (true) {
-                const { done, value } = await reader.read()
+    const reader = cachedStream.getReader()
+    try {
+        while (true) {
+            const { done, value } = await reader.read()
 
-                if (done) break
+            if (done) break
 
-                let processedElements = value
-                if (config.censor) {
-                    processedElements = await ctx.censor
-                        .transform(value, session)
-                        .then((result) => result)
-                }
-
-                if (messageId == null) {
-                    messageId = await sendInitialMessage(
-                        session,
-                        processedElements
-                    )
-                } else {
-                    await messageQueue.enqueue(
-                        messageId,
-                        session,
-                        processedElements
-                    )
-                }
+            let processedElements = value
+            if (config.censor) {
+                processedElements = await ctx.censor
+                    .transform(value, session)
+                    .then((result) => result)
             }
-            messageQueue.finish()
-        } catch (error) {
-            logger.error('Error in edit message stream:', error)
-        } finally {
-            reader.releaseLock()
-            resolve()
+
+            if (messageId == null) {
+                messageId = await sendInitialMessage(session, processedElements)
+            } else {
+                await messageQueue.enqueue(
+                    messageId,
+                    session,
+                    processedElements
+                )
+            }
         }
-    })
+        messageQueue.finish()
+    } catch (error) {
+        logger.error('Error in edit message stream:', error)
+    } finally {
+        reader.releaseLock()
+    }
 }
 
 async function renderMessageWithCensor(

@@ -1,4 +1,3 @@
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -10,6 +9,7 @@ import {
     Service,
     Session
 } from 'koishi'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
@@ -18,7 +18,6 @@ import {
     type ChatLunaAgent,
     createAgent,
     type CreateChatLunaAgentOptions,
-    MessageQueue,
     resolveAgentEmbeddings,
     resolveAgentModel,
     resolveAgentPreset,

@@ -48,8 +48,20 @@ function formatRouteScope(bindingKey: string) {
 
     const [mode, platform, selfId, scope, userId] = bindingKey.split(':')
 
+    if (mode !== 'shared' && mode !== 'personal') {
+        return bindingKey
+    }
+
+    if (platform == null || selfId == null || scope == null) {
+        return bindingKey
+    }
+
     if (mode === 'shared') {
         return `${mode} ${platform}/${selfId}/${scope}`
+    }
+
+    if (userId == null) {
+        return bindingKey
     }
 
     return `${mode} ${platform}/${selfId}/${scope}/${userId}`
@@ -158,11 +170,6 @@ function formatLockState(lock: boolean | null | undefined) {
 }
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const pagination = new Pagination<ConversationRecord>({
-        formatItem: () => '',
-        formatString: { top: '', bottom: '', pages: '' }
-    })
-
     function middleware(
         name: Parameters<typeof chain.middleware>[0],
         fn: (
@@ -339,17 +346,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        pagination.updateFormatString({
-            top:
-                session.text('chatluna.conversation.messages.list_header') +
-                '\n',
-            bottom: '',
-            pages:
-                '\n' + session.text('chatluna.conversation.messages.list_pages')
+        const pagination = new Pagination<ConversationRecord>({
+            formatItem: (conversation) =>
+                formatConversationLine(session, conversation, resolved),
+            formatString: {
+                top:
+                    session.text('chatluna.conversation.messages.list_header') +
+                    '\n',
+                bottom: '',
+                pages:
+                    '\n' +
+                    session.text('chatluna.conversation.messages.list_pages')
+            }
         })
-        pagination.updateFormatItem((conversation) =>
-            formatConversationLine(session, conversation, resolved)
-        )
 
         const key = `${resolved.bindingKey}`
         await pagination.push(conversations, key)
@@ -809,7 +818,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        if (resolved.constraint.lockConversation) {
+        const target =
+            await ctx.chatluna.conversation.getManagedConstraintByBindingKey(
+                conversation.bindingKey
+            )
+
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             context.message = session.text(`${key}.failed`, [
                 conversation.title,
                 conversation.id,

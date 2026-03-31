@@ -47,6 +47,7 @@ export class ChatInterface {
         input: ChatInterfaceInput
     ) {
         this._input = input
+        ctx.on('dispose', () => this.dispose())
     }
 
     dispose() {
@@ -457,9 +458,9 @@ async function autoSummarizeTitle(
     humanMsg: HumanMessage,
     aiMsg: AIMessage
 ) {
-    const conversation =
-        await ctx.chatluna.conversation.getConversation(conversationId)
-    if (conversation == null || !conversation.autoTitle) {
+    const claimed =
+        await ctx.chatluna.conversation.claimAutoTitle(conversationId)
+    if (!claimed) {
         return
     }
 
@@ -475,16 +476,25 @@ async function autoSummarizeTitle(
         `User: ${humanContent}\n` +
         `Assistant: ${aiContent}`
 
-    const result = await wrapper.model.invoke([new HumanMessage(prompt)])
-    const title = getMessageContent(result.content).trim().slice(0, 20)
-    if (title.length < 5) {
-        return
-    }
+    try {
+        const result = await wrapper.model.invoke([new HumanMessage(prompt)])
+        const title = getMessageContent(result.content).trim().slice(0, 20)
+        if (title.length < 5) {
+            await ctx.chatluna.conversation.touchConversation(conversationId, {
+                autoTitle: true
+            })
+            return
+        }
 
-    await ctx.chatluna.conversation.touchConversation(conversationId, {
-        title,
-        autoTitle: false
-    })
+        await ctx.chatluna.conversation.touchConversation(conversationId, {
+            title
+        })
+    } catch (error) {
+        await ctx.chatluna.conversation.touchConversation(conversationId, {
+            autoTitle: true
+        })
+        throw error
+    }
 }
 
 export interface ChatInterfaceInput {

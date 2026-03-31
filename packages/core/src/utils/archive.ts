@@ -25,18 +25,24 @@ export async function purgeArchivedConversation(
         })
     }
 
-    const bindings = await ctx.database.get('chatluna_binding', {})
-    for (const binding of bindings) {
-        if (
-            binding.activeConversationId !== conversation.id &&
-            binding.lastConversationId !== conversation.id
-        ) {
-            continue
-        }
+    const [active, last] = await Promise.all([
+        ctx.database.get('chatluna_binding', {
+            activeConversationId: conversation.id
+        }),
+        ctx.database.get('chatluna_binding', {
+            lastConversationId: conversation.id
+        })
+    ])
+    const bindings = Array.from(
+        new Map(
+            [...active, ...last].map((binding) => [binding.bindingKey, binding])
+        ).values()
+    )
 
+    for (const binding of bindings) {
         await ctx.database.upsert('chatluna_binding', [
             {
-                ...binding,
+                bindingKey: binding.bindingKey,
                 activeConversationId:
                     binding.activeConversationId === conversation.id
                         ? null

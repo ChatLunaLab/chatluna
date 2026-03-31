@@ -18,13 +18,21 @@ export async function gzipEncode<T extends Encoding = 'buffer'>(
     encoding: T = 'buffer' as T
 ): Promise<BufferType<T>> {
     const result = await gzipAsync(data)
-    return (encoding === 'buffer'
-        ? result
-        : result.toString(encoding)) as BufferType<T>
+    return (
+        encoding === 'buffer' ? result : result.toString(encoding)
+    ) as BufferType<T>
 }
 
-export async function gzipDecode(data: ArrayBuffer | ArrayBufferView) {
-    const buffer = ArrayBuffer.isView(data) ? Buffer.from(data.buffer, data.byteOffset, data.byteLength) : Buffer.from(data)
+export async function gzipDecode(
+    data: ArrayBuffer | ArrayBufferView | string,
+    encoding: 'base64' | 'hex' = 'base64'
+) {
+    const buffer =
+        typeof data === 'string'
+            ? Buffer.from(data, encoding)
+            : ArrayBuffer.isView(data)
+              ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
+              : Buffer.from(data)
     return (await gunzipAsync(buffer)).toString()
 }
 

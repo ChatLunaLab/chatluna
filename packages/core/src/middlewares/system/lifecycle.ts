@@ -19,7 +19,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .before('lifecycle-request_conversation')
 
     chain
-        .middleware('lifecycle-request_conversation', async (session, context) => 0)
+        .middleware(
+            'lifecycle-request_conversation',
+            async (session, context) => 0
+        )
         .after('lifecycle-handle_command')
         .before('lifecycle-send')
 

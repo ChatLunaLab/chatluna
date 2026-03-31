@@ -53,8 +53,8 @@ export class PlatformService {
     })
 
     constructor(private ctx: Context) {
-        const clear = async () => {
-            this._tmpVectorStores.clear()
+        const clear = async (payload: { conversation: { id: string } }) => {
+            this._tmpVectorStores.delete(payload.conversation.id)
         }
 
         this.ctx.on('chatluna/conversation-after-clear-history', clear)

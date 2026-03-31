@@ -1,4 +1,4 @@
-import { Context, Logger } from 'koishi'
+import { Context, Logger, Session } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
@@ -15,7 +15,7 @@ import {
 
 let logger: Logger
 
-export function apply(ctx: Context, config: Config, chain: ChatChain) {
+export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
     chain
         .middleware('purge_legacy', async (session, context) => {
@@ -30,6 +30,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (result?.passed !== true) {
                 context.message =
                     'Legacy purge is blocked until migration validation passes.'
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            const status = await confirmWipe(session, '.confirm_wipe')
+            if (status !== 'ok') {
+                context.message =
+                    status === 'timeout'
+                        ? session.text('.timeout')
+                        : session.text('.incorrect_input')
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -55,21 +64,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'wipe') return ChainMiddlewareRunStatus.SKIPPED
 
-            const expression = generateExpression()
-
-            await context.send(
-                session.text('.confirm_wipe', [expression.expression])
+            const status = await confirmWipe(
+                session,
+                '.confirm_wipe',
+                context.send
             )
-
-            const result = await session.prompt(1000 * 30)
-
-            if (!result) {
-                context.message = session.text('.timeout')
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            if (result !== expression.result.toString()) {
-                context.message = session.text('.incorrect_input')
+            if (status !== 'ok') {
+                context.message = session.text(
+                    status === 'timeout' ? '.timeout' : '.incorrect_input'
+                )
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -164,4 +167,28 @@ export function generateExpression() {
         expression: `${a}${operator}${b}`,
         result
     }
+}
+
+async function confirmWipe(
+    session: Session,
+    key: string,
+    send?: (message: string) => Promise<unknown>
+) {
+    const expression = generateExpression()
+
+    if (send) {
+        await send(session.text(key, [expression.expression]))
+    } else {
+        await session.send(session.text(key, [expression.expression]))
+    }
+
+    const result = await session.prompt(1000 * 30)
+
+    if (!result) {
+        return 'timeout' as const
+    }
+
+    return result === expression.result.toString()
+        ? ('ok' as const)
+        : ('incorrect' as const)
 }

@@ -18,14 +18,14 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     embeddingsSchema(ctx)
     chatChainSchema(ctx)
 
-    ctx.on('chatluna/model-removed', (_service, platform) => {
-        ctx.chatluna.conversationRuntime
+    ctx.on('chatluna/model-removed', async (_service, platform) => {
+        const tasks = ctx.chatluna.conversationRuntime
             .getCachedConversations()
             .filter(
                 ([_, entry]) =>
                     parseRawModelName(entry.conversation.model)[0] === platform
             )
-            .forEach(async ([id, entry]) => {
+            .map(async ([id, entry]) => {
                 const result =
                     await ctx.chatluna.conversationRuntime.clearConversationInterface(
                         entry.conversation
@@ -35,17 +35,19 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                     logger?.debug(`Cleared cache for conversation ${id}`)
                 }
             })
+
+        await Promise.allSettled(tasks)
     })
 
-    ctx.on('chatluna/tool-updated', () => {
-        ctx.chatluna.conversationRuntime
+    ctx.on('chatluna/tool-updated', async () => {
+        const tasks = ctx.chatluna.conversationRuntime
             .getCachedConversations()
             .filter(
                 ([_, entry]) =>
                     entry?.chatInterface?.chatMode === 'plugin' ||
                     entry?.chatInterface?.chatMode === 'browsing'
             )
-            .forEach(async ([id, entry]) => {
+            .map(async ([id, entry]) => {
                 const result =
                     await ctx.chatluna.conversationRuntime.clearConversationInterface(
                         entry.conversation
@@ -55,6 +57,8 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
                     logger?.debug(`Cleared cache for conversation ${id}`)
                 }
             })
+
+        await Promise.allSettled(tasks)
     })
 
     service.registerChatChain(

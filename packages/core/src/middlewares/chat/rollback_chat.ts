@@ -1,9 +1,10 @@
-import { Context, h } from 'koishi'
-import { gzipDecode, getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { Context } from 'koishi'
+import { gzipDecode } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { MessageRecord } from '../../services/conversation_types'
 import { logger } from '../..'
+import { transformMessageContentToElements } from '../../utils/koishi'
 
 async function decodeMessageContent(message: MessageRecord) {
     try {
@@ -76,8 +77,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             let parentId = conversation.latestMessageId
             const messages: MessageRecord[] = []
+            let humanMessage: MessageRecord | undefined
+            let humanCount = 0
 
-            while (messages.length < rollbackRound * 2 && parentId != null) {
+            while (parentId != null) {
                 const message = await ctx.database.get('chatluna_message', {
                     conversationId: conversation.id,
                     id: parentId
@@ -91,15 +94,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 parentId = currentMessage.parentId
                 messages.unshift(currentMessage)
+
+                if (currentMessage.role === 'human') {
+                    humanMessage = currentMessage
+                    humanCount += 1
+
+                    if (humanCount >= rollbackRound) {
+                        break
+                    }
+                }
             }
 
-            if (messages.length < rollbackRound * 2) {
+            if (humanCount < rollbackRound || humanMessage == null) {
                 context.message = session.text('.no_chat_history')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const previousLatestId = parentId ?? null
-            const humanMessage = messages[messages.length - 2]
+            const previousLatestId = humanMessage.parentId ?? null
 
             await ctx.database.upsert('chatluna_conversation', [
                 {
@@ -119,7 +130,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.inputMessage =
                     await ctx.chatluna.messageTransformer.transform(
                         session,
-                        [h.text(getMessageContent(humanContent))],
+                        transformMessageContentToElements(humanContent),
                         reResolved.effectiveModel ?? conversation.model,
                         undefined,
                         {

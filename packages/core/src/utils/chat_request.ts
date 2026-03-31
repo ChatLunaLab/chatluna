@@ -4,7 +4,11 @@ import type { Session } from 'koishi'
 const requestIdCache = new Map<string, string>()
 
 function getRequestCacheKey(session: Session, conversationId: string) {
-    return session.userId + '-' + (session.guildId ?? '') + '-' + conversationId
+    return JSON.stringify([
+        session.userId,
+        session.guildId ?? '',
+        conversationId
+    ])
 }
 
 export function getRequestId(session: Session, conversationId: string) {

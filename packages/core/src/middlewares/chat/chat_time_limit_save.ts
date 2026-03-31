@@ -34,8 +34,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const { chatLimit, chatLimitCache } = context.options
         const conversationId = context.options.conversationId
 
-        if (conversationId == null || chatLimit == null || chatLimitCache == null) {
-            return ChainMiddlewareRunStatus.CONTINUE
+        if (conversationId == null) {
+            throw new Error('chat_time_limit_save missing conversationId')
+        }
+
+        if (chatLimit == null) {
+            throw new Error('chat_time_limit_save missing chatLimit')
+        }
+
+        if (chatLimitCache == null) {
+            throw new Error('chat_time_limit_save missing chatLimitCache')
         }
 
         /*   console.log(

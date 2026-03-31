@@ -1,74 +1,9 @@
-import { Command, Context, Session } from 'koishi'
+import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
-import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { completeConversationTarget } from './utils'
 
-function normalizeTarget(value?: string | null) {
-    return value == null || value.trim().length < 1 ? undefined : value.trim()
-}
-
-function setChoices(cmd: Command, index: number, values: string[]) {
-    if (cmd._arguments[index] != null) {
-        cmd._arguments[index].type = values
-    }
-}
-
-function setOptionChoices(cmd: Command, name: string, values: string[]) {
-    if (cmd._options[name] != null) {
-        cmd._options[name].type = values
-    }
-}
-
-async function completeConversationTarget(
-    ctx: Context,
-    session: Session,
-    target?: string,
-    presetLane?: string,
-    includeArchived = true
-) {
-    const value = normalizeTarget(target)
-    if (value == null) {
-        return undefined
-    }
-
-    const conversations = await ctx.chatluna.conversation.listConversations(
-        session,
-        {
-            presetLane,
-            includeArchived
-        }
-    )
-    const expect = Array.from(
-        new Set(
-            conversations.flatMap((conversation) => [
-                conversation.id,
-                String(conversation.seq ?? ''),
-                conversation.title
-            ])
-        )
-    ).filter((item) => item.length > 0)
-
-    if (expect.length === 0) {
-        return value
-    }
-
-    return session.suggest({
-        actual: value,
-        expect,
-        suffix: session.text(
-            'commands.chatluna.conversation.options.conversation'
-        )
-    })
-}
-
-export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const modes = ['chat', 'plugin', 'browsing']
-    const shares = ['personal', 'shared', 'reset']
-    const locks = ['on', 'off', 'toggle', 'reset']
-    const models = ctx.chatluna.platform
-        .listAllModels(ModelType.llm)
-        .value.map((item) => item.name)
-
+export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     ctx.command('chatluna.conversation', {
         authority: 1
     }).alias('chatluna.session')
@@ -95,17 +30,30 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'conversation_new',
                 {
                     conversation_create: {
-                        title: normalizeTarget(title),
-                        preset: normalizeTarget(options.preset),
-                        model: normalizeTarget(options.model),
-                        chatMode: normalizeTarget(options.chatMode)
+                        title:
+                            title == null || title.trim().length < 1
+                                ? undefined
+                                : title.trim(),
+                        preset:
+                            options.preset == null ||
+                            options.preset.trim().length < 1
+                                ? undefined
+                                : options.preset.trim(),
+                        model:
+                            options.model == null ||
+                            options.model.trim().length < 1
+                                ? undefined
+                                : options.model.trim(),
+                        chatMode:
+                            options.chatMode == null ||
+                            options.chatMode.trim().length < 1
+                                ? undefined
+                                : options.chatMode.trim()
                     }
                 },
                 ctx
             )
         })
-    setOptionChoices(newCommand, 'model', models)
-    setOptionChoices(newCommand, 'chatMode', modes)
 
     const switchCommand = ctx.command('chatluna.switch <conversation:string>', {
         authority: 1
@@ -113,7 +61,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     switchCommand
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
-            const presetLane = normalizeTarget(options.preset)
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
             await chain.receiveCommand(
                 session,
                 'conversation_switch',
@@ -124,7 +75,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             session,
                             conversation,
                             presetLane,
-                            false
+                            false,
+                            'commands.chatluna.conversation.options.conversation'
                         ),
                         presetLane
                     }
@@ -151,7 +103,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     conversation_manage: {
                         includeArchived:
                             options.archived === true || options.all === true,
-                        presetLane: normalizeTarget(options.preset)
+                        presetLane:
+                            options.preset == null ||
+                            options.preset.trim().length < 1
+                                ? undefined
+                                : options.preset.trim()
                     }
                 },
                 ctx
@@ -169,7 +125,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'conversation_current',
                 {
                     conversation_manage: {
-                        presetLane: normalizeTarget(options.preset)
+                        presetLane:
+                            options.preset == null ||
+                            options.preset.trim().length < 1
+                                ? undefined
+                                : options.preset.trim()
                     }
                 },
                 ctx
@@ -185,7 +145,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     archiveCommand
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
-            const presetLane = normalizeTarget(options.preset)
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
             await chain.receiveCommand(
                 session,
                 'conversation_archive',
@@ -195,7 +158,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             ctx,
                             session,
                             conversation,
-                            presetLane
+                            presetLane,
+                            true,
+                            'commands.chatluna.conversation.options.conversation'
                         ),
                         presetLane
                     }
@@ -213,7 +178,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     restoreCommand
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
-            const presetLane = normalizeTarget(options.preset)
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
             await chain.receiveCommand(
                 session,
                 'conversation_restore',
@@ -223,7 +191,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             ctx,
                             session,
                             conversation,
-                            presetLane
+                            presetLane,
+                            true,
+                            'commands.chatluna.conversation.options.conversation'
                         ),
                         presetLane
                     }
@@ -238,7 +208,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     exportCommand
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
-            const presetLane = normalizeTarget(options.preset)
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
             await chain.receiveCommand(
                 session,
                 'conversation_export',
@@ -248,7 +221,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             ctx,
                             session,
                             conversation,
-                            presetLane
+                            presetLane,
+                            true,
+                            'commands.chatluna.conversation.options.conversation'
                         ),
                         presetLane
                     }
@@ -266,7 +241,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     compressCommand
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
-            const presetLane = normalizeTarget(options.preset)
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
             await chain.receiveCommand(
                 session,
                 'conversation_compress',
@@ -277,7 +255,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             ctx,
                             session,
                             conversation,
-                            presetLane
+                            presetLane,
+                            true,
+                            'commands.chatluna.conversation.options.conversation'
                         ),
                         presetLane
                     },
@@ -287,10 +267,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    const renameCommand = ctx
-        .command('chatluna.rename <title:text>', {
-            authority: 1
-        })
+    ctx.command('chatluna.rename <title:text>', {
+        authority: 1
+    })
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, title) => {
             await chain.receiveCommand(
@@ -298,21 +277,30 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'conversation_rename',
                 {
                     conversation_manage: {
-                        title: normalizeTarget(title),
-                        presetLane: normalizeTarget(options.preset)
+                        title:
+                            title == null || title.trim().length < 1
+                                ? undefined
+                                : title.trim(),
+                        presetLane:
+                            options.preset == null ||
+                            options.preset.trim().length < 1
+                                ? undefined
+                                : options.preset.trim()
                     }
                 },
                 ctx
             )
         })
 
-    const deleteCommand = ctx
-        .command('chatluna.delete [conversation:string]', {
-            authority: 1
-        })
+    ctx.command('chatluna.delete [conversation:string]', {
+        authority: 1
+    })
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, conversation) => {
-            const presetLane = normalizeTarget(options.preset)
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
             await chain.receiveCommand(
                 session,
                 'conversation_delete',
@@ -322,7 +310,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             ctx,
                             session,
                             conversation,
-                            presetLane
+                            presetLane,
+                            true,
+                            'commands.chatluna.conversation.options.conversation'
                         ),
                         presetLane
                     }
@@ -331,10 +321,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             )
         })
 
-    const useModelCommand = ctx
-        .command('chatluna.use.model <model:string>', {
-            authority: 1
-        })
+    ctx.command('chatluna.use.model <model:string>', {
+        authority: 1
+    })
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, model) => {
             await chain.receiveCommand(
@@ -342,21 +331,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'conversation_use_model',
                 {
                     conversation_manage: {
-                        presetLane: normalizeTarget(options.preset)
+                        presetLane:
+                            options.preset == null ||
+                            options.preset.trim().length < 1
+                                ? undefined
+                                : options.preset.trim()
                     },
                     conversation_use: {
-                        model: normalizeTarget(model)
+                        model:
+                            model == null || model.trim().length < 1
+                                ? undefined
+                                : model.trim()
                     }
                 },
                 ctx
             )
         })
-    setChoices(useModelCommand, 0, models)
 
-    const usePresetCommand = ctx
-        .command('chatluna.use.preset <preset:string>', {
-            authority: 1
-        })
+    ctx.command('chatluna.use.preset <preset:string>', {
+        authority: 1
+    })
         .option('lane', '-p <lane:string>')
         .action(async ({ options, session }, preset) => {
             await chain.receiveCommand(
@@ -364,20 +358,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'conversation_use_preset',
                 {
                     conversation_manage: {
-                        presetLane: normalizeTarget(options.lane)
+                        presetLane:
+                            options.lane == null ||
+                            options.lane.trim().length < 1
+                                ? undefined
+                                : options.lane.trim()
                     },
                     conversation_use: {
-                        preset: normalizeTarget(preset)
+                        preset:
+                            preset == null || preset.trim().length < 1
+                                ? undefined
+                                : preset.trim()
                     }
                 },
                 ctx
             )
         })
 
-    const useModeCommand = ctx
-        .command('chatluna.use.mode <mode:string>', {
-            authority: 1
-        })
+    ctx.command('chatluna.use.mode <mode:string>', {
+        authority: 1
+    })
         .option('preset', '-p <preset:string>')
         .action(async ({ options, session }, mode) => {
             await chain.receiveCommand(
@@ -385,104 +385,111 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'conversation_use_mode',
                 {
                     conversation_manage: {
-                        presetLane: normalizeTarget(options.preset)
+                        presetLane:
+                            options.preset == null ||
+                            options.preset.trim().length < 1
+                                ? undefined
+                                : options.preset.trim()
                     },
                     conversation_use: {
-                        chatMode: normalizeTarget(mode)
+                        chatMode:
+                            mode == null || mode.trim().length < 1
+                                ? undefined
+                                : mode.trim()
                     }
                 },
                 ctx
             )
         })
-    setChoices(useModeCommand, 0, modes)
 
-    const ruleModelCommand = ctx
-        .command('chatluna.rule.model <model:string>', {
-            authority: 3
-        })
-        .action(async ({ session }, model) => {
-            await chain.receiveCommand(
-                session,
-                'conversation_rule_model',
-                {
-                    conversation_rule: {
-                        model: normalizeTarget(model)
-                    }
-                },
-                ctx
-            )
-        })
-    setChoices(ruleModelCommand, 0, [...models, 'reset'])
+    ctx.command('chatluna.rule.model <model:string>', {
+        authority: 3
+    }).action(async ({ session }, model) => {
+        await chain.receiveCommand(
+            session,
+            'conversation_rule_model',
+            {
+                conversation_rule: {
+                    model:
+                        model == null || model.trim().length < 1
+                            ? undefined
+                            : model.trim()
+                }
+            },
+            ctx
+        )
+    })
 
-    const rulePresetCommand = ctx
-        .command('chatluna.rule.preset <preset:string>', {
-            authority: 3
-        })
-        .action(async ({ session }, preset) => {
-            await chain.receiveCommand(
-                session,
-                'conversation_rule_preset',
-                {
-                    conversation_rule: {
-                        preset: normalizeTarget(preset)
-                    }
-                },
-                ctx
-            )
-        })
-    const ruleModeCommand = ctx
-        .command('chatluna.rule.mode <mode:string>', {
-            authority: 3
-        })
-        .action(async ({ session }, mode) => {
-            await chain.receiveCommand(
-                session,
-                'conversation_rule_mode',
-                {
-                    conversation_rule: {
-                        chatMode: normalizeTarget(mode)
-                    }
-                },
-                ctx
-            )
-        })
-    setChoices(ruleModeCommand, 0, [...modes, 'reset'])
+    ctx.command('chatluna.rule.preset <preset:string>', {
+        authority: 3
+    }).action(async ({ session }, preset) => {
+        await chain.receiveCommand(
+            session,
+            'conversation_rule_preset',
+            {
+                conversation_rule: {
+                    preset:
+                        preset == null || preset.trim().length < 1
+                            ? undefined
+                            : preset.trim()
+                }
+            },
+            ctx
+        )
+    })
+    ctx.command('chatluna.rule.mode <mode:string>', {
+        authority: 3
+    }).action(async ({ session }, mode) => {
+        await chain.receiveCommand(
+            session,
+            'conversation_rule_mode',
+            {
+                conversation_rule: {
+                    chatMode:
+                        mode == null || mode.trim().length < 1
+                            ? undefined
+                            : mode.trim()
+                }
+            },
+            ctx
+        )
+    })
 
-    const ruleShareCommand = ctx
-        .command('chatluna.rule.share <mode:string>', {
-            authority: 3
-        })
-        .action(async ({ session }, mode) => {
-            await chain.receiveCommand(
-                session,
-                'conversation_rule_share',
-                {
-                    conversation_rule: {
-                        share: normalizeTarget(mode)
-                    }
-                },
-                ctx
-            )
-        })
-    setChoices(ruleShareCommand, 0, shares)
+    ctx.command('chatluna.rule.share <mode:string>', {
+        authority: 3
+    }).action(async ({ session }, mode) => {
+        await chain.receiveCommand(
+            session,
+            'conversation_rule_share',
+            {
+                conversation_rule: {
+                    share:
+                        mode == null || mode.trim().length < 1
+                            ? undefined
+                            : mode.trim()
+                }
+            },
+            ctx
+        )
+    })
 
-    const ruleLockCommand = ctx
-        .command('chatluna.rule.lock [state:string]', {
-            authority: 3
-        })
-        .action(async ({ session }, state) => {
-            await chain.receiveCommand(
-                session,
-                'conversation_rule_lock',
-                {
-                    conversation_rule: {
-                        lock: normalizeTarget(state) ?? 'toggle'
-                    }
-                },
-                ctx
-            )
-        })
-    setChoices(ruleLockCommand, 0, locks)
+    ctx.command('chatluna.rule.lock [state:string]', {
+        authority: 3
+    }).action(async ({ session }, state) => {
+        await chain.receiveCommand(
+            session,
+            'conversation_rule_lock',
+            {
+                conversation_rule: {
+                    lock:
+                        state == null || state.trim().length < 1
+                            ? 'toggle'
+                            : state.trim()
+                }
+            },
+            ctx
+        )
+    })
 
     ctx.command('chatluna.rule.show', {
         authority: 3

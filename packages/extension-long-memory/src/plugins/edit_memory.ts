@@ -44,8 +44,6 @@ export function apply(ctx: Context, config: Config) {
                 try {
                     await session.send(session.text('.edit_memory_start'))
 
-                    const content = await session.prompt()
-
                     const scope = await getMemoryScope(ctx, session, {
                         conversationId,
                         presetLane,
@@ -56,6 +54,8 @@ export function apply(ctx: Context, config: Config) {
                         context.message = session.text('.edit_failed')
                         return ChainMiddlewareRunStatus.STOP
                     }
+
+                    const content = await session.prompt()
 
                     const layers =
                         await ctx.chatluna_long_memory.initMemoryLayers(

@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
-import type { Context, Session, User } from 'koishi'
+import type { Context, Session } from 'koishi'
 import type { Config } from '../config'
 import {
     bufferToArrayBuffer,
@@ -31,8 +31,13 @@ import {
     ResolveTargetConversationOptions,
     SerializedMessageRecord
 } from './types'
+import { checkAdmin } from '../utils/koishi'
+import { ObjectLock } from '../utils/lock'
 
 export class ConversationService {
+    private readonly _bindingLocks = new Map<string, ObjectLock>()
+    private readonly _titleLocks = new Map<string, ObjectLock>()
+
     constructor(
         private readonly ctx: Context,
         private readonly config: Config
@@ -330,41 +335,57 @@ export class ConversationService {
             chatMode: string
         }
     ) {
-        const now = new Date()
-        const conversation: ConversationRecord = {
-            id: randomUUID(),
-            seq: await this.allocateConversationSeq(options.bindingKey),
-            bindingKey: options.bindingKey,
-            title: options.title,
-            model: options.model,
-            preset: options.preset,
-            chatMode: options.chatMode,
-            createdBy: session.userId,
-            createdAt: now,
-            updatedAt: now,
-            lastChatAt: now,
-            status: 'active',
-            latestMessageId: null,
-            additional_kwargs: null,
-            compression: null,
-            archivedAt: null,
-            archiveId: null,
-            legacyRoomId: null,
-            legacyMeta: null,
-            autoTitle: true
-        }
+        return getLock(this._bindingLocks, options.bindingKey).runLocked(
+            async () => {
+                const now = new Date()
+                const conversation: ConversationRecord = {
+                    id: randomUUID(),
+                    seq: await this.allocateConversationSeq(options.bindingKey),
+                    bindingKey: options.bindingKey,
+                    title: options.title,
+                    model: options.model,
+                    preset: options.preset,
+                    chatMode: options.chatMode,
+                    createdBy: session.userId,
+                    createdAt: now,
+                    updatedAt: now,
+                    lastChatAt: now,
+                    status: 'active',
+                    latestMessageId: null,
+                    additional_kwargs: null,
+                    compression: null,
+                    archivedAt: null,
+                    archiveId: null,
+                    legacyRoomId: null,
+                    legacyMeta: null,
+                    autoTitle: true
+                }
 
-        await this.ctx.root.parallel('chatluna/conversation-before-create', {
-            conversation,
-            bindingKey: options.bindingKey
-        })
-        await this.ctx.database.create('chatluna_conversation', conversation)
-        await this.setActiveConversation(options.bindingKey, conversation.id)
-        await this.ctx.root.parallel('chatluna/conversation-after-create', {
-            conversation,
-            bindingKey: options.bindingKey
-        })
-        return conversation
+                await this.ctx.root.parallel(
+                    'chatluna/conversation-before-create',
+                    {
+                        conversation,
+                        bindingKey: options.bindingKey
+                    }
+                )
+                await this.ctx.database.create(
+                    'chatluna_conversation',
+                    conversation
+                )
+                await this.setActiveConversation(
+                    options.bindingKey,
+                    conversation.id
+                )
+                await this.ctx.root.parallel(
+                    'chatluna/conversation-after-create',
+                    {
+                        conversation,
+                        bindingKey: options.bindingKey
+                    }
+                )
+                return conversation
+            }
+        )
     }
 
     async setActiveConversation(bindingKey: string, conversationId: string) {
@@ -393,14 +414,34 @@ export class ConversationService {
             return undefined
         }
 
-        const updated: ConversationRecord = {
+        const updated = {
             ...current,
-            ...patch,
             updatedAt: patch.updatedAt ?? new Date()
+        } as ConversationRecord
+
+        for (const key in patch) {
+            const value = patch[key as keyof ConversationRecord]
+            if (value !== undefined) {
+                updated[key as keyof ConversationRecord] = value as never
+            }
         }
 
         await this.ctx.database.upsert('chatluna_conversation', [updated])
         return updated
+    }
+
+    async claimAutoTitle(conversationId: string) {
+        return getLock(this._titleLocks, conversationId).runLocked(async () => {
+            const conversation = await this.getConversation(conversationId)
+            if (conversation == null || !conversation.autoTitle) {
+                return false
+            }
+
+            await this.touchConversation(conversationId, {
+                autoTitle: false
+            })
+            return true
+        })
     }
 
     async listConversations(
@@ -437,10 +478,6 @@ export class ConversationService {
         const resolved = await this.resolveContext(session, options)
         await this.assertManageAllowed(session, resolved.constraint)
 
-        if (resolved.constraint.lockConversation) {
-            throw new Error('Conversation switch is locked by constraint.')
-        }
-
         const conversation = await this.resolveTargetConversation(session, {
             ...options,
             permission: 'manage'
@@ -450,11 +487,15 @@ export class ConversationService {
             throw new Error('Conversation not found.')
         }
 
-        if (conversation.bindingKey !== resolved.bindingKey) {
-            throw new Error('Conversation does not belong to current route.')
+        const target = await this.getManagedConstraintByBindingKey(
+            conversation.bindingKey
+        )
+
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
+            throw new Error('Conversation switch is locked by constraint.')
         }
 
-        if (!resolved.constraint.allowSwitch) {
+        if (!(target?.allowSwitch ?? resolved.constraint.allowSwitch)) {
             throw new Error('Conversation switch is disabled by constraint.')
         }
 
@@ -491,10 +532,6 @@ export class ConversationService {
         const resolved = await this.resolveContext(session, options)
         await this.assertManageAllowed(session, resolved.constraint)
 
-        if (resolved.constraint.lockConversation) {
-            throw new Error('Conversation restore is locked by constraint.')
-        }
-
         const conversation = await this.resolveTargetConversation(session, {
             ...options,
             includeArchived: true,
@@ -505,8 +542,12 @@ export class ConversationService {
             throw new Error('Conversation not found.')
         }
 
-        if (conversation.bindingKey !== resolved.bindingKey) {
-            throw new Error('Conversation does not belong to current route.')
+        const target = await this.getManagedConstraintByBindingKey(
+            conversation.bindingKey
+        )
+
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
+            throw new Error('Conversation restore is locked by constraint.')
         }
 
         if (conversation.status !== 'archived') {
@@ -614,7 +655,11 @@ export class ConversationService {
             throw new Error('Conversation not found.')
         }
 
-        if (!resolved.constraint.allowExport) {
+        const target = await this.getManagedConstraintByBindingKey(
+            conversation.bindingKey
+        )
+
+        if (!(target?.allowExport ?? resolved.constraint.allowExport)) {
             throw new Error('Conversation export is disabled by constraint.')
         }
 
@@ -642,10 +687,6 @@ export class ConversationService {
         const resolved = await this.resolveContext(session, options)
         await this.assertManageAllowed(session, resolved.constraint)
 
-        if (resolved.constraint.lockConversation) {
-            throw new Error('Conversation archive is locked by constraint.')
-        }
-
         const conversation = await this.resolveTargetConversation(session, {
             ...options,
             permission: 'manage'
@@ -655,7 +696,15 @@ export class ConversationService {
             throw new Error('Conversation not found.')
         }
 
-        if (!resolved.constraint.allowArchive) {
+        const target = await this.getManagedConstraintByBindingKey(
+            conversation.bindingKey
+        )
+
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
+            throw new Error('Conversation archive is locked by constraint.')
+        }
+
+        if (!(target?.allowArchive ?? resolved.constraint.allowArchive)) {
             throw new Error('Conversation archive is disabled by constraint.')
         }
 
@@ -801,11 +850,15 @@ export class ConversationService {
 
         await this.assertManageAllowed(session, resolved.constraint)
 
-        if (resolved.constraint.lockConversation) {
+        const target = await this.getManagedConstraintByBindingKey(
+            conversation.bindingKey
+        )
+
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation restore is locked by constraint.')
         }
 
-        if (!resolved.constraint.allowArchive) {
+        if (!(target?.allowArchive ?? resolved.constraint.allowArchive)) {
             throw new Error('Conversation restore is disabled by constraint.')
         }
 
@@ -926,16 +979,19 @@ export class ConversationService {
         const resolved = await this.resolveContext(session, options)
         await this.assertManageAllowed(session, resolved.constraint)
 
-        if (resolved.constraint.lockConversation) {
-            throw new Error('Conversation rename is locked by constraint.')
-        }
-
         const conversation = await this.resolveTargetConversation(session, {
             ...options,
             permission: 'manage'
         })
         if (conversation == null) {
             throw new Error('Conversation not found.')
+        }
+
+        const target = await this.getManagedConstraintByBindingKey(
+            conversation.bindingKey
+        )
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
+            throw new Error('Conversation rename is locked by constraint.')
         }
 
         const updated = await this.touchConversation(conversation.id, {
@@ -951,10 +1007,6 @@ export class ConversationService {
         const resolved = await this.resolveContext(session, options)
         await this.assertManageAllowed(session, resolved.constraint)
 
-        if (resolved.constraint.lockConversation) {
-            throw new Error('Conversation delete is locked by constraint.')
-        }
-
         const conversation = await this.resolveTargetConversation(session, {
             ...options,
             includeArchived: true,
@@ -962,6 +1014,13 @@ export class ConversationService {
         })
         if (conversation == null) {
             throw new Error('Conversation not found.')
+        }
+
+        const target = await this.getManagedConstraintByBindingKey(
+            conversation.bindingKey
+        )
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
+            throw new Error('Conversation delete is locked by constraint.')
         }
 
         const updated = await this.touchConversation(conversation.id, {
@@ -996,10 +1055,6 @@ export class ConversationService {
         const resolved = await this.ensureActiveConversation(session, options)
         await this.assertManageAllowed(session, resolved.constraint)
 
-        if (resolved.constraint.lockConversation) {
-            throw new Error('Conversation update is locked by constraint.')
-        }
-
         for (const [key, fixedKey] of [
             ['model', 'fixedModel'],
             ['preset', 'fixedPreset'],
@@ -1010,6 +1065,13 @@ export class ConversationService {
                     `${key} is fixed to ${resolved.constraint[fixedKey]}.`
                 )
             }
+        }
+
+        const target = await this.getManagedConstraintByBindingKey(
+            resolved.conversation.bindingKey
+        )
+        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
+            throw new Error('Conversation update is locked by constraint.')
         }
 
         const updated = await this.touchConversation(resolved.conversation.id, {
@@ -1050,10 +1112,21 @@ export class ConversationService {
         }
 
         const current = parseCompressionRecord(conversation.compression)
-        const messages = await this.listMessages(conversationId)
-        const summary = messages.find(
-            (message) => message.name === 'infinite_context'
-        )?.text
+        const summary = (
+            (await this.ctx.database.get(
+                'chatluna_message',
+                {
+                    conversationId,
+                    name: 'infinite_context'
+                },
+                {
+                    limit: 1,
+                    sort: {
+                        createdAt: 'desc'
+                    }
+                }
+            )) as MessageRecord[]
+        )[0]?.text
 
         const updated = await this.touchConversation(conversationId, {
             compression: JSON.stringify({
@@ -1090,6 +1163,37 @@ export class ConversationService {
             name
         })
         return matched[0] as ConstraintRecord | undefined
+    }
+
+    async getManagedConstraintByBindingKey(bindingKey: string) {
+        const target = bindingKey.includes(':preset:')
+            ? bindingKey.slice(0, bindingKey.indexOf(':preset:'))
+            : bindingKey
+        const parts = target.split(':')
+
+        let name: string | undefined
+
+        if (parts[0] === 'shared' && parts.length >= 4) {
+            name = `managed:${parts[1]}:${parts[2]}:guild:${parts[3]}`
+        } else if (
+            parts[0] === 'personal' &&
+            parts.length >= 5 &&
+            parts[3] === 'direct'
+        ) {
+            name = `managed:${parts[1]}:${parts[2]}:direct:${parts[4]}`
+        } else if (parts[0] === 'personal' && parts.length >= 5) {
+            name = `managed:${parts[1]}:${parts[2]}:guild:${parts[3]}`
+        }
+
+        if (name == null) {
+            return undefined
+        }
+
+        return (
+            await this.ctx.database.get('chatluna_constraint', {
+                name
+            })
+        )[0] as ConstraintRecord | undefined
     }
 
     async updateManagedConstraint(
@@ -1276,47 +1380,109 @@ export class ConversationService {
             seq?: number
         }
     ) {
-        const conversations = (await this.ctx.database.get(
-            'chatluna_conversation',
-            {}
-        )) as ConversationRecord[]
         const required = options.permission ?? 'view'
-
-        const matches: ConversationRecord[] = []
-
-        for (const conversation of conversations) {
+        const matched = (conversation: ConversationRecord) => {
             if (
                 conversation.bindingKey === options.bindingKey ||
                 conversation.status === 'deleted' ||
                 conversation.status === 'broken' ||
                 (!options.includeArchived && conversation.status === 'archived')
             ) {
-                continue
+                return false
             }
 
             const title = conversation.title.toLocaleLowerCase()
-            const matched =
+            return (
                 conversation.id === options.exactId ||
                 (options.seq != null && conversation.seq === options.seq) ||
                 title === options.query ||
                 title.includes(options.query)
+            )
+        }
 
-            if (!matched) {
-                continue
+        if (await checkAdmin(session)) {
+            if (options.exactId.length > 0) {
+                const exact = await this.getConversation(options.exactId)
+                if (exact != null && matched(exact)) {
+                    return [exact]
+                }
             }
 
-            if (
-                !(await this.hasConversationPermission(
-                    session,
-                    conversation,
-                    required,
-                    options.bindingKey
-                ))
-            ) {
-                continue
+            if (options.seq != null) {
+                const conversations = (await this.ctx.database.get(
+                    'chatluna_conversation',
+                    {
+                        seq: options.seq
+                    }
+                )) as ConversationRecord[]
+                return conversations.filter(matched)
             }
 
-            matches.push(conversation)
+            const conversations = (await this.ctx.database.get(
+                'chatluna_conversation',
+                {}
+            )) as ConversationRecord[]
+            return conversations.filter(matched)
+        }
+
+        const acl = [
+            ...((await this.ctx.database.get('chatluna_acl', {
+                principalType: 'user',
+                principalId: session.userId,
+                permission: 'manage'
+            })) as ACLRecord[])
+        ]
+
+        if (required === 'view') {
+            acl.push(
+                ...((await this.ctx.database.get('chatluna_acl', {
+                    principalType: 'user',
+                    principalId: session.userId,
+                    permission: 'view'
+                })) as ACLRecord[])
+            )
+        }
+
+        const guildId = session.guildId ?? session.channelId
+
+        if (guildId != null) {
+            acl.push(
+                ...((await this.ctx.database.get('chatluna_acl', {
+                    principalType: 'guild',
+                    principalId: guildId,
+                    permission: 'manage'
+                })) as ACLRecord[])
+            )
+
+            if (required === 'view') {
+                acl.push(
+                    ...((await this.ctx.database.get('chatluna_acl', {
+                        principalType: 'guild',
+                        principalId: guildId,
+                        permission: 'view'
+                    })) as ACLRecord[])
+                )
+            }
+        }
+
+        const conversationIds = Array.from(
+            new Set(acl.map((item) => item.conversationId))
+        )
+
+        const matches: ConversationRecord[] = []
+
+        for (let i = 0; i < conversationIds.length; i += 200) {
+            const ids = conversationIds.slice(i, i + 200)
+            const conversations = (await this.ctx.database.get(
+                'chatluna_conversation',
+                {
+                    id: {
+                        $in: ids
+                    }
+                }
+            )) as ConversationRecord[]
+
+            matches.push(...conversations.filter(matched))
         }
 
         return matches
@@ -1374,23 +1540,27 @@ export class ConversationService {
     }
 
     private async unbindConversation(conversationId: string) {
-        // Full table scan needed as minari doesn't support OR conditions in queries
-        const bindings = (await this.ctx.database.get(
-            'chatluna_binding',
-            {}
-        )) as BindingRecord[]
+        const [active, last] = await Promise.all([
+            this.ctx.database.get('chatluna_binding', {
+                activeConversationId: conversationId
+            }),
+            this.ctx.database.get('chatluna_binding', {
+                lastConversationId: conversationId
+            })
+        ])
+        const bindings = Array.from(
+            new Map(
+                [
+                    ...(active as BindingRecord[]),
+                    ...(last as BindingRecord[])
+                ].map((item) => [item.bindingKey, item])
+            ).values()
+        )
 
         for (const binding of bindings) {
-            if (
-                binding.activeConversationId !== conversationId &&
-                binding.lastConversationId !== conversationId
-            ) {
-                continue
-            }
-
             await this.ctx.database.upsert('chatluna_binding', [
                 {
-                    ...binding,
+                    bindingKey: binding.bindingKey,
                     activeConversationId:
                         binding.activeConversationId === conversationId
                             ? null
@@ -1413,7 +1583,7 @@ export class ConversationService {
             return
         }
 
-        if (await isAdmin(session)) {
+        if (await checkAdmin(session)) {
             return
         }
 
@@ -1432,7 +1602,7 @@ export class ConversationService {
             return true
         }
 
-        if (await isAdmin(session)) {
+        if (await checkAdmin(session)) {
             return true
         }
 
@@ -1557,15 +1727,6 @@ function parseCompressionRecord(value?: string | null) {
     }
 }
 
-async function isAdmin(session: Session) {
-    const s = session as Session<User.Field>
-    if (s.user?.authority != null) {
-        return s.user.authority >= 3
-    }
-
-    return false
-}
-
 function firstDefined<T extends keyof ConstraintRecord>(
     constraints: ConstraintRecord[],
     key: T
@@ -1590,4 +1751,13 @@ function firstBoolean<T extends keyof ConstraintRecord>(
         }
     }
     return fallback
+}
+
+function getLock(locks: Map<string, ObjectLock>, key: string) {
+    let lock = locks.get(key)
+    if (lock == null) {
+        lock = new ObjectLock()
+        locks.set(key, lock)
+    }
+    return lock
 }

@@ -43,6 +43,8 @@ export function getLegacySchemaSentinelDir(baseDir: string) {
 }
 
 export async function purgeLegacyTables(ctx: Context) {
+    const failed: string[] = []
+
     for (const table of [
         ...LEGACY_MIGRATION_TABLES,
         ...LEGACY_RUNTIME_TABLES
@@ -51,7 +53,12 @@ export async function purgeLegacyTables(ctx: Context) {
             await ctx.database.drop(table)
         } catch (error) {
             ctx.logger.warn(`purge legacy ${table}: ${error}`)
+            failed.push(table)
         }
+    }
+
+    if (failed.length > 0) {
+        throw new Error(`Failed to purge legacy tables: ${failed.join(', ')}`)
     }
 
     const sentinel = getLegacySchemaSentinel(ctx.baseDir)

@@ -1,5 +1,6 @@
-const TIME_MINUTE = 60 * 1000
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
+
+const TIME_MINUTE = 60 * 1000
 
 export class ObjectLock {
     private _lock: boolean = false
