@@ -14,6 +14,7 @@ import type {
     LegacyRoomRecord,
     LegacyUserRecord
 } from '../services/types'
+import { defineLegacyMigrationTables } from './legacy_tables'
 import type { BindingProgress, MessageProgress, RoomProgress } from './types'
 import {
     aclKey,
@@ -41,6 +42,8 @@ export async function runRoomToConversationMigration(
     ctx: Context,
     config: Config
 ) {
+    defineLegacyMigrationTables(ctx)
+
     const result = await readMetaValue<
         Awaited<ReturnType<typeof validateRoomMigration>>
     >(ctx, 'validation_result')
@@ -128,6 +131,10 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
         // runRoomToConversationMigration will NOT call back into ensureMigrationValidated
         // because it only does so when all done-flags are true, which they are not here.
         return runRoomToConversationMigration(ctx, config)
+    }
+
+    if (retention?.state !== 'purged') {
+        defineLegacyMigrationTables(ctx)
     }
 
     const validated = await validateRoomMigration(ctx, config)

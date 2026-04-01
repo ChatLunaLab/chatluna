@@ -13,9 +13,6 @@ it('conversation-first runtime removes legacy room entry points from active sour
         expectRejected(fs.access(path.join(coreSrc, 'commands', 'room.ts'))),
         expectRejected(fs.access(path.join(coreSrc, 'middlewares', 'room'))),
         expectRejected(
-            fs.access(path.join(coreSrc, 'middlewares', 'auth', 'mute_user.ts'))
-        ),
-        expectRejected(
             fs.access(
                 path.join(coreSrc, 'middlewares', 'model', 'request_model.ts')
             )

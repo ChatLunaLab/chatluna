@@ -3,12 +3,6 @@ import { ChatChain } from './chains/chain'
 import { Config } from './config'
 
 // import start
-import { apply as add_user_to_auth_group } from './middlewares/auth/add_user_to_auth_group'
-import { apply as black_list } from './middlewares/auth/black_list'
-import { apply as create_auth_group } from './middlewares/auth/create_auth_group'
-import { apply as kick_user_form_auth_group } from './middlewares/auth/kick_user_form_auth_group'
-import { apply as list_auth_group } from './middlewares/auth/list_auth_group'
-import { apply as set_auth_group } from './middlewares/auth/set_auth_group'
 import { apply as allow_reply } from './middlewares/chat/allow_reply'
 import { apply as censor } from './middlewares/chat/censor'
 import { apply as chat_time_limit_check } from './middlewares/chat/chat_time_limit_check'
@@ -37,12 +31,9 @@ import { apply as clone_preset } from './middlewares/preset/clone_preset'
 import { apply as delete_preset } from './middlewares/preset/delete_preset'
 import { apply as list_all_preset } from './middlewares/preset/list_all_preset'
 import { apply as set_preset } from './middlewares/preset/set_preset'
-import { apply as clear_balance } from './middlewares/system/clear_balance'
 import { apply as conversation_manage } from './middlewares/system/conversation_manage'
 import { apply as lifecycle } from './middlewares/system/lifecycle'
-import { apply as query_balance } from './middlewares/system/query_balance'
 import { apply as restart } from './middlewares/system/restart'
-import { apply as set_balance } from './middlewares/system/set_balance'
 import { apply as wipe } from './middlewares/system/wipe' // import end
 
 export async function middleware(ctx: Context, config: Config) {
@@ -55,12 +46,6 @@ export async function middleware(ctx: Context, config: Config) {
     const middlewares: Middleware[] =
         // middleware start
         [
-            add_user_to_auth_group,
-            black_list,
-            create_auth_group,
-            kick_user_form_auth_group,
-            list_auth_group,
-            set_auth_group,
             allow_reply,
             censor,
             chat_time_limit_check,
@@ -89,12 +74,9 @@ export async function middleware(ctx: Context, config: Config) {
             delete_preset,
             list_all_preset,
             set_preset,
-            clear_balance,
             conversation_manage,
             lifecycle,
-            query_balance,
             restart,
-            set_balance,
             wipe
         ] // middleware end
 

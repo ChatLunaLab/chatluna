@@ -7,7 +7,7 @@ import { logger } from '../..'
 import {
     checkAdmin,
     transformMessageContentToElements
-} from '../../utils/koishi'
+} from 'koishi-plugin-chatluna/utils/koishi'
 
 const MAX_ROLLBACK_HOPS = 1000
 

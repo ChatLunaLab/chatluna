@@ -39,7 +39,6 @@ $inner:
 
     - $desc: Blacklist Management
       blackList: Configure blacklist. Use cautiously to avoid unintended blocking. The number 1 indicates enabled blacklist. Set to zero value to unenable blacklist.
-      blockText: Set fixed reply for blacklisted users.
 
     - $desc: History Management
       infiniteContext: Enable automatic Infinite Context compression when history nears the model limit. Preserves critical topics and instructions while discarding noise.
@@ -64,10 +63,6 @@ $inner:
       defaultPreset: Set default chat preset.
 
     - $desc: Miscellaneous
-      authSystem:
-          $desc: Enable quota group and user permission system (experimental). Overrides adapter call limits.
-          $inner:
-              - true
       errorTemplate: Set error prompt message template (subject to change).
       voiceSpeakId: Set default speaker ID for vits service.
       isLog: Enable debug mode.
@@ -79,8 +74,3 @@ $inner:
     - - $desc: Proxy Configuration
         $inner:
             proxyAddress: Set proxy address for network requests. Falls back to Koishi global proxy settings if empty.
-
-    - - $desc: Quota Group Configuration
-        $inner:
-            authUserDefaultGroup:
-                $desc: 'Format: [permission level, initial balance, authorization group name]. Levels: 0 (guest), 1 (user), 2 (admin). Leave unconfigured if uncertain.'

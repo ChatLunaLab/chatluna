@@ -8,6 +8,8 @@ import {
     gzipDecode,
     gzipEncode
 } from '../utils/compression'
+import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
+import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import {
     ACLRecord,
     applyPresetLane,
@@ -31,8 +33,6 @@ import {
     ResolveTargetConversationOptions,
     SerializedMessageRecord
 } from './types'
-import { checkAdmin } from '../utils/koishi'
-import { ObjectLock } from '../utils/lock'
 
 export class ConversationService {
     private readonly _bindingLocks = new Map<string, ObjectLock>()

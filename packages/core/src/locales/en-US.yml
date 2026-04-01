@@ -235,149 +235,6 @@ commands:
             purge-legacy:
                 description: Purge migrated legacy ChatLuna data.
 
-        auth:
-            description: ChatLuna authentication commands.
-            list:
-                description: Display authorization groups.
-                options:
-                    page: Page number
-                    limit: Items per page
-                    platform: Specify platform
-                messages:
-                    header: 'Quota groups:'
-                    footer: 'Use chatluna.auth.add [name] to join a quota group.'
-                    pages: 'Page: [page] / [total]'
-                    line: '{0} [{1}] priority:{2} limit:{3}/min {4}/day'
-                    general: 'General'
-            add:
-                description: Add user to quota group.
-                usage: 'Usage: chatluna auth add [group] name -u @user'
-                arguments:
-                    name: Quota group name.
-                options:
-                    user: Target user
-                messages:
-                    permission_denied: 'Insufficient permissions for this operation.'
-                    success: 'User {0} added to quota group {1}.'
-            kick:
-                description: Remove user from quota group.
-                usage: 'Usage: chatluna auth kick [group name] -u @user'
-                arguments:
-                    name: Quota group name.
-                options:
-                    user: Target user
-                messages:
-                    permission_denied: 'Insufficient permissions for this operation.'
-                    success: 'User {0} removed from quota group {1}.'
-            create:
-                description: Create new authorization group.
-                options:
-                    name: Group name
-                    preMin: Per-minute limit
-                    preDay: Daily limit
-                    platform: Platform
-                    supportModels: 'Supported models'
-                    priority: Priority
-                    cost: Token cost
-                messages:
-                    enter_name: 'Enter quota group name (e.g., OpenAI Quota Group):'
-                    name_exists: 'Group name already exists. Please try again.'
-                    enter_limit_per_min: 'Enter per-minute limit (>0):'
-                    enter_limit_per_day: 'Enter daily limit (>per-minute limit):'
-                    enter_platform: 'Enter model platform ID (e.g., openai) or N to skip:'
-                    enter_priority: 'Enter priority (higher number = higher priority):'
-                    enter_cost: 'Enter token cost (per 1000 tokens):'
-                    enter_models: 'Enter allowed models (comma-separated) or N to skip:'
-                    invalid_input: 'Invalid input for {0}. Please try again.'
-                    confirm_create: 'Create quota group? Y: Create, N: Interactive mode, Any other: Cancel.'
-                    timeout: 'Response timeout. Creation cancelled.'
-                    cancelled: 'Quota group creation cancelled.'
-                    success: 'Quota group "{0}" created successfully.'
-                    change_or_keep: '{0} {1}: {2}. Change? New value or N to keep.'
-                    invalid_models: 'Invalid models detected. Please try again.'
-                    action:
-                        input: 'Input'
-                        set: 'Set'
-                        select: 'Select'
-                    field:
-                        name: 'Group name'
-                        limit_per_min: 'Per-minute limit'
-                        limit_per_day: 'Daily limit'
-                        platform: 'Platform ID'
-                        priority: 'Priority'
-                        cost: 'Cost'
-                        models: 'Allowed models'
-            set:
-                description: 'Modify existing authorization group.'
-                options:
-                    name: 'Group name'
-                    preMin: 'Per-minute limit'
-                    preDay: 'Daily limit'
-                    platform: 'Platform'
-                    supportModels: 'Supported models'
-                    priority: 'Priority'
-                    cost: 'Token cost'
-                messages:
-                    confirm_set: 'Modify quota group? Y: Direct modify, N: Interactive mode, Any other: Cancel.'
-                    timeout: 'Response timeout. Modification cancelled.'
-                    cancelled: 'Quota group modification cancelled.'
-                    enter_name: 'Enter new group name (e.g., OpenAI Quota Group) or Q to exit:'
-                    name_exists: 'Group name already exists. Please try again.'
-                    enter_limit_per_min: 'Enter new per-minute limit (>0) or Q to exit:'
-                    enter_limit_per_day: 'Enter new daily limit (>per-minute limit) or Q to exit:'
-                    enter_platform: 'Enter new platform ID (e.g., openai), N to skip, or Q to exit:'
-                    enter_priority: 'Enter new priority (higher = more priority) or Q to exit:'
-                    enter_cost: 'Enter new token cost (per 1000 tokens) or Q to exit:'
-                    enter_models: 'Enter new allowed models (comma-separated), N to skip, or Q to exit:'
-                    invalid_input: 'Invalid input for {0}. Please try again.'
-                    change_or_keep: '{0} {1}: {2}. Change? New value, N to keep, or Q to exit.'
-                    invalid_models: 'Invalid models detected. Please try again.'
-                    success: 'Quota group "{0}" modified successfully.'
-                    action:
-                        input: 'Input'
-                        set: 'Set'
-                        select: 'Select'
-                    field:
-                        name: 'Group name'
-                        limit_per_min: 'Per-minute limit'
-                        limit_per_day: 'Daily limit'
-                        platform: 'Platform ID'
-                        priority: 'Priority'
-                        cost: 'Cost'
-                        models: 'Allowed models'
-
-        balance:
-            description: ChatLuna balance management.
-            clear:
-                description: Reset user balance.
-                arguments:
-                    user: Target user
-                examples:
-                    - 'chatluna balance clear --user @username'
-                messages:
-                    success: 'User {0} balance reset to {1}'
-            set:
-                description: 'Adjust user balance.'
-                options:
-                    user: 'Target user'
-                arguments:
-                    user: 'Target user'
-                    balance: 'New balance'
-                    amount: 'New balance'
-                examples:
-                    - 'chatluna balance set --user @username --amount 1000'
-                messages:
-                    success: 'User {0} balance updated to {1}'
-            query:
-                description: Check user balance.
-                arguments:
-                    user: 'Target user (default: current user)'
-                examples:
-                    - 'chatluna balance query'
-                    - 'chatluna balance query --user @username'
-                messages:
-                    success: 'User {0} current balance: {1}'
-
         model:
             description: ChatLuna model management.
             list:
@@ -674,15 +531,10 @@ chatluna:
     quote_said: 'said'
     aborted: 'Current conversation generation stopped successfully.'
     thinking_message: 'Processing... {0} messages in queue. Please wait.'
-    block_message: ''
     error_message: 'ChatLuna error occurred. Error code: %s. Contact developer for assistance.'
     middleware_error: 'Error in {0}: {1}'
     not_available_model: 'No models are currently available. Please check your configuration to ensure model adapters are properly installed and configured.'
     chat_limit_exceeded: 'Daily chat limit reached. Please try again in {0} minutes.'
-    insufficient_balance: 'Insufficient balance. Current balance: {0}.'
-    unsupported_model: 'Quota group {0} does not support model {1}.'
-    limit_per_minute_exceeded: 'Quota group {0} reached the per-minute limit ({2}/{1}).'
-    limit_per_day_exceeded: 'Quota group {0} reached the daily limit ({2}/{1}).'
     conversation:
         default_title: 'New Conversation'
         active: 'active'

@@ -2,12 +2,12 @@ import { ForkScope, h, Session, User } from 'koishi'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { Marked, Token } from 'marked'
 import type { MessageContent } from '@langchain/core/messages'
-import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/langchain'
 import {
     isMessageContentAudio,
     isMessageContentFileUrl,
+    isMessageContentImageUrl,
     isMessageContentVideo
-} from './langchain'
+} from 'koishi-plugin-chatluna/utils/langchain'
 
 const marked = new Marked({
     tokenizer: {

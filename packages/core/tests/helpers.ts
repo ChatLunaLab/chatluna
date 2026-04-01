@@ -66,6 +66,10 @@ export class FakeDatabase {
         chathub_conversation: []
     }
 
+    extend(table: string) {
+        this.tables[table] ??= []
+    }
+
     async get(
         table: string,
         query: Record<string, unknown>,

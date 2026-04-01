@@ -1,6 +1,5 @@
 import { Context, Session } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { ChatHubAuthGroup } from '../../authorization/types'
 import { Cache } from '../../cache'
 import {
     ChainMiddlewareContext,
@@ -15,91 +14,9 @@ import { logger } from 'koishi-plugin-chatluna'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const chatLimitCache = new Cache(ctx, config, 'chatluna/chat_limit')
 
-    const authService = ctx.chatluna_auth
-
     chain
         .middleware('chat_time_limit_check', async (session, context) => {
-            if (config.authSystem !== true) {
-                return await oldChatLimitCheck(session, context)
-            }
-
-            const target = await resolveConversationTarget(session, context)
-
-            if (target == null) {
-                return ChainMiddlewareRunStatus.CONTINUE
-            }
-
-            const { model } = target
-
-            // check account balance
-            const authUser = await authService.getUser(session)
-
-            if (
-                authUser /* && context.command == null */ &&
-                authUser.balance <= 0
-            ) {
-                context.message = session.text(
-                    'chatluna.insufficient_balance',
-                    [authUser.balance]
-                )
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            let authGroup = await authService.resolveAuthGroup(
-                session,
-                parseRawModelName(model)[0]
-            )
-
-            if (
-                authGroup.supportModels != null &&
-                authGroup.supportModels.find((m) => m === model) == null
-            ) {
-                context.message = session.text('chatluna.unsupported_model', [
-                    authGroup.name,
-                    model
-                ])
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            authGroup = await authService.resetAuthGroup(authGroup.id)
-
-            context.options.authGroup = authGroup
-
-            // check pre min
-
-            if (
-                (authGroup.currentLimitPerMin ?? 0) + 1 >
-                authGroup.limitPerMin
-            ) {
-                context.message = session.text(
-                    'chatluna.limit_per_minute_exceeded',
-                    [
-                        authGroup.name,
-                        authGroup.limitPerMin,
-                        authGroup.currentLimitPerMin
-                    ]
-                )
-
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            if (
-                (authGroup.currentLimitPerDay ?? 0) + 1 >
-                authGroup.limitPerDay
-            ) {
-                context.message = session.text(
-                    'chatluna.limit_per_day_exceeded',
-                    [
-                        authGroup.name,
-                        authGroup.limitPerDay,
-                        authGroup.currentLimitPerDay
-                    ]
-                )
-
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            return ChainMiddlewareRunStatus.CONTINUE
+            return await oldChatLimitCheck(session, context)
         })
         .after('resolve_model')
         .before('lifecycle-request_conversation')
@@ -240,7 +157,6 @@ declare module '../../chains/chain' {
     interface ChainMiddlewareContextOptions {
         chatLimitCache?: Cache<'chatluna/chat_limit', ChatLimit>
         chatLimit?: ChatLimit
-        authGroup?: ChatHubAuthGroup
     }
 }
 

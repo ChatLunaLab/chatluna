@@ -40,7 +40,6 @@ $inner:
     - $desc: 黑名单选项
       blackList:
           $desc: 设置黑名单列表。请谨慎使用，只对需要拉黑的用户或群启用。1 表示启用黑名单，0 表示不启用黑名单。默认值为 0。
-      blockText: 设置对被拉黑用户的固定回复内容。
 
     - $desc: 历史记录选项
       infiniteContext: 启用「无限上下文」，当对话接近模型的上下文上限时自动压缩旧消息，保留关键话题和指令并丢弃无关内容。
@@ -65,10 +64,6 @@ $inner:
       defaultPreset: 设置默认使用的聊天预设。
 
     - $desc: 杂项
-      authSystem:
-          $desc: 是否启用配额组和用户权限系统（实验性功能）。启用后，各适配器设置的调用限额将失效。
-          $inner:
-              - true
       errorTemplate: 设置错误提示消息的模板（此设置在未来版本中可能会有变更）。
       voiceSpeakId: 设置使用 vits 服务时的默认发音人 ID。
       isLog: 是否启用调试模式。
@@ -80,8 +75,3 @@ $inner:
     - - $desc: 代理选项
         $inner:
             proxyAddress: 网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。如不填写，将尝试使用 Koishi 全局配置中的代理设置。
-
-    - - $desc: 配额组选项
-        $inner:
-            authUserDefaultGroup:
-                $desc: 格式为 [权限等级, 初始余额, 授权组名称]。权限等级：0 为 guest，1 为 user，2 为 admin。如不了解，请勿配置。

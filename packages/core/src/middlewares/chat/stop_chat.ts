@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { getRequestId } from '../../utils/chat_request'
-import { checkAdmin } from '../../utils/koishi'
+import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain

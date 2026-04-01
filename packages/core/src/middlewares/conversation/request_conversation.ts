@@ -1,6 +1,5 @@
 import { Context, Element, Fragment, Logger, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -131,10 +130,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const chatCallbacks = createChatCallbacks(
                 context,
-                session,
                 config,
-                bufferText,
-                conversation
+                bufferText
             )
 
             try {
@@ -186,21 +183,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
 function createChatCallbacks(
     context: ChainMiddlewareContext,
-    session: Session,
     config: Config,
-    bufferText: StreamingBufferText,
-    conversation: Pick<ConversationRecord, 'model'>
+    bufferText: StreamingBufferText
 ) {
     return {
         'llm-new-chunk': createChunkHandler(context, bufferText),
         'llm-queue-waiting': createQueueWaitingHandler(context),
-        'llm-call-tool': createToolCallHandler(context, config),
-        'llm-used-token-count': createTokenCountHandler(
-            context,
-            session,
-            config,
-            conversation
-        )
+        'llm-call-tool': createToolCallHandler(context, config)
     }
 }
 
@@ -274,27 +263,6 @@ function createToolCallHandler(
         }
 
         await sendMessage(context, formatToolCall(tool, arg, log), config)
-    }
-}
-
-function createTokenCountHandler(
-    context: ChainMiddlewareContext,
-    session: Session,
-    config: Config,
-    conversation: Pick<ConversationRecord, 'model'>
-) {
-    return async (tokens: number) => {
-        if (config.authSystem !== true) {
-            return
-        }
-
-        const balance = await context.ctx.chatluna_auth.calculateBalance(
-            session,
-            parseRawModelName(conversation.model)[0],
-            tokens
-        )
-
-        logger.debug(`Current balance: ${balance}`)
     }
 }
 

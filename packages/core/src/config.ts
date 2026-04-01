@@ -48,9 +48,6 @@ export interface Config {
     defaultModel: string
     defaultPreset: string
 
-    authUserDefaultGroup: Computed<Awaitable<[number, number, string]>>
-    authSystem: boolean
-
     voiceSpeakId: number
 
     enableSimilarityCheck: boolean
@@ -176,7 +173,6 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        authSystem: Schema.boolean().experimental().hidden().default(false),
         isProxy: Schema.boolean().default(false),
         voiceSpeakId: Schema.number().default(0),
         isLog: Schema.boolean().default(false)
@@ -186,20 +182,6 @@ export const Config: Schema<Config> = Schema.intersect([
         Schema.object({
             isProxy: Schema.const(true).required(),
             proxyAddress: Schema.string().default('')
-        }),
-        Schema.object({})
-    ]),
-
-    Schema.union([
-        Schema.object({
-            authSystem: Schema.const(true).required(),
-            authUserDefaultGroup: Schema.tuple([
-                Schema.number().default(0),
-                Schema.number().default(1.0),
-                Schema.string().default('guest')
-            ])
-                .computed()
-                .default([0, 1.0, 'guest'])
         }),
         Schema.object({})
     ])

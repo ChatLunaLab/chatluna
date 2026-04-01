@@ -18,120 +18,108 @@ let logger: Logger
 
 export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     logger = createLogger(ctx)
-    chain
-        .middleware('purge_legacy', async (session, context) => {
-            if (context.command !== 'purge_legacy') {
-                return ChainMiddlewareRunStatus.SKIPPED
-            }
+    chain.middleware('purge_legacy', async (session, context) => {
+        if (context.command !== 'purge_legacy') {
+            return ChainMiddlewareRunStatus.SKIPPED
+        }
 
-            const result = await readMetaValue<{
-                passed?: boolean
-            }>(ctx, 'validation_result')
+        const result = await readMetaValue<{
+            passed?: boolean
+        }>(ctx, 'validation_result')
 
-            if (result?.passed !== true) {
-                context.message =
-                    'Legacy purge is blocked until migration validation passes.'
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            const status = await confirmWipe(session, '.confirm_wipe')
-            if (status !== 'ok') {
-                context.message =
-                    status === 'timeout'
-                        ? session.text('.timeout')
-                        : session.text('.incorrect_input')
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            await purgeLegacyTables(ctx)
-            await writeMetaValue(
-                ctx,
-                'legacy_purged_at',
-                new Date().toISOString()
-            )
-            await writeMetaValue(
-                ctx,
-                LEGACY_RETENTION_META_KEY,
-                createLegacyTableRetention('purged')
-            )
-            context.message = 'Legacy ChatHub tables were purged.'
+        if (result?.passed !== true) {
+            context.message =
+                'Legacy purge is blocked until migration validation passes.'
             return ChainMiddlewareRunStatus.STOP
-        })
-        .before('black_list')
+        }
 
-    chain
-        .middleware('wipe', async (session, context) => {
-            const { command } = context
-
-            if (command !== 'wipe') return ChainMiddlewareRunStatus.SKIPPED
-
-            const status = await confirmWipe(
-                session,
-                '.confirm_wipe',
-                context.send
-            )
-            if (status !== 'ok') {
-                context.message = session.text(
-                    status === 'timeout' ? '.timeout' : '.incorrect_input'
-                )
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            // drop database tables
-
-            for (const table of [
-                'chatluna_conversation',
-                'chatluna_message',
-                'chatluna_binding',
-                'chatluna_constraint',
-                'chatluna_archive',
-                'chatluna_acl',
-                'chatluna_meta'
-            ]) {
-                await dropTableIfExists(ctx, table)
-            }
-
-            for (const table of LEGACY_MIGRATION_TABLES) {
-                await dropTableIfExists(ctx, table)
-            }
-
-            for (const table of LEGACY_RUNTIME_TABLES) {
-                await dropTableIfExists(ctx, table)
-            }
-
-            await dropTableIfExists(ctx, 'chatluna_docstore')
-            // knowledge
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await dropTableIfExists(ctx, 'chathub_knowledge' as any)
-
-            // drop caches
-
-            await ctx.chatluna.cache.clear('chatluna/chat_limit')
-            await ctx.chatluna.cache.clear('chatluna/keys')
-
-            // delete local database and temps
-
-            try {
-                await fs.rm('data/chathub/vector_store', { recursive: true })
-            } catch (e) {
-                logger.warn(`wipe: ${e}`)
-            }
-
-            try {
-                await fs.rm('data/chatluna/temp', { recursive: true })
-            } catch (e) {
-                logger.warn(`wipe: ${e}`)
-            }
-
-            context.message = session.text('.success')
-
-            const appContext = ctx.scope.parent
-            appContext.scope.update(appContext.config, true)
-
+        const status = await confirmWipe(session, '.confirm_wipe')
+        if (status !== 'ok') {
+            context.message =
+                status === 'timeout'
+                    ? session.text('.timeout')
+                    : session.text('.incorrect_input')
             return ChainMiddlewareRunStatus.STOP
-        })
-        .before('black_list')
+        }
+
+        await purgeLegacyTables(ctx)
+        await writeMetaValue(ctx, 'legacy_purged_at', new Date().toISOString())
+        await writeMetaValue(
+            ctx,
+            LEGACY_RETENTION_META_KEY,
+            createLegacyTableRetention('purged')
+        )
+        context.message = 'Legacy ChatHub tables were purged.'
+        return ChainMiddlewareRunStatus.STOP
+    })
+
+    chain.middleware('wipe', async (session, context) => {
+        const { command } = context
+
+        if (command !== 'wipe') return ChainMiddlewareRunStatus.SKIPPED
+
+        const status = await confirmWipe(session, '.confirm_wipe', context.send)
+        if (status !== 'ok') {
+            context.message = session.text(
+                status === 'timeout' ? '.timeout' : '.incorrect_input'
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
+
+        // drop database tables
+
+        for (const table of [
+            'chatluna_conversation',
+            'chatluna_message',
+            'chatluna_binding',
+            'chatluna_constraint',
+            'chatluna_archive',
+            'chatluna_acl',
+            'chatluna_meta'
+        ]) {
+            await dropTableIfExists(ctx, table)
+        }
+
+        for (const table of LEGACY_MIGRATION_TABLES) {
+            await dropTableIfExists(ctx, table)
+        }
+
+        for (const table of LEGACY_RUNTIME_TABLES) {
+            await dropTableIfExists(ctx, table)
+        }
+
+        await dropTableIfExists(ctx, 'chatluna_docstore')
+        // knowledge
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await dropTableIfExists(ctx, 'chathub_knowledge' as any)
+
+        // drop caches
+
+        await ctx.chatluna.cache.clear('chatluna/chat_limit')
+        await ctx.chatluna.cache.clear('chatluna/keys')
+
+        // delete local database and temps
+
+        try {
+            await fs.rm('data/chathub/vector_store', { recursive: true })
+        } catch (e) {
+            logger.warn(`wipe: ${e}`)
+        }
+
+        try {
+            await fs.rm('data/chatluna/temp', { recursive: true })
+        } catch (e) {
+            logger.warn(`wipe: ${e}`)
+        }
+
+        context.message = session.text('.success')
+
+        const appContext = ctx.scope.parent
+        appContext.scope.update(appContext.config, true)
+
+        return ChainMiddlewareRunStatus.STOP
+    })
 }
 
 declare module '../../chains/chain' {

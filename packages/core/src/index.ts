@@ -9,7 +9,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/logger'
 import * as request from 'koishi-plugin-chatluna/utils/request'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
-import { ChatLunaAuthService } from './authorization/service'
 import { command } from './command'
 import { Config } from './config'
 import { defaultFactory } from './llm-core/chat/default'
@@ -87,7 +86,6 @@ function setupEntryPoint(
                 inject: {
                     ...inject2,
                     chatluna: { required: true },
-                    chatluna_auth: { required: false },
                     chatluna_storage: { required: false },
                     database: { required: false },
                     notifier: { required: false }
@@ -158,10 +156,7 @@ function setupServices(
     config: Config,
     disposables: PromiseLikeDisposable[]
 ) {
-    disposables.push(
-        forkScopeToDisposable(ctx.plugin(ChatLunaService, config)),
-        forkScopeToDisposable(ctx.plugin(ChatLunaAuthService, config))
-    )
+    disposables.push(forkScopeToDisposable(ctx.plugin(ChatLunaService, config)))
 }
 
 function setupPermissions(ctx: Context, disposables: PromiseLikeDisposable[]) {
