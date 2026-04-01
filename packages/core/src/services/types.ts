@@ -188,6 +188,8 @@ declare module '@chatluna/shared-prompt-renderer' {
         session?: Session
         conversationId?: string
         subagentContext?: SubagentContext
+        toolMask?: ToolMask
+        source?: string
     }
 }
 

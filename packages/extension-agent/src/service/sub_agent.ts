@@ -170,8 +170,8 @@ export class ChatLunaAgentSubAgentService {
 
     private _createTaskRuntime() {
         return createTaskTool({
-            list: ({ session, bindingKey }) =>
-                this.listRunnableAgents(session, bindingKey).map((item) => ({
+            list: ({ session, source }) =>
+                this.listRunnableAgents(session, source).map((item) => ({
                     id: item.id,
                     name: item.name,
                     description: item.description
@@ -180,8 +180,9 @@ export class ChatLunaAgentSubAgentService {
                 const info = this.findRunnableAgent(
                     name,
                     ctx.session,
-                    ctx.bindingKey
+                    ctx.source
                 )
+
                 if (!info) {
                     return undefined
                 }
@@ -268,15 +269,13 @@ export class ChatLunaAgentSubAgentService {
                 if (runtime.configurable?.subagentContext) return next()
 
                 const session = runtime.configurable?.session
-                const source =
-                    (
-                        runtime.configurable as {
-                            source?: 'chatluna' | 'character'
-                        }
-                    )?.source ?? 'chatluna'
+                const source = (runtime.configurable?.source ??
+                    'chatluna') as Parameters<
+                    ChatLunaAgentPermissionService['canUseSubAgent']
+                >[2]
 
-                const mask = (runtime.configurable as { toolMask?: ToolMask })
-                    ?.toolMask
+                const mask = runtime.configurable?.toolMask
+
                 if (
                     mask != null &&
                     !this.ctx.chatluna.platform
