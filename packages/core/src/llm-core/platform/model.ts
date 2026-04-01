@@ -256,7 +256,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     hasResponse =
                         hasResponse ||
                         hasTool ||
-                        getMessageContent(chunk.message.content).trim().length > 0
+                        getMessageContent(chunk.message.content).trim()
+                            .length > 0
                     yield chunk
                 }
 
@@ -330,8 +331,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private _hasToolCallChunk(message?: AIMessage | AIMessageChunk): boolean {
         return (
             (message?.tool_calls?.length ?? 0) > 0 ||
-            ((message as AIMessageChunk | undefined)?.tool_call_chunks?.length ??
-                0) > 0 ||
+            ((message as AIMessageChunk | undefined)?.tool_call_chunks
+                ?.length ?? 0) > 0 ||
             (message?.invalid_tool_calls?.length ?? 0) > 0
         )
     }
