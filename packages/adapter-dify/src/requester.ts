@@ -106,12 +106,9 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     ): string | undefined {
         for (const message of messages) {
             const conversationId =
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (message as any)?.additional_kwargs?.chatluna_conversation_id ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (message as any)?.additional_kwargs?.conversationId ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (message as any)?.additional_kwargs?.conversation_id
+                message?.additional_kwargs?.chatluna_conversation_id ||
+                message?.additional_kwargs?.conversationId ||
+                message?.additional_kwargs?.conversation_id
 
             if (
                 typeof conversationId === 'string' &&
@@ -412,11 +409,15 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     }
 
     private resolveDifyUser(params: ModelRequestParams): string {
-        return (
-            (params.variables?.['user_id'] as string) ||
-            (params.variables?.['user'] as string) ||
-            'chatluna'
-        )
+        if (this.ctx.chatluna.config.defaultGroupRouteMode === 'personal') {
+            return (
+                (params.variables?.['user_id'] as string) ||
+                (params.variables?.['user'] as string) ||
+                'chatluna'
+            )
+        } else {
+            return 'chatluna'
+        }
     }
 
     private async prepareFiles(
