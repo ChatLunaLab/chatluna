@@ -170,8 +170,8 @@ export class ChatLunaAgentSubAgentService {
 
     private _createTaskRuntime() {
         return createTaskTool({
-            list: ({ session, source }) =>
-                this.listRunnableAgents(session, source).map((item) => ({
+            list: ({ session, bindingKey }) =>
+                this.listRunnableAgents(session, bindingKey).map((item) => ({
                     id: item.id,
                     name: item.name,
                     description: item.description
@@ -180,7 +180,7 @@ export class ChatLunaAgentSubAgentService {
                 const info = this.findRunnableAgent(
                     name,
                     ctx.session,
-                    ctx.source
+                    ctx.bindingKey
                 )
                 if (!info) {
                     return undefined
