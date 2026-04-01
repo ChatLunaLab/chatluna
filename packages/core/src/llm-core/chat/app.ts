@@ -235,13 +235,15 @@ export class ChatInterface {
             await this.handleChatError(arg, wrapper, error, false)
         }
 
-        autoSummarizeTitle(
-            this.ctx,
-            arg.conversationId,
-            wrapper,
-            arg.message,
-            displayResponse as AIMessage
-        ).catch((e) => logger.error('autoSummarizeTitle error:', e))
+        if (this._input.autoTitle !== false) {
+            autoSummarizeTitle(
+                this.ctx,
+                arg.conversationId,
+                wrapper,
+                arg.message,
+                displayResponse as AIMessage
+            ).catch((e) => logger.error('autoSummarizeTitle error:', e))
+        }
 
         return { message: displayResponse }
     }
@@ -479,17 +481,12 @@ async function autoSummarizeTitle(
     try {
         const result = await wrapper.model.invoke([new HumanMessage(prompt)])
         const title = getMessageContent(result.content).trim().slice(0, 20)
-        if (title.length < 5) {
-            await ctx.chatluna.conversation.touchConversation(conversationId, {
-                autoTitle: true
-            })
-            return
-        }
 
         await ctx.chatluna.conversation.touchConversation(conversationId, {
             title
         })
     } catch (error) {
+        logger.error(error)
         await ctx.chatluna.conversation.touchConversation(conversationId, {
             autoTitle: true
         })
@@ -499,6 +496,7 @@ async function autoSummarizeTitle(
 
 export interface ChatInterfaceInput {
     chatMode: string
+    autoTitle?: boolean
     botName?: string
     preset?: ComputedRef<PresetTemplate>
     model: string

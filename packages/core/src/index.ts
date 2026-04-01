@@ -16,6 +16,7 @@ import { apply as loreBook } from './llm-core/memory/lore_book'
 import { apply as authorsNote } from './llm-core/memory/authors_note'
 import { ensureMigrationValidated } from './migration/room_to_conversation'
 import { middleware } from './middleware'
+import type { ConstraintRecord } from './services/conversation_types'
 import { purgeArchivedConversation } from './utils/archive'
 
 export * from './config'
@@ -56,6 +57,7 @@ export function apply(ctx: Context, config: Config) {
 
     ctx.on('ready', async () => {
         setupProxy(ctx, config)
+        await dedupeConstraintNames(ctx)
         setupServices(ctx, config, disposables)
         setupPermissions(ctx, disposables)
         setupEntryPoint(ctx, config, disposables)
@@ -195,13 +197,14 @@ async function setupAutoArchive(ctx: Context, config: Config) {
         }
 
         try {
+            const cutoff = new Date(
+                Date.now() - config.autoArchiveTimeout * 1000
+            )
             const conversations = await ctx.database.get(
                 'chatluna_conversation',
                 {
                     updatedAt: {
-                        $lt: new Date(
-                            Date.now() - config.autoArchiveTimeout * 1000
-                        )
+                        $lt: cutoff
                     },
                     status: 'active'
                 }
@@ -217,10 +220,15 @@ async function setupAutoArchive(ctx: Context, config: Config) {
 
             for (const conversation of conversations) {
                 try {
-                    await ctx.chatluna.conversation.archiveConversationById(
-                        conversation.id
-                    )
-                    success += 1
+                    const archived =
+                        await ctx.chatluna.conversation.archiveConversationById(
+                            conversation.id,
+                            cutoff
+                        )
+
+                    if (archived != null) {
+                        success += 1
+                    }
                 } catch (e) {
                     logger.error(e)
                 }
@@ -250,13 +258,14 @@ async function setupAutoPurgeArchive(ctx: Context, config: Config) {
         }
 
         try {
+            const cutoff = new Date(
+                Date.now() - config.autoPurgeArchiveTimeout * 1000
+            )
             const conversations = await ctx.database.get(
                 'chatluna_conversation',
                 {
                     archivedAt: {
-                        $lt: new Date(
-                            Date.now() - config.autoPurgeArchiveTimeout * 1000
-                        )
+                        $lt: cutoff
                     },
                     status: 'archived'
                 }
@@ -272,8 +281,33 @@ async function setupAutoPurgeArchive(ctx: Context, config: Config) {
 
             for (const conversation of conversations) {
                 try {
-                    await purgeArchivedConversation(ctx, conversation)
-                    success += 1
+                    const purged =
+                        await ctx.chatluna.conversationRuntime.withConversationSync(
+                            conversation,
+                            async () => {
+                                const current =
+                                    await ctx.chatluna.conversation.getConversation(
+                                        conversation.id
+                                    )
+
+                                if (
+                                    current == null ||
+                                    current.status !== 'archived' ||
+                                    current.archivedAt == null ||
+                                    current.archivedAt.getTime() >=
+                                        cutoff.getTime()
+                                ) {
+                                    return false
+                                }
+
+                                await purgeArchivedConversation(ctx, current)
+                                return true
+                            }
+                        )
+
+                    if (purged) {
+                        success += 1
+                    }
                 } catch (e) {
                     logger.error(e)
                 }
@@ -293,4 +327,50 @@ async function setupAutoPurgeArchive(ctx: Context, config: Config) {
     ctx.setInterval(async () => {
         await execute()
     }, Time.minute * 10)
+}
+
+async function dedupeConstraintNames(ctx: Context) {
+    try {
+        const rows = (await ctx.database.get(
+            'chatluna_constraint',
+            {}
+        )) as ConstraintRecord[]
+
+        if (rows.length < 2) {
+            return
+        }
+
+        const names = new Set<string>()
+        const ids = [...rows]
+            .sort((left, right) => {
+                const leftTime = left.updatedAt?.getTime() ?? 0
+                const rightTime = right.updatedAt?.getTime() ?? 0
+
+                if (leftTime !== rightTime) {
+                    return rightTime - leftTime
+                }
+
+                return (right.id ?? 0) - (left.id ?? 0)
+            })
+            .filter((row) => {
+                if (!names.has(row.name)) {
+                    names.add(row.name)
+                    return false
+                }
+
+                return row.id != null
+            })
+            .map((row) => row.id!)
+
+        if (ids.length === 0) {
+            return
+        }
+
+        logger.warn(
+            `Removing ${ids.length} duplicate chatluna_constraint rows.`
+        )
+        await ctx.database.remove('chatluna_constraint', {
+            id: ids
+        })
+    } catch {}
 }

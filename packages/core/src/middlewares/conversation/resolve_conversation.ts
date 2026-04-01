@@ -29,6 +29,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('resolve_conversation', async (session, context) => {
             const presetLane = getPresetLane(context)
             const targetConversation = getTargetConversation(context)
+            const useRoutePresetLane =
+                presetLane == null &&
+                targetConversation == null &&
+                (context.command == null || context.command.length === 0)
 
             context.options.presetLane = presetLane
 
@@ -60,7 +64,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.resolvedConversationContext ??
                 (await ctx.chatluna.conversation.resolveContext(session, {
                     conversationId: context.options.conversationId,
-                    presetLane
+                    presetLane,
+                    useRoutePresetLane
                 }))
 
             context.options.resolvedConversation =

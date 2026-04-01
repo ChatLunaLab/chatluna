@@ -13,7 +13,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('chat_time_limit_save', async (session, context) => {
             return await oldChatLimitSave(session, context)
         })
-        .after('render_message')
+        .after('request_conversation')
 
     async function oldChatLimitSave(
         session: Session,
@@ -22,16 +22,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const { chatLimit, chatLimitCache } = context.options
         const conversationId = context.options.conversationId
 
-        if (conversationId == null) {
-            throw new Error('chat_time_limit_save missing conversationId')
-        }
-
-        if (chatLimit == null) {
-            throw new Error('chat_time_limit_save missing chatLimit')
-        }
-
-        if (chatLimitCache == null) {
-            throw new Error('chat_time_limit_save missing chatLimitCache')
+        if (
+            conversationId == null ||
+            chatLimit == null ||
+            chatLimitCache == null
+        ) {
+            return ChainMiddlewareRunStatus.SKIPPED
         }
 
         let key = conversationId + '-' + session.userId

@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'crypto'
 import type { Context } from 'koishi'
 import type { Config } from '../config'
 import type {
@@ -195,6 +196,7 @@ async function migrateRooms(ctx: Context) {
             .filter((item) => item.legacyRoomId != null)
             .map((item) => [item.legacyRoomId!, item])
     )
+    const usedConversationIds = new Set(existing.map((item) => item.id))
     // (#10) only count records that were actually migrated from legacy rooms
     const progress = (await readMetaValue<RoomProgress>(
         ctx,
@@ -203,6 +205,10 @@ async function migrateRooms(ctx: Context) {
         lastRoomId: 0,
         migrated: existing.filter((item) => item.legacyRoomId != null).length
     }
+
+    ctx.logger.info(
+        `Migrating conversations: ${progress.migrated}/${rooms.length}`
+    )
 
     let seq = existing.reduce((max, item) => Math.max(max, item.seq ?? 0), 0)
 
@@ -219,6 +225,7 @@ async function migrateRooms(ctx: Context) {
             (item) => item.roomId === room.roomId
         )
         const roomGroups = groups.filter((item) => item.roomId === room.roomId)
+        const legacyConversationId = room.conversationId as string
         const bindingKey = resolveRoomBindingKey(
             room,
             roomMembers,
@@ -236,9 +243,15 @@ async function migrateRooms(ctx: Context) {
             seq = conversationSeq
         }
 
+        const conversationId =
+            current?.id ??
+            (usedConversationIds.has(legacyConversationId)
+                ? randomUUID()
+                : legacyConversationId)
+        usedConversationIds.add(conversationId)
+
         const conversation: ConversationRecord = {
-            // filterValidRooms() guarantees conversationId is present here.
-            id: room.conversationId as string,
+            id: conversationId,
             seq: conversationSeq,
             bindingKey,
             title: room.roomName,
@@ -250,7 +263,11 @@ async function migrateRooms(ctx: Context) {
             updatedAt,
             lastChatAt: oldConversation?.updatedAt ?? room.updatedTime,
             status: 'active',
-            latestMessageId: oldConversation?.latestId ?? null,
+            latestMessageId: mapMessageId(
+                legacyConversationId,
+                conversationId,
+                oldConversation?.latestId ?? null
+            ),
             additional_kwargs: oldConversation?.additional_kwargs ?? null,
             compression: null,
             archivedAt: null,
@@ -273,7 +290,12 @@ async function migrateRooms(ctx: Context) {
         await ctx.database.upsert('chatluna_conversation', [conversation])
         existingByRoomId.set(room.roomId, conversation)
 
-        const acl = buildAclRecords(room, roomMembers, roomGroups)
+        const acl = buildAclRecords(
+            conversation.id,
+            room,
+            roomMembers,
+            roomGroups
+        )
         if (acl.length > 0) {
             await ctx.database.upsert('chatluna_acl', acl)
         }
@@ -281,11 +303,32 @@ async function migrateRooms(ctx: Context) {
         progress.lastRoomId = room.roomId
         progress.migrated += 1
         await writeMetaValue(ctx, 'conversation_migration_progress', progress)
+
+        if (
+            progress.migrated % BINDING_PROGRESS_BATCH === 0 ||
+            room.roomId === rooms[rooms.length - 1]?.roomId
+        ) {
+            ctx.logger.info(
+                `Migrating conversations: ${progress.migrated}/${rooms.length}`
+            )
+        }
     }
+
+    ctx.logger.info(
+        `Conversation migration done: ${progress.migrated}/${rooms.length}`
+    )
 }
 
 // (#7) removed redundant inner `done` check
 async function migrateMessages(ctx: Context) {
+    const rooms = filterValidRooms(
+        (await ctx.database.get('chathub_room', {})) as LegacyRoomRecord[]
+    )
+    const conversations = (await ctx.database.get(
+        'chatluna_conversation',
+        {}
+    )) as ConversationRecord[]
+    const targets = createConversationTargets(rooms, conversations)
     const progress = (await readMetaValue<MessageProgress>(
         ctx,
         'message_migration_progress'
@@ -293,6 +336,10 @@ async function migrateMessages(ctx: Context) {
         index: 0,
         migrated: 0
     }
+
+    ctx.logger.info(
+        `Migrating messages: scanned ${progress.index}, written ${progress.migrated}`
+    )
 
     while (true) {
         const batch = (await ctx.database.get(
@@ -311,29 +358,50 @@ async function migrateMessages(ctx: Context) {
             break
         }
 
-        const payload = batch.map((item) => ({
-            id: item.id,
-            conversationId: item.conversation,
-            parentId: item.parent ?? null,
-            role: item.role,
-            text: typeof item.text === 'string' ? item.text : null,
-            content: item.content ?? null,
-            name: item.name ?? null,
-            tool_call_id: item.tool_call_id ?? null,
-            tool_calls: item.tool_calls,
-            additional_kwargs: item.additional_kwargs ?? null,
-            additional_kwargs_binary: item.additional_kwargs_binary ?? null,
-            rawId: item.rawId ?? null,
-            createdAt: null
-        })) satisfies MessageRecord[]
+        const payload: MessageRecord[] = batch.flatMap((item) => {
+            const conversationIds = targets.get(item.conversation)
 
-        await ctx.database.upsert('chatluna_message', payload)
+            if (conversationIds == null) {
+                return []
+            }
+
+            return conversationIds.map((conversationId) => ({
+                id: mapMessageId(item.conversation, conversationId, item.id)!,
+                conversationId,
+                parentId: mapMessageId(
+                    item.conversation,
+                    conversationId,
+                    item.parent ?? null
+                ),
+                role: item.role,
+                text: typeof item.text === 'string' ? item.text : null,
+                content: item.content ?? null,
+                name: item.name ?? null,
+                tool_call_id: item.tool_call_id ?? null,
+                tool_calls: item.tool_calls,
+                additional_kwargs: item.additional_kwargs ?? null,
+                additional_kwargs_binary: item.additional_kwargs_binary ?? null,
+                rawId: item.rawId ?? null,
+                createdAt: null
+            }))
+        })
+
+        if (payload.length > 0) {
+            await ctx.database.upsert('chatluna_message', payload)
+        }
 
         progress.index += batch.length
         progress.lastId = batch[batch.length - 1]?.id
-        progress.migrated += batch.length
+        progress.migrated += payload.length
         await writeMetaValue(ctx, 'message_migration_progress', progress)
+        ctx.logger.info(
+            `Migrating messages: scanned ${progress.index}, written ${progress.migrated}`
+        )
     }
+
+    ctx.logger.info(
+        `Message migration done: scanned ${progress.index}, written ${progress.migrated}`
+    )
 }
 
 async function migrateBindings(ctx: Context) {
@@ -370,6 +438,10 @@ async function migrateBindings(ctx: Context) {
         migrated: 0
     }
 
+    ctx.logger.info(
+        `Migrating bindings: processed ${progress.index}/${users.length}, migrated ${progress.migrated}`
+    )
+
     for (let i = progress.index; i < users.length; i++) {
         const user = users[i]
         const conversation = conversationsByRoomId.get(user.defaultRoomId)
@@ -383,6 +455,9 @@ async function migrateBindings(ctx: Context) {
                     ctx,
                     'binding_migration_progress',
                     progress
+                )
+                ctx.logger.info(
+                    `Migrating bindings: processed ${progress.index}/${users.length}, migrated ${progress.migrated}`
                 )
             }
             continue
@@ -418,11 +493,71 @@ async function migrateBindings(ctx: Context) {
             i === users.length - 1
         ) {
             await writeMetaValue(ctx, 'binding_migration_progress', progress)
+            ctx.logger.info(
+                `Migrating bindings: processed ${progress.index}/${users.length}, migrated ${progress.migrated}`
+            )
         }
     }
+
+    ctx.logger.info(
+        `Binding migration done: processed ${progress.index}/${users.length}, migrated ${progress.migrated}`
+    )
+}
+
+function createConversationTargets(
+    rooms: LegacyRoomRecord[],
+    conversations: ConversationRecord[]
+) {
+    const conversationsByRoomId = new Map(
+        conversations
+            .filter((item) => item.legacyRoomId != null)
+            .map((item) => [item.legacyRoomId!, item])
+    )
+    const targets = new Map<string, string[]>()
+
+    for (const room of rooms) {
+        const conversation = conversationsByRoomId.get(room.roomId)
+
+        if (conversation == null) {
+            continue
+        }
+
+        const legacyConversationId = room.conversationId as string
+        const ids = targets.get(legacyConversationId)
+
+        if (ids == null) {
+            targets.set(legacyConversationId, [conversation.id])
+            continue
+        }
+
+        if (!ids.includes(conversation.id)) {
+            ids.push(conversation.id)
+        }
+    }
+
+    return targets
+}
+
+function mapMessageId(
+    legacyConversationId: string,
+    conversationId: string,
+    messageId?: string | null
+) {
+    if (messageId == null) {
+        return null
+    }
+
+    if (conversationId === legacyConversationId) {
+        return messageId
+    }
+
+    return createHash('sha256')
+        .update(conversationId + ':' + messageId)
+        .digest('hex')
 }
 
 function buildAclRecords(
+    conversationId: string,
     room: LegacyRoomRecord,
     members: LegacyRoomMemberRecord[],
     groups: LegacyRoomGroupRecord[]
@@ -431,7 +566,6 @@ function buildAclRecords(
         return []
     }
 
-    const conversationId = room.conversationId as string
     // (#4) inlined addAclRecord — was a 4-line single-use wrapper
     const map = new Map<string, ACLRecord>()
     const add = (record: ACLRecord) =>

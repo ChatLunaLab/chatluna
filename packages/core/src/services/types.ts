@@ -113,12 +113,14 @@ export interface ActiveRequest {
 
 export interface ListConversationsOptions extends ResolveConversationContextOptions {
     includeArchived?: boolean
+    allPresetLanes?: boolean
 }
 
 export interface ResolveTargetConversationOptions extends ResolveConversationContextOptions {
     targetConversation?: string
     includeArchived?: boolean
     permission?: ConstraintPermission
+    allPresetLanes?: boolean
 }
 
 export interface SerializedMessageRecord extends Omit<

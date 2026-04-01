@@ -95,10 +95,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            if (config.allowConversationTriggerPrefix) {
-                return ChainMiddlewareRunStatus.CONTINUE
-            }
-
             return ChainMiddlewareRunStatus.STOP
 
             // 辅助函数：检查回复权限

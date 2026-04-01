@@ -9,45 +9,61 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_model', async (session, context) => {
             const conversationId = context.options.conversationId
+            const resolved = context.options.resolvedConversationContext
 
             if ((context.command?.length ?? 0) > 1) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            if (conversationId == null) {
+            if (conversationId == null && resolved == null) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
             try {
-                const conversation =
+                let conversation =
                     context.options.resolvedConversation ??
-                    (await ctx.chatluna.conversation.getConversation(
-                        conversationId
-                    ))
+                    resolved?.conversation
 
-                if (conversation == null) {
-                    return ChainMiddlewareRunStatus.STOP
+                if (conversation == null && conversationId != null) {
+                    conversation =
+                        await ctx.chatluna.conversation.getConversation(
+                            conversationId
+                        )
                 }
 
                 const modelName =
-                    conversation.model == null ||
-                    conversation.model.trim().length < 1 ||
-                    conversation.model === '无' ||
-                    conversation.model === 'empty'
-                        ? 'empty'
-                        : conversation.model
+                    resolved?.effectiveModel ??
+                    conversation?.model ??
+                    config.defaultModel ??
+                    'empty'
+                const presetName =
+                    resolved?.effectivePreset ??
+                    conversation?.preset ??
+                    config.defaultPreset
+                const presetExists =
+                    presetName != null &&
+                    ctx.chatluna.preset.getPreset(presetName, false).value !=
+                        null
+
+                if (
+                    !presetExists ||
+                    modelName.trim().length < 1 ||
+                    modelName === '无' ||
+                    modelName === 'empty'
+                ) {
+                    await context.send(
+                        session.text(
+                            'chatluna.conversation.messages.unavailable',
+                            [modelName]
+                        )
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
 
                 const [platformName, rawModelName] =
                     parseRawModelName(modelName)
-                const presetExists =
-                    ctx.chatluna.preset.getPreset(conversation.preset, false)
-                        .value != null
 
-                if (
-                    modelName === 'empty' ||
-                    platformName == null ||
-                    rawModelName == null
-                ) {
+                if (platformName == null || rawModelName == null) {
                     await context.send(
                         session.text(
                             'chatluna.conversation.messages.unavailable',
@@ -64,8 +80,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 if (
                     platformModels.length > 0 &&
-                    platformModels.some((it) => it.name === rawModelName) &&
-                    presetExists
+                    platformModels.some((it) => it.name === rawModelName)
                 ) {
                     return ChainMiddlewareRunStatus.CONTINUE
                 }

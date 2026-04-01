@@ -41,12 +41,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('request_conversation', async (session, context) => {
             const { inputMessage } = context.options
+            const useRoutePresetLane =
+                context.options.presetLane == null &&
+                context.options.conversationId == null &&
+                (context.command == null || context.command.length === 0)
             const resolved =
                 await ctx.chatluna.conversation.ensureActiveConversation(
                     session,
                     {
                         conversationId: context.options.conversationId,
-                        presetLane: context.options.presetLane
+                        presetLane: context.options.presetLane,
+                        useRoutePresetLane
                     }
                 )
             const conversation = resolved.conversation

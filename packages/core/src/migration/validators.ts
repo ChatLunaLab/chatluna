@@ -31,6 +31,8 @@ export {
 const VALIDATION_BATCH_SIZE = 500
 
 export async function validateRoomMigration(ctx: Context, _config: Config) {
+    ctx.logger.info('Validating built-in ChatLuna migration.')
+
     const rooms = (await ctx.database.get(
         'chathub_room',
         {}
@@ -51,34 +53,8 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
     const routeModes = inferLegacyGroupRouteModes(users, rooms, groups)
 
     const validRooms = filterValidRooms(rooms)
-    const validConversationIds = new Set(
-        validRooms.map((room) => room.conversationId as string)
-    )
+    const validRoomIds = new Set(validRooms.map((room) => room.roomId))
 
-    let legacyMessageCount = 0
-    await readTableBatches<LegacyMessageRecord>(
-        ctx,
-        'chathub_message',
-        (rows) => {
-            legacyMessageCount += rows.filter((row) =>
-                validConversationIds.has(row.conversation)
-            ).length
-        }
-    )
-
-    let migratedLegacyMessageCount = 0
-    await readTableBatches<MessageRecord>(ctx, 'chatluna_message', (rows) => {
-        for (const row of rows) {
-            if (
-                row.createdAt == null &&
-                validConversationIds.has(row.conversationId)
-            ) {
-                migratedLegacyMessageCount += 1
-            }
-        }
-    })
-
-    const conversationsById = new Map<string, ConversationRecord>()
     const conversationsByRoomId = new Map<number, ConversationRecord>()
     const missingLatestMessageIds: string[] = []
     let migratedLegacyConversationCount = 0
@@ -89,7 +65,8 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
         async (rows) => {
             const checked = rows.filter(
                 (row) =>
-                    row.legacyRoomId != null || validConversationIds.has(row.id)
+                    row.legacyRoomId != null &&
+                    validRoomIds.has(row.legacyRoomId)
             )
 
             if (checked.length === 0) {
@@ -99,7 +76,6 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
             migratedLegacyConversationCount += checked.length
 
             for (const row of checked) {
-                conversationsById.set(row.id, row)
                 if (row.legacyRoomId != null) {
                     conversationsByRoomId.set(row.legacyRoomId, row)
                 }
@@ -129,31 +105,80 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
                     missingLatestMessageIds.push(row.id)
                 }
             }
-        }
+        },
+        'conversations'
+    )
+
+    const conversationTargets = createConversationTargets(
+        validRooms,
+        conversationsByRoomId
+    )
+    const migratedConversationIds = new Set(
+        Array.from(conversationsByRoomId.values()).map((item) => item.id)
+    )
+
+    let legacyMessageCount = 0
+    await readTableBatches<LegacyMessageRecord>(
+        ctx,
+        'chathub_message',
+        (rows) => {
+            for (const row of rows) {
+                legacyMessageCount +=
+                    conversationTargets.get(row.conversation)?.length ?? 0
+            }
+        },
+        'legacy messages'
+    )
+
+    let migratedLegacyMessageCount = 0
+    await readTableBatches<MessageRecord>(
+        ctx,
+        'chatluna_message',
+        (rows) => {
+            for (const row of rows) {
+                if (
+                    row.createdAt == null &&
+                    migratedConversationIds.has(row.conversationId)
+                ) {
+                    migratedLegacyMessageCount += 1
+                }
+            }
+        },
+        'migrated messages'
     )
 
     const migratedBindingKeys = new Set<string>()
-    await readTableBatches<BindingRecord>(ctx, 'chatluna_binding', (rows) => {
-        for (const row of rows) {
-            migratedBindingKeys.add(row.bindingKey)
-        }
-    })
+    await readTableBatches<BindingRecord>(
+        ctx,
+        'chatluna_binding',
+        (rows) => {
+            for (const row of rows) {
+                migratedBindingKeys.add(row.bindingKey)
+            }
+        },
+        'bindings'
+    )
 
     const migratedAclKeys = new Set<string>()
     let migratedAclCount = 0
-    await readTableBatches<ACLRecord>(ctx, 'chatluna_acl', (rows) => {
-        migratedAclCount += rows.length
-        for (const row of rows) {
-            migratedAclKeys.add(
-                aclKey(
-                    row.conversationId,
-                    row.principalType,
-                    row.principalId,
-                    row.permission
+    await readTableBatches<ACLRecord>(
+        ctx,
+        'chatluna_acl',
+        (rows) => {
+            migratedAclCount += rows.length
+            for (const row of rows) {
+                migratedAclKeys.add(
+                    aclKey(
+                        row.conversationId,
+                        row.principalType,
+                        row.principalId,
+                        row.permission
+                    )
                 )
-            )
-        }
-    })
+            }
+        },
+        'acl'
+    )
 
     const inconsistentBindingConversationIds = validRooms
         .map((room) => {
@@ -163,9 +188,7 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
             const roomGroups = groups.filter(
                 (item) => item.roomId === room.roomId
             )
-            const conversation = conversationsById.get(
-                room.conversationId as string
-            )
+            const conversation = conversationsByRoomId.get(room.roomId)
 
             if (conversation == null) {
                 return null
@@ -211,12 +234,17 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
             (item) => item.roomId === room.roomId
         )
         const roomGroups = groups.filter((item) => item.roomId === room.roomId)
+        const conversation = conversationsByRoomId.get(room.roomId)
+
+        if (conversation == null) {
+            continue
+        }
 
         if (!isComplexRoom(room, roomMembers, roomGroups)) {
             continue
         }
 
-        const conversationId = room.conversationId as string
+        const conversationId = conversation.id
 
         for (const member of roomMembers) {
             expectedAclKeys.push(
@@ -254,10 +282,9 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
     const result = {
         checkedAt: new Date().toISOString(),
         conversation: {
-            legacy: validConversationIds.size,
+            legacy: validRooms.length,
             migrated: migratedLegacyConversationCount,
-            matched:
-                validConversationIds.size === migratedLegacyConversationCount
+            matched: validRooms.length === migratedLegacyConversationCount
         },
         message: {
             legacy: legacyMessageCount,
@@ -287,7 +314,7 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
         }
     }
 
-    return {
+    const validation = {
         ...result,
         passed:
             result.conversation.matched &&
@@ -297,6 +324,17 @@ export async function validateRoomMigration(ctx: Context, _config: Config) {
             result.binding.matched &&
             result.acl.matched
     } satisfies MigrationValidationResult
+
+    ctx.logger.info(
+        [
+            `Migration validation ${validation.passed ? 'passed' : 'failed'}`,
+            `conversations ${validation.conversation.migrated}/${validation.conversation.legacy}`,
+            `messages ${validation.message.migrated}/${validation.message.legacy}`,
+            `acl ${validation.acl.migrated}/${validation.acl.expected}`
+        ].join(', ')
+    )
+
+    return validation
 }
 
 async function readTableBatches<T>(
@@ -307,9 +345,12 @@ async function readTableBatches<T>(
         | 'chatluna_conversation'
         | 'chatluna_binding'
         | 'chatluna_acl',
-    callback: (rows: T[]) => Promise<void> | void
+    callback: (rows: T[]) => Promise<void> | void,
+    label: string = table
 ) {
     let offset = 0
+
+    ctx.logger.info(`Validating ${label}: 0`)
 
     while (true) {
         const rows = (await ctx.database.get(
@@ -327,7 +368,37 @@ async function readTableBatches<T>(
 
         await callback(rows)
         offset += rows.length
+        ctx.logger.info(`Validating ${label}: ${offset}`)
     }
+}
+
+function createConversationTargets(
+    rooms: LegacyRoomRecord[],
+    conversationsByRoomId: Map<number, ConversationRecord>
+) {
+    const targets = new Map<string, string[]>()
+
+    for (const room of rooms) {
+        const conversation = conversationsByRoomId.get(room.roomId)
+
+        if (conversation == null) {
+            continue
+        }
+
+        const legacyConversationId = room.conversationId as string
+        const ids = targets.get(legacyConversationId)
+
+        if (ids == null) {
+            targets.set(legacyConversationId, [conversation.id])
+            continue
+        }
+
+        if (!ids.includes(conversation.id)) {
+            ids.push(conversation.id)
+        }
+    }
+
+    return targets
 }
 
 export async function readMetaValue<T>(ctx: Context, key: string) {

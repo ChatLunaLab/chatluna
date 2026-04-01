@@ -39,9 +39,9 @@ export function parsePresetLaneInput(
         return null
     }
 
-    const normalized = head.toLocaleLowerCase()
+    const lowerHead = head.toLocaleLowerCase()
     const preset = aliases.find(
-        (alias) => alias.toLocaleLowerCase() === normalized
+        (alias) => alias.toLocaleLowerCase() === lowerHead
     )
     if (preset == null) {
         return null

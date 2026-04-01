@@ -1,3 +1,4 @@
+import { AIMessage } from '@langchain/core/messages'
 import type { Session } from 'koishi'
 
 export type ConversationStatus = 'active' | 'archived' | 'deleted' | 'broken'
@@ -53,7 +54,7 @@ export interface MessageRecord {
     content?: ArrayBuffer | null
     name?: string | null
     tool_call_id?: string | null
-    tool_calls?: unknown
+    tool_calls?: AIMessage['tool_calls']
     additional_kwargs?: string | null
     additional_kwargs_binary?: ArrayBuffer | null
     rawId?: string | null
@@ -84,6 +85,7 @@ export interface ConstraintRecord {
     excludeUsers?: string | null
     routeMode?: RouteMode | null
     routeKey?: string | null
+    activePresetLane?: string | null
     defaultModel?: string | null
     defaultPreset?: string | null
     defaultChatMode?: string | null
@@ -129,6 +131,7 @@ export interface ResolvedConstraint {
     bindingKey: string
     baseKey: string
     constraints: ConstraintRecord[]
+    activePresetLane?: string | null
     defaultModel?: string | null
     defaultPreset?: string | null
     defaultChatMode?: string | null
@@ -158,6 +161,17 @@ export interface ResolveConversationContextOptions {
     presetLane?: string
     conversationId?: string
     bindingKey?: string
+    useRoutePresetLane?: boolean
+}
+
+export function getBaseBindingKey(bindingKey: string) {
+    const idx = bindingKey.indexOf(':preset:')
+    return idx < 0 ? bindingKey : bindingKey.slice(0, idx)
+}
+
+export function getPresetLane(bindingKey: string) {
+    const idx = bindingKey.indexOf(':preset:')
+    return idx < 0 ? undefined : bindingKey.slice(idx + 8)
 }
 
 export function computeBaseBindingKey(
@@ -217,5 +231,5 @@ export function applyPresetLane(
         return bindingKey
     }
 
-    return `${bindingKey}:preset:${presetLane}`
+    return `${getBaseBindingKey(bindingKey)}:preset:${presetLane}`
 }

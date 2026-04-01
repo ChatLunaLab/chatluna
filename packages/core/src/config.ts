@@ -7,7 +7,6 @@ export interface Config {
     allowPrivate: boolean
     isForwardMsg: boolean
     forwardMsgMinLength: number
-    allowConversationTriggerPrefix: boolean
     msgCooldown: number
     randomReplyFrequency: Computed<Awaitable<number>>
     includeQuoteReply: boolean
@@ -65,7 +64,6 @@ export const Config: Schema<Config> = Schema.intersect([
         allowAtReply: Schema.boolean().default(true),
         allowQuoteReply: Schema.boolean().default(false),
         privateChatWithoutCommand: Schema.boolean().default(true),
-        allowConversationTriggerPrefix: Schema.boolean().default(false),
         includeQuoteReply: Schema.boolean().default(true),
         randomReplyFrequency: Schema.percent()
             .min(0)

@@ -47,9 +47,7 @@ export async function checkAdmin(session: Session) {
         session.app.logger.debug(`checkAdmin permission test failed: ${error}`)
     }
 
-    const user = await session.getUser<User.Field>(session.userId, [
-        'authority'
-    ])
+    const user = (session as Session<User.Field>).user
 
     if (user == null) {
         return false

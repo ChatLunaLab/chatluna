@@ -6,6 +6,8 @@ import fs from 'fs/promises'
 import {
     createLegacyTableRetention,
     dropTableIfExists,
+    getLegacySchemaSentinel,
+    getLegacySchemaSentinelDir,
     LEGACY_MIGRATION_TABLES,
     LEGACY_RETENTION_META_KEY,
     LEGACY_RUNTIME_TABLES,
@@ -112,6 +114,11 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         } catch (e) {
             logger.warn(`wipe: ${e}`)
         }
+
+        const sentinelDir = getLegacySchemaSentinelDir(ctx.baseDir)
+        const sentinelPath = getLegacySchemaSentinel(ctx.baseDir)
+        await fs.mkdir(sentinelDir, { recursive: true })
+        await fs.writeFile(sentinelPath, '{}', 'utf8')
 
         context.message = session.text('.success')
 

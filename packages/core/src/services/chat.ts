@@ -260,6 +260,7 @@ export class ChatLunaService extends Service<Config> {
         const config = this.currentConfig
         const chatInterface = new ChatInterface(this.ctx.root, {
             chatMode: conversation.chatMode,
+            autoTitle: conversation.autoTitle ?? true,
             botName: config.botNames[0],
             preset: this.preset.getPreset(conversation.preset),
             model: conversation.model,
@@ -617,23 +618,13 @@ export class ChatLunaService extends Service<Config> {
                     length: 255,
                     nullable: true
                 },
-                tool_call_id: 'string',
+                tool_call_id: {
+                    type: 'string',
+                    nullable: true
+                },
                 tool_calls: {
-                    type: 'text',
-                    nullable: true,
-                    dump: (value) =>
-                        value == null ? null : JSON.stringify(value),
-                    load: (value) => {
-                        if (value == null || value === '') {
-                            return undefined
-                        }
-
-                        try {
-                            return JSON.parse(String(value))
-                        } catch {
-                            return undefined
-                        }
-                    }
+                    type: 'json',
+                    nullable: true
                 },
                 additional_kwargs: {
                     type: 'text',
@@ -756,6 +747,11 @@ export class ChatLunaService extends Service<Config> {
                 },
                 routeKey: {
                     type: 'string',
+                    length: 255,
+                    nullable: true
+                },
+                activePresetLane: {
+                    type: 'char',
                     length: 255,
                     nullable: true
                 },

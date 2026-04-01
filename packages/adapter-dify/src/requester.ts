@@ -767,23 +767,23 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         }
 
         if (difyConversationId) {
-            await this._plugin
-                .fetch(this.concatUrl('/conversations/' + difyConversationId), {
+            const res = await this._plugin.fetch(
+                this.concatUrl('/conversations/' + difyConversationId),
+                {
                     headers: this._buildHeaders(config.apiKey),
                     method: 'DELETE',
                     body: JSON.stringify({ user: difyUser })
-                })
-                .then(async (res) => {
-                    if (res.ok) {
-                        this.ctx.logger.info('Dify clear: success')
-                    } else {
-                        this.ctx.logger.warn(
-                            'Dify clear: failed: ' + (await res.text())
-                        )
-                    }
-                })
+                }
+            )
 
-            await this.ctx.chatluna.cache.delete('chatluna/keys', cacheKey)
+            if (res.ok) {
+                this.ctx.logger.info('Dify clear: success')
+                await this.ctx.chatluna.cache.delete('chatluna/keys', cacheKey)
+            } else {
+                this.ctx.logger.warn(
+                    'Dify clear: failed: ' + (await res.text())
+                )
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
+import type { MessageContent } from '@langchain/core/messages'
 import type { Context, Session } from 'koishi'
 import type { Config } from '../config'
 import {
@@ -8,6 +9,15 @@ import {
     gzipDecode,
     gzipEncode
 } from '../utils/compression'
+import {
+    isMessageContentAudio,
+    isMessageContentFileUrl,
+    isMessageContentImageUrl,
+    isMessageContentText,
+    isMessageContentVideo
+    // Don't change this line!!!!!!!!!!
+} from 'koishi-plugin-chatluna/utils/langchain'
+import { getMessageContent } from '../utils/message_content'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import {
@@ -20,6 +30,8 @@ import {
     ConstraintRecord,
     ConversationCompressionRecord,
     ConversationRecord,
+    getBaseBindingKey,
+    getPresetLane,
     MessageRecord,
     ResolveConversationContextOptions,
     ResolvedConstraint,
@@ -134,7 +146,7 @@ export class ConversationService {
             routeMode,
             routed?.routeKey
         )
-        const bindingKey =
+        let bindingKey =
             options.bindingKey == null
                 ? applyPresetLane(baseKey, options.presetLane)
                 : options.bindingKey.includes(':preset:')
@@ -153,9 +165,7 @@ export class ConversationService {
                 constraints.unshift(managed)
             }
 
-            baseKey = bindingKey.includes(':preset:')
-                ? bindingKey.slice(0, bindingKey.indexOf(':preset:'))
-                : bindingKey
+            baseKey = getBaseBindingKey(bindingKey)
             routeMode = baseKey.startsWith('shared:')
                 ? 'shared'
                 : baseKey.startsWith('personal:')
@@ -163,16 +173,31 @@ export class ConversationService {
                   : 'custom'
         }
 
+        const activePresetLane = firstDefined(constraints, 'activePresetLane')
+        const presetLane =
+            options.presetLane ??
+            (options.useRoutePresetLane ? activePresetLane : undefined)
+
+        if (
+            options.bindingKey == null ||
+            !options.bindingKey.includes(':preset:')
+        ) {
+            bindingKey = applyPresetLane(baseKey, presetLane)
+        }
+
+        const lane = getPresetLane(bindingKey)
+
         return {
             routeMode,
             baseKey,
             bindingKey,
             constraints,
+            activePresetLane,
             defaultModel:
                 firstDefined(constraints, 'defaultModel') ??
                 this.config.defaultModel,
             defaultPreset:
-                options.presetLane ??
+                lane ??
                 firstDefined(constraints, 'defaultPreset') ??
                 this.config.defaultPreset,
             defaultChatMode:
@@ -229,7 +254,7 @@ export class ConversationService {
 
         return {
             bindingKey,
-            presetLane: options.presetLane,
+            presetLane: getPresetLane(bindingKey),
             binding: binding ?? null,
             conversation: allowedConversation,
             effectiveModel:
@@ -240,7 +265,7 @@ export class ConversationService {
             effectivePreset:
                 constraint.fixedPreset ??
                 allowedConversation?.preset ??
-                options.presetLane ??
+                getPresetLane(bindingKey) ??
                 constraint.defaultPreset ??
                 this.config.defaultPreset,
             effectiveChatMode:
@@ -299,14 +324,38 @@ export class ConversationService {
         session: Session,
         options: ResolveConversationContextOptions = {}
     ) {
-        const resolved = await this.resolveContext(session, options)
+        let resolved = await this.resolveContext(session, options)
 
         if (
             resolved.constraint.lockConversation &&
             resolved.binding?.activeConversationId != null
         ) {
-            return resolved as ResolvedConversationContext & {
-                conversation: ConversationRecord
+            const conversation = await this.getConversation(
+                resolved.binding.activeConversationId
+            )
+
+            if (
+                conversation != null &&
+                conversation.status !== 'deleted' &&
+                conversation.status !== 'broken' &&
+                (await this.hasConversationPermission(
+                    session,
+                    conversation,
+                    'view',
+                    resolved.bindingKey
+                ))
+            ) {
+                resolved = {
+                    ...resolved,
+                    conversation,
+                    effectiveModel:
+                        resolved.constraint.fixedModel ?? conversation.model,
+                    effectivePreset:
+                        resolved.constraint.fixedPreset ?? conversation.preset,
+                    effectiveChatMode:
+                        resolved.constraint.fixedChatMode ??
+                        conversation.chatMode
+                }
             }
         }
 
@@ -349,7 +398,7 @@ export class ConversationService {
             preset: resolved.effectivePreset,
             model: resolved.effectiveModel,
             chatMode: resolved.effectiveChatMode,
-            title: options.presetLane ?? 'New Conversation'
+            title: resolved.presetLane ?? 'New Conversation'
         })
 
         return {
@@ -482,12 +531,26 @@ export class ConversationService {
         options: ListConversationsOptions = {}
     ) {
         const resolved = await this.resolveContext(session, options)
-        const conversations = (await this.ctx.database.get(
-            'chatluna_conversation',
-            {
-                bindingKey: resolved.bindingKey
-            }
-        )) as ConversationRecord[]
+        const bindingKey = options.allPresetLanes
+            ? getBaseBindingKey(resolved.bindingKey)
+            : resolved.bindingKey
+        const conversations = options.allPresetLanes
+            ? (
+                  (await this.ctx.database.get(
+                      'chatluna_conversation',
+                      {}
+                  )) as ConversationRecord[]
+              ).filter((conversation) => {
+                  return (
+                      conversation.bindingKey === bindingKey ||
+                      conversation.bindingKey.startsWith(
+                          bindingKey + ':preset:'
+                      )
+                  )
+              })
+            : ((await this.ctx.database.get('chatluna_conversation', {
+                  bindingKey
+              })) as ConversationRecord[])
 
         return conversations
             .filter(
@@ -509,6 +572,9 @@ export class ConversationService {
         options: ResolveTargetConversationOptions
     ) {
         const resolved = await this.resolveContext(session, options)
+        const current = options.allPresetLanes
+            ? await this.resolveContext(session, { useRoutePresetLane: true })
+            : resolved
         await this.assertManageAllowed(session, resolved.constraint)
 
         const conversation = await this.resolveTargetConversation(session, {
@@ -536,30 +602,33 @@ export class ConversationService {
             throw new Error('Conversation switch is disabled by constraint.')
         }
 
-        const previousConversation = resolved.binding?.activeConversationId
-            ? await this.getConversation(resolved.binding.activeConversationId)
+        const previousConversation = current.binding?.activeConversationId
+            ? await this.getConversation(current.binding.activeConversationId)
             : null
-        const targetBinding =
-            conversation.bindingKey === resolved.bindingKey
-                ? resolved.binding
-                : await this.getBinding(conversation.bindingKey)
-        const targetPreviousConversation = targetBinding?.activeConversationId
-            ? await this.getConversation(targetBinding.activeConversationId)
-            : null
+        const sameRouteBase =
+            options.allPresetLanes &&
+            getBaseBindingKey(conversation.bindingKey) ===
+                getBaseBindingKey(resolved.bindingKey)
+        const bindingKey = sameRouteBase
+            ? conversation.bindingKey
+            : resolved.bindingKey
+
+        if (sameRouteBase) {
+            await this.updateManagedConstraint(session, {
+                activePresetLane: getPresetLane(conversation.bindingKey) ?? null
+            })
+        }
 
         await this.ctx.root.parallel('chatluna/conversation-before-switch', {
-            bindingKey: resolved.bindingKey,
+            bindingKey,
             conversation,
             previousConversation
         })
-        await this.setActiveConversation(
-            conversation.bindingKey,
-            conversation.id
-        )
+        await this.setActiveConversation(bindingKey, conversation.id)
         await this.ctx.root.parallel('chatluna/conversation-after-switch', {
-            bindingKey: conversation.bindingKey,
+            bindingKey,
             conversation,
-            previousConversation: targetPreviousConversation
+            previousConversation
         })
 
         return conversation
@@ -602,8 +671,14 @@ export class ConversationService {
         }
 
         if (conversation.status !== 'archived') {
+            if (!(target?.allowSwitch ?? resolved.constraint.allowSwitch)) {
+                throw new Error(
+                    'Conversation switch is disabled by constraint.'
+                )
+            }
+
             await this.setActiveConversation(
-                conversation.bindingKey,
+                resolved.bindingKey,
                 conversation.id
             )
             return conversation
@@ -616,9 +691,55 @@ export class ConversationService {
     }
 
     async listMessages(conversationId: string) {
-        return (await this.ctx.database.get('chatluna_message', {
-            conversationId
-        })) as MessageRecord[]
+        const [conversation, messages] = await Promise.all([
+            this.getConversation(conversationId),
+            this.ctx.database.get('chatluna_message', {
+                conversationId
+            })
+        ])
+        const records = messages as MessageRecord[]
+
+        if (records.length < 2) {
+            return records
+        }
+
+        if (conversation?.latestMessageId == null) {
+            return records.sort((a, b) => {
+                const left = a.createdAt?.getTime() ?? 0
+                const right = b.createdAt?.getTime() ?? 0
+                return left - right
+            })
+        }
+
+        const map = new Map(records.map((message) => [message.id, message]))
+        const ordered: MessageRecord[] = []
+        const seen = new Set<string>()
+        let currentId: string | null | undefined = conversation.latestMessageId
+
+        while (currentId != null) {
+            if (seen.has(currentId)) {
+                break
+            }
+
+            const message = map.get(currentId)
+            if (message == null) {
+                break
+            }
+
+            ordered.unshift(message)
+            seen.add(currentId)
+            currentId = message.parentId
+        }
+
+        if (ordered.length === records.length) {
+            return ordered
+        }
+
+        return records.sort((a, b) => {
+            const left = a.createdAt?.getTime() ?? 0
+            const right = b.createdAt?.getTime() ?? 0
+            return left - right
+        })
     }
 
     async listAcl(conversationId: string) {
@@ -770,7 +891,10 @@ export class ConversationService {
         return this.archiveConversationById(conversation.id)
     }
 
-    async archiveConversationById(conversationId: string) {
+    async archiveConversationById(
+        conversationId: string,
+        inactiveBefore?: Date
+    ) {
         const conversation = await this.getConversation(conversationId)
         if (conversation == null) {
             throw new Error('Conversation not found.')
@@ -782,6 +906,14 @@ export class ConversationService {
                 const current = await this.getConversation(conversationId)
                 if (current == null) {
                     throw new Error('Conversation not found.')
+                }
+
+                if (
+                    inactiveBefore != null &&
+                    (current.status !== 'active' ||
+                        current.updatedAt.getTime() >= inactiveBefore.getTime())
+                ) {
+                    return null
                 }
 
                 if (
@@ -1052,16 +1184,11 @@ export class ConversationService {
         if (conversation.status === 'archived' && conversation.archiveId) {
             const archive = await this.getArchive(conversation.archiveId)
             if (archive != null) {
-                try {
-                    const payload = await this.readArchivePayload(archive.path)
-                    messages = payload.messages.map((msg) => ({
-                        ...msg,
-                        createdAt: new Date(msg.createdAt),
-                        conversationId: conversation.id
-                    })) as unknown as MessageRecord[]
-                } catch {
-                    messages = await this.listMessages(conversation.id)
-                }
+                const payload = await this.readArchivePayload(archive.path)
+                messages = payload.messages.map((message) => ({
+                    ...deserializeMessage(message),
+                    conversationId: conversation.id
+                }))
             } else {
                 messages = await this.listMessages(conversation.id)
             }
@@ -1081,12 +1208,16 @@ export class ConversationService {
             `- Status: ${conversation.status}`,
             `- Updated At: ${conversation.updatedAt.toISOString()}`,
             '',
-            ...messages.flatMap((message) => [
-                `## ${message.role} ${message.name ? `(${message.name})` : ''}`.trim(),
-                '',
-                message.text ?? '',
-                ''
-            ])
+            ...(
+                await Promise.all(
+                    messages.map(async (message) => [
+                        `## ${message.role} ${message.name ? `(${message.name})` : ''}`.trim(),
+                        '',
+                        await formatMessage(message),
+                        ''
+                    ])
+                )
+            ).flat()
         ].join('\n')
     }
 
@@ -1195,29 +1326,47 @@ export class ConversationService {
             chatMode?: string
         }
     ) {
-        const resolved = await this.ensureActiveConversation(session, options)
+        const resolved = await this.resolveContext(session, options)
         await this.assertManageAllowed(session, resolved.constraint)
 
-        for (const [key, fixedKey] of [
-            ['model', 'fixedModel'],
-            ['preset', 'fixedPreset'],
-            ['chatMode', 'fixedChatMode']
-        ] as const) {
-            if (options[key] != null && resolved.constraint[fixedKey] != null) {
-                throw new Error(
-                    `${key} is fixed to ${resolved.constraint[fixedKey]}.`
-                )
-            }
+        const conversation =
+            options.conversationId == null
+                ? (await this.ensureActiveConversation(session, options))
+                      .conversation
+                : await this.resolveTargetConversation(session, {
+                      ...options,
+                      permission: 'manage'
+                  })
+
+        if (conversation == null) {
+            throw new Error('Conversation not found.')
         }
 
         const target = await this.getManagedConstraintByBindingKey(
-            resolved.conversation.bindingKey
+            conversation.bindingKey
         )
+
+        if (target != null) {
+            await this.assertManageAllowed(session, target)
+        }
+
+        for (const [key, fixedKey, label] of [
+            ['model', 'fixedModel', 'Model'],
+            ['preset', 'fixedPreset', 'Preset'],
+            ['chatMode', 'fixedChatMode', 'Chat mode']
+        ] as const) {
+            const fixed = target?.[fixedKey] ?? resolved.constraint[fixedKey]
+
+            if (options[key] != null && fixed != null) {
+                throw new Error(`${label} is fixed to ${fixed}.`)
+            }
+        }
+
         if (target?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation update is locked by constraint.')
         }
 
-        const updated = await this.touchConversation(resolved.conversation.id, {
+        const updated = await this.touchConversation(conversation.id, {
             model: options.model,
             preset: options.preset,
             chatMode: options.chatMode
@@ -1255,7 +1404,7 @@ export class ConversationService {
         }
 
         const current = parseCompressionRecord(conversation.compression)
-        const summary = (
+        const summaryMessage = (
             (await this.ctx.database.get(
                 'chatluna_message',
                 {
@@ -1269,7 +1418,9 @@ export class ConversationService {
                     }
                 }
             )) as MessageRecord[]
-        )[0]?.text
+        )[0]
+        const summary =
+            summaryMessage == null ? undefined : await readText(summaryMessage)
 
         const updated = await this.touchConversation(conversationId, {
             compression: JSON.stringify({
@@ -1366,6 +1517,7 @@ export class ConversationService {
             excludeUsers: null,
             routeMode: null,
             routeKey: null,
+            activePresetLane: null,
             defaultModel: null,
             defaultPreset: null,
             defaultChatMode: null,
@@ -1457,6 +1609,7 @@ export class ConversationService {
 
         const conversations = await this.listConversations(session, {
             presetLane: options.presetLane,
+            allPresetLanes: options.allPresetLanes,
             includeArchived: options.includeArchived
         })
 
@@ -1467,18 +1620,26 @@ export class ConversationService {
 
         if (/^\d+$/.test(target)) {
             const seq = Number(target)
-            const bySeq = conversations.find((c) => c.seq === seq)
-            if (bySeq != null) {
-                return bySeq
+            const bySeq = conversations.filter((c) => c.seq === seq)
+            if (bySeq.length === 1) {
+                return bySeq[0]
+            }
+
+            if (bySeq.length > 1) {
+                throw new Error('Conversation target is ambiguous.')
             }
         }
 
         const normalized = target.toLocaleLowerCase()
-        const exactTitle = conversations.find(
+        const exactTitle = conversations.filter(
             (c) => c.title.toLocaleLowerCase() === normalized
         )
-        if (exactTitle != null) {
-            return exactTitle
+        if (exactTitle.length === 1) {
+            return exactTitle[0]
+        }
+
+        if (exactTitle.length > 1) {
+            throw new Error('Conversation target is ambiguous.')
         }
 
         const partialMatches = conversations.filter((c) =>
@@ -1504,6 +1665,19 @@ export class ConversationService {
         const globalById = globalMatches.find((c) => c.id === target)
         if (globalById != null) {
             return globalById
+        }
+
+        if (/^\d+$/.test(target)) {
+            const seq = Number(target)
+            const globalBySeq = globalMatches.filter((c) => c.seq === seq)
+
+            if (globalBySeq.length === 1) {
+                return globalBySeq[0]
+            }
+
+            if (globalBySeq.length > 1) {
+                throw new Error('Conversation target is ambiguous.')
+            }
         }
 
         const globalExactTitle = globalMatches.find(
@@ -1668,9 +1842,25 @@ export class ConversationService {
                     'utf8'
                 )
             ) as ConversationArchivePayload['conversation']
-            const messagesRaw = await gzipDecode(
-                await fs.readFile(path.join(archivePath, 'messages.jsonl.gz'))
+            const messageBuffer = await fs.readFile(
+                path.join(archivePath, 'messages.jsonl.gz')
             )
+
+            if (manifest.size !== messageBuffer.byteLength) {
+                throw new Error('Archive payload size mismatch.')
+            }
+
+            if (manifest.checksum != null && manifest.checksum.length > 0) {
+                const checksum = createHash('sha256')
+                    .update(messageBuffer)
+                    .digest('hex')
+
+                if (checksum !== manifest.checksum) {
+                    throw new Error('Archive payload checksum mismatch.')
+                }
+            }
+
+            const messagesRaw = await gzipDecode(messageBuffer)
             const messages = messagesRaw
                 .split('\n')
                 .filter((line) => line.length > 0)
@@ -1882,6 +2072,191 @@ function parseCompressionRecord(value?: string | null) {
     } catch {
         return null
     }
+}
+
+async function parseContent(message: MessageRecord) {
+    if (message.content == null) {
+        return null
+    }
+
+    try {
+        return JSON.parse(await gzipDecode(message.content)) as MessageContent
+    } catch {
+        return null
+    }
+}
+
+async function readText(message: MessageRecord) {
+    const content = await parseContent(message)
+
+    if (content == null) {
+        return message.text ?? ''
+    }
+
+    if (typeof content === 'string') {
+        return content
+    }
+
+    return getMessageContent(content)
+}
+
+function formatUrl(url: string) {
+    return url.length > 120 ? url.slice(0, 117) + '...' : url
+}
+
+async function formatMessage(message: MessageRecord) {
+    const content = await parseContent(message)
+
+    const text =
+        content == null
+            ? (message.text ?? '').trim()
+            : typeof content === 'string'
+              ? content.trim()
+              : getMessageContent(content).trim()
+    const media =
+        content != null && Array.isArray(content)
+            ? content
+                  .map((part) => {
+                      if (isMessageContentText(part)) {
+                          return null
+                      }
+
+                      if (isMessageContentImageUrl(part)) {
+                          const url =
+                              typeof part.image_url === 'string'
+                                  ? part.image_url
+                                  : part.image_url.url
+                          return `[image] ${formatUrl(url)}`
+                      }
+
+                      if (isMessageContentFileUrl(part)) {
+                          const url =
+                              typeof part.file_url === 'string'
+                                  ? part.file_url
+                                  : part.file_url.url
+                          return `[file] ${formatUrl(url)}`
+                      }
+
+                      if (isMessageContentAudio(part)) {
+                          const url =
+                              typeof part.audio_url === 'string'
+                                  ? part.audio_url
+                                  : part.audio_url.url
+                          return `[audio] ${formatUrl(url)}`
+                      }
+
+                      if (isMessageContentVideo(part)) {
+                          const url =
+                              typeof part.video_url === 'string'
+                                  ? part.video_url
+                                  : part.video_url.url
+                          return `[video] ${formatUrl(url)}`
+                      }
+
+                      return `[${part.type}]`
+                  })
+                  .filter((line) => line != null)
+            : []
+    const parts: string[] = []
+
+    if (message.role === 'tool') {
+        if (message.tool_call_id != null && message.tool_call_id.length > 0) {
+            parts.push(`Call ID: \`${message.tool_call_id}\``)
+        }
+
+        const body =
+            text.length > 0
+                ? text
+                : media.length > 0
+                  ? media.join('\n')
+                  : (message.text ?? '')
+
+        if (body.length > 0) {
+            let block = body
+            let lang = 'text'
+
+            try {
+                const parsed = JSON.parse(body)
+                block = JSON.stringify(parsed, null, 2)
+                lang = 'json'
+            } catch {}
+
+            if (parts.length > 0) {
+                parts.push('')
+            }
+
+            parts.push('```' + lang)
+            parts.push(block)
+            parts.push('```')
+        }
+    } else {
+        if (text.length > 0) {
+            parts.push(text)
+        }
+
+        if (media.length > 0) {
+            if (parts.length > 0) {
+                parts.push('')
+            }
+
+            parts.push('Attachments:')
+            parts.push(...media.map((line) => `- ${line}`))
+        }
+    }
+
+    if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+        if (parts.length > 0) {
+            parts.push('')
+        }
+
+        parts.push('Tool calls:')
+
+        for (let i = 0; i < message.tool_calls.length; i++) {
+            const tool = message.tool_calls[i] as Record<string, unknown>
+            const fn = tool.function as Record<string, unknown> | undefined
+            const name =
+                typeof tool.name === 'string'
+                    ? tool.name
+                    : typeof fn?.name === 'string'
+                      ? fn.name
+                      : 'unknown'
+            const id = typeof tool.id === 'string' ? tool.id : ''
+            const raw = tool.args ?? fn?.arguments ?? {}
+
+            let block: string
+            let lang = 'json'
+
+            if (typeof raw === 'string') {
+                block = raw
+                try {
+                    block = JSON.stringify(JSON.parse(raw), null, 2)
+                } catch {
+                    lang = 'text'
+                }
+            } else {
+                block = JSON.stringify(raw, null, 2)
+            }
+
+            if (i > 0) {
+                parts.push('')
+            }
+
+            parts.push(`- \`${name}\`${id.length > 0 ? ` (\`${id}\`)` : ''}`)
+            parts.push('```' + lang)
+            parts.push(block.length > 0 ? block : '{}')
+            parts.push('```')
+        }
+    }
+
+    if (parts.length > 0) {
+        return parts.join('\n')
+    }
+
+    if (content != null && typeof content === 'string') {
+        return content
+    }
+
+    return message.text ?? ''
 }
 
 function firstDefined<T extends keyof ConstraintRecord>(

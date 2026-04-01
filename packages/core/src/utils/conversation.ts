@@ -6,7 +6,8 @@ export async function completeConversationTarget(
     target: string | undefined,
     presetLane?: string,
     includeArchived = true,
-    suffix = 'commands.chatluna.chat.text.options.conversation'
+    suffix = 'commands.chatluna.chat.text.options.conversation',
+    allPresetLanes = false
 ) {
     const value =
         target == null || target.trim().length < 1 ? undefined : target.trim()
@@ -18,6 +19,7 @@ export async function completeConversationTarget(
         session,
         {
             presetLane,
+            allPresetLanes,
             includeArchived
         }
     )

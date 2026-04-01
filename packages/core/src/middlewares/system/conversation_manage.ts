@@ -1,4 +1,4 @@
-import { Context, Session } from 'koishi'
+import { Context, h, Session } from 'koishi'
 import {
     ChainMiddlewareContext,
     ChainMiddlewareRunStatus,
@@ -7,167 +7,14 @@ import {
 import { Config } from '../../config'
 import {
     ConversationRecord,
+    getBaseBindingKey,
+    getPresetLane,
     ResolvedConversationContext
 } from '../../services/conversation_types'
 import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
-
-function pickConversationTarget(
-    context: ChainMiddlewareContext,
-    current?: ConversationRecord | null
-) {
-    return (
-        context.options.conversation_manage?.targetConversation ??
-        context.options.conversationId ??
-        current?.id
-    )
-}
-
-function formatConversationStatus(
-    session: Session,
-    conversation: ConversationRecord,
-    activeConversationId?: string | null
-) {
-    const labels = [
-        session.text(
-            'chatluna.conversation.status_value.' + conversation.status
-        )
-    ]
-
-    if (conversation.id === activeConversationId) {
-        labels.push(session.text('chatluna.conversation.active'))
-    }
-
-    return labels.join(' · ')
-}
-
-function formatRouteScope(bindingKey: string) {
-    if (bindingKey.includes(':preset:')) {
-        return bindingKey
-    }
-
-    const [mode, platform, selfId, scope, userId] = bindingKey.split(':')
-
-    if (mode !== 'shared' && mode !== 'personal') {
-        return bindingKey
-    }
-
-    if (platform == null || selfId == null || scope == null) {
-        return bindingKey
-    }
-
-    if (mode === 'shared') {
-        return `${mode} ${platform}/${selfId}/${scope}`
-    }
-
-    if (userId == null) {
-        return bindingKey
-    }
-
-    return `${mode} ${platform}/${selfId}/${scope}/${userId}`
-}
-
-function formatConversationError(
-    session: Session,
-    error: Error,
-    action?: string
-) {
-    if (error.message === 'Conversation not found.') {
-        return session.text('chatluna.conversation.messages.target_not_found')
-    }
-
-    if (error.message === 'Conversation target is ambiguous.') {
-        return session.text('chatluna.conversation.messages.target_ambiguous')
-    }
-
-    if (error.message === 'Conversation does not belong to current route.') {
-        return session.text(
-            'chatluna.conversation.messages.target_outside_route'
-        )
-    }
-
-    if (
-        error.message ===
-        'Conversation management requires administrator permission.'
-    ) {
-        return session.text('chatluna.conversation.messages.admin_required')
-    }
-
-    const locked = error.message.match(
-        /^Conversation (.+) is locked by constraint\.$/
-    )
-    if (locked) {
-        return session.text('chatluna.conversation.messages.action_locked', [
-            session.text(`chatluna.conversation.action.${locked[1]}`)
-        ])
-    }
-
-    const disabled = error.message.match(
-        /^Conversation (.+) is disabled by constraint\.$/
-    )
-    if (disabled) {
-        return session.text('chatluna.conversation.messages.action_disabled', [
-            session.text(`chatluna.conversation.action.${disabled[1]}`)
-        ])
-    }
-
-    const fixedModel = error.message.match(/^Model is fixed to (.+)\.$/)
-    if (fixedModel) {
-        return session.text('chatluna.conversation.messages.fixed_model', [
-            fixedModel[1]
-        ])
-    }
-
-    const fixedPreset = error.message.match(/^Preset is fixed to (.+)\.$/)
-    if (fixedPreset) {
-        return session.text('chatluna.conversation.messages.fixed_preset', [
-            fixedPreset[1]
-        ])
-    }
-
-    const fixedMode = error.message.match(/^Chat mode is fixed to (.+)\.$/)
-    if (fixedMode) {
-        return session.text('chatluna.conversation.messages.fixed_chat_mode', [
-            fixedMode[1]
-        ])
-    }
-
-    if (action != null) {
-        return session.text('chatluna.conversation.messages.action_failed', [
-            session.text(`chatluna.conversation.action.${action}`),
-            error.message
-        ])
-    }
-
-    return error.message
-}
-
-function formatConversationLine(
-    session: Session,
-    conversation: ConversationRecord,
-    resolved: ResolvedConversationContext
-) {
-    const status = formatConversationStatus(
-        session,
-        conversation,
-        resolved.binding?.activeConversationId
-    )
-    const effectiveModel =
-        resolved.constraint.fixedModel ??
-        conversation.model ??
-        resolved.constraint.defaultModel ??
-        '-'
-    return session.text('chatluna.conversation.conversation_line', [
-        conversation.seq ?? '-',
-        conversation.title,
-        status,
-        effectiveModel
-    ])
-}
-
-function formatLockState(lock: boolean | null | undefined) {
-    return lock == null ? 'reset' : lock ? 'locked' : 'unlocked'
-}
+import { logger } from '../..'
+import fs from 'fs/promises'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     function middleware(
@@ -297,7 +144,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const conversation =
                 await ctx.chatluna.conversation.switchConversation(session, {
                     targetConversation,
-                    presetLane: context.options.conversation_manage?.presetLane
+                    allPresetLanes: true
                 })
 
             context.options.conversationId = conversation.id
@@ -322,19 +169,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_list', async (session, context) => {
         const page = context.options.page ?? 1
         const limit = context.options.limit ?? 5
-        const presetLane = context.options.conversation_manage?.presetLane
         const includeArchived =
             context.options.conversation_manage?.includeArchived === true
         const resolved = await ctx.chatluna.conversation.getCurrentConversation(
             session,
             {
-                presetLane
+                useRoutePresetLane: true
             }
         )
         const conversations = await ctx.chatluna.conversation.listConversations(
             session,
             {
-                presetLane,
+                allPresetLanes: true,
                 includeArchived
             }
         )
@@ -348,7 +194,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         const pagination = new Pagination<ConversationRecord>({
             formatItem: (conversation) =>
-                formatConversationLine(session, conversation, resolved),
+                formatConversationLine(session, conversation, resolved, true),
             formatString: {
                 top:
                     session.text('chatluna.conversation.messages.list_header') +
@@ -360,17 +206,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         })
 
-        const key = `${resolved.bindingKey}`
+        const key = `${getBaseBindingKey(resolved.bindingKey)}:all`
         await pagination.push(conversations, key)
         context.message = await pagination.getFormattedPage(page, limit, key)
         return ChainMiddlewareRunStatus.STOP
     })
 
     middleware('conversation_current', async (session, context) => {
+        const presetLane = context.options.conversation_manage?.presetLane
         const resolved = await ctx.chatluna.conversation.getCurrentConversation(
             session,
             {
-                presetLane: context.options.conversation_manage?.presetLane
+                presetLane,
+                useRoutePresetLane: presetLane == null
             }
         )
 
@@ -516,13 +364,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_archive', async (session, context) => {
         const targetConversation = pickConversationTarget(context)
 
-        if (targetConversation == null) {
-            context.message = session.text(
-                'chatluna.conversation.messages.archive_empty'
-            )
-            return ChainMiddlewareRunStatus.STOP
-        }
-
         try {
             const result = await ctx.chatluna.conversation.archiveConversation(
                 session,
@@ -554,13 +395,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_restore', async (session, context) => {
         const targetConversation = pickConversationTarget(context)
 
-        if (targetConversation == null) {
-            context.message = session.text(
-                'chatluna.conversation.messages.restore_empty'
-            )
-            return ChainMiddlewareRunStatus.STOP
-        }
-
         try {
             const conversation =
                 await ctx.chatluna.conversation.reopenConversation(session, {
@@ -591,13 +425,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_export', async (session, context) => {
         const targetConversation = pickConversationTarget(context)
 
-        if (targetConversation == null) {
-            context.message = session.text(
-                'chatluna.conversation.messages.export_empty'
-            )
-            return ChainMiddlewareRunStatus.STOP
-        }
-
         try {
             const result = await ctx.chatluna.conversation.exportConversation(
                 session,
@@ -607,6 +434,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     includeArchived: true
                 }
             )
+
+            try {
+                const buffer = await fs.readFile(result.path)
+                await session.send(
+                    h.file(buffer, 'application/markdown', {
+                        title: result.conversation.title + '.md'
+                    })
+                )
+            } catch (error) {
+                logger.error(error)
+            }
 
             context.message = session.text(
                 'chatluna.conversation.messages.export_success',
@@ -628,43 +466,59 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         return ChainMiddlewareRunStatus.STOP
     })
 
-    for (const ruleField of ['model', 'preset', 'mode'] as const) {
+    for (const ruleField of ['model', 'mode'] as const) {
         const ruleMap = {
             model: {
                 cmd: 'conversation_rule_model' as const,
                 optKey: 'model' as const,
+                defaultKey: 'defaultModel' as const,
                 constraintKey: 'fixedModel' as const,
-                msgKey: 'rule_model_success'
-            },
-            preset: {
-                cmd: 'conversation_rule_preset' as const,
-                optKey: 'preset' as const,
-                constraintKey: 'fixedPreset' as const,
-                msgKey: 'rule_preset_success'
+                msgKey: 'rule_model_status'
             },
             mode: {
                 cmd: 'conversation_rule_mode' as const,
                 optKey: 'chatMode' as const,
+                defaultKey: 'defaultChatMode' as const,
                 constraintKey: 'fixedChatMode' as const,
-                msgKey: 'rule_mode_success'
+                msgKey: 'rule_mode_status'
             }
         }[ruleField]
 
         middleware(ruleMap.cmd, async (session, context) => {
             const value = context.options.conversation_rule?.[ruleMap.optKey]
+            const clear =
+                context.options.conversation_rule?.clear === true ||
+                value === 'reset'
+            const force = context.options.conversation_rule?.force === true
+
             try {
                 const record =
-                    await ctx.chatluna.conversation.updateManagedConstraint(
-                        session,
-                        {
-                            [ruleMap.constraintKey]:
-                                value === 'reset' ? null : value
-                        }
-                    )
+                    value == null && !clear
+                        ? await ctx.chatluna.conversation.getManagedConstraint(
+                              session
+                          )
+                        : await ctx.chatluna.conversation.updateManagedConstraint(
+                              session,
+                              clear
+                                  ? {
+                                        [ruleMap.defaultKey]: null,
+                                        [ruleMap.constraintKey]: null
+                                    }
+                                  : force
+                                    ? {
+                                          [ruleMap.constraintKey]: value
+                                      }
+                                    : {
+                                          [ruleMap.defaultKey]: value
+                                      }
+                          )
 
                 context.message = session.text(
                     `chatluna.conversation.messages.${ruleMap.msgKey}`,
-                    [record[ruleMap.constraintKey] ?? 'reset']
+                    [
+                        record?.[ruleMap.defaultKey] ?? 'reset',
+                        record?.[ruleMap.constraintKey] ?? 'reset'
+                    ]
                 )
             } catch (error) {
                 context.message = formatConversationError(
@@ -678,8 +532,65 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
     }
 
+    middleware('conversation_rule_preset', async (session, context) => {
+        const value = context.options.conversation_rule?.preset
+        const clear =
+            context.options.conversation_rule?.clear === true ||
+            value === 'reset'
+        const newOnly = context.options.conversation_rule?.newOnly === true
+
+        try {
+            const record =
+                value == null && !clear
+                    ? await ctx.chatluna.conversation.getManagedConstraint(
+                          session
+                      )
+                    : await ctx.chatluna.conversation.updateManagedConstraint(
+                          session,
+                          clear
+                              ? {
+                                    activePresetLane: null,
+                                    defaultPreset: null,
+                                    fixedPreset: null
+                                }
+                              : newOnly
+                                ? {
+                                      defaultPreset: value,
+                                      fixedPreset: null
+                                  }
+                                : {
+                                      activePresetLane: value,
+                                      fixedPreset: null
+                                  }
+                      )
+
+            context.message = session.text(
+                'chatluna.conversation.messages.rule_preset_status',
+                [
+                    formatPresetLane(session, record?.activePresetLane),
+                    record?.defaultPreset ?? 'reset'
+                ]
+            )
+        } catch (error) {
+            context.message = formatConversationError(session, error, 'preset')
+        }
+
+        return ChainMiddlewareRunStatus.STOP
+    })
+
     middleware('conversation_rule_share', async (session, context) => {
         const share = context.options.conversation_rule?.share
+
+        if (share == null) {
+            const resolved =
+                await ctx.chatluna.conversation.resolveContext(session)
+            context.message = session.text(
+                'chatluna.conversation.messages.rule_share_status',
+                [resolved.constraint.routeMode]
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
+
         const routeMode =
             share === 'reset'
                 ? null
@@ -696,15 +607,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         try {
-            const record =
-                await ctx.chatluna.conversation.updateManagedConstraint(
-                    session,
-                    { routeMode }
-                )
+            await ctx.chatluna.conversation.updateManagedConstraint(session, {
+                routeMode
+            })
+            const resolved =
+                await ctx.chatluna.conversation.resolveContext(session)
 
             context.message = session.text(
-                'chatluna.conversation.messages.rule_share_success',
-                [record.routeMode ?? 'reset']
+                'chatluna.conversation.messages.rule_share_status',
+                [resolved.constraint.routeMode]
             )
         } catch (error) {
             context.message = formatConversationError(session, error, 'share')
@@ -766,16 +677,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             session.text('chatluna.conversation.conversation_scope', [
                 formatRouteScope(resolved.bindingKey)
             ]),
-            session.text('chatluna.conversation.rule_share', [
-                current?.routeMode ?? 'reset'
+            session.text('chatluna.conversation.messages.rule_share_status', [
+                resolved.constraint.routeMode
             ]),
-            session.text('chatluna.conversation.rule_model', [
+            session.text('chatluna.conversation.messages.rule_model_status', [
+                current?.defaultModel ?? 'reset',
                 current?.fixedModel ?? 'reset'
             ]),
-            session.text('chatluna.conversation.rule_preset', [
-                current?.fixedPreset ?? 'reset'
+            session.text('chatluna.conversation.messages.rule_preset_status', [
+                formatPresetLane(
+                    session,
+                    current?.activePresetLane ??
+                        resolved.constraint.activePresetLane
+                ),
+                current?.defaultPreset ?? 'reset'
             ]),
-            session.text('chatluna.conversation.rule_mode', [
+            session.text('chatluna.conversation.messages.rule_mode_status', [
+                current?.defaultChatMode ?? 'reset',
                 current?.fixedChatMode ?? 'reset'
             ]),
             session.text('chatluna.conversation.rule_lock', [
@@ -860,6 +778,206 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return ChainMiddlewareRunStatus.STOP
     })
+}
+
+function pickConversationTarget(
+    context: ChainMiddlewareContext,
+    current?: ConversationRecord | null
+) {
+    return (
+        context.options.conversation_manage?.targetConversation ??
+        context.options.conversationId ??
+        current?.id
+    )
+}
+
+function formatConversationStatus(
+    session: Session,
+    conversation: ConversationRecord,
+    activeConversationId?: string | null
+) {
+    if (conversation.id === activeConversationId) {
+        return session.text('chatluna.conversation.active')
+    }
+
+    if (conversation.status === 'active') {
+        return null
+    }
+
+    return session.text(
+        'chatluna.conversation.status_value.' + conversation.status
+    )
+}
+
+function formatRouteScope(bindingKey: string) {
+    if (bindingKey.includes(':preset:')) {
+        return bindingKey
+    }
+
+    const [mode, platform, selfId, scope, userId] = bindingKey.split(':')
+
+    if (mode !== 'shared' && mode !== 'personal') {
+        return bindingKey
+    }
+
+    if (platform == null || selfId == null || scope == null) {
+        return bindingKey
+    }
+
+    if (mode === 'shared') {
+        return `${mode} ${platform}/${selfId}/${scope}`
+    }
+
+    if (userId == null) {
+        return bindingKey
+    }
+
+    return `${mode} ${platform}/${selfId}/${scope}/${userId}`
+}
+
+function formatConversationError(
+    session: Session,
+    error: Error,
+    action?: string
+) {
+    if (error.message === 'Conversation not found.') {
+        return session.text('chatluna.conversation.messages.target_not_found')
+    }
+
+    if (error.message === 'Conversation target is ambiguous.') {
+        return session.text('chatluna.conversation.messages.target_ambiguous')
+    }
+
+    if (error.message === 'Conversation does not belong to current route.') {
+        return session.text(
+            'chatluna.conversation.messages.target_outside_route'
+        )
+    }
+
+    if (
+        error.message ===
+        'Conversation management requires administrator permission.'
+    ) {
+        return session.text('chatluna.conversation.messages.admin_required')
+    }
+
+    const locked = error.message.match(
+        /^Conversation (.+) is locked by constraint\.$/
+    )
+    if (locked) {
+        return session.text('chatluna.conversation.messages.action_locked', [
+            session.text(`chatluna.conversation.action.${locked[1]}`)
+        ])
+    }
+
+    const disabled = error.message.match(
+        /^Conversation (.+) is disabled by constraint\.$/
+    )
+    if (disabled) {
+        return session.text('chatluna.conversation.messages.action_disabled', [
+            session.text(`chatluna.conversation.action.${disabled[1]}`)
+        ])
+    }
+
+    const fixedModel = error.message.match(/^Model is fixed to (.+)\.$/)
+    if (fixedModel) {
+        return session.text('chatluna.conversation.messages.fixed_model', [
+            fixedModel[1]
+        ])
+    }
+
+    const fixedPreset = error.message.match(/^Preset is fixed to (.+)\.$/)
+    if (fixedPreset) {
+        return session.text('chatluna.conversation.messages.fixed_preset', [
+            fixedPreset[1]
+        ])
+    }
+
+    const fixedMode = error.message.match(/^Chat mode is fixed to (.+)\.$/)
+    if (fixedMode) {
+        return session.text('chatluna.conversation.messages.fixed_chat_mode', [
+            fixedMode[1]
+        ])
+    }
+
+    if (action != null) {
+        return session.text('chatluna.conversation.messages.action_failed', [
+            session.text(`chatluna.conversation.action.${action}`),
+            error.message
+        ])
+    }
+
+    return error.message
+}
+
+function formatConversationLine(
+    session: Session,
+    conversation: ConversationRecord,
+    resolved: ResolvedConversationContext,
+    showLane = false
+) {
+    const status = formatConversationStatus(
+        session,
+        conversation,
+        resolved.binding?.activeConversationId
+    )
+    const effectiveModel =
+        resolved.constraint.fixedModel ??
+        conversation.model ??
+        resolved.constraint.defaultModel ??
+        '-'
+    const lane = formatPresetLane(
+        session,
+        getPresetLane(conversation.bindingKey)
+    )
+
+    if (!showLane && status == null) {
+        return session.text('chatluna.conversation.conversation_line', [
+            conversation.seq ?? '-',
+            conversation.title,
+            effectiveModel
+        ])
+    }
+
+    if (!showLane) {
+        return session.text(
+            'chatluna.conversation.conversation_line_with_status',
+            [
+                conversation.seq ?? '-',
+                conversation.title,
+                effectiveModel,
+                status
+            ]
+        )
+    }
+
+    if (status == null) {
+        return session.text(
+            'chatluna.conversation.conversation_line_with_lane',
+            [conversation.seq ?? '-', conversation.title, effectiveModel, lane]
+        )
+    }
+
+    return session.text(
+        'chatluna.conversation.conversation_line_with_lane_status',
+        [
+            conversation.seq ?? '-',
+            conversation.title,
+            effectiveModel,
+            lane,
+            status
+        ]
+    )
+}
+
+function formatLockState(lock: boolean | null | undefined) {
+    return lock == null ? 'reset' : lock ? 'locked' : 'unlocked'
+}
+
+function formatPresetLane(session: Session, presetLane?: string | null) {
+    return presetLane == null
+        ? session.text('chatluna.conversation.main_lane')
+        : presetLane
 }
 
 declare module '../../chains/chain' {

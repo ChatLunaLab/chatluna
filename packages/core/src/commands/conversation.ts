@@ -58,32 +58,26 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     const switchCommand = ctx.command('chatluna.switch <conversation:string>', {
         authority: 1
     })
-    switchCommand
-        .option('preset', '-p <preset:string>')
-        .action(async ({ options, session }, conversation) => {
-            const presetLane =
-                options.preset == null || options.preset.trim().length < 1
-                    ? undefined
-                    : options.preset.trim()
-            await chain.receiveCommand(
-                session,
-                'conversation_switch',
-                {
-                    conversation_manage: {
-                        targetConversation: await completeConversationTarget(
-                            ctx,
-                            session,
-                            conversation,
-                            presetLane,
-                            false,
-                            'commands.chatluna.conversation.options.conversation'
-                        ),
-                        presetLane
-                    }
-                },
-                ctx
-            )
-        })
+    switchCommand.action(async ({ session }, conversation) => {
+        await chain.receiveCommand(
+            session,
+            'conversation_switch',
+            {
+                conversation_manage: {
+                    targetConversation: await completeConversationTarget(
+                        ctx,
+                        session,
+                        conversation,
+                        undefined,
+                        false,
+                        'commands.chatluna.conversation.options.conversation',
+                        true
+                    )
+                }
+            },
+            ctx
+        )
+    })
 
     ctx.command('chatluna.list', {
         authority: 1
@@ -92,7 +86,6 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         .option('limit', '-l <limit:number>')
         .option('archived', '-a')
         .option('all', '--all')
-        .option('preset', '-P <preset:string>')
         .action(async ({ options, session }) => {
             await chain.receiveCommand(
                 session,
@@ -102,12 +95,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                     limit: options.limit ?? 5,
                     conversation_manage: {
                         includeArchived:
-                            options.archived === true || options.all === true,
-                        presetLane:
-                            options.preset == null ||
-                            options.preset.trim().length < 1
-                                ? undefined
-                                : options.preset.trim()
+                            options.archived === true || options.all === true
                     }
                 },
                 ctx
@@ -402,60 +390,77 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command('chatluna.rule.model <model:string>', {
+    ctx.command('chatluna.rule.model [model:string]', {
         authority: 3
-    }).action(async ({ session }, model) => {
-        await chain.receiveCommand(
-            session,
-            'conversation_rule_model',
-            {
-                conversation_rule: {
-                    model:
-                        model == null || model.trim().length < 1
-                            ? undefined
-                            : model.trim()
-                }
-            },
-            ctx
-        )
     })
+        .option('force', '-f')
+        .option('clear', '-c')
+        .action(async ({ options, session }, model) => {
+            await chain.receiveCommand(
+                session,
+                'conversation_rule_model',
+                {
+                    conversation_rule: {
+                        model:
+                            model == null || model.trim().length < 1
+                                ? undefined
+                                : model.trim(),
+                        force: options.force === true,
+                        clear: options.clear === true
+                    }
+                },
+                ctx
+            )
+        })
 
-    ctx.command('chatluna.rule.preset <preset:string>', {
+    ctx.command('chatluna.rule.preset [preset:string]', {
         authority: 3
-    }).action(async ({ session }, preset) => {
-        await chain.receiveCommand(
-            session,
-            'conversation_rule_preset',
-            {
-                conversation_rule: {
-                    preset:
-                        preset == null || preset.trim().length < 1
-                            ? undefined
-                            : preset.trim()
-                }
-            },
-            ctx
-        )
     })
-    ctx.command('chatluna.rule.mode <mode:string>', {
+        .option('force', '-f')
+        .option('newOnly', '-n')
+        .option('clear', '-c')
+        .action(async ({ options, session }, preset) => {
+            await chain.receiveCommand(
+                session,
+                'conversation_rule_preset',
+                {
+                    conversation_rule: {
+                        preset:
+                            preset == null || preset.trim().length < 1
+                                ? undefined
+                                : preset.trim(),
+                        force: options.force === true,
+                        newOnly: options.newOnly === true,
+                        clear: options.clear === true
+                    }
+                },
+                ctx
+            )
+        })
+    ctx.command('chatluna.rule.mode [mode:string]', {
         authority: 3
-    }).action(async ({ session }, mode) => {
-        await chain.receiveCommand(
-            session,
-            'conversation_rule_mode',
-            {
-                conversation_rule: {
-                    chatMode:
-                        mode == null || mode.trim().length < 1
-                            ? undefined
-                            : mode.trim()
-                }
-            },
-            ctx
-        )
     })
+        .option('force', '-f')
+        .option('clear', '-c')
+        .action(async ({ options, session }, mode) => {
+            await chain.receiveCommand(
+                session,
+                'conversation_rule_mode',
+                {
+                    conversation_rule: {
+                        chatMode:
+                            mode == null || mode.trim().length < 1
+                                ? undefined
+                                : mode.trim(),
+                        force: options.force === true,
+                        clear: options.clear === true
+                    }
+                },
+                ctx
+            )
+        })
 
-    ctx.command('chatluna.rule.share <mode:string>', {
+    ctx.command('chatluna.rule.share [mode:string]', {
         authority: 3
     }).action(async ({ session }, mode) => {
         await chain.receiveCommand(
@@ -523,6 +528,9 @@ declare module '../chains/chain' {
             chatMode?: string
             share?: string
             lock?: string
+            force?: boolean
+            newOnly?: boolean
+            clear?: boolean
         }
         i18n_base?: string
     }
