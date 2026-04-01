@@ -45,7 +45,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         session,
                         {
                             targetConversation,
-                            presetLane
+                            presetLane,
+                            allPresetLanes: context.options.allPresetLanes
                         }
                     )
 
@@ -84,6 +85,7 @@ declare module '../../chains/chain' {
     }
 
     interface ChainMiddlewareContextOptions {
+        allPresetLanes?: boolean
         resolvedConversation?: ConversationRecord | null
         resolvedConversationContext?: ResolvedConversationContext
     }

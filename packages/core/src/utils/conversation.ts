@@ -15,7 +15,7 @@ export async function completeConversationTarget(
         return undefined
     }
 
-    const conversations = await ctx.chatluna.conversation.listConversations(
+    const entries = await ctx.chatluna.conversation.listConversationEntries(
         session,
         {
             presetLane,
@@ -25,15 +25,23 @@ export async function completeConversationTarget(
     )
     const expect = Array.from(
         new Set(
-            conversations.flatMap((conversation) => [
-                conversation.id,
-                String(conversation.seq ?? ''),
-                conversation.title
+            entries.flatMap((item) => [
+                item.conversation.id,
+                String(
+                    allPresetLanes && presetLane == null
+                        ? item.displaySeq
+                        : (item.conversation.seq ?? '')
+                ),
+                item.conversation.title
             ])
         )
     ).filter((item) => item.length > 0)
 
     if (expect.length === 0) {
+        return value
+    }
+
+    if (expect.includes(value)) {
         return value
     }
 

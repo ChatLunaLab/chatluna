@@ -420,6 +420,98 @@ it('ConversationService switches and resolves friendly conversation targets with
     assert.equal(binding.lastConversationId, 'conversation-old')
 })
 
+it('ConversationService lists and switches preset lanes across canonical and legacy routes', async () => {
+    const session = createSession({
+        platform: 'onebot',
+        selfId: '1016049163',
+        guildId: '391122026',
+        channelId: '391122026'
+    })
+    const canonicalBase = 'shared:onebot:1016049163:391122026'
+    const legacyBase = 'shared:legacy:legacy:391122026'
+    const legacy = createConversation({
+        id: 'conversation-legacy',
+        bindingKey: legacyBase,
+        title: 'Legacy',
+        seq: 1,
+        lastChatAt: new Date('2026-03-21T00:00:00.000Z')
+    })
+    const aqua = createConversation({
+        id: 'conversation-aqua',
+        bindingKey: `${canonicalBase}:preset:Aqua`,
+        title: 'Aqua',
+        seq: 1,
+        lastChatAt: new Date('2026-03-22T00:00:00.000Z')
+    })
+    const chatgpt = createConversation({
+        id: 'conversation-chatgpt',
+        bindingKey: `${canonicalBase}:preset:chatgpt`,
+        title: 'ChatGPT',
+        seq: 1,
+        lastChatAt: new Date('2026-03-23T00:00:00.000Z')
+    })
+    const sydney = createConversation({
+        id: 'conversation-sydney',
+        bindingKey: `${canonicalBase}:preset:sydney`,
+        title: 'Sydney',
+        seq: 1,
+        lastChatAt: new Date('2026-03-24T00:00:00.000Z')
+    })
+
+    const { service, database } = await createService({
+        tables: {
+            chatluna_conversation: [
+                legacy as unknown as TableRow,
+                aqua as unknown as TableRow,
+                chatgpt as unknown as TableRow,
+                sydney as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: legacyBase,
+                    activeConversationId: legacy.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                }
+            ]
+        }
+    })
+
+    const listed = await service.listConversations(session, {
+        allPresetLanes: true
+    })
+    const entries = await service.listConversationEntries(session, {
+        allPresetLanes: true
+    })
+    const switched = await service.switchConversation(session, {
+        targetConversation: '2',
+        allPresetLanes: true
+    })
+    const binding = database.tables.chatluna_binding[0] as BindingRecord
+
+    assert.deepEqual(
+        listed.map((item) => item.id),
+        [
+            'conversation-sydney',
+            'conversation-chatgpt',
+            'conversation-aqua',
+            'conversation-legacy'
+        ]
+    )
+    assert.deepEqual(
+        entries.map((item) => [item.displaySeq, item.conversation.id]),
+        [
+            [1, 'conversation-sydney'],
+            [2, 'conversation-chatgpt'],
+            [3, 'conversation-aqua'],
+            [4, 'conversation-legacy']
+        ]
+    )
+    assert.equal(switched.id, 'conversation-chatgpt')
+    assert.equal(binding.activeConversationId, 'conversation-chatgpt')
+    assert.equal(binding.lastConversationId, 'conversation-legacy')
+})
+
 it('ConversationService rejects ambiguous friendly conversation targets', async () => {
     const alpha = createConversation({
         id: 'conversation-alpha',

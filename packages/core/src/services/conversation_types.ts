@@ -45,6 +45,11 @@ export interface ConversationRecord {
     autoTitle?: boolean | null
 }
 
+export interface ConversationListEntry {
+    conversation: ConversationRecord
+    displaySeq: number
+}
+
 export interface MessageRecord {
     id: string
     conversationId: string

@@ -6,6 +6,7 @@ import {
 } from '../../chains/chain'
 import { Config } from '../../config'
 import {
+    ConversationListEntry,
     ConversationRecord,
     getBaseBindingKey,
     getPresetLane,
@@ -177,13 +178,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 useRoutePresetLane: true
             }
         )
-        const conversations = await ctx.chatluna.conversation.listConversations(
-            session,
-            {
+        const conversations =
+            await ctx.chatluna.conversation.listConversationEntries(session, {
                 allPresetLanes: true,
                 includeArchived
-            }
-        )
+            })
 
         if (conversations.length === 0) {
             context.message = session.text(
@@ -192,9 +191,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         }
 
-        const pagination = new Pagination<ConversationRecord>({
-            formatItem: (conversation) =>
-                formatConversationLine(session, conversation, resolved, true),
+        const pagination = new Pagination<ConversationListEntry>({
+            formatItem: (item) =>
+                formatConversationLine(
+                    session,
+                    item.conversation,
+                    resolved,
+                    false,
+                    item.displaySeq
+                ),
             formatString: {
                 top:
                     session.text('chatluna.conversation.messages.list_header') +
@@ -275,12 +280,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     middleware('conversation_delete', async (session, context) => {
         try {
+            const presetLane = context.options.conversation_manage?.presetLane
             const conversation =
                 await ctx.chatluna.conversation.deleteConversation(session, {
                     conversationId: context.options.conversationId,
                     targetConversation:
                         context.options.conversation_manage?.targetConversation,
-                    presetLane: context.options.conversation_manage?.presetLane
+                    presetLane,
+                    allPresetLanes: presetLane == null
                 })
 
             context.message = session.text(
@@ -365,11 +372,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const targetConversation = pickConversationTarget(context)
 
         try {
+            const presetLane = context.options.conversation_manage?.presetLane
             const result = await ctx.chatluna.conversation.archiveConversation(
                 session,
                 {
                     targetConversation,
-                    presetLane: context.options.conversation_manage?.presetLane
+                    presetLane,
+                    allPresetLanes: presetLane == null
                 }
             )
 
@@ -396,10 +405,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const targetConversation = pickConversationTarget(context)
 
         try {
+            const presetLane = context.options.conversation_manage?.presetLane
             const conversation =
                 await ctx.chatluna.conversation.reopenConversation(session, {
                     targetConversation,
-                    presetLane: context.options.conversation_manage?.presetLane,
+                    presetLane,
+                    allPresetLanes: presetLane == null,
                     includeArchived: true
                 })
 
@@ -426,11 +437,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const targetConversation = pickConversationTarget(context)
 
         try {
+            const presetLane = context.options.conversation_manage?.presetLane
             const result = await ctx.chatluna.conversation.exportConversation(
                 session,
                 {
                     targetConversation,
-                    presetLane: context.options.conversation_manage?.presetLane,
+                    presetLane,
+                    allPresetLanes: presetLane == null,
                     includeArchived: true
                 }
             )
@@ -721,6 +734,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                       session,
                       {
                           presetLane,
+                          allPresetLanes: presetLane == null,
                           targetConversation,
                           conversationId: context.options.conversationId,
                           permission: 'manage',
@@ -914,7 +928,8 @@ function formatConversationLine(
     session: Session,
     conversation: ConversationRecord,
     resolved: ResolvedConversationContext,
-    showLane = false
+    showLane = false,
+    seq: number | string = conversation.seq ?? '-'
 ) {
     const status = formatConversationStatus(
         session,
@@ -926,6 +941,11 @@ function formatConversationLine(
         conversation.model ??
         resolved.constraint.defaultModel ??
         '-'
+    const effectivePreset =
+        resolved.constraint.fixedPreset ??
+        conversation.preset ??
+        resolved.constraint.defaultPreset ??
+        '-'
     const lane = formatPresetLane(
         session,
         getPresetLane(conversation.bindingKey)
@@ -933,40 +953,30 @@ function formatConversationLine(
 
     if (!showLane && status == null) {
         return session.text('chatluna.conversation.conversation_line', [
-            conversation.seq ?? '-',
+            seq,
             conversation.title,
-            effectiveModel
+            effectiveModel,
+            effectivePreset
         ])
     }
 
     if (!showLane) {
         return session.text(
             'chatluna.conversation.conversation_line_with_status',
-            [
-                conversation.seq ?? '-',
-                conversation.title,
-                effectiveModel,
-                status
-            ]
+            [seq, conversation.title, effectiveModel, effectivePreset, status]
         )
     }
 
     if (status == null) {
         return session.text(
             'chatluna.conversation.conversation_line_with_lane',
-            [conversation.seq ?? '-', conversation.title, effectiveModel, lane]
+            [seq, conversation.title, effectiveModel, effectivePreset, lane]
         )
     }
 
     return session.text(
         'chatluna.conversation.conversation_line_with_lane_status',
-        [
-            conversation.seq ?? '-',
-            conversation.title,
-            effectiveModel,
-            lane,
-            status
-        ]
+        [seq, conversation.title, effectiveModel, effectivePreset, lane, status]
     )
 }
 

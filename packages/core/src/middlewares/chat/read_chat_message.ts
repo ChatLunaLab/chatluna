@@ -133,7 +133,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         {
                             targetConversation:
                                 context.options.targetConversation,
-                            presetLane: context.options.presetLane
+                            presetLane: context.options.presetLane,
+                            allPresetLanes: context.options.allPresetLanes
                         }
                     )
 

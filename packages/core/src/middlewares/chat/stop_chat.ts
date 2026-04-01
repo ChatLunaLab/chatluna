@@ -19,6 +19,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                               conversationId:
                                   context.options.resolvedConversation.id,
                               presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
                               permission: 'manage'
                           }
                       )
@@ -29,6 +30,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                               targetConversation:
                                   context.options.targetConversation,
                               presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
                               permission: 'manage'
                           }
                       )
@@ -47,6 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             {
                                 conversationId: conversation.id,
                                 presetLane: context.options.presetLane,
+                                allPresetLanes: context.options.allPresetLanes,
                                 permission: 'manage'
                             }
                         )

@@ -28,6 +28,7 @@ import {
     computeBaseBindingKey,
     ConstraintPermission,
     ConstraintRecord,
+    ConversationListEntry,
     ConversationCompressionRecord,
     ConversationRecord,
     getBaseBindingKey,
@@ -287,27 +288,7 @@ export class ConversationService {
             }
         }
 
-        const idx = bindingKey.indexOf(':preset:')
-        const suffix = idx >= 0 ? bindingKey.slice(idx) : ''
-
-        if (bindingKey.startsWith('custom:')) {
-            return null
-        }
-
-        const guildOrChannel = session.guildId ?? session.channelId ?? 'unknown'
-        const keys = session.isDirect
-            ? [`personal:legacy:legacy:direct:${session.userId}${suffix}`]
-            : bindingKey.startsWith('shared:')
-              ? [
-                    `shared:legacy:legacy:${guildOrChannel}${suffix}`,
-                    `personal:legacy:legacy:${guildOrChannel}:${session.userId}${suffix}`
-                ]
-              : [
-                    `personal:legacy:legacy:${guildOrChannel}:${session.userId}${suffix}`,
-                    `shared:legacy:legacy:${guildOrChannel}${suffix}`
-                ]
-
-        for (const key of keys) {
+        for (const key of getFallbackBindingKeys(session, bindingKey)) {
             const legacyBinding = await this.getBinding(key)
             if (legacyBinding != null) {
                 return {
@@ -531,9 +512,11 @@ export class ConversationService {
         options: ListConversationsOptions = {}
     ) {
         const resolved = await this.resolveContext(session, options)
-        const bindingKey = options.allPresetLanes
-            ? getBaseBindingKey(resolved.bindingKey)
-            : resolved.bindingKey
+        const keys = getLookupKeys(
+            session,
+            resolved.constraint.bindingKey,
+            options.allPresetLanes
+        )
         const conversations = options.allPresetLanes
             ? (
                   (await this.ctx.database.get(
@@ -541,15 +524,15 @@ export class ConversationService {
                       {}
                   )) as ConversationRecord[]
               ).filter((conversation) => {
-                  return (
-                      conversation.bindingKey === bindingKey ||
-                      conversation.bindingKey.startsWith(
-                          bindingKey + ':preset:'
+                  return keys.some((key) => {
+                      return (
+                          conversation.bindingKey === key ||
+                          conversation.bindingKey.startsWith(key + ':preset:')
                       )
-                  )
+                  })
               })
             : ((await this.ctx.database.get('chatluna_conversation', {
-                  bindingKey
+                  bindingKey: keys.length === 1 ? keys[0] : { $in: keys }
               })) as ConversationRecord[])
 
         return conversations
@@ -565,6 +548,17 @@ export class ConversationService {
                 const right = b.lastChatAt ?? b.updatedAt
                 return right.getTime() - left.getTime()
             })
+    }
+
+    async listConversationEntries(
+        session: Session,
+        options: ListConversationsOptions = {}
+    ): Promise<ConversationListEntry[]> {
+        const conversations = await this.listConversations(session, options)
+        return conversations.map((conversation, idx) => ({
+            conversation,
+            displaySeq: idx + 1
+        }))
     }
 
     async switchConversation(
@@ -609,9 +603,13 @@ export class ConversationService {
             options.allPresetLanes &&
             getBaseBindingKey(conversation.bindingKey) ===
                 getBaseBindingKey(resolved.bindingKey)
-        const bindingKey = sameRouteBase
-            ? conversation.bindingKey
-            : resolved.bindingKey
+        const bindingKey = pickBindingKey(
+            session,
+            resolved,
+            conversation,
+            options.allPresetLanes,
+            sameRouteBase
+        )
 
         if (sameRouteBase) {
             await this.updateManagedConstraint(session, {
@@ -678,7 +676,7 @@ export class ConversationService {
             }
 
             await this.setActiveConversation(
-                resolved.bindingKey,
+                pickBindingKey(session, resolved, conversation),
                 conversation.id
             )
             return conversation
@@ -1602,16 +1600,19 @@ export class ConversationService {
         }
 
         const target = options.targetConversation?.trim()
+        const useDisplaySeq =
+            options.allPresetLanes === true && options.presetLane == null
 
         if (target == null || target.length === 0) {
             return resolved.conversation ?? null
         }
 
-        const conversations = await this.listConversations(session, {
+        const entries = await this.listConversationEntries(session, {
             presetLane: options.presetLane,
             allPresetLanes: options.allPresetLanes,
             includeArchived: options.includeArchived
         })
+        const conversations = entries.map((item) => item.conversation)
 
         const byId = conversations.find((c) => c.id === target)
         if (byId != null) {
@@ -1620,7 +1621,11 @@ export class ConversationService {
 
         if (/^\d+$/.test(target)) {
             const seq = Number(target)
-            const bySeq = conversations.filter((c) => c.seq === seq)
+            const bySeq = useDisplaySeq
+                ? entries
+                      .filter((item) => item.displaySeq === seq)
+                      .map((item) => item.conversation)
+                : conversations.filter((c) => c.seq === seq)
             if (bySeq.length === 1) {
                 return bySeq[0]
             }
@@ -1659,7 +1664,10 @@ export class ConversationService {
             bindingKey: resolved.bindingKey,
             query: normalized,
             exactId: target,
-            seq: /^\d+$/.test(target) ? Number(target) : undefined
+            seq:
+                /^\d+$/.test(target) && !useDisplaySeq
+                    ? Number(target)
+                    : undefined
         })
 
         const globalById = globalMatches.find((c) => c.id === target)
@@ -1667,7 +1675,7 @@ export class ConversationService {
             return globalById
         }
 
-        if (/^\d+$/.test(target)) {
+        if (/^\d+$/.test(target) && !useDisplaySeq) {
             const seq = Number(target)
             const globalBySeq = globalMatches.filter((c) => c.seq === seq)
 
@@ -2102,6 +2110,65 @@ async function readText(message: MessageRecord) {
 
 function formatUrl(url: string) {
     return url.length > 120 ? url.slice(0, 117) + '...' : url
+}
+
+function getFallbackBindingKeys(session: Session, bindingKey: string) {
+    const idx = bindingKey.indexOf(':preset:')
+    const suffix = idx >= 0 ? bindingKey.slice(idx) : ''
+
+    if (bindingKey.startsWith('custom:')) {
+        return []
+    }
+
+    const guildOrChannel = session.guildId ?? session.channelId ?? 'unknown'
+    return session.isDirect
+        ? [`personal:legacy:legacy:direct:${session.userId}${suffix}`]
+        : bindingKey.startsWith('shared:')
+          ? [
+                `shared:legacy:legacy:${guildOrChannel}${suffix}`,
+                `personal:legacy:legacy:${guildOrChannel}:${session.userId}${suffix}`
+            ]
+          : [
+                `personal:legacy:legacy:${guildOrChannel}:${session.userId}${suffix}`,
+                `shared:legacy:legacy:${guildOrChannel}${suffix}`
+            ]
+}
+
+function getLookupKeys(
+    session: Session,
+    bindingKey: string,
+    allPresetLanes = false
+) {
+    const keys = new Set<string>()
+
+    keys.add(allPresetLanes ? getBaseBindingKey(bindingKey) : bindingKey)
+
+    for (const key of getFallbackBindingKeys(session, bindingKey)) {
+        keys.add(allPresetLanes ? getBaseBindingKey(key) : key)
+    }
+
+    return Array.from(keys)
+}
+
+function matchesBindingKey(bindingKey: string, keys: string[]) {
+    return keys.some((key) => {
+        return bindingKey === key || bindingKey.startsWith(key + ':preset:')
+    })
+}
+
+function pickBindingKey(
+    session: Session,
+    resolved: ResolvedConversationContext,
+    conversation: ConversationRecord,
+    allPresetLanes = false,
+    sameRouteBase = false
+) {
+    const keys = getLookupKeys(session, resolved.constraint.bindingKey, true)
+    if (!matchesBindingKey(conversation.bindingKey, keys)) {
+        return conversation.bindingKey
+    }
+
+    return sameRouteBase ? conversation.bindingKey : resolved.bindingKey
 }
 
 async function formatMessage(message: MessageRecord) {

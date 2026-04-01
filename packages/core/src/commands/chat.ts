@@ -19,6 +19,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options.preset == null || options.preset.trim().length < 1
                     ? undefined
                     : options.preset.trim()
+            const allPresetLanes = presetLane == null
 
             if (
                 !ctx.chatluna.renderer.rendererTypeList.some(
@@ -39,8 +40,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         session,
                         options.conversation,
                         presetLane,
-                        false
+                        false,
+                        'commands.chatluna.chat.text.options.conversation',
+                        allPresetLanes
                     ),
+                    allPresetLanes,
                     presetLane,
                     renderOptions: {
                         session,
@@ -67,8 +71,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         session,
                         options.conversation,
                         undefined,
-                        false
+                        false,
+                        'commands.chatluna.chat.text.options.conversation',
+                        true
                     ),
+                    allPresetLanes: true,
                     renderOptions: {
                         session,
                         split: config.splitMessage,
@@ -92,8 +99,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         session,
                         options.conversation,
                         undefined,
-                        false
-                    )
+                        false,
+                        'commands.chatluna.chat.text.options.conversation',
+                        true
+                    ),
+                    allPresetLanes: true
                 },
                 ctx
             )
@@ -114,8 +124,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         session,
                         options.conversation,
                         undefined,
-                        false
+                        false,
+                        'commands.chatluna.chat.text.options.conversation',
+                        true
                     ),
+                    allPresetLanes: true,
                     renderOptions: {
                         split: config.splitMessage,
                         type: 'voice',
@@ -152,5 +165,6 @@ declare module '../chains/chain' {
         conversationId?: string
         targetConversation?: string
         presetLane?: string
+        allPresetLanes?: boolean
     }
 }

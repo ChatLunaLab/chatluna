@@ -148,7 +148,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             conversation,
                             presetLane,
                             true,
-                            'commands.chatluna.conversation.options.conversation'
+                            'commands.chatluna.conversation.options.conversation',
+                            presetLane == null
                         ),
                         presetLane
                     }
@@ -181,7 +182,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             conversation,
                             presetLane,
                             true,
-                            'commands.chatluna.conversation.options.conversation'
+                            'commands.chatluna.conversation.options.conversation',
+                            presetLane == null
                         ),
                         presetLane
                     }
@@ -211,7 +213,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             conversation,
                             presetLane,
                             true,
-                            'commands.chatluna.conversation.options.conversation'
+                            'commands.chatluna.conversation.options.conversation',
+                            presetLane == null
                         ),
                         presetLane
                     }
@@ -245,7 +248,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             conversation,
                             presetLane,
                             true,
-                            'commands.chatluna.conversation.options.conversation'
+                            'commands.chatluna.conversation.options.conversation',
+                            presetLane == null
                         ),
                         presetLane
                     },
@@ -300,7 +304,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             conversation,
                             presetLane,
                             true,
-                            'commands.chatluna.conversation.options.conversation'
+                            'commands.chatluna.conversation.options.conversation',
+                            presetLane == null
                         ),
                         presetLane
                     }
