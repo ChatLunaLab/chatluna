@@ -61,16 +61,36 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.resolvedConversation = conversation
             }
 
-            const resolved =
-                context.options.resolvedConversationContext ??
-                (await ctx.chatluna.conversation.resolveContext(session, {
-                    conversationId: context.options.conversationId,
-                    presetLane,
-                    useRoutePresetLane
-                }))
+            const current = context.options.resolvedConversation
+            let resolved =
+                current != null &&
+                context.options.resolvedConversationContext?.conversation
+                    ?.id === current.id &&
+                context.options.resolvedConversationContext.bindingKey ===
+                    current.bindingKey
+                    ? context.options.resolvedConversationContext
+                    : await ctx.chatluna.conversation.resolveContext(session, {
+                          conversationId: context.options.conversationId,
+                          bindingKey: current?.bindingKey,
+                          presetLane: current == null ? presetLane : undefined,
+                          useRoutePresetLane:
+                              current == null ? useRoutePresetLane : false
+                      })
 
-            context.options.resolvedConversation =
-                context.options.resolvedConversation ?? resolved.conversation
+            if (
+                resolved.conversation != null &&
+                resolved.conversation.bindingKey !== resolved.bindingKey
+            ) {
+                resolved = await ctx.chatluna.conversation.resolveContext(
+                    session,
+                    {
+                        conversationId: resolved.conversation.id,
+                        bindingKey: resolved.conversation.bindingKey
+                    }
+                )
+            }
+
+            context.options.resolvedConversation = resolved.conversation
             context.options.resolvedConversationContext = resolved
 
             return ChainMiddlewareRunStatus.CONTINUE

@@ -168,16 +168,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ])
 
             if ((context.options.message?.length ?? 0) < 1) {
-                const reResolved =
-                    context.options.resolvedConversationContext ??
-                    resolvedContext
                 const humanContent = await decodeMessageContent(humanMessage)
 
                 context.options.inputMessage =
                     await ctx.chatluna.messageTransformer.transform(
                         session,
                         transformMessageContentToElements(humanContent),
-                        reResolved.effectiveModel ?? conversation.model,
+                        resolvedContext.effectiveModel ?? conversation.model,
                         undefined,
                         {
                             quote: false,

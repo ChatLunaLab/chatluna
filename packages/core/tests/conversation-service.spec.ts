@@ -487,7 +487,12 @@ it('ConversationService lists and switches preset lanes across canonical and leg
         targetConversation: '2',
         allPresetLanes: true
     })
-    const binding = database.tables.chatluna_binding[0] as BindingRecord
+    const legacyBinding = database.tables.chatluna_binding.find(
+        (item) => item.bindingKey === legacyBase
+    ) as BindingRecord | undefined
+    const laneBinding = database.tables.chatluna_binding.find(
+        (item) => item.bindingKey === chatgpt.bindingKey
+    ) as BindingRecord | undefined
 
     assert.deepEqual(
         listed.map((item) => item.id),
@@ -508,8 +513,79 @@ it('ConversationService lists and switches preset lanes across canonical and leg
         ]
     )
     assert.equal(switched.id, 'conversation-chatgpt')
-    assert.equal(binding.activeConversationId, 'conversation-chatgpt')
-    assert.equal(binding.lastConversationId, 'conversation-legacy')
+    assert.equal(legacyBinding?.activeConversationId, 'conversation-legacy')
+    assert.equal(laneBinding?.activeConversationId, 'conversation-chatgpt')
+})
+
+it('ConversationService allows exact id across preset lanes when allPresetLanes is enabled', async () => {
+    const laneA = createConversation({
+        id: 'conversation-lane-a',
+        bindingKey: 'shared:discord:bot:guild:preset:A'
+    })
+    const laneB = createConversation({
+        id: 'conversation-lane-b',
+        bindingKey: 'shared:discord:bot:guild:preset:B'
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                laneA as unknown as TableRow,
+                laneB as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = await service.resolveCommandConversation(createSession(), {
+        conversationId: laneB.id,
+        allPresetLanes: true,
+        permission: 'manage'
+    })
+
+    assert.equal(resolved?.id, laneB.id)
+})
+
+it('ConversationService keeps current lane binding untouched when switching across preset lanes', async () => {
+    const laneA = createConversation({
+        id: 'conversation-switch-lane-a',
+        bindingKey: 'shared:discord:bot:guild:preset:A'
+    })
+    const laneB = createConversation({
+        id: 'conversation-switch-lane-b',
+        bindingKey: 'shared:discord:bot:guild:preset:B'
+    })
+
+    const { service, database } = await createService({
+        tables: {
+            chatluna_conversation: [
+                laneA as unknown as TableRow,
+                laneB as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: laneA.bindingKey,
+                    activeConversationId: laneA.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    await service.switchConversation(createSession(), {
+        targetConversation: laneB.id,
+        allPresetLanes: true
+    })
+
+    const bindingA = database.tables.chatluna_binding.find(
+        (item) => item.bindingKey === laneA.bindingKey
+    ) as BindingRecord | undefined
+    const bindingB = database.tables.chatluna_binding.find(
+        (item) => item.bindingKey === laneB.bindingKey
+    ) as BindingRecord | undefined
+
+    assert.equal(bindingA?.activeConversationId, laneA.id)
+    assert.equal(bindingB?.activeConversationId, laneB.id)
 })
 
 it('ConversationService rejects ambiguous friendly conversation targets', async () => {
@@ -737,6 +813,63 @@ it('ConversationService resolves ACL-backed cross-route targetConversation', asy
 
     assert.equal(byId?.id, remote.id)
     assert.equal(byTitle?.id, remote.id)
+})
+
+it('ConversationService rejects ambiguous global exact title matches', async () => {
+    const local = createConversation({
+        id: 'conversation-local-title',
+        bindingKey: 'shared:discord:bot:guild'
+    })
+    const remoteA = createConversation({
+        id: 'conversation-remote-title-a',
+        bindingKey: 'shared:discord:bot:other-guild-a',
+        title: 'Shared Topic'
+    })
+    const remoteB = createConversation({
+        id: 'conversation-remote-title-b',
+        bindingKey: 'shared:discord:bot:other-guild-b',
+        title: 'Shared Topic'
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                local as unknown as TableRow,
+                remoteA as unknown as TableRow,
+                remoteB as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: local.bindingKey,
+                    activeConversationId: local.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ],
+            chatluna_acl: [
+                {
+                    conversationId: remoteA.id,
+                    principalType: 'user',
+                    principalId: 'user',
+                    permission: 'manage'
+                } as unknown as TableRow,
+                {
+                    conversationId: remoteB.id,
+                    principalType: 'user',
+                    principalId: 'user',
+                    permission: 'manage'
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    await expectRejected(
+        service.resolveCommandConversation(createSession({ authority: 1 }), {
+            targetConversation: 'Shared Topic',
+            permission: 'manage'
+        }),
+        /Conversation target is ambiguous\./
+    )
 })
 
 it('ConversationService keeps local bindings untouched for cross-route switch and reopen', async () => {
