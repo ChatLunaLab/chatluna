@@ -234,7 +234,7 @@ export async function* runAgent(
 
             yield {
                 type: 'round-decision',
-                canContinue: false
+                willConsumePendingMessages: false
             }
 
             const pending = queue?.drain() ?? []
@@ -262,7 +262,7 @@ export async function* runAgent(
 
             yield {
                 type: 'round-decision',
-                canContinue: !tool?.returnDirect
+                willConsumePendingMessages: !tool?.returnDirect
             }
 
             yield {
@@ -293,6 +293,31 @@ export async function* runAgent(
         const last = newSteps[newSteps.length - 1]
         const tool = last ? toolMap[last.action.tool?.toLowerCase()] : undefined
 
+        if (last?.observation === '__character_reply_final__') {
+            yield {
+                type: 'round-decision',
+                willConsumePendingMessages: false
+            }
+
+            const pending = queue?.drain() ?? []
+            if (pending.length > 0) {
+                yield {
+                    type: 'human-update',
+                    messages: pending
+                }
+            }
+
+            yield {
+                type: 'done',
+                output: '',
+                log: last.action.log,
+                steps,
+                replyEmitted: true
+            }
+
+            return
+        }
+
         if (tool?.returnDirect && last != null) {
             const pending = queue?.drain() ?? []
             if (pending.length > 0) {
@@ -317,7 +342,7 @@ export async function* runAgent(
 
     yield {
         type: 'round-decision',
-        canContinue: false
+        willConsumePendingMessages: false
     }
 
     yield {

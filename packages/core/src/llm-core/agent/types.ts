@@ -244,7 +244,7 @@ export type AgentEvent =
       }
     | {
           type: 'round-decision'
-          canContinue?: boolean
+          willConsumePendingMessages?: boolean
       }
     | {
           type: 'done'
@@ -252,6 +252,7 @@ export type AgentEvent =
           log: string
           steps: AgentStep[]
           message?: AIMessage
+          replyEmitted?: boolean
       }
 
 export interface AgentRuntimeConfigurable {

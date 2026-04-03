@@ -784,6 +784,7 @@ async function onTaskEvent(
             at: Date.now(),
             title: '最终输出',
             text:
+                (event.replyEmitted ? '最终回复已由工具发送。' : '') ||
                 getMessageContent(event.message?.content ?? '') ||
                 event.output ||
                 event.log

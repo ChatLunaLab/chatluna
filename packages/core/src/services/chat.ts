@@ -968,7 +968,7 @@ type ActiveRequest = {
     abortController: AbortController
     chatMode: string
     messageQueue: MessageQueue
-    roundDecisionResolvers: ((canContinue: boolean) => void)[]
+    roundDecisionResolvers: ((willConsume: boolean) => void)[]
     lastDecision?: boolean
 }
 
@@ -1096,13 +1096,14 @@ class ChatInterfaceWrapper {
                 toolMask: mask,
                 onAgentEvent: async (agentEvent) => {
                     if (agentEvent.type === 'round-decision') {
-                        activeRequest.lastDecision = agentEvent.canContinue
-                        if (agentEvent.canContinue == null) {
+                        activeRequest.lastDecision =
+                            agentEvent.willConsumePendingMessages
+                        if (agentEvent.willConsumePendingMessages == null) {
                             return
                         }
 
                         for (const resolve of activeRequest.roundDecisionResolvers) {
-                            resolve(agentEvent.canContinue)
+                            resolve(agentEvent.willConsumePendingMessages)
                         }
                         activeRequest.roundDecisionResolvers = []
                     }
@@ -1202,11 +1203,11 @@ class ChatInterfaceWrapper {
         }
 
         return new Promise((resolve) => {
-            activeRequest.roundDecisionResolvers.push((canContinue) => {
-                if (canContinue) {
+            activeRequest.roundDecisionResolvers.push((willConsume) => {
+                if (willConsume) {
                     activeRequest.messageQueue.push(message)
                 }
-                resolve(canContinue)
+                resolve(willConsume)
             })
         })
     }
