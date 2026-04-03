@@ -21,22 +21,7 @@ export async function purgeArchivedConversation(
         archiveId?: string | null
     }
 ) {
-    if (conversation.archiveId != null) {
-        const archive = await ctx.chatluna.conversation.getArchive(
-            conversation.archiveId
-        )
-
-        if (archive?.path) {
-            await fs.rm(archive.path, {
-                recursive: true,
-                force: true
-            })
-        }
-
-        await ctx.database.remove('chatluna_archive', {
-            id: conversation.archiveId
-        })
-    }
+    await removeArchive(ctx, conversation.archiveId)
 
     await unbindConversation(ctx, conversation.id)
     await ctx.database.remove('chatluna_message', {
@@ -47,6 +32,25 @@ export async function purgeArchivedConversation(
     })
     await ctx.database.remove('chatluna_conversation', {
         id: conversation.id
+    })
+}
+
+export async function removeArchive(ctx: Context, archiveId?: string | null) {
+    if (archiveId == null) {
+        return
+    }
+
+    const archive = await ctx.chatluna.conversation.getArchive(archiveId)
+
+    if (archive?.path) {
+        await fs.rm(archive.path, {
+            recursive: true,
+            force: true
+        })
+    }
+
+    await ctx.database.remove('chatluna_archive', {
+        id: archiveId
     })
 }
 

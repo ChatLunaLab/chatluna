@@ -8,6 +8,7 @@ import type {
     ACLRecord,
     ArchiveRecord,
     BindingRecord,
+    ConversationRecord,
     ConstraintRecord
 } from '../src/services/conversation_types'
 import { gzipEncode } from '../src/utils/compression'
@@ -348,6 +349,65 @@ it('ConversationService does not auto-restore archived conversation without mana
     )
 })
 
+it('ConversationService clears archive data when deleting archived conversation', async () => {
+    const dir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'chatluna-delete-archive-test-')
+    )
+    const archiveDir = path.join(dir, 'archive-dir')
+    await fs.mkdir(archiveDir, { recursive: true })
+    await fs.writeFile(path.join(archiveDir, 'manifest.json'), '{}', 'utf8')
+
+    const conversation = createConversation({
+        id: 'conversation-delete-archived',
+        status: 'archived',
+        archiveId: 'archive-delete',
+        archivedAt: new Date('2026-03-22T00:00:00.000Z')
+    })
+
+    const { service, database } = await createService({
+        baseDir: dir,
+        tables: {
+            chatluna_conversation: [conversation as unknown as TableRow],
+            chatluna_binding: [
+                {
+                    bindingKey: conversation.bindingKey,
+                    activeConversationId: conversation.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ],
+            chatluna_archive: [
+                {
+                    id: 'archive-delete',
+                    conversationId: conversation.id,
+                    path: archiveDir,
+                    formatVersion: 1,
+                    messageCount: 0,
+                    checksum: null,
+                    size: 1,
+                    state: 'ready',
+                    createdAt: new Date(),
+                    restoredAt: null
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const deleted = await service.deleteConversation(createSession(), {
+        conversationId: conversation.id
+    })
+    const stored = database.tables
+        .chatluna_conversation[0] as ConversationRecord
+    const binding = database.tables.chatluna_binding[0] as BindingRecord
+
+    assert.equal(deleted.status, 'deleted')
+    assert.equal(deleted.archiveId, null)
+    assert.equal(stored.archiveId, null)
+    assert.equal(database.tables.chatluna_archive.length, 0)
+    assert.equal(binding.activeConversationId, null)
+    await expectRejected(fs.access(archiveDir))
+})
+
 it('ConversationService ensureActiveConversation respects personal default group route mode', async () => {
     const { service } = await createService({
         config: {
@@ -487,6 +547,7 @@ it('ConversationService lists and switches preset lanes across canonical and leg
         targetConversation: '2',
         allPresetLanes: true
     })
+    const managed = await service.getManagedConstraint(session)
     const legacyBinding = database.tables.chatluna_binding.find(
         (item) => item.bindingKey === legacyBase
     ) as BindingRecord | undefined
@@ -515,6 +576,7 @@ it('ConversationService lists and switches preset lanes across canonical and leg
     assert.equal(switched.id, 'conversation-chatgpt')
     assert.equal(legacyBinding?.activeConversationId, 'conversation-legacy')
     assert.equal(laneBinding?.activeConversationId, 'conversation-chatgpt')
+    assert.equal(managed?.activePresetLane, 'chatgpt')
 })
 
 it('ConversationService allows exact id across preset lanes when allPresetLanes is enabled', async () => {
@@ -543,6 +605,48 @@ it('ConversationService allows exact id across preset lanes when allPresetLanes 
     })
 
     assert.equal(resolved?.id, laneB.id)
+})
+
+it('ConversationService allows exact id across legacy and canonical route family', async () => {
+    const session = createSession({
+        platform: 'onebot',
+        selfId: '1016049163',
+        guildId: '391122026',
+        channelId: '391122026'
+    })
+    const legacy = createConversation({
+        id: 'conversation-legacy-route',
+        bindingKey: 'shared:legacy:legacy:391122026'
+    })
+    const canonical = createConversation({
+        id: 'conversation-canonical-route',
+        bindingKey: 'shared:onebot:1016049163:391122026:preset:chatgpt'
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                legacy as unknown as TableRow,
+                canonical as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: legacy.bindingKey,
+                    activeConversationId: legacy.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = await service.resolveCommandConversation(session, {
+        conversationId: canonical.id,
+        allPresetLanes: true,
+        permission: 'manage'
+    })
+
+    assert.equal(resolved?.id, canonical.id)
 })
 
 it('ConversationService keeps current lane binding untouched when switching across preset lanes', async () => {
@@ -586,6 +690,91 @@ it('ConversationService keeps current lane binding untouched when switching acro
 
     assert.equal(bindingA?.activeConversationId, laneA.id)
     assert.equal(bindingB?.activeConversationId, laneB.id)
+})
+
+it('ConversationService syncs managed preset lane when reopening archived route-family conversation', async () => {
+    const dir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'chatluna-reopen-lane-')
+    )
+    const archivePath = path.join(dir, 'archive.json.gz')
+    const session = createSession({
+        platform: 'onebot',
+        selfId: '1016049163',
+        guildId: '391122026',
+        channelId: '391122026'
+    })
+    const legacy = createConversation({
+        id: 'conversation-legacy-reopen',
+        bindingKey: 'shared:legacy:legacy:391122026'
+    })
+    const archived = createConversation({
+        id: 'conversation-archived-lane',
+        bindingKey: 'shared:onebot:1016049163:391122026:preset:chatgpt',
+        status: 'archived',
+        archiveId: 'archive-lane',
+        archivedAt: new Date('2026-03-25T00:00:00.000Z'),
+        latestMessageId: null
+    })
+    await fs.writeFile(
+        archivePath,
+        await gzipEncode(
+            JSON.stringify({
+                formatVersion: 1,
+                exportedAt: '2026-03-25T00:00:00.000Z',
+                conversation: {
+                    ...archived,
+                    status: 'active',
+                    archiveId: null,
+                    archivedAt: null,
+                    createdAt: archived.createdAt.toISOString(),
+                    updatedAt: archived.updatedAt.toISOString(),
+                    lastChatAt: archived.lastChatAt?.toISOString() ?? null
+                },
+                messages: []
+            })
+        )
+    )
+
+    const { service } = await createService({
+        baseDir: dir,
+        tables: {
+            chatluna_conversation: [
+                legacy as unknown as TableRow,
+                archived as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: legacy.bindingKey,
+                    activeConversationId: legacy.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ],
+            chatluna_archive: [
+                {
+                    id: 'archive-lane',
+                    conversationId: archived.id,
+                    path: archivePath,
+                    formatVersion: 1,
+                    messageCount: 0,
+                    checksum: null,
+                    size: (await fs.stat(archivePath)).size,
+                    state: 'ready',
+                    createdAt: new Date('2026-03-25T00:00:00.000Z'),
+                    restoredAt: null
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const reopened = await service.reopenConversation(session, {
+        conversationId: archived.id,
+        allPresetLanes: true
+    })
+    const managed = await service.getManagedConstraint(session)
+
+    assert.equal(reopened.status, 'active')
+    assert.equal(managed?.activePresetLane, 'chatgpt')
 })
 
 it('ConversationService rejects ambiguous friendly conversation targets', async () => {

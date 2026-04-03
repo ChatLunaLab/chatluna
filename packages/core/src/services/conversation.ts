@@ -7,6 +7,7 @@ import type { Config } from '../config'
 import {
     deserializeConversation,
     deserializeMessage,
+    removeArchive,
     readArchivePayload,
     serializeConversation,
     serializeMessage,
@@ -590,13 +591,16 @@ export class ConversationService {
         const previousConversation = current.binding?.activeConversationId
             ? await this.getConversation(current.binding.activeConversationId)
             : null
-        const sameRouteBase =
+        const sameRoute =
             options.allPresetLanes &&
-            getBaseBindingKey(conversation.bindingKey) ===
-                getBaseBindingKey(resolved.bindingKey)
+            getLookupKeys(
+                session,
+                resolved.constraint.bindingKey,
+                true
+            ).includes(getBaseBindingKey(conversation.bindingKey))
         const bindingKey = pickBindingKey(resolved, conversation)
 
-        if (sameRouteBase) {
+        if (sameRoute) {
             await this.updateManagedConstraint(session, {
                 activePresetLane: getPresetLane(conversation.bindingKey) ?? null
             })
@@ -644,6 +648,20 @@ export class ConversationService {
                 throw new Error(
                     'Conversation switch is disabled by constraint.'
                 )
+            }
+
+            if (
+                options.allPresetLanes &&
+                getLookupKeys(
+                    session,
+                    resolved.constraint.bindingKey,
+                    true
+                ).includes(getBaseBindingKey(conversation.bindingKey))
+            ) {
+                await this.updateManagedConstraint(session, {
+                    activePresetLane:
+                        getPresetLane(conversation.bindingKey) ?? null
+                })
             }
 
             await this.setActiveConversation(
@@ -973,7 +991,7 @@ export class ConversationService {
 
     async restoreConversation(
         session: Session,
-        options: ResolveConversationContextOptions & {
+        options: ResolveTargetConversationOptions & {
             archiveId?: string
         } = {}
     ) {
@@ -1089,6 +1107,23 @@ export class ConversationService {
                     )
                     if (updatedConversation == null) {
                         throw new Error('Conversation restore failed.')
+                    }
+
+                    if (
+                        options.allPresetLanes &&
+                        getLookupKeys(
+                            session,
+                            resolved.constraint.bindingKey,
+                            true
+                        ).includes(
+                            getBaseBindingKey(updatedConversation.bindingKey)
+                        )
+                    ) {
+                        await this.updateManagedConstraint(session, {
+                            activePresetLane:
+                                getPresetLane(updatedConversation.bindingKey) ??
+                                null
+                        })
                     }
 
                     await this.setActiveConversation(
@@ -1213,9 +1248,12 @@ export class ConversationService {
                     }
                 )
 
+                await removeArchive(this.ctx, current.archiveId)
+
                 const updated = await this.touchConversation(current.id, {
                     status: 'deleted',
-                    archivedAt: null
+                    archivedAt: null,
+                    archiveId: null
                 })
                 await unbindConversation(this.ctx, current.id)
                 await this.ctx.database.remove('chatluna_message', {
@@ -1511,8 +1549,11 @@ export class ConversationService {
             if (
                 !(
                     options.allPresetLanes === true &&
-                    getBaseBindingKey(conversation.bindingKey) ===
-                        getBaseBindingKey(resolved.bindingKey)
+                    getLookupKeys(
+                        session,
+                        resolved.constraint.bindingKey,
+                        true
+                    ).includes(getBaseBindingKey(conversation.bindingKey))
                 ) &&
                 !(await hasConversationPermission(
                     this.ctx,
