@@ -46,7 +46,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                           }
                       )
 
-            if (conversation == null) {
+            if (
+                conversation == null &&
+                context.options.conversationId == null &&
+                context.options.targetConversation == null &&
+                context.options.resolvedConversation == null
+            ) {
                 conversation = (
                     await ctx.chatluna.conversation.getCurrentConversation(
                         session
@@ -216,14 +221,6 @@ async function rollbackConversation(
         }
     }
 
-    await ctx.database.upsert('chatluna_conversation', [
-        {
-            id: current.id,
-            latestMessageId: humanMessage.parentId ?? null,
-            updatedAt: new Date()
-        }
-    ])
-
     let inputMessage = context.options.inputMessage
 
     if ((context.options.message?.length ?? 0) < 1) {
@@ -244,6 +241,14 @@ async function rollbackConversation(
     await ctx.database.remove('chatluna_message', {
         id: messages.map((message) => message.id)
     })
+
+    await ctx.database.upsert('chatluna_conversation', [
+        {
+            id: current.id,
+            latestMessageId: humanMessage.parentId ?? null,
+            updatedAt: new Date()
+        }
+    ])
 
     return {
         status: ChainMiddlewareRunStatus.CONTINUE,

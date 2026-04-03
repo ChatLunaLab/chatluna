@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { assert } from 'chai'
 import { purgeArchivedConversation } from '../src/utils/archive'
+import { gzipEncode } from '../src/utils/compression'
 import type {
     ArchiveRecord,
     BindingRecord,
@@ -147,6 +148,81 @@ it('ConversationService rejects restoring archives from another conversation', a
             archiveId: foreignArchive.id
         }),
         /Archive does not belong to conversation\./
+    )
+})
+
+it('ConversationService rejects restoring a foreign conversation by exact id', async () => {
+    const dir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'chatluna-foreign-restore-')
+    )
+    const conversation = createConversation({
+        id: 'conversation-foreign-restore',
+        bindingKey: 'shared:discord:bot:other-guild',
+        status: 'archived',
+        archiveId: 'archive-foreign-restore',
+        archivedAt: new Date('2026-03-22T00:00:00.000Z')
+    })
+    const archivePath = path.join(dir, 'archive-foreign-restore.json.gz')
+
+    await fs.writeFile(
+        archivePath,
+        await gzipEncode(
+            JSON.stringify({
+                formatVersion: 1,
+                exportedAt: '2026-03-22T00:00:00.000Z',
+                conversation: {
+                    ...conversation,
+                    status: 'active',
+                    archiveId: null,
+                    archivedAt: null,
+                    createdAt: conversation.createdAt.toISOString(),
+                    updatedAt: conversation.updatedAt.toISOString(),
+                    lastChatAt: conversation.lastChatAt?.toISOString() ?? null
+                },
+                messages: []
+            })
+        )
+    )
+
+    const { service } = await createService({
+        baseDir: dir,
+        tables: {
+            chatluna_conversation: [conversation as unknown as TableRow],
+            chatluna_constraint: [
+                {
+                    id: 1,
+                    name: 'allow-manage-current-route',
+                    enabled: true,
+                    priority: 10,
+                    createdBy: 'admin',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    guildId: 'guild',
+                    manageMode: 'anyone'
+                } as unknown as TableRow
+            ],
+            chatluna_archive: [
+                {
+                    id: conversation.archiveId,
+                    conversationId: conversation.id,
+                    path: archivePath,
+                    formatVersion: 1,
+                    messageCount: 0,
+                    checksum: null,
+                    size: 1,
+                    state: 'ready',
+                    createdAt: new Date(),
+                    restoredAt: null
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    await expectRejected(
+        service.restoreConversation(createSession({ authority: 1 }), {
+            conversationId: conversation.id
+        }),
+        /Conversation does not belong to current route\./
     )
 })
 

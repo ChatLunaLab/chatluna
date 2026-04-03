@@ -47,6 +47,7 @@ it('ConversationService supports sampled end-to-end lifecycle flow', async () =>
 
         assert.equal(listed.length, 1)
         assert.equal(renamed.title, 'Helper Session')
+        assert.equal(renamed.autoTitle, false)
         assert.equal(path.extname(exported.path), '.md')
         assert.equal(archived.conversation.status, 'archived')
         assert.equal(restored.status, 'active')

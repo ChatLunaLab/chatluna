@@ -995,15 +995,12 @@ export class ConversationService {
             archiveId?: string
         } = {}
     ) {
-        const resolved = await this.resolveContext(session, options)
-        const conversation = options.conversationId
-            ? ((await this.getConversation(options.conversationId)) ??
-              resolved.conversation)
-            : resolved.conversation
-
-        if (conversation == null) {
-            throw new Error('Conversation not found.')
-        }
+        const { resolved, conversation, managed } = await this.getTarget(
+            session,
+            options,
+            'manage',
+            true
+        )
 
         const archive = options.archiveId
             ? await this.getArchive(options.archiveId)
@@ -1019,21 +1016,11 @@ export class ConversationService {
             throw new Error('Archive does not belong to conversation.')
         }
 
-        await assertManageAllowed(session, resolved.constraint)
-
-        const target = await this.getManagedConstraintByBindingKey(
-            conversation.bindingKey
-        )
-
-        if (target != null) {
-            await assertManageAllowed(session, target)
-        }
-
-        if (target?.lockConversation ?? resolved.constraint.lockConversation) {
+        if (managed?.lockConversation ?? resolved.constraint.lockConversation) {
             throw new Error('Conversation restore is locked by constraint.')
         }
 
-        if (!(target?.allowArchive ?? resolved.constraint.allowArchive)) {
+        if (!(managed?.allowArchive ?? resolved.constraint.allowArchive)) {
             throw new Error('Conversation restore is disabled by constraint.')
         }
 
@@ -1214,7 +1201,8 @@ export class ConversationService {
         }
 
         const updated = await this.touchConversation(conversation.id, {
-            title: options.title.trim()
+            title: options.title.trim(),
+            autoTitle: false
         })
         return updated!
     }
