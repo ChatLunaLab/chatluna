@@ -187,12 +187,7 @@ export class ChatLunaAgentSubAgentService {
                     return undefined
                 }
 
-                const next = this.permission.createSubAgentToolMask(info)
-                const base =
-                    ctx.parent?.toolMask ??
-                    ctx.runConfig?.configurable?.toolMask
-                const names = this.ctx.chatluna.platform.getFilteredTools(next)
-                const mask = buildSubAgentToolMask(base, names)
+                const mask = this.permission.createSubAgentToolMask(info)
 
                 return {
                     agent: await createSubAgent({
@@ -330,32 +325,4 @@ function isRunnable(info: SubAgentInfo) {
         !info.hidden &&
         !info.shadowedBy
     )
-}
-
-function buildSubAgentToolMask(base: ToolMask | undefined, names: string[]) {
-    if (!base) {
-        return buildToolMask(names)
-    }
-
-    const allow = names.filter((name) => {
-        if (base.mode === 'all') {
-            return true
-        }
-
-        if (base.mode === 'allow') {
-            return base.allow.includes(name)
-        }
-
-        return !base.deny.includes(name)
-    })
-
-    return buildToolMask(allow)
-}
-
-function buildToolMask(allow: string[]): ToolMask {
-    return {
-        mode: 'allow',
-        allow,
-        deny: []
-    }
 }
