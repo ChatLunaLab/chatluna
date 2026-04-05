@@ -33,20 +33,24 @@ export class ChatLunaAgentPermissionService {
     ) {}
 
     async start() {
-        this._toolMaskDispose = this.ctx.chatluna.registerToolMaskResolver(
-            'agent',
-            async ({ conversation, session }) => {
-                if (conversation && conversation.chatMode !== 'plugin') {
-                    return
-                }
+        this._toolMaskDispose =
+            this.ctx.chatluna.platform.registerToolMaskResolver(
+                'agent',
+                async ({ conversation, session }) => {
+                    if (conversation && conversation.chatMode !== 'plugin') {
+                        return
+                    }
 
-                const mask = this.createMainToolMask()
-                return {
-                    ...mask,
-                    toolCallMask: await this.createToolCallMask(session, mask)
+                    const mask = this.createMainToolMask()
+                    return {
+                        ...mask,
+                        toolCallMask: await this.createToolCallMask(
+                            session,
+                            mask
+                        )
+                    }
                 }
-            }
-        )
+            )
     }
 
     async stop() {

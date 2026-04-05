@@ -4,8 +4,7 @@ import { Context } from 'koishi'
 import {
     type AgentTaskToolRuntime,
     createTaskTool,
-    renderAvailableAgents,
-    type ToolMask
+    renderAvailableAgents
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {

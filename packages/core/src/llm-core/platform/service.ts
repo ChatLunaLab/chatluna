@@ -1,4 +1,4 @@
-import { Context, Dict } from 'koishi'
+import { Awaitable, Context, Dict, Session } from 'koishi'
 import {
     BasePlatformClient,
     PlatformEmbeddingsClient,
@@ -28,6 +28,7 @@ import { computed, ComputedRef, reactive } from '@vue/reactivity'
 import { randomUUID } from 'crypto'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { ToolMask } from '../agent'
+import type { ConversationRecord } from '../../services/conversation_types'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = reactive({})
@@ -36,6 +37,7 @@ export class PlatformService {
 
     private _tools: Record<string, ChatLunaTool> = reactive({})
     private _tmpTools: Record<string, StructuredTool> = reactive({})
+    private _toolMaskResolvers: Record<string, ToolMaskResolver> = {}
     private _models: Record<string, ModelInfo[]> = reactive({})
     private _chatChains: Record<string, ChatLunaChainInfo> = reactive({})
     private _vectorStore: Record<string, CreateVectorStoreFunction> = reactive(
@@ -216,6 +218,23 @@ export class PlatformService {
         }
 
         return allNames.filter((name) => !mask.deny.includes(name))
+    }
+
+    registerToolMaskResolver(name: string, resolver: ToolMaskResolver) {
+        this._toolMaskResolvers[name] = resolver
+
+        return () => {
+            delete this._toolMaskResolvers[name]
+        }
+    }
+
+    async resolveToolMask(arg: ToolMaskArg) {
+        for (const name in this._toolMaskResolvers) {
+            const mask = await this._toolMaskResolvers[name](arg)
+            if (mask) {
+                return mask
+            }
+        }
     }
 
     static buildToolMask(rule: {
@@ -453,3 +472,13 @@ declare module 'koishi' {
         'chatluna/tool-updated': (service: PlatformService) => void
     }
 }
+
+export interface ToolMaskArg {
+    session: Session
+    conversation?: ConversationRecord
+    bindingKey?: string
+}
+
+export type ToolMaskResolver = (
+    arg: ToolMaskArg
+) => Awaitable<ToolMask | undefined>

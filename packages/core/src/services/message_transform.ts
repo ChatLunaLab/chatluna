@@ -11,21 +11,6 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import { MessageContent } from '@langchain/core/messages'
 
-interface TransformFunctionWithPriority {
-    func: MessageTransformFunction
-    priority: number
-}
-
-interface BeforeTransformFunctionWithPriority {
-    func: BeforeMessageTransformFunction
-    priority: number
-}
-
-export interface MessageTransformOptions {
-    quote: boolean
-    includeQuoteReply: boolean
-}
-
 export class MessageTransformer {
     private _beforeTransformFunctions: BeforeTransformFunctionWithPriority[] =
         []
@@ -354,3 +339,18 @@ export type MessageTransformFunction = (
     message: Message,
     model?: string
 ) => Promise<boolean | void>
+
+interface TransformFunctionWithPriority {
+    func: MessageTransformFunction
+    priority: number
+}
+
+interface BeforeTransformFunctionWithPriority {
+    func: BeforeMessageTransformFunction
+    priority: number
+}
+
+export interface MessageTransformOptions {
+    quote: boolean
+    includeQuoteReply: boolean
+}

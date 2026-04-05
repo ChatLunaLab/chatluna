@@ -19,21 +19,14 @@ import { type UsageMetadata } from '@langchain/core/messages'
 export class ConversationRuntime {
     readonly interfaces = new LRUCache<string, RuntimeConversationEntry>({
         max: 20,
-        dispose: (value, key) => {
-            const [platform] = parseRawModelName(value.conversation.model)
-            if (platform != null) {
-                this.unregisterPlatformConversation(platform, key)
-            }
+        dispose: (value) => {
             value.chatInterface.dispose?.()
         }
     })
 
     readonly modelQueue = new RequestIdQueue()
     readonly conversationQueue = new RequestIdQueue()
-    readonly requestsById = new Map<string, AbortController>()
     readonly activeByConversation = new Map<string, ActiveRequest>()
-    readonly requestBySession = new Map<string, string>()
-    readonly platformIndex = new Map<string, Set<string>>()
 
     constructor(private readonly service: ChatLunaService) {}
 
@@ -79,7 +72,6 @@ export class ConversationRuntime {
                     )
                 )
             }
-            this.registerPlatformConversation(platform, conversation.id)
 
             const chatInterface = await this.ensureChatInterface(conversation)
             const abortController = new AbortController()
@@ -87,6 +79,7 @@ export class ConversationRuntime {
                 conversation.id,
                 requestId,
                 conversation.chatMode,
+                platform,
                 abortController,
                 session
             )
@@ -104,7 +97,7 @@ export class ConversationRuntime {
 
                 const mask =
                     toolMask ??
-                    (await this.service.resolveToolMask({
+                    (await this.platformService.resolveToolMask({
                         session,
                         conversation,
                         bindingKey: conversation.bindingKey
@@ -129,10 +122,10 @@ export class ConversationRuntime {
                                 return
                             }
 
-                            for (const resolve of activeRequest.roundDecisionResolvers) {
-                                resolve(agentEvent.canContinue)
-                            }
-                            activeRequest.roundDecisionResolvers = []
+                            flushRoundDecision(
+                                activeRequest,
+                                agentEvent.canContinue
+                            )
                         }
                     }
                 })
@@ -174,7 +167,7 @@ export class ConversationRuntime {
                     additionalReplyMessages
                 }
             } finally {
-                this.completeRequest(conversation.id, requestId, session)
+                this.completeRequest(conversation.id, requestId)
             }
         })
     }
@@ -271,76 +264,57 @@ export class ConversationRuntime {
         }
     }
 
-    registerPlatformConversation(platform: string, conversationId: string) {
-        const values = this.platformIndex.get(platform) ?? new Set<string>()
-        values.add(conversationId)
-        this.platformIndex.set(platform, values)
-    }
-
-    unregisterPlatformConversation(platform: string, conversationId: string) {
-        const values = this.platformIndex.get(platform)
-        if (values == null) {
-            return
-        }
-        values.delete(conversationId)
-        if (values.size === 0) {
-            this.platformIndex.delete(platform)
-        }
-    }
-
     registerRequest(
         conversationId: string,
         requestId: string,
         chatMode: string,
+        platform: string,
         abortController: AbortController,
         session?: Session
     ) {
         const activeRequest: ActiveRequest = {
             requestId,
             conversationId,
-            sessionId: session?.sid,
+            requestKey:
+                session == null
+                    ? undefined
+                    : JSON.stringify([
+                          session.userId,
+                          session.guildId ?? '',
+                          conversationId
+                      ]),
+            platform,
             abortController,
             chatMode,
             messageQueue: new MessageQueue(),
             roundDecisionResolvers: []
         }
 
-        this.requestsById.set(requestId, abortController)
         this.activeByConversation.set(conversationId, activeRequest)
-        if (session?.sid != null) {
-            this.requestBySession.set(session.sid, requestId)
-        }
         return activeRequest
     }
 
-    completeRequest(
-        conversationId: string,
-        requestId: string,
-        session?: Session
-    ) {
-        this.requestsById.delete(requestId)
-        if (session?.sid != null) {
-            this.requestBySession.delete(session.sid)
-        }
-
+    completeRequest(conversationId: string, requestId: string) {
         const active = this.activeByConversation.get(conversationId)
         if (active?.requestId === requestId) {
-            for (const resolve of active.roundDecisionResolvers) {
-                resolve(false)
-            }
+            flushRoundDecision(active, false)
             this.activeByConversation.delete(conversationId)
         }
     }
 
     stopRequest(requestId: string) {
-        const abortController = this.requestsById.get(requestId)
-        if (abortController == null) {
+        const active = Array.from(this.activeByConversation.values()).find(
+            (item) => item.requestId === requestId
+        )
+        if (active == null) {
             return false
         }
-        abortController.abort(
+        if (active.abortController.signal.aborted) {
+            return false
+        }
+        active.abortController.abort(
             new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
         )
-        this.requestsById.delete(requestId)
         return true
     }
 
@@ -353,11 +327,22 @@ export class ConversationRuntime {
         return this.stopRequest(activeRequest.requestId)
     }
 
-    getRequestIdBySession(session: Session) {
-        if (session.sid == null) {
+    getRequestId(session: Session, conversationId: string) {
+        const active = this.activeByConversation.get(conversationId)
+        if (active == null) {
             return undefined
         }
-        return this.requestBySession.get(session.sid)
+        if (
+            active.requestKey !==
+            JSON.stringify([
+                session.userId,
+                session.guildId ?? '',
+                conversationId
+            ])
+        ) {
+            return undefined
+        }
+        return active.requestId
     }
 
     async appendPendingMessage(
@@ -461,35 +446,45 @@ export class ConversationRuntime {
 
     dispose(platform?: string) {
         if (platform == null) {
-            for (const requestId of Array.from(this.requestsById.keys())) {
-                this.stopRequest(requestId)
+            for (const active of Array.from(
+                this.activeByConversation.values()
+            )) {
+                flushRoundDecision(active, false)
+                active.abortController.abort(
+                    new ChatLunaError(
+                        ChatLunaErrorCode.ABORTED,
+                        undefined,
+                        true
+                    )
+                )
             }
             this.interfaces.clear()
-            this.requestsById.clear()
             this.activeByConversation.clear()
-            this.requestBySession.clear()
-            this.platformIndex.clear()
             return
         }
 
-        const conversationIds = this.platformIndex.get(platform)
-        if (conversationIds == null) {
-            return
-        }
-
-        for (const conversationId of Array.from(conversationIds)) {
-            const active = this.activeByConversation.get(conversationId)
-            if (active != null) {
-                this.stopRequest(active.requestId)
-                this.activeByConversation.delete(conversationId)
-                if (active.sessionId != null) {
-                    this.requestBySession.delete(active.sessionId)
-                }
+        for (const active of Array.from(this.activeByConversation.values())) {
+            if (active.platform === platform) {
+                flushRoundDecision(active, false)
+                active.abortController.abort(
+                    new ChatLunaError(
+                        ChatLunaErrorCode.ABORTED,
+                        undefined,
+                        true
+                    )
+                )
+                this.activeByConversation.delete(active.conversationId)
+                this.interfaces.delete(active.conversationId)
             }
-            this.interfaces.delete(conversationId)
         }
 
-        this.platformIndex.delete(platform)
+        for (const [conversationId, entry] of Array.from(
+            this.interfaces.entries()
+        )) {
+            if (parseRawModelName(entry.conversation.model)[0] === platform) {
+                this.interfaces.delete(conversationId)
+            }
+        }
     }
 }
 
@@ -532,6 +527,13 @@ function formatUsageMetadataMessage(usage: UsageMetadata) {
         ...(input.length > 0 ? [`- input details: ${input.join(', ')}`] : []),
         ...(output.length > 0 ? [`- output details: ${output.join(', ')}`] : [])
     ].join('\n')
+}
+
+function flushRoundDecision(active: ActiveRequest, canContinue: boolean) {
+    for (const resolve of active.roundDecisionResolvers) {
+        resolve(canContinue)
+    }
+    active.roundDecisionResolvers = []
 }
 
 export type {

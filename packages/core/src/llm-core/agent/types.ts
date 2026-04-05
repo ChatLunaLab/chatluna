@@ -252,6 +252,7 @@ export type AgentEvent =
           log: string
           steps: AgentStep[]
           message?: AIMessage
+          replyEmitted?: boolean
       }
 
 export interface AgentRuntimeConfigurable {

@@ -1,14 +1,13 @@
 import { createHash, randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
-import type { MessageContent } from '@langchain/core/messages'
 import type { Context, Session } from 'koishi'
 import type { Config } from '../config'
 import {
     deserializeConversation,
     deserializeMessage,
-    removeArchive,
     readArchivePayload,
+    removeArchive,
     serializeConversation,
     serializeMessage,
     unbindConversation
@@ -38,8 +37,8 @@ import {
     computeBaseBindingKey,
     ConstraintPermission,
     ConstraintRecord,
-    ConversationListEntry,
     ConversationCompressionRecord,
+    ConversationListEntry,
     ConversationRecord,
     getBaseBindingKey,
     getPresetLane,
@@ -367,57 +366,52 @@ export class ConversationService {
             chatMode: string
         }
     ) {
-        return getLock(this._bindingLocks, options.bindingKey).runLocked(
-            async () => {
-                const now = new Date()
-                const conversation: ConversationRecord = {
-                    id: randomUUID(),
-                    seq: await this.allocateConversationSeq(options.bindingKey),
-                    bindingKey: options.bindingKey,
-                    title: options.title,
-                    model: options.model,
-                    preset: options.preset,
-                    chatMode: options.chatMode,
-                    createdBy: session.userId,
-                    createdAt: now,
-                    updatedAt: now,
-                    lastChatAt: now,
-                    status: 'active',
-                    latestMessageId: null,
-                    additional_kwargs: null,
-                    compression: null,
-                    archivedAt: null,
-                    archiveId: null,
-                    legacyRoomId: null,
-                    legacyMeta: null,
-                    autoTitle: true
-                }
-
-                await this.ctx.root.parallel(
-                    'chatluna/conversation-before-create',
-                    {
-                        conversation,
-                        bindingKey: options.bindingKey
-                    }
-                )
-                await this.ctx.database.create(
-                    'chatluna_conversation',
-                    conversation
-                )
-                await this.setActiveConversation(
-                    options.bindingKey,
-                    conversation.id
-                )
-                await this.ctx.root.parallel(
-                    'chatluna/conversation-after-create',
-                    {
-                        conversation,
-                        bindingKey: options.bindingKey
-                    }
-                )
-                return conversation
+        return runLock(this._bindingLocks, options.bindingKey, async () => {
+            const now = new Date()
+            const conversation: ConversationRecord = {
+                id: randomUUID(),
+                seq: await this.allocateConversationSeq(options.bindingKey),
+                bindingKey: options.bindingKey,
+                title: options.title,
+                model: options.model,
+                preset: options.preset,
+                chatMode: options.chatMode,
+                createdBy: session.userId,
+                createdAt: now,
+                updatedAt: now,
+                lastChatAt: now,
+                status: 'active',
+                latestMessageId: null,
+                additional_kwargs: null,
+                compression: null,
+                archivedAt: null,
+                archiveId: null,
+                legacyRoomId: null,
+                legacyMeta: null,
+                autoTitle: true
             }
-        )
+
+            await this.ctx.root.parallel(
+                'chatluna/conversation-before-create',
+                {
+                    conversation,
+                    bindingKey: options.bindingKey
+                }
+            )
+            await this.ctx.database.create(
+                'chatluna_conversation',
+                conversation
+            )
+            await this.setActiveConversation(
+                options.bindingKey,
+                conversation.id
+            )
+            await this.ctx.root.parallel('chatluna/conversation-after-create', {
+                conversation,
+                bindingKey: options.bindingKey
+            })
+            return conversation
+        })
     }
 
     async setActiveConversation(bindingKey: string, conversationId: string) {
@@ -463,7 +457,7 @@ export class ConversationService {
     }
 
     async claimAutoTitle(conversationId: string) {
-        return getLock(this._titleLocks, conversationId).runLocked(async () => {
+        return runLock(this._titleLocks, conversationId, async () => {
             const conversation = await this.getConversation(conversationId)
             if (conversation == null || !conversation.autoTitle) {
                 return false
@@ -1351,7 +1345,10 @@ export class ConversationService {
             return undefined
         }
 
-        const current = parseCompressionRecord(conversation.compression)
+        const current = JSON.parse(
+            conversation.compression ?? 'null'
+        ) as ConversationCompressionRecord
+
         const summaryMessage = (
             (await this.ctx.database.get(
                 'chatluna_message',
@@ -1828,12 +1825,16 @@ function isConstraintMatched(constraint: ConstraintRecord, session: Session) {
         return false
     }
 
-    const users = parseJsonArray(constraint.users)
+    const users =
+        constraint.users === null ? null : JSON.parse(constraint.users)
     if (users != null && !users.includes(session.userId)) {
         return false
     }
 
-    const excludeUsers = parseJsonArray(constraint.excludeUsers)
+    const excludeUsers =
+        constraint.excludeUsers === null
+            ? null
+            : JSON.parse(constraint.excludeUsers)
     if (excludeUsers != null && excludeUsers.includes(session.userId)) {
         return false
     }
@@ -1900,45 +1901,8 @@ async function hasConversationPermission(
     })
 }
 
-function parseJsonArray(value?: string | null) {
-    if (value == null || value.length === 0) {
-        return null
-    }
-
-    try {
-        const parsed = JSON.parse(value)
-        return Array.isArray(parsed) ? parsed.map(String) : null
-    } catch {
-        return null
-    }
-}
-
-function parseCompressionRecord(value?: string | null) {
-    if (value == null || value.length === 0) {
-        return null
-    }
-
-    try {
-        return JSON.parse(value) as ConversationCompressionRecord
-    } catch {
-        return null
-    }
-}
-
-async function parseContent(message: MessageRecord) {
-    if (message.content == null) {
-        return null
-    }
-
-    try {
-        return JSON.parse(await gzipDecode(message.content)) as MessageContent
-    } catch {
-        return null
-    }
-}
-
 async function readText(message: MessageRecord) {
-    const content = await parseContent(message)
+    const content = await JSON.parse(await gzipDecode(message.content))
 
     if (content == null) {
         return message.text ?? ''
@@ -1956,7 +1920,7 @@ function formatUrl(url: string) {
 }
 
 async function formatMessage(message: MessageRecord) {
-    const content = await parseContent(message)
+    const content = await JSON.parse(await gzipDecode(message.content))
 
     const text =
         content == null
@@ -2136,11 +2100,22 @@ function firstBoolean<T extends keyof ConstraintRecord>(
     return fallback
 }
 
-function getLock(locks: Map<string, ObjectLock>, key: string) {
+async function runLock<T>(
+    locks: Map<string, ObjectLock>,
+    key: string,
+    fn: () => Promise<T>
+) {
     let lock = locks.get(key)
     if (lock == null) {
         lock = new ObjectLock()
         locks.set(key, lock)
     }
-    return lock
+
+    try {
+        return await lock.runLocked(fn)
+    } finally {
+        if (!lock.isLocked) {
+            locks.delete(key)
+        }
+    }
 }

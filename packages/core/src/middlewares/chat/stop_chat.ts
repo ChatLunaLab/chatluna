@@ -1,7 +1,6 @@
 import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import { getRequestId } from '../../utils/chat_request'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -82,20 +81,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             context.options.conversationId = conversation.id
-            const requestId = getRequestId(session, conversation.id)
-
-            if (requestId == null) {
-                context.message = session.text('.no_active_chat')
-                return ChainMiddlewareRunStatus.STOP
-            }
-
             const status =
-                await ctx.chatluna.conversationRuntime.stopRequest(requestId)
+                ctx.chatluna.conversationRuntime.stopConversationRequest(
+                    conversation.id
+                )
 
-            if (status === null) {
+            if (!status) {
                 context.message = session.text('.no_active_chat')
-            } else if (!status) {
-                context.message = session.text('.stop_failed')
             }
 
             return ChainMiddlewareRunStatus.STOP

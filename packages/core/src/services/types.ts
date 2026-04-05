@@ -1,4 +1,4 @@
-import { Awaitable, Session } from 'koishi'
+import { Session } from 'koishi'
 import {
     ACLRecord,
     ArchiveRecord,
@@ -24,6 +24,10 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatInterface } from '../llm-core/chat/app'
 import { MessageQueue } from '../llm-core/agent/types'
+import type {
+    ToolMaskArg,
+    ToolMaskResolver
+} from '../llm-core/platform/service'
 
 export interface LegacyConversationRecord {
     id: string
@@ -103,7 +107,8 @@ export interface RuntimeConversationEntry {
 export interface ActiveRequest {
     requestId: string
     conversationId: string
-    sessionId?: string
+    requestKey?: string
+    platform: string
     abortController: AbortController
     chatMode: string
     messageQueue: MessageQueue
@@ -195,12 +200,4 @@ declare module '@chatluna/shared-prompt-renderer' {
 
 export * from '@chatluna/shared-prompt-renderer'
 
-export interface ToolMaskArg {
-    session: Session
-    conversation?: ConversationRecord
-    bindingKey?: string
-}
-
-export type ToolMaskResolver = (
-    arg: ToolMaskArg
-) => Awaitable<ToolMask | undefined>
+export type { ToolMaskArg, ToolMaskResolver }

@@ -329,7 +329,7 @@
                     <label class="form-label">启动命令</label>
                     <el-input
                         v-model="form.command"
-                        placeholder="例如：npx、node、python"
+                        placeholder="例如：npx -y mcp-remote https://..."
                     />
                 </div>
 
@@ -427,6 +427,9 @@
                             placeholder="粘贴单个服务器配置，或包含 mcpServers 的完整对象"
                             @update:model-value="syncJsonToForm"
                         />
+                        <div v-if="jsonError" class="json-error">
+                            {{ jsonError }}
+                        </div>
                     </div>
 
                     <div class="json-preview-section">
@@ -651,8 +654,75 @@ function parseRecord(text: string) {
     )
 }
 
+function splitCommand(text: string) {
+    const args: string[] = []
+    let part = ''
+    let quote = ''
+
+    for (const ch of text.trim()) {
+        if (quote) {
+            if (ch === quote) {
+                quote = ''
+            } else {
+                part += ch
+            }
+            continue
+        }
+
+        if (ch === '"' || ch === "'") {
+            quote = ch
+            continue
+        }
+
+        if (/\s/.test(ch)) {
+            if (part) {
+                args.push(part)
+                part = ''
+            }
+            continue
+        }
+
+        part += ch
+    }
+
+    if (part) {
+        args.push(part)
+    }
+
+    return args
+}
+
+function normalizeServer(config: McpServerConfig) {
+    const next = { ...config }
+    const type = getServerType(next)
+
+    if (type === 'stdio' && next.command?.trim()) {
+        const raw = next.command.trim()
+
+        if (!next.args?.length && /\s/.test(raw)) {
+            const args = splitCommand(raw)
+
+            if (args.length > 1) {
+                next.command = args[0]
+                next.args = args.slice(1)
+            } else {
+                next.command = raw
+            }
+        } else {
+            next.command = raw
+        }
+    }
+
+    if (type !== 'stdio' && next.url?.trim()) {
+        next.url = next.url.trim()
+    }
+
+    return next
+}
+
 function formatServerJson(name: string, config: McpServerConfig) {
-    const value = name ? { name, ...config } : config
+    const next = normalizeServer(config)
+    const value = name ? { name, ...next } : next
     return JSON.stringify(value, null, 2)
 }
 
@@ -669,6 +739,29 @@ function withEnv(
     }
 }
 
+function validateServer(name: string, config: McpServerConfig) {
+    const next = normalizeServer(config)
+    const server = getServerType(next)
+    const key = name.trim()
+
+    if (!key) {
+        throw new Error('请填写名称，或在 JSON 中提供 name 字段')
+    }
+
+    if (server === 'stdio' && !next.command?.trim()) {
+        throw new Error('请填写启动命令')
+    }
+
+    if (server !== 'stdio' && !next.url?.trim()) {
+        throw new Error('请填写服务地址')
+    }
+
+    return {
+        name: key,
+        config: next
+    }
+}
+
 function parseServerJson(text: string, rawName: string) {
     const parsed = parseJson(text)
 
@@ -679,7 +772,7 @@ function parseServerJson(text: string, rawName: string) {
         if (name && servers[name]) {
             return {
                 name,
-                config: withEnv(servers[name])
+                config: normalizeServer(withEnv(servers[name]))
             }
         }
 
@@ -687,7 +780,7 @@ function parseServerJson(text: string, rawName: string) {
         if (list.length === 1) {
             return {
                 name: name || list[0][0],
-                config: withEnv(list[0][1])
+                config: normalizeServer(withEnv(list[0][1]))
             }
         }
 
@@ -698,10 +791,6 @@ function parseServerJson(text: string, rawName: string) {
         const next = { ...parsed } as Record<string, unknown>
         const name = rawName.trim() || String(parsed.name || '')
 
-        if (!name) {
-            throw new Error('请填写名称，或在 JSON 中提供 name 字段')
-        }
-
         if (next.environment != null && next.env == null) {
             next.env = next.environment
         }
@@ -711,7 +800,7 @@ function parseServerJson(text: string, rawName: string) {
 
         return {
             name,
-            config: withEnv(next as McpServerConfig)
+            config: normalizeServer(withEnv(next as McpServerConfig))
         }
     }
 
@@ -725,7 +814,7 @@ function parseServerJson(text: string, rawName: string) {
     ) {
         return {
             name: rawName.trim() || list[0][0],
-            config: withEnv(list[0][1] as McpServerConfig)
+            config: normalizeServer(withEnv(list[0][1] as McpServerConfig))
         }
     }
 
@@ -800,8 +889,22 @@ watch(
     }
 )
 
+const jsonError = computed(() => {
+    if (!serverJson.value.trim()) return ''
+
+    try {
+        parseJson(serverJson.value)
+        return ''
+    } catch (error) {
+        return error instanceof Error ? error.message : String(error)
+    }
+})
+
 const jsonValid = computed(() => {
-    if (!serverJson.value.trim()) return false
+    if (jsonError.value || !serverJson.value.trim()) {
+        return false
+    }
+
     try {
         parseServerJson(serverJson.value, form.name)
         return true
@@ -897,21 +1000,23 @@ function getFormConfig() {
         config.proxy = form.proxy.trim()
     }
 
-    return config
+    return normalizeServer(config)
 }
 
 function fillForm(name: string, server: McpServerConfig) {
+    const next = normalizeServer(server)
+
     form.name = name
-    form.type = server.type ?? (server.url ? 'http' : 'stdio')
-    form.command = server.command ?? ''
-    form.args = (server.args ?? []).join('\n')
-    form.env = JSON.stringify(server.env ?? {}, null, 2)
-    form.url = server.url ?? ''
-    form.headers = JSON.stringify(server.headers ?? {}, null, 2)
-    form.timeout = server.timeout ?? 60
-    form.cwd = server.cwd ?? ''
-    form.proxy = server.proxy ?? ''
-    serverJson.value = formatServerJson(name, server)
+    form.type = next.type ?? (next.url ? 'http' : 'stdio')
+    form.command = next.command ?? ''
+    form.args = (next.args ?? []).join('\n')
+    form.env = JSON.stringify(next.env ?? {}, null, 2)
+    form.url = next.url ?? ''
+    form.headers = JSON.stringify(next.headers ?? {}, null, 2)
+    form.timeout = next.timeout ?? 60
+    form.cwd = next.cwd ?? ''
+    form.proxy = next.proxy ?? ''
+    serverJson.value = formatServerJson(name, next)
 }
 
 function resetServerForm() {
@@ -1065,34 +1170,18 @@ async function saveServer() {
     savingServer.value = true
 
     try {
-        let name = form.name.trim()
-        let config = getFormConfig()
-
-        if (serverMode.value === 'json') {
-            const parsed = parseServerJson(serverJson.value, name)
-            name = parsed.name
-            config = parsed.config
-        }
-
-        if (!name) {
-            ElMessage.warning('请先填写服务器名称。')
-            return
-        }
-
-        if (config.type === 'stdio' && !config.command?.trim()) {
-            ElMessage.warning('请填写启动命令。')
-            return
-        }
-
-        if (config.type !== 'stdio' && !config.url?.trim()) {
-            ElMessage.warning('请填写服务地址。')
-            return
-        }
+        const parsed =
+            serverMode.value === 'json'
+                ? (() => {
+                      const item = parseServerJson(serverJson.value, form.name)
+                      return validateServer(item.name, item.config)
+                  })()
+                : validateServer(form.name, getFormConfig())
 
         await send('chatluna-agent/saveMcpServer', {
             oldName: editing.value || undefined,
-            name,
-            config
+            name: parsed.name,
+            config: parsed.config
         })
 
         ElMessage.success(editing.value ? '已更新服务器。' : '已创建服务器。')
@@ -1672,6 +1761,17 @@ async function saveTool() {
     font-size: 11px;
     line-height: 1.5;
     color: var(--k-text-light);
+}
+
+.json-error {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--el-color-warning), transparent 92%);
+    color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 32%);
+    font-size: 12px;
+    line-height: 1.6;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .dialog-copy {
