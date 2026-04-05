@@ -255,13 +255,18 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     hasChunk = true
                     hasResponse =
                         hasResponse ||
-                        hasTool ||
-                        getMessageContent(chunk.message.content).trim()
-                            .length > 0
+                        this._hasResponse(
+                            chunk.message as AIMessage | AIMessageChunk
+                        )
                     yield chunk
                 }
 
-                this._ensureChunksReceived(hasChunk, hasResponse)
+                if (!hasResponse) {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED
+                    )
+                }
+
                 this._finalizeStream(
                     hasToolCallChunk,
                     latestTokenUsage,
@@ -274,12 +279,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 if (
                     this._shouldRethrowStreamError(
                         error,
-                        hasResponse,
+                        hasChunk,
                         attempt,
                         maxRetries
                     )
                 ) {
-                    if (hasResponse) {
+                    if (hasChunk) {
                         logger.debug(
                             'Stream failed after yielding chunks, cannot retry'
                         )
@@ -337,6 +342,20 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         )
     }
 
+    private _hasResponse(message?: AIMessage | AIMessageChunk): boolean {
+        const content = message?.content
+
+        return (
+            (typeof content === 'string'
+                ? content.trim().length > 0
+                : Array.isArray(content) && content.length > 0) ||
+            this._hasToolCallChunk(message) ||
+            ((message?.additional_kwargs?.tool_calls as unknown[] | undefined)
+                ?.length ?? 0) > 0 ||
+            message?.additional_kwargs?.function_call != null
+        )
+    }
+
     private _updateTokenUsageFromChunk(
         chunk: ChatGenerationChunk,
         latestTokenUsage: TokenUsageTracker
@@ -352,14 +371,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         latestTokenUsage.total_tokens = usage.total_tokens
         latestTokenUsage.input_token_details = usage.input_token_details
         latestTokenUsage.output_token_details = usage.output_token_details
-    }
-
-    private _ensureChunksReceived(hasChunk: boolean, hasResponse: boolean) {
-        if (hasChunk && hasResponse) {
-            return
-        }
-
-        throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
     }
 
     private _finalizeStream(
@@ -398,12 +409,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     private _shouldRethrowStreamError(
         error: unknown,
-        hasResponse: boolean,
+        hasChunk: boolean,
         attempt: number,
         maxRetries: number
     ): boolean {
         return (
-            this._isAbortError(error) || hasResponse || attempt === maxRetries - 1
+            this._isAbortError(error) || hasChunk || attempt === maxRetries - 1
         )
     }
 
@@ -503,11 +514,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     }
 
                     if (
-                        getMessageContent(response.message.content).trim()
-                            .length < 1 &&
-                        this._hasToolCallChunk(
+                        !this._hasResponse(
                             response.message as AIMessage | AIMessageChunk
-                        ) !== true
+                        )
                     ) {
                         throw new ChatLunaError(
                             ChatLunaErrorCode.API_REQUEST_FAILED
