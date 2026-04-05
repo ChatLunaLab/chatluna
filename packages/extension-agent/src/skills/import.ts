@@ -478,8 +478,18 @@ async function importFromGithub(ctx: Context, url: string, tmp: string) {
 
     await unzipToDir(Buffer.from(response.data), root)
 
+    const files = await collectFilesRecursive(root, { relative: true })
+    const tops = Array.from(
+        new Set(files.map((file) => file.replaceAll('\\', '/').split('/')[0]))
+    ).filter(Boolean)
+    const base =
+        tops.length === 1 &&
+        (await stat(join(root, tops[0])).catch(() => undefined))?.isDirectory()
+            ? join(root, tops[0])
+            : root
+
     const searchRoot = info.subpath
-        ? await findSubpathRoot(root, info.subpath)
+        ? await findSubpathRoot(base, info.subpath)
         : undefined
 
     if (info.subpath && !searchRoot) {
@@ -489,7 +499,7 @@ async function importFromGithub(ctx: Context, url: string, tmp: string) {
     }
 
     return {
-        root: searchRoot ?? root,
+        root: searchRoot ?? base,
         diagnostics
     }
 }

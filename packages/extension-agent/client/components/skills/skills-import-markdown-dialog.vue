@@ -229,7 +229,7 @@ async function importSkills() {
         ElMessage.success(
             result.replaced.length > 0
                 ? `已导入 1 个 Skill，并覆盖同名项。`
-                : `已导入 1 个 Skill，并默认启用。`
+                : `已导入 1 个 Skill。`
         )
     } catch (error) {
         ElMessage.error(`导入失败: ${formatError(error)}`)

@@ -193,7 +193,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
+import {
+    computed,
+    onActivated,
+    onBeforeUnmount,
+    onDeactivated,
+    onMounted,
+    reactive,
+    ref,
+    toRaw,
+    watch
+} from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
@@ -352,6 +362,7 @@ const compactMode = useCompactMode('subAgent')
 const hideDesc = useHideDesc('subAgent')
 const currentView = ref<'list' | 'detail'>('list')
 const listTab = ref<'catalog' | 'runs' | 'availability'>('catalog')
+const active = ref(false)
 const agents = ref<SubAgentInfo[]>([])
 const runs = ref<SubAgentRunInfo[]>([])
 const toolAvailability = ref<ToolAvailabilityInfo[]>([])
@@ -513,10 +524,21 @@ const computerOptions = computed(() => {
     ]
 })
 
-onMounted(async () => {
+onMounted(() => {
     mobile.value = window.innerWidth <= 768
     window.addEventListener('resize', onResize)
-    await loadExtraData()
+})
+
+onActivated(async () => {
+    active.value = true
+    await loadMeta()
+    if (listTab.value === 'availability') {
+        await loadAvailability()
+    }
+})
+
+onDeactivated(() => {
+    active.value = false
 })
 
 onBeforeUnmount(() => {
@@ -524,13 +546,24 @@ onBeforeUnmount(() => {
 })
 
 watch(
-    [
-        () => props.status.catalog,
-        () => props.tools,
-        () => props.skills
-    ],
+    () => listTab.value,
+    async (value) => {
+        if (value !== 'availability' || !active.value) {
+            return
+        }
+
+        await loadAvailability()
+    }
+)
+
+watch(
+    [() => props.status.catalog, () => props.tools, () => props.skills],
     async () => {
-        await loadDynamicData()
+        if (!active.value || listTab.value !== 'availability') {
+            return
+        }
+
+        await loadAvailability()
     },
     { deep: true }
 )
@@ -548,43 +581,28 @@ function onAgentCreated(id: string) {
     openDetail(id)
 }
 
-async function loadExtraData() {
+async function loadMeta() {
     try {
         busy.value = true
-        const [catalog, runList, availability, presets, models] =
-            await Promise.all([
-                send('chatluna-agent/getSubAgents'),
-                send('chatluna-agent/getSubAgentRuns'),
-                send('chatluna-agent/getToolAvailability'),
-                send('chatluna-agent/getPresetNames'),
-                send('chatluna-agent/getModelNames')
-            ])
+        const [presets, models] = await Promise.all([
+            send('chatluna-agent/getPresetNames'),
+            send('chatluna-agent/getModelNames')
+        ])
 
-        agents.value = [...catalog]
-        runs.value = [...runList]
-        toolAvailability.value = [...availability]
         presetNames.value = [...presets]
         modelNames.value = [...models]
     } catch {
-        ElMessage.error('读取 Sub Agent 数据失败，请稍后重试。')
+        ElMessage.error('读取 Sub Agent 扩展数据失败，请稍后重试。')
     } finally {
         busy.value = false
     }
 }
 
-async function loadDynamicData() {
+async function loadAvailability() {
     try {
-        const [catalog, runList, availability] = await Promise.all([
-            send('chatluna-agent/getSubAgents'),
-            send('chatluna-agent/getSubAgentRuns'),
-            send('chatluna-agent/getToolAvailability')
-        ])
-
-        agents.value = [...catalog]
-        runs.value = [...runList]
-        toolAvailability.value = [...availability]
+        toolAvailability.value = await send('chatluna-agent/getToolAvailability')
     } catch {
-        ElMessage.error('同步 Sub Agent 动态数据失败，请稍后重试。')
+        ElMessage.error('读取工具可用性失败，请稍后重试。')
     }
 }
 
@@ -592,7 +610,10 @@ async function reloadSubAgents() {
     try {
         busy.value = true
         await send('chatluna-agent/reloadSubAgents')
-        await loadExtraData()
+        if (listTab.value === 'availability') {
+            await loadAvailability()
+        }
+        await loadMeta()
         ElMessage.success('已重新扫描 Sub Agent 目录。')
     } catch {
         ElMessage.error('重新扫描失败，请稍后重试。')
@@ -605,7 +626,9 @@ async function toggleAgent(item: SubAgentInfo, enabled: boolean) {
     try {
         await send('chatluna-agent/setSubAgentEnabled', item.id, enabled)
         item.enabled = enabled
-        await loadExtraData()
+        if (listTab.value === 'availability') {
+            await loadAvailability()
+        }
         ElMessage.success(enabled ? '已启用该 agent。' : '已停用该 agent。')
     } catch {
         ElMessage.error('更新 agent 状态失败，请稍后重试。')
@@ -662,7 +685,9 @@ async function saveSelected() {
         }
 
         await send('chatluna-agent/saveSubAgentConfig', next)
-        await loadExtraData()
+        if (listTab.value === 'availability') {
+            await loadAvailability()
+        }
         ElMessage.success('已保存 Sub Agent 配置。')
     } catch {
         ElMessage.error('保存失败，请稍后重试。')
@@ -696,7 +721,9 @@ async function removeAgent(item: SubAgentInfo) {
         if (selected) {
             currentView.value = 'list'
         }
-        await loadExtraData()
+        if (listTab.value === 'availability') {
+            await loadAvailability()
+        }
         ElMessage.success('已删除该 Sub Agent。')
     } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
@@ -734,7 +761,10 @@ async function createPresetAgent(
         busy.value = true
         await send('chatluna-agent/createPresetAgent', name, preset, options)
         showPresetDialog.value = false
-        await loadExtraData()
+        if (listTab.value === 'availability') {
+            await loadAvailability()
+        }
+        await loadMeta()
         ElMessage.success('已创建 preset agent。')
     } catch {
         ElMessage.error('创建 preset agent 失败，请稍后重试。')
@@ -835,7 +865,9 @@ async function savePreview() {
         }
         ElMessage.success('保存内容成功。')
         showPreview.value = false
-        await loadExtraData()
+        if (listTab.value === 'availability') {
+            await loadAvailability()
+        }
     } catch (error) {
         ElMessage.error(
             `保存失败：${error instanceof Error ? error.message : String(error)}`
