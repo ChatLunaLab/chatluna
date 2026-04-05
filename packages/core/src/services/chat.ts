@@ -1096,14 +1096,13 @@ class ChatInterfaceWrapper {
                 toolMask: mask,
                 onAgentEvent: async (agentEvent) => {
                     if (agentEvent.type === 'round-decision') {
-                        activeRequest.lastDecision =
-                            agentEvent.willConsumePendingMessages
-                        if (agentEvent.willConsumePendingMessages == null) {
+                        activeRequest.lastDecision = agentEvent.canContinue
+                        if (agentEvent.canContinue == null) {
                             return
                         }
 
                         for (const resolve of activeRequest.roundDecisionResolvers) {
-                            resolve(agentEvent.willConsumePendingMessages)
+                            resolve(agentEvent.canContinue)
                         }
                         activeRequest.roundDecisionResolvers = []
                     }

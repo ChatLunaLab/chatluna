@@ -1,5 +1,6 @@
 import { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager'
 import { AIMessage, AIMessageChunk } from '@langchain/core/messages'
+import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {
     patchConfig,
@@ -234,7 +235,7 @@ export async function* runAgent(
 
             yield {
                 type: 'round-decision',
-                willConsumePendingMessages: false
+                canContinue: false
             }
 
             const pending = queue?.drain() ?? []
@@ -257,12 +258,8 @@ export async function* runAgent(
         }
 
         if (output.length > 0) {
-            const last = output[output.length - 1]
-            const tool = toolMap[last.tool?.toLowerCase()]
-
             yield {
-                type: 'round-decision',
-                willConsumePendingMessages: !tool?.returnDirect
+                type: 'round-decision'
             }
 
             yield {
@@ -291,12 +288,11 @@ export async function* runAgent(
         }
 
         const last = newSteps[newSteps.length - 1]
-        const tool = last ? toolMap[last.action.tool?.toLowerCase()] : undefined
 
         if (last?.observation === '__character_reply_final__') {
             yield {
                 type: 'round-decision',
-                willConsumePendingMessages: false
+                canContinue: false
             }
 
             const pending = queue?.drain() ?? []
@@ -318,7 +314,12 @@ export async function* runAgent(
             return
         }
 
-        if (tool?.returnDirect && last != null) {
+        if (last != null && isDirectToolOutput(last.observation)) {
+            yield {
+                type: 'round-decision',
+                canContinue: false
+            }
+
             const pending = queue?.drain() ?? []
             if (pending.length > 0) {
                 yield {
@@ -337,12 +338,17 @@ export async function* runAgent(
             return
         }
 
+        yield {
+            type: 'round-decision',
+            canContinue: true
+        }
+
         iterations += 1
     }
 
     yield {
         type: 'round-decision',
-        willConsumePendingMessages: false
+        canContinue: false
     }
 
     yield {

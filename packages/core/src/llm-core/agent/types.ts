@@ -5,6 +5,7 @@ import type {
     MessageContentImageUrl,
     MessageContentText
 } from '@langchain/core/messages'
+import type { DirectToolOutput } from '@langchain/core/messages/tool'
 import type {
     MessageContentAudio,
     MessageContentFileUrl,
@@ -193,7 +194,10 @@ export type AgentObservationComplexContent =
     | MessageContentAudio
     | MessageContentVideo
 
-export type AgentObservation = AgentObservationComplexContent[] | string
+export type AgentObservation =
+    | AgentObservationComplexContent[]
+    | DirectToolOutput
+    | string
 
 export interface ToolMask {
     mode: 'all' | 'allow' | 'deny'
@@ -244,7 +248,7 @@ export type AgentEvent =
       }
     | {
           type: 'round-decision'
-          willConsumePendingMessages?: boolean
+          canContinue?: boolean
       }
     | {
           type: 'done'
