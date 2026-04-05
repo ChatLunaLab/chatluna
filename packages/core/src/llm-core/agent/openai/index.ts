@@ -7,6 +7,7 @@ import {
     MessageContentComplex,
     ToolMessage
 } from '@langchain/core/messages'
+import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
 import {
     RunnableLambda,
@@ -55,16 +56,22 @@ function _convertAgentStepToMessages(
 ) {
     if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
         const log = action.messageLog as BaseMessage[]
+        const content = isDirectToolOutput(observation) ? '' : observation
         if (
-            observation.length < 1 ||
-            observation == null ||
-            observation === 'null'
+            !isDirectToolOutput(observation) &&
+            (content.length < 1 || content === 'null')
         ) {
-            observation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`
+            return log.concat(
+                new ToolMessage({
+                    content: `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`,
+                    name: action.tool,
+                    tool_call_id: action.toolCallId
+                })
+            )
         }
         return log.concat(
             new ToolMessage({
-                content: observation,
+                content,
                 name: action.tool,
                 tool_call_id: action.toolCallId
             })

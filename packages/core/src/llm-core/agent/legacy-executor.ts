@@ -479,6 +479,10 @@ function isAgentObservation(value: unknown): value is AgentObservation {
         return true
     }
 
+    if (isDirectToolOutput(value)) {
+        return true
+    }
+
     if (!Array.isArray(value)) {
         return false
     }
@@ -490,6 +494,10 @@ export function coerceToAgentObservation(
     observation: unknown,
     toolName?: string
 ): AgentObservation {
+    if (isDirectToolOutput(observation)) {
+        return observation
+    }
+
     if (isAgentObservation(observation)) {
         if (
             Array.isArray(observation) &&

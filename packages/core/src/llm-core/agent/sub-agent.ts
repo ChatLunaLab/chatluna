@@ -5,6 +5,7 @@ import {
     SystemMessage,
     ToolMessage
 } from '@langchain/core/messages'
+import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { StructuredTool } from '@langchain/core/tools'
 import { randomUUID } from 'crypto'
 import type { Awaitable, Session } from 'koishi'
@@ -868,7 +869,9 @@ function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
         ...steps.map(
             (step) =>
                 new ToolMessage({
-                    content: step.observation,
+                    content: isDirectToolOutput(step.observation)
+                        ? ''
+                        : step.observation,
                     tool_call_id: step.action.toolCallId,
                     name: step.action.tool
                 })
