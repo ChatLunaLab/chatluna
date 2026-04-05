@@ -58,18 +58,18 @@ export class GroupMuteTool extends StructuredTool {
         userIds: z
             .array(z.string())
             .describe(
-                'The user ID(s) to mute. Can be one or multiple user IDs.'
+                'User IDs to mute or unmute, one or more.'
             ),
         muteTime: z
             .number()
             .describe(
-                'Mute duration in seconds, minimum 1 seconds, 0 to unmute'
+                'Duration in seconds. Use 0 to unmute.'
             ),
         operatorUserId: z
             .string()
             .optional()
             .describe(
-                'The ID of the operator who initiated the action. Use 0 for model-initiated actions, -1 for unknown'
+                'The ID of the person who asked for this mute action. Use "0" when you decide to mute on your own. Use the actual user ID when a user explicitly asks you to mute someone else. If a user asks you to mute themselves, also use "0". Use "-1" only when the requester is unclear. If the tool says a user does not have permission, it means this requester does not have permission to ask for the mute.'
             )
     })
 
@@ -141,17 +141,5 @@ export class GroupMuteTool extends StructuredTool {
         return results.join('\n')
     }
 
-    description = `Mutes or unmutes one or multiple users in the current group chat. This tool controls user speech permissions in the group.
-
-Parameters:
-- userIds: An array of user IDs to mute/unmute (e.g. ["123456", "789012"]). Can contain one or multiple IDs.
-- muteTime: Duration in seconds. Use 0 to unmute, minimum 1 second for muting. Examples: 60 (1min), 300 (5min), 3600 (1hour)
-- operatorUserId: IMPORTANT - The ID of who initiated this action:
-  * Set to "0" when YOU (the AI model) decide to mute based on your own judgment, system prompts, or content moderation rules
-  * Set to actual user ID when a user explicitly commands you to mute someone
-  * Set to "-1" if unknown/unclear who initiated the action
-
-CRITICAL: When you autonomously decide to mute someone (e.g., for spam, inappropriate content, rule violations), you MUST set operatorUserId to "0". Only use actual user IDs when the user explicitly requested the mute action.
-
-Returns: Per-user result messages (success or error), one per line.`
+    description = `Mute or unmute one or more users in the current group chat. Returns one result line per target user.`
 }
