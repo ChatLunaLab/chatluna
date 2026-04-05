@@ -5,7 +5,6 @@ import type {
     MessageContentImageUrl,
     MessageContentText
 } from '@langchain/core/messages'
-import type { DirectToolOutput } from '@langchain/core/messages/tool'
 import type {
     MessageContentAudio,
     MessageContentFileUrl,
@@ -194,10 +193,7 @@ export type AgentObservationComplexContent =
     | MessageContentAudio
     | MessageContentVideo
 
-export type AgentObservation =
-    | AgentObservationComplexContent[]
-    | (DirectToolOutput & { replyEmitted?: boolean })
-    | string
+export type AgentObservation = AgentObservationComplexContent[] | string
 
 export interface ToolMask {
     mode: 'all' | 'allow' | 'deny'
