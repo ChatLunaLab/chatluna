@@ -110,6 +110,7 @@ export function getModelMaxContextSize(info: ModelInfo): number {
         'gemini-2.0-pro': 2097152,
         'gemini-2.5': 2097152,
         'gemini-3.0-pro': 1_097_152,
+        'gemini-3.1-pro': 1_097_152,
         'gemini-2.0': 2097152,
         deepseek: 128000,
         'llama3.1': 128000,
@@ -128,7 +129,7 @@ export function getModelMaxContextSize(info: ModelInfo): number {
         }
     }
 
-    return getModelContextSize('o1-mini')
+    return 200_000
 }
 
 function createGlobMatcher(pattern: string): (text: string) => boolean {
@@ -148,6 +149,7 @@ const imageModelMatchers = [
     'gemini',
     'qwen-vl',
     'omni',
+    'gemma',
     'qwen*-omni',
     'qwen-omni',
     'qwen*-vl',

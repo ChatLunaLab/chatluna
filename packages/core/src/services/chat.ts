@@ -34,7 +34,11 @@ import {
     ChatLunaBaseEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
+import {
+    PlatformService,
+    ToolMaskArg,
+    ToolMaskResolver
+} from 'koishi-plugin-chatluna/llm-core/platform/service'
 import {
     ChatLunaTool,
     CreateChatLunaLLMChainParams,
@@ -49,7 +53,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { MessageTransformer } from './message_transform'
-import { ChatEvents, ToolMaskArg, ToolMaskResolver } from './types'
+import { ChatEvents } from './types'
 import { ConversationService } from './conversation'
 import { ConversationRuntime } from './conversation_runtime'
 import { ConstraintRecord, ConversationRecord } from './conversation_types'
@@ -83,8 +87,6 @@ export class ChatLunaService extends Service<Config> {
     private readonly _contextManager: ChatLunaContextManagerService
     private readonly _conversation: ConversationService
     private readonly _conversationRuntime: ConversationRuntime
-    private _toolMaskResolvers: Record<string, ToolMaskResolver> = {}
-
     declare public config: Config
 
     declare public currentConfig: Config
@@ -205,20 +207,11 @@ export class ChatLunaService extends Service<Config> {
     }
 
     registerToolMaskResolver(name: string, resolver: ToolMaskResolver) {
-        this._toolMaskResolvers[name] = resolver
-
-        return () => {
-            delete this._toolMaskResolvers[name]
-        }
+        return this._platformService.registerToolMaskResolver(name, resolver)
     }
 
     async resolveToolMask(arg: ToolMaskArg) {
-        for (const name in this._toolMaskResolvers) {
-            const mask = await this._toolMaskResolvers[name](arg)
-            if (mask) {
-                return mask
-            }
-        }
+        return this._platformService.resolveToolMask(arg)
     }
 
     getPlugin(platformName: string) {

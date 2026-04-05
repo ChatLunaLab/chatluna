@@ -31,7 +31,6 @@ import {
     MessageContent,
     MessageContentComplex
 } from '@langchain/core/messages'
-import { createRequestId } from '../../utils/chat_request'
 import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
 
 let logger: Logger
@@ -127,11 +126,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             inputMessage.name =
                 session.author?.name ?? session.author?.id ?? session.username
 
-            const requestId = createRequestId(
-                session,
-                conversation.id,
-                context.options.messageId
-            )
+            const requestId = context.options.messageId
 
             const chatCallbacks = createChatCallbacks(
                 context,

@@ -14,17 +14,18 @@ it('ConversationRuntime registers, resolves, and stops active requests', () => {
         'conversation-1',
         'request-1',
         'plugin',
+        'platform',
         abortController,
         session
     )
 
-    assert.equal(runtime.getRequestIdBySession(session), 'request-1')
+    assert.equal(runtime.getRequestId(session, 'conversation-1'), 'request-1')
     assert.equal(runtime.stopRequest('request-1'), true)
     assert.equal(abortController.signal.aborted, true)
     assert.equal(runtime.stopRequest('missing-request'), false)
 
-    runtime.completeRequest('conversation-1', 'request-1', session)
-    assert.equal(runtime.getRequestIdBySession(session), undefined)
+    runtime.completeRequest('conversation-1', 'request-1')
+    assert.equal(runtime.getRequestId(session, 'conversation-1'), undefined)
 })
 
 it('ConversationRuntime chat preserves additional kwargs metadata', async () => {
@@ -34,12 +35,12 @@ it('ConversationRuntime chat preserves additional kwargs metadata', async () => 
                 message: new HumanMessage('placeholder')
             })
         }),
-        resolveToolMask: async () => undefined,
         awaitLoadPlatform: async () => {},
         currentConfig: {
             showThoughtMessage: true
         },
         platform: {
+            resolveToolMask: async () => undefined,
             getClient: async () => ({
                 value: {
                     configPool: {
@@ -108,6 +109,7 @@ it('ConversationRuntime appendPendingMessage waits for plugin round decisions', 
         'conversation-1',
         'request-1',
         'plugin',
+        'platform',
         new AbortController(),
         createSession()
     )
@@ -216,11 +218,11 @@ it('ConversationRuntime dispose clears platform-scoped and global state', () => 
         conversation,
         chatInterface: {} as never
     })
-    runtime.registerPlatformConversation('platform-a', conversation.id)
     runtime.registerRequest(
         conversation.id,
         'request-dispose',
         'plugin',
+        'platform-a',
         new AbortController(),
         session
     )
@@ -233,11 +235,11 @@ it('ConversationRuntime dispose clears platform-scoped and global state', () => 
         'conversation-2',
         'request-2',
         'plugin',
+        'platform-b',
         new AbortController(),
         createSession({ sid: 'sid-2' })
     )
     runtime.dispose()
-    assert.equal(runtime.requestsById.size, 0)
-    assert.equal(runtime.requestBySession.size, 0)
-    assert.equal(runtime.platformIndex.size, 0)
+    assert.equal(runtime.activeByConversation.size, 0)
+    assert.equal(runtime.interfaces.size, 0)
 })

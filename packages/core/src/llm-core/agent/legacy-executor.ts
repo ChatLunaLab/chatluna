@@ -288,8 +288,12 @@ export async function* runAgent(
         }
 
         const last = newSteps[newSteps.length - 1]
+        const tool = last ? toolMap[last.action.tool?.toLowerCase()] : undefined
 
-        if (last != null && isDirectToolOutput(last.observation)) {
+        if (
+            last != null &&
+            (tool?.returnDirect || isDirectToolOutput(last.observation))
+        ) {
             yield {
                 type: 'round-decision',
                 canContinue: false
@@ -306,12 +310,13 @@ export async function* runAgent(
             yield {
                 type: 'done',
                 output:
-                    last.observation.replyEmitted === true
+                    // TODO: remove this property
+                    last.observation['replyEmitted'] === true
                         ? ''
                         : toOutput(last.observation),
                 log: last.action.log,
                 steps,
-                replyEmitted: last.observation.replyEmitted === true
+                replyEmitted: last.observation['replyEmitted'] === true
             }
 
             return

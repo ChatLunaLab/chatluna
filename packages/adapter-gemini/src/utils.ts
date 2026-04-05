@@ -212,7 +212,7 @@ function processImageParts(
         !(
             (model.includes('vision') ||
                 model.includes('gemini') ||
-                model.includes('gemma')) &&
+                model.includes('gemma2')) &&
             !model.includes('gemini-1.0')
         )
     ) {
