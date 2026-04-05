@@ -1,7 +1,7 @@
 import type { Context, Session } from 'koishi'
 import {
-    getBaseBindingKey,
     type ConversationRecord,
+    getBaseBindingKey,
     type ResolvedConversationContext
 } from '../services/conversation_types'
 

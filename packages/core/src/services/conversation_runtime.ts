@@ -122,10 +122,10 @@ export class ConversationRuntime {
                                 return
                             }
 
-                            for (const resolve of activeRequest.roundDecisionResolvers) {
-                                resolve(agentEvent.canContinue)
-                            }
-                            activeRequest.roundDecisionResolvers = []
+                            flushRoundDecision(
+                                activeRequest,
+                                agentEvent.canContinue
+                            )
                         }
                     }
                 })
@@ -297,9 +297,7 @@ export class ConversationRuntime {
     completeRequest(conversationId: string, requestId: string) {
         const active = this.activeByConversation.get(conversationId)
         if (active?.requestId === requestId) {
-            for (const resolve of active.roundDecisionResolvers) {
-                resolve(false)
-            }
+            flushRoundDecision(active, false)
             this.activeByConversation.delete(conversationId)
         }
     }
@@ -451,6 +449,7 @@ export class ConversationRuntime {
             for (const active of Array.from(
                 this.activeByConversation.values()
             )) {
+                flushRoundDecision(active, false)
                 active.abortController.abort(
                     new ChatLunaError(
                         ChatLunaErrorCode.ABORTED,
@@ -466,6 +465,7 @@ export class ConversationRuntime {
 
         for (const active of Array.from(this.activeByConversation.values())) {
             if (active.platform === platform) {
+                flushRoundDecision(active, false)
                 active.abortController.abort(
                     new ChatLunaError(
                         ChatLunaErrorCode.ABORTED,
@@ -527,6 +527,13 @@ function formatUsageMetadataMessage(usage: UsageMetadata) {
         ...(input.length > 0 ? [`- input details: ${input.join(', ')}`] : []),
         ...(output.length > 0 ? [`- output details: ${output.join(', ')}`] : [])
     ].join('\n')
+}
+
+function flushRoundDecision(active: ActiveRequest, canContinue: boolean) {
+    for (const resolve of active.roundDecisionResolvers) {
+        resolve(canContinue)
+    }
+    active.roundDecisionResolvers = []
 }
 
 export type {

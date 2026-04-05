@@ -57,14 +57,8 @@ export class GroupMuteTool extends StructuredTool {
     schema = z.object({
         userIds: z
             .array(z.string())
-            .describe(
-                'User IDs to mute or unmute, one or more.'
-            ),
-        muteTime: z
-            .number()
-            .describe(
-                'Duration in seconds. Use 0 to unmute.'
-            ),
+            .describe('User IDs to mute or unmute, one or more.'),
+        muteTime: z.number().describe('Duration in seconds. Use 0 to unmute.'),
         operatorUserId: z
             .string()
             .optional()

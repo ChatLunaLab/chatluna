@@ -2,8 +2,8 @@ import type { Context, Session } from 'koishi'
 import { gzipDecode } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '../../config'
 import {
-    ChainMiddlewareRunStatus,
     type ChainMiddlewareContext,
+    ChainMiddlewareRunStatus,
     type ChatChain
 } from '../../chains/chain'
 import { MessageRecord } from '../../services/conversation_types'

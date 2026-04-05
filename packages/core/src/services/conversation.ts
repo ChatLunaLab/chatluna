@@ -1825,12 +1825,16 @@ function isConstraintMatched(constraint: ConstraintRecord, session: Session) {
         return false
     }
 
-    const users = JSON.parse(constraint.users ?? '[]')
+    const users =
+        constraint.users === null ? null : JSON.parse(constraint.users)
     if (users != null && !users.includes(session.userId)) {
         return false
     }
 
-    const excludeUsers = JSON.parse(constraint.excludeUsers ?? '[]')
+    const excludeUsers =
+        constraint.excludeUsers === null
+            ? null
+            : JSON.parse(constraint.excludeUsers)
     if (excludeUsers != null && excludeUsers.includes(session.userId)) {
         return false
     }
