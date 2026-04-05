@@ -295,7 +295,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 logger.debug(
                     `Stream failed before first chunk (attempt ${attempt + 1}/${maxRetries}), retrying...`
                 )
-                await sleep(2000)
+                await sleep(2000 * 2 ** attempt)
             }
         }
     }
@@ -533,7 +533,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         throw error
                     }
 
-                    await sleep(2000)
+                    await sleep(2000 * 2 ** attempt)
                 }
             }
 
