@@ -239,23 +239,34 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             const latestTokenUsage = this._createTokenUsageTracker()
             let stream: AsyncGenerator<ChatGenerationChunk> | null = null
             let hasChunk = false
+            let hasResponse = false
             let hasToolCallChunk = false
 
             try {
                 stream = await this._createStream(streamParams)
 
                 for await (const chunk of stream) {
-                    hasToolCallChunk =
-                        this._handleStreamChunk(
-                            chunk,
-                            runManager,
-                            latestTokenUsage
-                        ) || hasToolCallChunk
+                    const hasTool = this._handleStreamChunk(
+                        chunk,
+                        runManager,
+                        latestTokenUsage
+                    )
+                    hasToolCallChunk = hasTool || hasToolCallChunk
                     hasChunk = true
+                    hasResponse =
+                        hasResponse ||
+                        this._hasResponse(
+                            chunk.message as AIMessage | AIMessageChunk
+                        )
                     yield chunk
                 }
 
-                this._ensureChunksReceived(hasChunk)
+                if (!hasResponse) {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED
+                    )
+                }
+
                 this._finalizeStream(
                     hasToolCallChunk,
                     latestTokenUsage,
@@ -284,7 +295,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 logger.debug(
                     `Stream failed before first chunk (attempt ${attempt + 1}/${maxRetries}), retrying...`
                 )
-                await sleep(2000)
+                await sleep(2000 * 2 ** attempt)
             }
         }
     }
@@ -322,11 +333,26 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         return hasToolCallChunk
     }
 
-    private _hasToolCallChunk(message?: AIMessageChunk): boolean {
+    private _hasToolCallChunk(message?: AIMessage | AIMessageChunk): boolean {
         return (
             (message?.tool_calls?.length ?? 0) > 0 ||
-            (message?.tool_call_chunks?.length ?? 0) > 0 ||
+            ((message as AIMessageChunk | undefined)?.tool_call_chunks
+                ?.length ?? 0) > 0 ||
             (message?.invalid_tool_calls?.length ?? 0) > 0
+        )
+    }
+
+    private _hasResponse(message?: AIMessage | AIMessageChunk): boolean {
+        const content = message?.content
+
+        return (
+            (typeof content === 'string'
+                ? content.trim().length > 0
+                : Array.isArray(content) && content.length > 0) ||
+            this._hasToolCallChunk(message) ||
+            ((message?.additional_kwargs?.tool_calls as unknown[] | undefined)
+                ?.length ?? 0) > 0 ||
+            message?.additional_kwargs?.function_call != null
         )
     }
 
@@ -345,14 +371,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         latestTokenUsage.total_tokens = usage.total_tokens
         latestTokenUsage.input_token_details = usage.input_token_details
         latestTokenUsage.output_token_details = usage.output_token_details
-    }
-
-    private _ensureChunksReceived(hasChunk: boolean) {
-        if (hasChunk) {
-            return
-        }
-
-        throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
     }
 
     private _finalizeStream(
@@ -495,6 +513,16 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         })
                     }
 
+                    if (
+                        !this._hasResponse(
+                            response.message as AIMessage | AIMessageChunk
+                        )
+                    ) {
+                        throw new ChatLunaError(
+                            ChatLunaErrorCode.API_REQUEST_FAILED
+                        )
+                    }
+
                     return response
                 } catch (error) {
                     if (
@@ -505,7 +533,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         throw error
                     }
 
-                    await sleep(2000)
+                    await sleep(2000 * 2 ** attempt)
                 }
             }
 
