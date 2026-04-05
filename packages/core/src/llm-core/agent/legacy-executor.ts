@@ -289,31 +289,6 @@ export async function* runAgent(
 
         const last = newSteps[newSteps.length - 1]
 
-        if (last?.observation === '__character_reply_final__') {
-            yield {
-                type: 'round-decision',
-                canContinue: false
-            }
-
-            const pending = queue?.drain() ?? []
-            if (pending.length > 0) {
-                yield {
-                    type: 'human-update',
-                    messages: pending
-                }
-            }
-
-            yield {
-                type: 'done',
-                output: '',
-                log: last.action.log,
-                steps,
-                replyEmitted: true
-            }
-
-            return
-        }
-
         if (last != null && isDirectToolOutput(last.observation)) {
             yield {
                 type: 'round-decision',
@@ -330,9 +305,13 @@ export async function* runAgent(
 
             yield {
                 type: 'done',
-                output: toOutput(last.observation),
+                output:
+                    last.observation.replyEmitted === true
+                        ? ''
+                        : toOutput(last.observation),
                 log: last.action.log,
-                steps
+                steps,
+                replyEmitted: last.observation.replyEmitted === true
             }
 
             return

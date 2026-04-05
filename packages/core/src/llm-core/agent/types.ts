@@ -196,7 +196,7 @@ export type AgentObservationComplexContent =
 
 export type AgentObservation =
     | AgentObservationComplexContent[]
-    | DirectToolOutput
+    | (DirectToolOutput & { replyEmitted?: boolean })
     | string
 
 export interface ToolMask {
