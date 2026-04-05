@@ -3,6 +3,7 @@ import { logger } from 'koishi-plugin-chatluna'
 import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
 import { MemoryRetrievalLayerType } from '../types'
 import { Config } from '..'
+import { getMemoryScope } from '../utils/conversation'
 
 export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
@@ -11,17 +12,13 @@ export function apply(ctx: Context, config: Config) {
         .middleware(
             'clear_memory',
             async (session, context) => {
-                let {
+                const {
                     command,
-                    options: { type, room, view }
+                    options: { type, view, conversationId, presetLane }
                 } = context
 
                 if (command !== 'clear_memory')
                     return ChainMiddlewareRunStatus.SKIPPED
-
-                if (!type) {
-                    type = room.preset
-                }
 
                 let parsedLayerType = MemoryRetrievalLayerType.USER
 
@@ -40,14 +37,21 @@ export function apply(ctx: Context, config: Config) {
                 }
 
                 try {
+                    const scope = await getMemoryScope(ctx, session, {
+                        conversationId,
+                        presetLane,
+                        type
+                    })
+
+                    if (scope == null) {
+                        context.message = session.text('.clear_failed')
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+
                     const layers =
                         await ctx.chatluna_long_memory.initMemoryLayers(
-                            {
-                                presetId: type as string,
-                                guildId: session.guildId || session.channelId,
-                                userId: session.userId
-                            },
-                            room.conversationId,
+                            scope.info,
+                            scope.conversation.id,
                             parsedLayerType
                         )
 
@@ -55,7 +59,7 @@ export function apply(ctx: Context, config: Config) {
                         layers.map((layer) => layer.clearMemories())
                     )
 
-                    await ctx.chatluna.clearCache(room)
+                    await ctx.chatluna.clearCache(scope.conversation)
                     context.message = session.text('.clear_success')
                 } catch (error) {
                     logger?.error(error)

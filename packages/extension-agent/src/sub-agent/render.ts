@@ -1,12 +1,10 @@
 /** @module sub-agent/render */
 
-import { SystemMessage } from '@langchain/core/messages'
 import {
     renderAvailableAgents,
     SubagentContext
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { SubAgentInfo } from '../types'
-import { escapeXml } from '../utils/xml'
 
 export function renderAvailableSubAgents(
     agents: SubAgentInfo[],

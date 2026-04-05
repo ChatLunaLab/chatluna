@@ -53,9 +53,16 @@ export class PlatformService {
     })
 
     constructor(private ctx: Context) {
-        this.ctx.on('chatluna/clear-chat-history', async (conversationId) => {
-            this._tmpVectorStores.clear()
-        })
+        const clear = async (payload: { conversation: { id: string } }) => {
+            this._tmpVectorStores.delete(payload.conversation.id)
+        }
+
+        this.ctx.on('chatluna/conversation-after-clear-history', clear)
+        this.ctx.on('chatluna/conversation-after-cache-clear', clear)
+        this.ctx.on('chatluna/conversation-after-archive', clear)
+        this.ctx.on('chatluna/conversation-after-restore', clear)
+        this.ctx.on('chatluna/conversation-after-delete', clear)
+        this.ctx.on('chatluna/conversation-compressed', clear)
     }
 
     registerClient(

@@ -203,7 +203,13 @@ export async function listRemoteSkillResources(
     dir: string
 ) {
     const result = await session.execute(
-        `root=${quoteShellPath(dir)} && [ -d "$root" ] && find "$root" -type f ! -name SKILL.md -print | awk -v root="$root" 'index($0, root "/") == 1 { print substr($0, length(root) + 2) }' || true`,
+        [
+            `root=${quoteShellPath(dir)}`,
+            '&& [ -d "$root" ]',
+            '&& find "$root" -type f ! -name SKILL.md -print',
+            `| awk -v root="$root" 'index($0, root "/") == 1 { print substr($0, length(root) + 2) }'`,
+            '|| true'
+        ].join(' '),
         {
             timeout: 10000
         }
@@ -667,7 +673,21 @@ async function checkAvailability(
 
     if (diagnostics.length && install?.length) {
         diagnostics.push(
-            `Install options: ${install.map((item) => item.label || [item.kind, item.formula, item.package, item.url, item.id].filter(Boolean).join(': ')).join('; ')}`
+            `Install options: ${install
+                .map(
+                    (item) =>
+                        item.label ||
+                        [
+                            item.kind,
+                            item.formula,
+                            item.package,
+                            item.url,
+                            item.id
+                        ]
+                            .filter(Boolean)
+                            .join(': ')
+                )
+                .join('; ')}`
         )
     }
 

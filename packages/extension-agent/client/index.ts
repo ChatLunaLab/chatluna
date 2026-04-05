@@ -1,6 +1,6 @@
 import { Context } from '@koishijs/client'
 import type {} from 'koishi-plugin-chatluna-agent'
-import Dashboard from './dashboard.vue'
+import dashboard from './dashboard.vue'
 
 export default (ctx: Context) => {
     ctx.page({
@@ -8,6 +8,6 @@ export default (ctx: Context) => {
         path: '/chatluna-agent',
         fields: ['chatluna_agent_webui'],
         authority: 3,
-        component: Dashboard
+        component: dashboard
     })
 }

@@ -3,11 +3,11 @@
 import {
     AgentConfig,
     ComputerConfig,
+    createToolMetaOverride,
     PermissionRule,
     SkillConfig,
     SubAgentConfig,
     SubAgentItemConfig,
-    createToolMetaOverride,
     ToolConfig,
     ToolItemConfig
 } from '../types'
@@ -276,7 +276,11 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
                 enabled: false,
                 name: 'plan',
                 description:
-                    'Read-only architect agent for designing implementation plans. Use when you need to analyze code, assess impact, identify constraints, and produce step-by-step plans before making changes. Returns structured plans with file paths, key changes, and risk assessment.',
+                    'Read-only architect agent for designing implementation ' +
+                    'plans. Use when you need to analyze code, assess impact, ' +
+                    'identify constraints, and produce step-by-step plans ' +
+                    'before making changes. Returns structured plans with file ' +
+                    'paths, key changes, and risk assessment.',
                 source: 'builtin',
                 format: 'chatluna'
             }),
@@ -284,7 +288,11 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
                 enabled: false,
                 name: 'general',
                 description:
-                    'Full-capability development agent for multi-step implementation tasks. Use when you need to read code, make changes across files, run builds or tests, and report results. Has access to file_read, file_write, file_edit, grep, glob, and bash.',
+                    'Full-capability development agent for multi-step ' +
+                    'implementation tasks. Use when you need to read code, ' +
+                    'make changes across files, run builds or tests, and ' +
+                    'report results. Has access to file_read, file_write, ' +
+                    'file_edit, grep, glob, and bash.',
                 source: 'builtin',
                 format: 'chatluna'
             }),
@@ -292,7 +300,10 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
                 enabled: false,
                 name: 'explore',
                 description:
-                    'Fast read-only search agent for codebase exploration. Use when you need to quickly find files, search for symbols, trace imports, or gather context. Returns precise file paths, line numbers, and code snippets.',
+                    'Fast read-only search agent for codebase exploration. ' +
+                    'Use when you need to quickly find files, search for ' +
+                    'symbols, trace imports, or gather context. Returns ' +
+                    'precise file paths, line numbers, and code snippets.',
                 source: 'builtin',
                 format: 'chatluna'
             })

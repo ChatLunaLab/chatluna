@@ -1,66 +1,103 @@
 import { Context } from 'koishi'
-import { Config } from '../../config'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import {
-    checkConversationRoomAvailability,
-    fixConversationRoomAvailability
-} from '../../chains/rooms'
 import { logger } from '../..'
+import { Config } from '../../config'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_model', async (session, context) => {
-            const { room } = context.options
+            const conversationId = context.options.conversationId
+            const resolved = context.options.resolvedConversationContext
 
             if ((context.command?.length ?? 0) > 1) {
-                // 强制继续
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            let isAvailable: boolean
+            if (conversationId == null && resolved == null) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
 
             try {
-                isAvailable = await checkConversationRoomAvailability(ctx, room)
+                let conversation =
+                    context.options.resolvedConversation ??
+                    resolved?.conversation
+
+                if (conversation == null && conversationId != null) {
+                    conversation =
+                        await ctx.chatluna.conversation.getConversation(
+                            conversationId
+                        )
+                }
+
+                const modelName =
+                    resolved?.effectiveModel ??
+                    conversation?.model ??
+                    config.defaultModel ??
+                    'empty'
+                const presetName =
+                    resolved?.effectivePreset ??
+                    conversation?.preset ??
+                    config.defaultPreset
+                const presetExists =
+                    presetName != null &&
+                    ctx.chatluna.preset.getPreset(presetName, false).value !=
+                        null
+
+                if (
+                    !presetExists ||
+                    modelName.trim().length < 1 ||
+                    modelName === '无' ||
+                    modelName === 'empty'
+                ) {
+                    await context.send(
+                        session.text(
+                            'chatluna.conversation.messages.unavailable',
+                            [modelName]
+                        )
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                const [platformName, rawModelName] =
+                    parseRawModelName(modelName)
+
+                if (platformName == null || rawModelName == null) {
+                    await context.send(
+                        session.text(
+                            'chatluna.conversation.messages.unavailable',
+                            [modelName]
+                        )
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                const platformModels = ctx.chatluna.platform.listPlatformModels(
+                    platformName,
+                    ModelType.llm
+                ).value
+
+                if (
+                    platformModels.length > 0 &&
+                    platformModels.some((it) => it.name === rawModelName)
+                ) {
+                    return ChainMiddlewareRunStatus.CONTINUE
+                }
+
+                await context.send(
+                    session.text('chatluna.conversation.messages.unavailable', [
+                        modelName
+                    ])
+                )
+                return ChainMiddlewareRunStatus.STOP
             } catch (e) {
                 logger.error(e)
                 return ChainMiddlewareRunStatus.STOP
             }
-
-            if (isAvailable) {
-                return ChainMiddlewareRunStatus.CONTINUE
-            }
-
-            const modelName =
-                room?.model == null ||
-                room.model.trim().length < 1 ||
-                room.model === '无' ||
-                room.model === 'empty'
-                    ? 'empty'
-                    : room.model
-
-            await context.send(
-                session.text('chatluna.room.unavailable', [modelName])
-            )
-
-            try {
-                const success = await fixConversationRoomAvailability(
-                    ctx,
-                    config,
-                    room
-                )
-
-                if (!success) {
-                    return ChainMiddlewareRunStatus.STOP
-                }
-            } catch (error) {
-                logger.error(error)
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            return ChainMiddlewareRunStatus.CONTINUE
         })
-        .before('check_room')
-        .after('resolve_room')
+        .before('lifecycle-request_conversation')
+        .after('lifecycle-prepare')
 }
 
 declare module '../../chains/chain' {

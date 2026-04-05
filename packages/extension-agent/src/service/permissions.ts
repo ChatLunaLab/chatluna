@@ -10,11 +10,11 @@ import {
 import {
     AgentConfig,
     ComputerBackendType,
+    createToolDefaultAvailability,
     PermissionRule,
     SkillInfo,
     SubAgentInfo,
     SubAgentPermissionConfig,
-    createToolDefaultAvailability,
     ToolAvailabilityInfo,
     ToolInfo,
     ToolStatus
@@ -35,19 +35,12 @@ export class ChatLunaAgentPermissionService {
     async start() {
         this._toolMaskDispose = this.ctx.chatluna.registerToolMaskResolver(
             'agent',
-            async ({
-                room,
-                session,
-                source
-            }: {
-                room?: { chatMode?: string }
-                session: Session
-                source?: 'chatluna' | 'character'
-            }) => {
-                const mask = this.createMainToolMask(
-                    session,
-                    source ?? 'chatluna'
-                )
+            async ({ conversation, session }) => {
+                if (conversation && conversation.chatMode !== 'plugin') {
+                    return
+                }
+
+                const mask = this.createMainToolMask()
                 return {
                     ...mask,
                     toolCallMask: await this.createToolCallMask(session, mask)

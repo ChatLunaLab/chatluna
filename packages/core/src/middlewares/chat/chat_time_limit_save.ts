@@ -9,40 +9,26 @@ import {
 import { createHash } from 'crypto'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const authService = ctx.chatluna_auth
-
     chain
         .middleware('chat_time_limit_save', async (session, context) => {
-            if (config.authSystem !== true) {
-                return await oldChatLimitSave(session, context)
-            }
-
-            await authService.increaseAuthGroupCount(
-                context.options.authGroup.id
-            )
-
-            return ChainMiddlewareRunStatus.CONTINUE
+            return await oldChatLimitSave(session, context)
         })
-        .after('render_message')
-
-    //  .before("lifecycle-request_model")
+        .after('request_conversation')
 
     async function oldChatLimitSave(
         session: Session,
         context: ChainMiddlewareContext
     ) {
-        const {
-            chatLimit,
-            chatLimitCache,
-            room: { conversationId }
-        } = context.options
+        const { chatLimit, chatLimitCache } = context.options
+        const conversationId = context.options.conversationId
 
-        /*   console.log(
-            await ctx.chatluna_auth._selectCurrentAuthGroup(
-                session,
-                parseRawModelName(model)[0]
-            )
-        ) */
+        if (
+            conversationId == null ||
+            chatLimit == null ||
+            chatLimitCache == null
+        ) {
+            return ChainMiddlewareRunStatus.SKIPPED
+        }
 
         let key = conversationId + '-' + session.userId
 

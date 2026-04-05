@@ -79,6 +79,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             conversationId,
             config
         )
+        const difyUser = this.resolveDifyUser(params)
 
         let iter: ReturnType<typeof this._agentStream>
 
@@ -88,10 +89,11 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 difyConversationId,
                 params.input[params.input.length - 1].content as string,
                 conversationId,
-                config
+                config,
+                difyUser
             )
         } else {
-            iter = this._workflowStream(params, config)
+            iter = this._workflowStream(params, conversationId, config)
         }
 
         for await (const chunk of iter) {
@@ -104,12 +106,9 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     ): string | undefined {
         for (const message of messages) {
             const conversationId =
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (message as any)?.additional_kwargs?.chatluna_conversation_id ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (message as any)?.additional_kwargs?.conversationId ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (message as any)?.additional_kwargs?.conversation_id
+                message?.additional_kwargs?.chatluna_conversation_id ||
+                message?.additional_kwargs?.conversationId ||
+                message?.additional_kwargs?.conversation_id
 
             if (
                 typeof conversationId === 'string' &&
@@ -126,11 +125,11 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         difyConversationId: string,
         input: string,
         conversationId: string,
-        config: { apiKey: string; workflowName: string; workflowType: string }
+        config: { apiKey: string; workflowName: string; workflowType: string },
+        difyUser: string
     ): AsyncGenerator<ChatGenerationChunk> {
         const lastMessage = params.input?.[params.input.length - 1]
         const query = getMessageContent(lastMessage?.content ?? input ?? '')
-        const difyUser = this.resolveDifyUser(params)
         const { files, chatlunaMultimodal } = await this.prepareFiles(
             params,
             lastMessage,
@@ -148,7 +147,12 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         } = {
             query,
             response_mode: 'streaming',
-            inputs: this.buildInputs(params, lastMessage, chatlunaMultimodal),
+            inputs: this.buildInputs(
+                params,
+                conversationId,
+                lastMessage,
+                chatlunaMultimodal
+            ),
             user: difyUser,
             conversation_id:
                 difyConversationId == null ? '' : difyConversationId
@@ -220,7 +224,8 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 await this.updateDifyConversationId(
                     conversationId,
                     config.workflowName,
-                    updatedDifyConversationId
+                    updatedDifyConversationId,
+                    difyUser
                 )
                 break
             }
@@ -229,6 +234,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
 
     private async *_workflowStream(
         params: ModelRequestParams,
+        conversationId: string | undefined,
         config: { apiKey: string; workflowName: string; workflowType: string }
     ): AsyncGenerator<ChatGenerationChunk> {
         const lastMessage = params.input[params.input.length - 1] as
@@ -249,7 +255,12 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             files?: InputFileObject[]
         } = {
             response_mode: 'streaming',
-            inputs: this.buildInputs(params, lastMessage, chatlunaMultimodal),
+            inputs: this.buildInputs(
+                params,
+                conversationId,
+                lastMessage,
+                chatlunaMultimodal
+            ),
             user: difyUser
         }
 
@@ -286,7 +297,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error(
-                        'error when calling qwen completion, Result: ' + chunk
+                        'error when calling dify completion, Result: ' + chunk
                     )
                 )
             }
@@ -316,13 +327,14 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
 
     private buildInputs(
         params: ModelRequestParams,
+        conversationId: string | undefined,
         lastMessage?: BaseMessage,
         chatlunaMultimodal?: string
     ): Record<string, unknown> {
         const inputs = {
             input: getMessageContent(lastMessage?.content ?? ''),
             chatluna_history: this.buildChatlunaHistory(params.input ?? []),
-            chatluna_conversation_id: params.id,
+            chatluna_conversation_id: conversationId,
             ...Object.keys(params.variables ?? {}).reduce((acc, key) => {
                 acc[`chatluna_${key}`] = params.variables?.[key]
                 return acc
@@ -397,7 +409,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
     }
 
     private resolveDifyUser(params: ModelRequestParams): string {
-        if (this.ctx.chatluna.config.autoCreateRoomFromUser === true) {
+        if (this.ctx.chatluna.config.defaultGroupRouteMode === 'personal') {
             return (
                 (params.variables?.['user_id'] as string) ||
                 (params.variables?.['user'] as string) ||
@@ -647,21 +659,35 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         conversationId: string,
         config: { apiKey: string; workflowName: string; workflowType: string }
     ) {
-        return this.ctx.chatluna.cache.get(
+        const cached = await this.ctx.chatluna.cache.get(
             'chatluna/keys',
             'dify/' + conversationId + '/' + config.workflowName
         )
+
+        if (cached == null) {
+            return undefined
+        }
+
+        try {
+            return (JSON.parse(cached) as { id?: string }).id
+        } catch {
+            return cached
+        }
     }
 
     private async updateDifyConversationId(
         conversationId: string,
         workflowName: string,
-        difyConversationId: string
+        difyConversationId: string,
+        user: string
     ) {
         return this.ctx.chatluna.cache.set(
             'chatluna/keys',
             'dify/' + conversationId + '/' + workflowName,
-            difyConversationId
+            JSON.stringify({
+                id: difyConversationId,
+                user
+            })
         )
     }
 
@@ -716,32 +742,48 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         }
         const conversationId = id
         const config = this._config.value.additionalModel.get(model)
+        if (config == null || config.workflowName == null) {
+            this.ctx.logger.warn(
+                `Dify clear: config not found for model ${model}`
+            )
+            return
+        }
+        const cacheKey = 'dify/' + conversationId + '/' + config.workflowName
+        const cached = await this.ctx.chatluna.cache.get(
+            'chatluna/keys',
+            cacheKey
+        )
         const difyConversationId = await this.getDifyConversationId(
             conversationId,
             config
         )
+        let difyUser = 'chatluna'
+
+        if (cached != null) {
+            try {
+                difyUser =
+                    (JSON.parse(cached) as { user?: string }).user ?? 'chatluna'
+            } catch {}
+        }
 
         if (difyConversationId) {
-            await this._plugin
-                .fetch(this.concatUrl('/conversations/' + difyConversationId), {
+            const res = await this._plugin.fetch(
+                this.concatUrl('/conversations/' + difyConversationId),
+                {
                     headers: this._buildHeaders(config.apiKey),
                     method: 'DELETE',
-                    body: JSON.stringify({ user: 'chatluna' })
-                })
-                .then(async (res) => {
-                    if (res.ok) {
-                        this.ctx.logger.info('Dify clear: success')
-                    } else {
-                        this.ctx.logger.warn(
-                            'Dify clear: failed: ' + (await res.text())
-                        )
-                    }
-                })
-
-            await this.ctx.chatluna.cache.delete(
-                'chatluna/keys',
-                'dify/' + conversationId + '/' + config.workflowName
+                    body: JSON.stringify({ user: difyUser })
+                }
             )
+
+            if (res.ok) {
+                this.ctx.logger.info('Dify clear: success')
+                await this.ctx.chatluna.cache.delete('chatluna/keys', cacheKey)
+            } else {
+                this.ctx.logger.warn(
+                    'Dify clear: failed: ' + (await res.text())
+                )
+            }
         }
     }
 

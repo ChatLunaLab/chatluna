@@ -1,6 +1,5 @@
 import { Context, Session } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { ChatHubAuthGroup } from '../../authorization/types'
 import { Cache } from '../../cache'
 import {
     ChainMiddlewareContext,
@@ -15,102 +14,25 @@ import { logger } from 'koishi-plugin-chatluna'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     const chatLimitCache = new Cache(ctx, config, 'chatluna/chat_limit')
 
-    const authService = ctx.chatluna_auth
-
     chain
         .middleware('chat_time_limit_check', async (session, context) => {
-            if (config.authSystem !== true) {
-                return await oldChatLimitCheck(session, context)
-            }
-
-            const {
-                room: { model }
-            } = context.options
-
-            // check account balance
-            const authUser = await authService.getUser(session)
-
-            if (
-                authUser /* && context.command == null */ &&
-                authUser.balance <= 0
-            ) {
-                context.message = session.text(
-                    'chatluna.insufficient_balance',
-                    [authUser.balance]
-                )
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            let authGroup = await authService.resolveAuthGroup(
-                session,
-                parseRawModelName(model)[0]
-            )
-
-            if (
-                authGroup.supportModels != null &&
-                authGroup.supportModels.find((m) => m === model) == null
-            ) {
-                context.message = session.text('chatluna.unsupported_model', [
-                    authGroup.name,
-                    model
-                ])
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            authGroup = await authService.resetAuthGroup(authGroup.id)
-
-            context.options.authGroup = authGroup
-
-            // check pre min
-
-            if (
-                (authGroup.currentLimitPerMin ?? 0) + 1 >
-                authGroup.limitPerMin
-            ) {
-                context.message = session.text(
-                    'chatluna.limit_per_minute_exceeded',
-                    [
-                        authGroup.name,
-                        authGroup.limitPerMin,
-                        authGroup.currentLimitPerMin
-                    ]
-                )
-
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            if (
-                (authGroup.currentLimitPerDay ?? 0) + 1 >
-                authGroup.limitPerDay
-            ) {
-                context.message = session.text(
-                    'chatluna.limit_per_day_exceeded',
-                    [
-                        authGroup.name,
-                        authGroup.limitPerDay,
-                        authGroup.currentLimitPerDay
-                    ]
-                )
-
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            return ChainMiddlewareRunStatus.CONTINUE
+            return await oldChatLimitCheck(session, context)
         })
-        .after('resolve_model')
-        .before('request_model')
+        .after('resolve_conversation')
+        .after('rollback_chat')
+        .before('lifecycle-request_conversation')
 
     async function oldChatLimitCheck(
         session: Session,
         context: ChainMiddlewareContext
     ) {
-        if (context.options.room == null) {
-            return
+        const target = resolveConversationTarget(context)
+
+        if (target == null) {
+            return ChainMiddlewareRunStatus.CONTINUE
         }
 
-        const {
-            room: { model, conversationId }
-        } = context.options
+        const { model, conversationId } = target
 
         // 为什么会是无
 
@@ -157,47 +79,60 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         let chatLimitOnDataBase = await chatLimitCache.get(key)
 
-        if (chatLimitOnDataBase) {
-            // 如果大于1小时的间隔，就重置
-            if (Date.now() - chatLimitOnDataBase.time > 1000 * 60 * 60) {
-                chatLimitOnDataBase = {
-                    time: Date.now(),
-                    count: 0
-                }
-            } else {
-                // 用满了
-                if (chatLimitOnDataBase.count >= chatLimitComputed) {
-                    const time = Math.ceil(
-                        (1000 * 60 * 60 -
-                            (Date.now() - chatLimitOnDataBase.time)) /
-                            1000 /
-                            60
-                    )
-
-                    context.message = session.text(
-                        'chatluna.chat_limit_exceeded',
-                        [time]
-                    )
-
-                    return ChainMiddlewareRunStatus.STOP
-                } else {
-                    chatLimitOnDataBase.count++
-                }
+        if (chatLimitOnDataBase == null) {
+            chatLimitOnDataBase = {
+                time: Date.now(),
+                count: 0
             }
-        } else {
+        } else if (Date.now() - chatLimitOnDataBase.time > 1000 * 60 * 60) {
             chatLimitOnDataBase = {
                 time: Date.now(),
                 count: 0
             }
         }
 
-        // 先保存一次
-        await chatLimitCache.set(key, chatLimitOnDataBase)
+        if (chatLimitOnDataBase.count >= chatLimitComputed) {
+            const time = Math.ceil(
+                (1000 * 60 * 60 - (Date.now() - chatLimitOnDataBase.time)) /
+                    1000 /
+                    60
+            )
+
+            context.message = session.text('chatluna.chat_limit_exceeded', [
+                time
+            ])
+
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         context.options.chatLimit = chatLimitOnDataBase
         context.options.chatLimitCache = chatLimitCache
 
         return ChainMiddlewareRunStatus.CONTINUE
+    }
+
+    function resolveConversationTarget(context: ChainMiddlewareContext) {
+        if (context.options.inputMessage == null) {
+            return null
+        }
+
+        const resolved = context.options.resolvedConversationContext
+        const conversation =
+            context.options.resolvedConversation ??
+            resolved?.conversation ??
+            null
+
+        if (conversation == null) {
+            return null
+        }
+
+        context.options.conversationId = conversation.id
+        context.options.resolvedConversation = conversation
+
+        return {
+            model: resolved?.effectiveModel ?? conversation.model,
+            conversationId: conversation.id
+        }
     }
 }
 
@@ -209,7 +144,6 @@ declare module '../../chains/chain' {
     interface ChainMiddlewareContextOptions {
         chatLimitCache?: Cache<'chatluna/chat_limit', ChatLimit>
         chatLimit?: ChatLimit
-        authGroup?: ChatHubAuthGroup
     }
 }
 

@@ -225,7 +225,8 @@
         "url": "https://github.com/ChatLunaLab/chatluna/issues"
     },
     "scripts": {
-        "build": "atsc -b"
+        "build": "atsc -b",
+        "test": "yarn exec cross-env TS_NODE_PROJECT=tests/tsconfig.json mocha -r tsconfig-paths/register -r esbuild-register -r yml-register --exit \"tests/**/*.spec.ts\""
     },
     "engines": {
         "node": ">=18.0.0"
@@ -265,13 +266,23 @@
         "@koishijs/cache": "^2.1.0",
         "@koishijs/censor": "^1.1.0",
         "@koishijs/plugin-adapter-qq": "^4.10.1",
+        "@koishijs/plugin-database-memory": "^3.7.0",
         "@koishijs/plugin-notifier": "^1.2.1",
+        "@types/chai": "^4.3.20",
         "@types/he": "^1.2.3",
         "@types/js-yaml": "^4.0.9",
+        "@types/mocha": "^10.0.10",
         "@types/qrcode": "^1.5.5",
         "@types/useragent": "^2",
         "atsc": "^2.1.0",
-        "koishi-plugin-adapter-onebot": "^6.8.0"
+        "chai": "^4.4.1",
+        "cross-env": "^7.0.3",
+        "esbuild": "^0.25.10",
+        "esbuild-register": "npm:@shigma/esbuild-register@^1.1.1",
+        "koishi-plugin-adapter-onebot": "^6.8.0",
+        "mocha": "^9.2.2",
+        "tsconfig-paths": "^4.2.0",
+        "yml-register": "^1.2.5"
     },
     "peerDependencies": {
         "koishi": "^4.18.9",

@@ -36,13 +36,29 @@ export class ChatLunaAgentCliService {
         private ctx: Context,
         private getAgent: () => ChatLunaAgentService
     ) {
-        this.ctx.on('chatluna/clear-chat-history', async (conversationId) => {
+        const clear = (conversationId: string) => {
             const prefix = `${conversationId}\n`
             for (const key of this._sessions.keys()) {
                 if (key.startsWith(prefix)) {
                     this._sessions.delete(key)
                 }
             }
+        }
+
+        this.ctx.on(
+            'chatluna/conversation-after-clear-history',
+            async (payload) => {
+                clear(payload.conversation.id)
+            }
+        )
+        this.ctx.on('chatluna/conversation-after-archive', async (payload) => {
+            clear(payload.conversation.id)
+        })
+        this.ctx.on('chatluna/conversation-after-restore', async (payload) => {
+            clear(payload.conversation.id)
+        })
+        this.ctx.on('chatluna/conversation-after-delete', async (payload) => {
+            clear(payload.conversation.id)
         })
     }
 

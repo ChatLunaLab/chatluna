@@ -386,7 +386,8 @@ export class ChatLunaAgentService extends Service {
                 promptContent: input.promptContent,
                 chatluna: input.chatluna ?? info.chatlunaEnabled,
                 character: input.character ?? info.characterEnabled,
-                characterGroup: input.characterGroup ?? info.characterGroupEnabled,
+                characterGroup:
+                    input.characterGroup ?? info.characterGroupEnabled,
                 characterPrivate:
                     input.characterPrivate ?? info.characterPrivateEnabled,
                 characterGroupMode:

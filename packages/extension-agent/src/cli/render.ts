@@ -74,15 +74,25 @@ export function renderAgentCliPrompt(
         ...indentCli([
             'Use the `agentcli` tool and pass full commands that start with `agentcli`.',
             'For create, update, or config work on skills, sub-agents, tools, or MCP, run the activation sweep first.',
-            'Activation sweep: `agentcli show skills`, `agentcli show subagents`, `agentcli show tools`, `agentcli show mcp servers`, `agentcli show mcp tools`.',
+            'Activation sweep: `agentcli show skills`, `agentcli show subagents`, ' +
+                '`agentcli show tools`, `agentcli show mcp servers`, ' +
+                '`agentcli show mcp tools`.',
             'Use local ChatLuna paths as the source of truth. Do not replace them with your own machine paths.',
             backend === 'local'
-                ? 'The current default computer backend is local, so write skills and sub-agents directly to the local ChatLuna paths.'
-                : 'The current default computer backend is not local, so write files in the sandbox paths first, create missing directories there when needed, and finish with `agentcli sync`.',
+                ? 'The current default computer backend is local, so write skills ' +
+                  'and sub-agents directly to the local ChatLuna paths.'
+                : 'The current default computer backend is not local, so write ' +
+                  'files in the sandbox paths first, create missing directories ' +
+                  'there when needed, and finish with `agentcli sync`.',
             'Then inspect the exact target with `agentcli show ...`.',
-            'Stage changes with `agentcli preview ...`; repeated preview commands append until apply or cancel, many named preview commands accept multiple targets in one call, and tool authority uses Koishi levels 0-5.',
+            'Stage changes with `agentcli preview ...`; repeated preview commands ' +
+                'append until apply or cancel, many named preview commands accept ' +
+                'multiple targets in one call, and tool authority uses Koishi ' +
+                'levels 0-5.',
             'Load `skill-creator` or `sub-agent-creator` before authoring those files because `agentcli` cannot create them directly.',
-            'Command chains support `&`, `&&`, `|`, `|&`, `||`, and `;` inside the `command` string. Pipe operators only separate agentcli calls; they do not stream stdin.',
+            'Command chains support `&`, `&&`, `|`, `|&`, `||`, and `;` inside ' +
+                'the `command` string. Pipe operators only separate agentcli ' +
+                'calls; they do not stream stdin.',
             'Use `agentcli sync` to bring sandbox skills and sub-agents back to local paths.',
             'If a sync preview shows overwrites, wait for the user to confirm before `agentcli apply last`.',
             'Commit with `agentcli apply last` or discard with `agentcli cancel pending`.',

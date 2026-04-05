@@ -490,6 +490,8 @@ export class GeminiRequester
                     inputTokens: parsedChunk.usage.promptTokens,
                     outputTokens: parsedChunk.usage.completionTokens,
                     totalTokens: parsedChunk.usage.totalTokens,
+                    inputImageTokens: parsedChunk.usage.inputImageTokens,
+                    outputImageTokens: parsedChunk.usage.outputImageTokens,
                     inputAudioTokens: parsedChunk.usage.inputAudioTokens,
                     outputAudioTokens: parsedChunk.usage.outputAudioTokens,
                     cacheReadTokens: parsedChunk.usage.cacheReadTokens,

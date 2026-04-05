@@ -1,4 +1,4 @@
-import { logger as koishiLogger } from 'koishi-plugin-chatluna'
+import { logger } from 'koishi-plugin-chatluna'
 
 // eslint-disable-next-line prefer-const
 export let ERROR_FORMAT_TEMPLATE =
@@ -19,19 +19,18 @@ export class ChatLunaError extends Error {
         super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
 
         this.name = 'ChatLunaError'
-        const logger = koishiLogger ?? console
         if (!isTimeout) {
-            logger.error(
+            logger?.error(
                 '='.repeat(20) + 'ChatLunaError:' + errorCode + '='.repeat(20)
             )
         }
         if (originError && !isTimeout) {
-            logger.error(originError)
+            logger?.error(originError)
             if (originError.cause) {
-                logger.error(originError.cause)
+                logger?.error(originError.cause)
             }
         } else if (!isTimeout) {
-            logger.error(this)
+            logger?.error(this)
         }
     }
 
@@ -81,9 +80,5 @@ export enum ChatLunaErrorCode {
     KNOWLEDGE_UNSUPPORTED_FILE_TYPE = 503,
     KNOWLEDGE_EXIST_FILE = 504,
     KNOWLEDGE_VECTOR_NOT_FOUND = 505,
-    USER_NOT_FOUND = 600,
-    AUTH_GROUP_NOT_FOUND = 601,
-    AUTH_GROUP_NOT_JOINED = 602,
-    AUTH_GROUP_ALREADY_JOINED = 603,
     UNKNOWN_ERROR = 999
 }

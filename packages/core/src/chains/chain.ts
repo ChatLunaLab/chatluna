@@ -1,4 +1,3 @@
-import { EventEmitter } from 'events'
 import { Context, h, Logger, Session } from 'koishi'
 import {
     ChatLunaError,
@@ -384,8 +383,7 @@ interface MiddlewareResult {
 
 class ChatChainDependencyGraph {
     private readonly _tasks = new Map<string, ChainDependencyGraphNode>()
-    private readonly _dependencies = new Map<string, Set<string>>()
-    private readonly _eventEmitter = new EventEmitter()
+    private readonly _rules: ChainDependencyRule[] = []
     private readonly _listeners = new Map<
         string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -393,31 +391,24 @@ class ChatChainDependencyGraph {
     >()
 
     private _cachedOrder: ChainMiddleware[][] | null = null
-
-    constructor() {
-        this._eventEmitter.on('build_node', () => {
-            for (const [, listeners] of this._listeners) {
-                for (const listener of listeners) {
-                    listener()
-                }
-                listeners.clear()
-            }
-        })
-    }
+    private _index = 0
 
     public addNode(middleware: ChainMiddleware): void {
         this._tasks.set(middleware.name, {
             name: middleware.name,
-            middleware
+            middleware,
+            index: this._index++
         })
         this._cachedOrder = null
     }
 
     removeNode(name: string): void {
         this._tasks.delete(name)
-        this._dependencies.delete(name)
-        for (const deps of this._dependencies.values()) {
-            deps.delete(name)
+        for (let i = this._rules.length - 1; i >= 0; i--) {
+            const rule = this._rules[i]
+            if (rule.owner === name || rule.target === name) {
+                this._rules.splice(i, 1)
+            }
         }
         this._cachedOrder = null
     }
@@ -440,9 +431,13 @@ class ChatChainDependencyGraph {
             taskB = taskB.name
         }
         if (taskA && taskB) {
-            const dependencies = this._dependencies.get(taskA) ?? new Set()
-            dependencies.add(taskB)
-            this._dependencies.set(taskA, dependencies)
+            this._rules.push({
+                owner: taskA,
+                target: taskB,
+                type: 'before',
+                source: this._captureRuleSource()
+            })
+            this._cachedOrder = null
         } else {
             throw new Error('Invalid tasks')
         }
@@ -459,25 +454,47 @@ class ChatChainDependencyGraph {
             taskB = taskB.name
         }
         if (taskA && taskB) {
-            const dependencies = this._dependencies.get(taskB) ?? new Set()
-            dependencies.add(taskA)
-            this._dependencies.set(taskB, dependencies)
+            this._rules.push({
+                owner: taskA,
+                target: taskB,
+                type: 'after',
+                source: this._captureRuleSource()
+            })
+            this._cachedOrder = null
         } else {
             throw new Error('Invalid tasks')
         }
     }
 
     getDependencies(task: string) {
-        return this._dependencies.get(task)
+        const deps = new Set<string>()
+
+        for (const rule of this._rules) {
+            if (rule.owner === task && rule.type === 'after') {
+                deps.add(rule.target)
+            }
+
+            if (rule.target === task && rule.type === 'before') {
+                deps.add(rule.owner)
+            }
+        }
+
+        return deps
     }
 
     getDependents(task: string): string[] {
         const dependents: string[] = []
-        for (const [key, value] of this._dependencies.entries()) {
-            if ([...value].includes(task)) {
-                dependents.push(key)
+
+        for (const rule of this._rules) {
+            if (rule.owner === task && rule.type === 'before') {
+                dependents.push(rule.target)
+            }
+
+            if (rule.target === task && rule.type === 'after') {
+                dependents.push(rule.owner)
             }
         }
+
         return dependents
     }
 
@@ -486,161 +503,440 @@ class ChatChainDependencyGraph {
             return this._cachedOrder
         }
 
-        this._eventEmitter.emit('build_node')
-        const indegree = new Map<string, number>()
-        const tempGraph = new Map<string, Set<string>>()
-
-        for (const taskName of this._tasks.keys()) {
-            indegree.set(taskName, 0)
-            tempGraph.set(taskName, new Set())
+        for (const [, listeners] of this._listeners) {
+            for (const listener of listeners) {
+                listener()
+            }
+            listeners.clear()
         }
 
-        for (const [from, deps] of this._dependencies.entries()) {
-            const depsSet = tempGraph.get(from) || new Set()
-            for (const to of deps) {
-                depsSet.add(to)
-                indegree.set(to, (indegree.get(to) || 0) + 1)
+        const lifecycleSet = new Set(lifecycleNames)
+        const nodes = [...this._tasks.values()].sort(
+            (a, b) => a.index - b.index
+        )
+        const nodeNames = new Set(nodes.map((node) => node.name))
+        const normalNodes = nodes.filter((node) => !lifecycleSet.has(node.name))
+        const ranges = new Map<string, ChainDependencyRange>()
+        const outgoing = new Map<string, ChainDependencyEdge[]>()
+        const incoming = new Map<string, ChainDependencyEdge[]>()
+        const slots = new Map<string, number>()
+        const slotCause = new Map<string, ChainDependencyEdge>()
+
+        for (const node of normalNodes) {
+            ranges.set(node.name, {
+                min: 0,
+                max: lifecycleNames.length,
+                minRules: [],
+                maxRules: []
+            })
+            outgoing.set(node.name, [])
+            incoming.set(node.name, [])
+            slots.set(node.name, 0)
+        }
+
+        for (const rule of this._rules) {
+            if (!nodeNames.has(rule.owner)) {
+                continue
             }
-            tempGraph.set(from, depsSet)
+
+            if (!lifecycleSet.has(rule.target) && !nodeNames.has(rule.target)) {
+                throw new Error(
+                    `Unknown middleware "${rule.target}" referenced by ${this._formatRule(rule)}`
+                )
+            }
+
+            if (lifecycleSet.has(rule.owner) && lifecycleSet.has(rule.target)) {
+                continue
+            }
+
+            if (lifecycleSet.has(rule.target) || lifecycleSet.has(rule.owner)) {
+                const name = lifecycleSet.has(rule.target)
+                    ? rule.owner
+                    : rule.target
+
+                if (lifecycleSet.has(name)) {
+                    continue
+                }
+
+                const range = ranges.get(name)
+
+                if (!range) {
+                    continue
+                }
+
+                const lifecycleName = lifecycleSet.has(rule.target)
+                    ? rule.target
+                    : rule.owner
+                const idx = lifecycleNames.indexOf(lifecycleName)
+                const isAfter = lifecycleSet.has(rule.target)
+                    ? rule.type === 'after'
+                    : rule.type === 'before'
+
+                if (isAfter) {
+                    range.min = Math.max(range.min, idx + 1)
+                    range.minRules.push(rule)
+                } else {
+                    range.max = Math.min(range.max, idx)
+                    range.maxRules.push(rule)
+                }
+
+                slots.set(name, range.min)
+                continue
+            }
+
+            const edge: ChainDependencyEdge =
+                rule.type === 'before'
+                    ? {
+                          from: rule.owner,
+                          to: rule.target,
+                          rule
+                      }
+                    : {
+                          from: rule.target,
+                          to: rule.owner,
+                          rule
+                      }
+
+            outgoing.get(edge.from)?.push(edge)
+            incoming.get(edge.to)?.push(edge)
+        }
+
+        const stack: string[] = []
+        const onStack = new Set<string>()
+        const index = new Map<string, number>()
+        const lowLink = new Map<string, number>()
+        const cycles: string[][] = []
+        let cursor = 0
+
+        const visit = (name: string) => {
+            index.set(name, cursor)
+            lowLink.set(name, cursor)
+            cursor += 1
+            stack.push(name)
+            onStack.add(name)
+
+            for (const edge of outgoing.get(name) ?? []) {
+                const next = edge.to
+
+                if (!index.has(next)) {
+                    visit(next)
+                    lowLink.set(
+                        name,
+                        Math.min(lowLink.get(name)!, lowLink.get(next)!)
+                    )
+                    continue
+                }
+
+                if (onStack.has(next)) {
+                    lowLink.set(
+                        name,
+                        Math.min(lowLink.get(name)!, index.get(next)!)
+                    )
+                }
+            }
+
+            if (lowLink.get(name) !== index.get(name)) {
+                return
+            }
+
+            const group: string[] = []
+
+            while (true) {
+                const current = stack.pop()!
+                onStack.delete(current)
+                group.push(current)
+
+                if (current === name) {
+                    break
+                }
+            }
+
+            if (
+                group.length > 1 ||
+                (outgoing.get(group[0]) ?? []).some(
+                    (edge) => edge.to === group[0]
+                )
+            ) {
+                cycles.push(group)
+            }
+        }
+
+        for (const node of normalNodes) {
+            if (!index.has(node.name)) {
+                visit(node.name)
+            }
+        }
+
+        if (cycles.length > 0) {
+            const cycle = cycles[0]
+            const cycleSet = new Set(cycle)
+            const blocked = new Set<string>()
+            const queue = [...cycle]
+
+            while (queue.length > 0) {
+                const current = queue.shift()!
+
+                for (const edge of outgoing.get(current) ?? []) {
+                    if (cycleSet.has(edge.to) || blocked.has(edge.to)) {
+                        continue
+                    }
+
+                    blocked.add(edge.to)
+                    queue.push(edge.to)
+                }
+            }
+
+            const order = new Map(nodes.map((node) => [node.name, node.index]))
+            const cycleEdges = cycle
+                .flatMap((name) => outgoing.get(name) ?? [])
+                .filter((edge) => cycleSet.has(edge.to))
+                .sort(
+                    (a, b) =>
+                        (order.get(a.from) ?? 0) - (order.get(b.from) ?? 0) ||
+                        (order.get(a.to) ?? 0) - (order.get(b.to) ?? 0)
+                )
+            const blockedList = [...blocked].sort(
+                (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0)
+            )
+
+            throw new Error(
+                [
+                    'Circular dependency detected in middleware graph.',
+                    `Cycle nodes: ${cycle
+                        .sort(
+                            (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0)
+                        )
+                        .join(' -> ')}`,
+                    'Constraints:',
+                    ...cycleEdges.map(
+                        (edge) =>
+                            `- ${edge.from} -> ${edge.to} via ${this._formatRule(edge.rule)}`
+                    ),
+                    blockedList.length > 0
+                        ? `Blocked nodes: ${blockedList.join(', ')}`
+                        : ''
+                ]
+                    .filter((line) => line.length > 0)
+                    .join('\n')
+            )
+        }
+
+        const indegree = new Map<string, number>()
+
+        for (const node of normalNodes) {
+            indegree.set(node.name, incoming.get(node.name)?.length ?? 0)
+        }
+
+        const ready = normalNodes
+            .filter((node) => indegree.get(node.name) === 0)
+            .map((node) => node.name)
+        const topo: string[] = []
+
+        while (ready.length > 0) {
+            ready.sort(
+                (a, b) =>
+                    (this._tasks.get(a)?.index ?? 0) -
+                    (this._tasks.get(b)?.index ?? 0)
+            )
+
+            const current = ready.shift()!
+            const currentSlot = slots.get(current) ?? 0
+            const range = ranges.get(current)
+
+            if (range && currentSlot > range.max) {
+                const path: string[] = []
+                let name = current
+                const visited = new Set<string>()
+
+                while (slotCause.has(name) && !visited.has(name)) {
+                    visited.add(name)
+                    const edge = slotCause.get(name)!
+                    path.unshift(
+                        `- ${edge.from} -> ${edge.to} via ${this._formatRule(edge.rule)}`
+                    )
+                    name = edge.from
+                }
+
+                throw new Error(
+                    [
+                        `Cannot place middleware "${current}" in lifecycle order.`,
+                        `Resolved position: ${this._formatSlot(currentSlot)}`,
+                        `Latest allowed position: ${this._formatSlot(range.max)}`,
+                        range.minRules.length > 0 ? 'Required after:' : '',
+                        ...range.minRules.map(
+                            (rule) => `- ${this._formatRule(rule)}`
+                        ),
+                        range.maxRules.length > 0 ? 'Required before:' : '',
+                        ...range.maxRules.map(
+                            (rule) => `- ${this._formatRule(rule)}`
+                        ),
+                        path.length > 0 ? 'Dependency chain:' : '',
+                        ...path
+                    ]
+                        .filter((line) => line.length > 0)
+                        .join('\n')
+                )
+            }
+
+            topo.push(current)
+
+            for (const edge of outgoing.get(current) ?? []) {
+                if ((slots.get(edge.to) ?? 0) < currentSlot) {
+                    slots.set(edge.to, currentSlot)
+                    slotCause.set(edge.to, edge)
+                }
+
+                indegree.set(edge.to, (indegree.get(edge.to) ?? 0) - 1)
+
+                if (indegree.get(edge.to) === 0) {
+                    ready.push(edge.to)
+                }
+            }
         }
 
         const levels: ChainMiddleware[][] = []
-        const visited = new Set<string>()
-        let currentLevel: string[] = []
+        const slotGroups = new Map<number, string[]>()
 
-        for (const [task, degree] of indegree.entries()) {
-            if (degree === 0) {
-                currentLevel.push(task)
-            }
+        for (const name of topo) {
+            const slot = slots.get(name) ?? 0
+            const group = slotGroups.get(slot) ?? []
+            group.push(name)
+            slotGroups.set(slot, group)
         }
 
-        while (currentLevel.length > 0) {
-            const levelMiddlewares: ChainMiddleware[] = []
-            const nextLevel: string[] = []
+        for (let slot = 0; slot <= lifecycleNames.length; slot++) {
+            const group = slotGroups.get(slot) ?? []
 
-            for (const current of currentLevel) {
-                if (visited.has(current)) continue
-                visited.add(current)
+            if (group.length > 0) {
+                const groupSet = new Set(group)
+                const groupIndegree = new Map<string, number>()
 
-                const node = this._tasks.get(current)
-                if (node?.middleware) {
-                    levelMiddlewares.push(node.middleware)
+                for (const name of group) {
+                    groupIndegree.set(
+                        name,
+                        (incoming.get(name) ?? []).filter((edge) =>
+                            groupSet.has(edge.from)
+                        ).length
+                    )
                 }
 
-                const successors = tempGraph.get(current) || new Set()
-                for (const next of successors) {
-                    const newDegree = indegree.get(next)! - 1
-                    indegree.set(next, newDegree)
-                    if (newDegree === 0) {
-                        nextLevel.push(next)
+                let currentLevel = group
+                    .filter((name) => groupIndegree.get(name) === 0)
+                    .sort(
+                        (a, b) =>
+                            (this._tasks.get(a)?.index ?? 0) -
+                            (this._tasks.get(b)?.index ?? 0)
+                    )
+
+                while (currentLevel.length > 0) {
+                    levels.push(
+                        currentLevel.map((name) => {
+                            const task = this._tasks.get(name)
+                            if (task?.middleware == null) {
+                                throw new Error(
+                                    `Missing middleware for task ${name}`
+                                )
+                            }
+                            return task.middleware
+                        })
+                    )
+
+                    const nextLevel: string[] = []
+
+                    for (const name of currentLevel) {
+                        for (const edge of outgoing.get(name) ?? []) {
+                            if (!groupSet.has(edge.to)) {
+                                continue
+                            }
+
+                            groupIndegree.set(
+                                edge.to,
+                                (groupIndegree.get(edge.to) ?? 0) - 1
+                            )
+
+                            if (groupIndegree.get(edge.to) === 0) {
+                                nextLevel.push(edge.to)
+                            }
+                        }
                     }
+
+                    currentLevel = nextLevel.sort(
+                        (a, b) =>
+                            (this._tasks.get(a)?.index ?? 0) -
+                            (this._tasks.get(b)?.index ?? 0)
+                    )
                 }
             }
 
-            if (levelMiddlewares.length > 0) {
-                levels.push(levelMiddlewares)
-            }
-            currentLevel = nextLevel
-        }
+            const lifecycle = this._tasks.get(lifecycleNames[slot])?.middleware
 
-        for (const [node, degree] of indegree.entries()) {
-            if (degree > 0) {
-                const cycles = this._findAllCycles()
-                const relevantCycle = cycles.find((cycle) =>
-                    cycle.includes(node)
-                )
-                throw new Error(
-                    `Circular dependency detected involving nodes: ${relevantCycle?.join(' -> ') || node}`
-                )
+            if (lifecycle) {
+                levels.push([lifecycle])
             }
-        }
-
-        if (visited.size !== this._tasks.size) {
-            throw new Error(
-                'Some nodes are unreachable in the dependency graph'
-            )
         }
 
         this._cachedOrder = levels
         return levels
     }
 
-    private _canRunInParallel(a: ChainMiddleware, b: ChainMiddleware): boolean {
-        const aDeps = this._dependencies.get(a.name) || new Set()
-        const bDeps = this._dependencies.get(b.name) || new Set()
+    private _captureRuleSource() {
+        const stack = new Error().stack?.split('\n') ?? []
 
-        return (
-            !aDeps.has(b.name) &&
-            !bDeps.has(a.name) &&
-            !this._hasTransitiveDependency(a.name, b.name) &&
-            !this._hasTransitiveDependency(b.name, a.name)
-        )
+        return stack
+            .map((line) => line.trim())
+            .find(
+                (line) =>
+                    line.length > 0 &&
+                    line !== 'Error' &&
+                    !line.includes('ChatChainDependencyGraph.') &&
+                    !line.includes('ChainMiddleware.') &&
+                    !line.includes('chains\\chain.') &&
+                    !line.includes('chains/chain.')
+            )
     }
 
-    private _hasTransitiveDependency(
-        from: string,
-        to: string,
-        visited = new Set<string>()
-    ): boolean {
-        if (visited.has(from)) return false
-        visited.add(from)
-
-        const deps = this._dependencies.get(from) || new Set()
-        if (deps.has(to)) return true
-
-        for (const dep of deps) {
-            if (this._hasTransitiveDependency(dep, to, visited)) {
-                return true
-            }
-        }
-
-        return false
+    private _formatRule(rule: ChainDependencyRule) {
+        const source = rule.source ? ` at ${rule.source}` : ''
+        return `.${rule.type}('${rule.target}') declared by ${rule.owner}${source}`
     }
 
-    private _findAllCycles(): string[][] {
-        const visited = new Set<string>()
-        const recursionStack = new Set<string>()
-        const cycles: string[][] = []
-
-        const dfs = (node: string, path: string[]): void => {
-            if (recursionStack.has(node)) {
-                const cycleStart = path.indexOf(node)
-                if (cycleStart !== -1) {
-                    const cycle = path.slice(cycleStart).concat([node])
-                    cycles.push(cycle)
-                }
-                return
-            }
-
-            if (visited.has(node)) {
-                return
-            }
-
-            visited.add(node)
-            recursionStack.add(node)
-            path.push(node)
-
-            const deps = this._dependencies.get(node) || new Set()
-            for (const dep of deps) {
-                dfs(dep, [...path])
-            }
-
-            recursionStack.delete(node)
+    private _formatSlot(slot: number) {
+        if (slot <= 0) {
+            return `before ${lifecycleNames[0]}`
         }
 
-        for (const node of this._tasks.keys()) {
-            if (!visited.has(node)) {
-                dfs(node, [])
-            }
+        if (slot >= lifecycleNames.length) {
+            return `after ${lifecycleNames[lifecycleNames.length - 1]}`
         }
 
-        return cycles
+        return `between ${lifecycleNames[slot - 1]} and ${lifecycleNames[slot]}`
     }
 }
 
 interface ChainDependencyGraphNode {
     middleware?: ChainMiddleware
     name: string
+    index: number
+}
+
+interface ChainDependencyRule {
+    owner: string
+    target: string
+    type: 'before' | 'after'
+    source?: string
+}
+
+interface ChainDependencyEdge {
+    from: string
+    to: string
+    rule: ChainDependencyRule
+}
+
+interface ChainDependencyRange {
+    min: number
+    max: number
+    minRules: ChainDependencyRule[]
+    maxRules: ChainDependencyRule[]
 }
 
 export class ChainMiddleware {
@@ -653,45 +949,11 @@ export class ChainMiddleware {
     before<T extends keyof ChainMiddlewareName>(name: T) {
         this.graph.before(this.name, name)
 
-        if (this.name.startsWith('lifecycle-')) {
-            return this
-        }
-
-        const lifecycleName = lifecycleNames
-
-        if (lifecycleName.includes(name)) {
-            const lastLifecycleName =
-                lifecycleName[lifecycleName.indexOf(name) - 1]
-
-            if (lastLifecycleName) {
-                this.graph.after(this.name, lastLifecycleName)
-            }
-
-            return this
-        }
-
         return this
     }
 
     after<T extends keyof ChainMiddlewareName>(name: T) {
         this.graph.after(this.name, name)
-
-        if (this.name.startsWith('lifecycle-')) {
-            return this
-        }
-
-        const lifecycleName = lifecycleNames
-
-        if (lifecycleName.includes(name)) {
-            const nextLifecycleName =
-                lifecycleName[lifecycleName.indexOf(name) + 1]
-
-            if (nextLifecycleName) {
-                this.graph.before(this.name, nextLifecycleName)
-            }
-
-            return this
-        }
 
         return this
     }
