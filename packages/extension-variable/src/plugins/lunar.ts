@@ -5,6 +5,8 @@ import { Lunar } from 'lunar-javascript'
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import Holidays from 'date-holidays'
 
+const DEFAULT_HOLIDAY_REGIONS = ['CN', 'US']
+
 export async function apply(
     ctx: Context,
     config: Config,
@@ -14,23 +16,33 @@ export async function apply(
         return
     }
 
-    ctx.before('chatluna/chat', async (_session, _message, promptVariables) => {
-        // Get lunar calendar information
-        const lunarDate = getChineseLunarDate()
+    ctx.on(
+        'chatluna/before-chat',
+        async (_conversationId, _message, promptVariables) => {
+            Object.assign(promptVariables, buildLunarVariables())
+        }
+    )
 
-        // Get holiday information for China and US (can be customized)
-        const holidayInfo = getCurrentHoliday(['CN', 'US'])
+    ctx.effect(() =>
+        ctx.chatluna.promptRenderer.registerVariableProvider(() =>
+            buildLunarVariables()
+        )
+    )
+}
 
-        promptVariables.lunar_date = lunarDate.fullLunarDate
-        promptVariables.lunar_year = lunarDate.year
-        promptVariables.lunar_month = lunarDate.month
-        promptVariables.lunar_day = lunarDate.day
-        promptVariables.lunar_zodiac = lunarDate.zodiac
-        promptVariables.lunar_year_ganzhi = lunarDate.yearGanZhi
+export function buildLunarVariables(): Record<string, string> {
+    const lunarDate = getChineseLunarDate()
+    const holidayInfo = getCurrentHoliday(DEFAULT_HOLIDAY_REGIONS)
 
-        // Holiday information
-        promptVariables.current_holiday = holidayInfo
-    })
+    return {
+        lunar_date: lunarDate.fullLunarDate,
+        lunar_year: lunarDate.year,
+        lunar_month: lunarDate.month,
+        lunar_day: lunarDate.day,
+        lunar_zodiac: lunarDate.zodiac,
+        lunar_year_ganzhi: lunarDate.yearGanZhi,
+        current_holiday: holidayInfo
+    }
 }
 
 /**
@@ -58,7 +70,7 @@ export function getChineseLunarDate() {
  * @param regions Array of region codes. Defaults to ['CN', 'US']
  * @returns Current holiday information or empty string if no holiday
  */
-export function getCurrentHoliday(regions: string[] = ['CN', 'US']) {
+export function getCurrentHoliday(regions: string[] = DEFAULT_HOLIDAY_REGIONS) {
     const date = new Date()
     const currentHolidays = []
 

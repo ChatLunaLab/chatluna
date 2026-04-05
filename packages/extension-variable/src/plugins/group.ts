@@ -17,17 +17,19 @@ export async function apply(
         await collector.collect(session)
     })
 
-    ctx.chatluna.promptRenderer.registerFunctionProvider(
-        'latest_message',
-        async (args, _, configurable) => {
-            const session = configurable.session as Session
-            const messageCount = parseInt(args[0]) || 4
-            const messages = collector.getMessages(
-                session.guildId || session.userId,
-                session.userId
-            )
-            return messages.slice(-messageCount).join('\n\n')
-        }
+    ctx.effect(() =>
+        ctx.chatluna.promptRenderer.registerFunctionProvider(
+            'latest_message',
+            async (args, _, configurable) => {
+                const session = configurable.session as Session
+                const messageCount = parseInt(args[0]) || 4
+                const messages = collector.getMessages(
+                    session.guildId || session.userId,
+                    session.userId
+                )
+                return messages.slice(-messageCount).join('\n\n')
+            }
+        )
     )
 }
 
