@@ -12,7 +12,6 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { ConversationRoom } from '../../types'
 import type { HandlerResult } from '../../utils/types'
 import {
     ChatLunaError,
@@ -27,6 +26,10 @@ import {
 } from './helper'
 import type { CompressContextResult } from './infinite_context'
 import { InfiniteContextManager } from './infinite_context'
+import type {
+    ArchiveRecord,
+    ConversationRecord
+} from '../../services/conversation_types'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -44,12 +47,14 @@ export class ChatInterface {
         input: ChatInterfaceInput
     ) {
         this._input = input
-        ctx.on('dispose', () => {
-            this._chain = undefined
-            this._embeddings = undefined
-            this._historyMemory = undefined
-            this._infiniteContextManager = undefined
-        })
+        ctx.on('dispose', () => this.dispose())
+    }
+
+    dispose() {
+        this._chain = undefined
+        this._embeddings = undefined
+        this._historyMemory = undefined
+        this._infiniteContextManager = undefined
     }
 
     private async handleChatError(
@@ -151,7 +156,13 @@ export class ChatInterface {
         try {
             if (this.ctx.chatluna.currentConfig.infiniteContext) {
                 const manager = this._ensureInfiniteContextManager()
-                await manager?.compressIfNeeded(wrapper)
+                const result = await manager?.compressIfNeeded(wrapper)
+                if (result?.compressed) {
+                    await this.ctx.chatluna.conversation.recordCompression(
+                        this._input.conversationId,
+                        result
+                    )
+                }
             }
         } catch (error) {
             logger.error('Error compressing context:', error)
@@ -222,6 +233,16 @@ export class ChatInterface {
             )
         } catch (error) {
             await this.handleChatError(arg, wrapper, error, false)
+        }
+
+        if (this._input.autoTitle !== false) {
+            autoSummarizeTitle(
+                this.ctx,
+                arg.conversationId,
+                wrapper,
+                arg.message,
+                displayResponse as AIMessage
+            ).catch((e) => logger.error('autoSummarizeTitle error:', e))
         }
 
         return { message: displayResponse }
@@ -348,44 +369,10 @@ export class ChatInterface {
         return this._input.preset
     }
 
-    async delete(ctx: Context, room: ConversationRoom): Promise<void> {
-        await this.clearChatHistory()
-
-        this._chain = undefined
-
-        await ctx.database.remove('chathub_conversation', {
-            id: room.conversationId
-        })
-
-        await ctx.database.remove('chathub_room', {
-            roomId: room.roomId
-        })
-        await ctx.database.remove('chathub_room_member', {
-            roomId: room.roomId
-        })
-        await ctx.database.remove('chathub_room_group_member', {
-            roomId: room.roomId
-        })
-
-        await ctx.database.remove('chathub_user', {
-            defaultRoomId: room.roomId
-        })
-
-        await ctx.database.remove('chathub_message', {
-            conversation: room.conversationId
-        })
-    }
-
     async clearChatHistory(): Promise<void> {
         if (this._chatHistory == null) {
             await this._createChatHistory()
         }
-
-        await this.ctx.root.parallel(
-            'chatluna/clear-chat-history',
-            this._input.conversationId,
-            this
-        )
 
         await this._chatHistory.clear()
 
@@ -402,7 +389,14 @@ export class ChatInterface {
             )
         }
 
-        return manager.compressIfNeeded(wrapper, force)
+        const result = await manager.compressIfNeeded(wrapper, force)
+        if (result.compressed) {
+            await this.ctx.chatluna.conversation.recordCompression(
+                this._input.conversationId,
+                result
+            )
+        }
+        return result
     }
 
     private async _createChatHistory(): Promise<BaseChatMessageHistory> {
@@ -459,8 +453,50 @@ export class ChatInterface {
     }
 }
 
+async function autoSummarizeTitle(
+    ctx: Context,
+    conversationId: string,
+    wrapper: ChatLunaLLMChainWrapper,
+    humanMsg: HumanMessage,
+    aiMsg: AIMessage
+) {
+    const claimed =
+        await ctx.chatluna.conversation.claimAutoTitle(conversationId)
+    if (!claimed) {
+        return
+    }
+
+    const humanContent = getMessageContent(humanMsg.content)
+    const aiContent = getMessageContent(aiMsg.content)
+
+    const prompt =
+        `Generate a concise title for the following conversation.\n` +
+        `Requirements:\n` +
+        `- Length: 5 to 20 characters\n` +
+        `- Use the same language as the user's message\n` +
+        `- Output ONLY the title, no punctuation, no quotes, no explanation\n\n` +
+        `User: ${humanContent}\n` +
+        `Assistant: ${aiContent}`
+
+    try {
+        const result = await wrapper.model.invoke([new HumanMessage(prompt)])
+        const title = getMessageContent(result.content).trim().slice(0, 20)
+
+        await ctx.chatluna.conversation.touchConversation(conversationId, {
+            title
+        })
+    } catch (error) {
+        logger.error(error)
+        await ctx.chatluna.conversation.touchConversation(conversationId, {
+            autoTitle: true
+        })
+        throw error
+    }
+}
+
 export interface ChatInterfaceInput {
     chatMode: string
+    autoTitle?: boolean
     botName?: string
     preset?: ComputedRef<PresetTemplate>
     model: string
@@ -486,10 +522,69 @@ declare module 'koishi' {
             chatInterface: ChatInterface,
             session: Session
         ) => Promise<void>
+        'chatluna/conversation-before-create': (payload: {
+            conversation: ConversationRecord
+            bindingKey: string
+        }) => Promise<void>
+        'chatluna/conversation-after-create': (payload: {
+            conversation: ConversationRecord
+            bindingKey: string
+        }) => Promise<void>
+        'chatluna/conversation-before-switch': (payload: {
+            bindingKey: string
+            conversation: ConversationRecord
+            previousConversation?: ConversationRecord | null
+        }) => Promise<void>
+        'chatluna/conversation-after-switch': (payload: {
+            bindingKey: string
+            conversation: ConversationRecord
+            previousConversation?: ConversationRecord | null
+        }) => Promise<void>
+        'chatluna/conversation-before-archive': (payload: {
+            conversation: ConversationRecord
+        }) => Promise<void>
+        'chatluna/conversation-after-archive': (payload: {
+            conversation: ConversationRecord
+            archive: ArchiveRecord
+            path: string
+        }) => Promise<void>
+        'chatluna/conversation-before-restore': (payload: {
+            conversation: ConversationRecord
+            archive: ArchiveRecord
+        }) => Promise<void>
+        'chatluna/conversation-after-restore': (payload: {
+            conversation: ConversationRecord
+            archive: ArchiveRecord
+        }) => Promise<void>
+        'chatluna/conversation-before-delete': (payload: {
+            conversation: ConversationRecord
+        }) => Promise<void>
+        'chatluna/conversation-after-delete': (payload: {
+            conversation: ConversationRecord
+        }) => Promise<void>
+        'chatluna/conversation-before-clear-history': (payload: {
+            conversation: ConversationRecord
+            chatInterface: ChatInterface
+        }) => Promise<void>
         'chatluna/clear-chat-history': (
             conversationId: string,
             chatInterface: ChatInterface
         ) => Promise<void>
+        'chatluna/conversation-after-clear-history': (payload: {
+            conversation: ConversationRecord
+            chatInterface: ChatInterface
+        }) => Promise<void>
+        'chatluna/conversation-before-cache-clear': (payload: {
+            conversation: ConversationRecord
+            chatInterface?: ChatInterface
+        }) => Promise<void>
+        'chatluna/conversation-after-cache-clear': (payload: {
+            conversation: ConversationRecord
+        }) => Promise<void>
+        'chatluna/conversation-compressed': (payload: {
+            conversation: ConversationRecord
+            result: CompressContextResult
+        }) => Promise<void>
         'chatluna/after-chat-error': (
             error: Error,
             conversationId: string,

@@ -94,7 +94,8 @@ export function formatTaskResult(
         `agent: ${task.agentName}`,
         `run_id: ${run.runId}`,
         `state: ${run.state}`,
-        `resume_hint: use task with {"action":"run","id":"${task.id}","prompt":"next instruction"} to continue this session. Add "background":true when the work may take a while.`,
+        `resume_hint: use task with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
+            'to continue this session. Add "background":true when the work may take a while.',
         '',
         output.trim() || '(empty)'
     ].join('\n')
@@ -184,7 +185,8 @@ export function formatTaskDetail(
 
     if (run?.state !== 'running') {
         lines.push(
-            `resume_hint: use task with {"action":"run","id":"${task.id}","prompt":"next instruction"} to continue this session. Add "background":true when the work may take a while.`
+            `resume_hint: use task with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
+                'to continue this session. Add "background":true when the work may take a while.'
         )
     }
 

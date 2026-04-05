@@ -2,7 +2,6 @@
 
 import { Context } from 'koishi'
 import {
-    type AgentTaskResolveContext,
     type AgentTaskToolRuntime,
     createTaskTool,
     renderAvailableAgents,
@@ -183,16 +182,12 @@ export class ChatLunaAgentSubAgentService {
                     ctx.session,
                     ctx.source
                 )
+
                 if (!info) {
                     return undefined
                 }
 
-                const next = this.permission.createSubAgentToolMask(info)
-                const base =
-                    ctx.parent?.toolMask ??
-                    ctx.runConfig?.configurable?.toolMask
-                const names = this.ctx.chatluna.platform.getFilteredTools(next)
-                const mask = buildSubAgentToolMask(base, names)
+                const mask = this.permission.createSubAgentToolMask(info)
 
                 return {
                     agent: await createSubAgent({
@@ -269,15 +264,13 @@ export class ChatLunaAgentSubAgentService {
                 if (runtime.configurable?.subagentContext) return next()
 
                 const session = runtime.configurable?.session
-                const source =
-                    (
-                        runtime.configurable as {
-                            source?: 'chatluna' | 'character'
-                        }
-                    )?.source ?? 'chatluna'
+                const source = (runtime.configurable?.source ??
+                    'chatluna') as Parameters<
+                    ChatLunaAgentPermissionService['canUseSubAgent']
+                >[2]
 
-                const mask = (runtime.configurable as { toolMask?: ToolMask })
-                    ?.toolMask
+                const mask = runtime.configurable?.toolMask
+
                 if (
                     mask != null &&
                     !this.ctx.chatluna.platform
@@ -330,32 +323,4 @@ function isRunnable(info: SubAgentInfo) {
         !info.hidden &&
         !info.shadowedBy
     )
-}
-
-function buildSubAgentToolMask(base: ToolMask | undefined, names: string[]) {
-    if (!base) {
-        return buildToolMask(names)
-    }
-
-    const allow = names.filter((name) => {
-        if (base.mode === 'all') {
-            return true
-        }
-
-        if (base.mode === 'allow') {
-            return base.allow.includes(name)
-        }
-
-        return !base.deny.includes(name)
-    })
-
-    return buildToolMask(allow)
-}
-
-function buildToolMask(allow: string[]): ToolMask {
-    return {
-        mode: 'allow',
-        allow,
-        deny: []
-    }
 }

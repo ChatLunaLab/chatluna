@@ -405,7 +405,7 @@ async function importSkills() {
         ElMessage.success(
             result.replaced.length > 0
                 ? `已导入 ${result.imported.length} 个 Skill，并覆盖 ${result.replaced.length} 个同名项。`
-                : `已导入 ${result.imported.length} 个 Skill，并默认启用。`
+                : `已导入 ${result.imported.length} 个 Skill。`
         )
     } catch (error) {
         ElMessage.error(formatError(error))

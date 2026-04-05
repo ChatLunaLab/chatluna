@@ -53,7 +53,11 @@ When to use:
                 .boolean()
                 .optional()
                 .describe(
-                    'Run the command as a managed background job only when strictly necessary for a long-lived process such as a server. Do not use this in normal cases. Commands ending with & are also treated as background jobs automatically.'
+                    'Run the command as a managed background job only when ' +
+                        'strictly necessary for a long-lived process such as a ' +
+                        'server. Do not use this in normal cases. Commands ' +
+                        'ending with & are also treated as background jobs ' +
+                        'automatically.'
                 ),
             action: z
                 .enum(['run', 'status', 'list', 'kill'])

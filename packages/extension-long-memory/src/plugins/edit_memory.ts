@@ -4,6 +4,7 @@ import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
 import { MemoryRetrievalLayerType, MemoryType } from '../types'
 import { Config } from '..'
 import { createDefaultMemory } from '../utils/memory'
+import { getMemoryScope } from '../utils/conversation'
 export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
 
@@ -11,17 +12,19 @@ export function apply(ctx: Context, config: Config) {
         .middleware(
             'edit_memory',
             async (session, context) => {
-                let {
+                const {
                     command,
-                    options: { type, room, memoryId, view }
+                    options: {
+                        type,
+                        memoryId,
+                        view,
+                        conversationId,
+                        presetLane
+                    }
                 } = context
 
                 if (command !== 'edit_memory')
                     return ChainMiddlewareRunStatus.SKIPPED
-
-                if (!type) {
-                    type = room.preset
-                }
 
                 let parsedLayerType = MemoryRetrievalLayerType.USER
 
@@ -41,18 +44,29 @@ export function apply(ctx: Context, config: Config) {
                 try {
                     await session.send(session.text('.edit_memory_start'))
 
+                    const scope = await getMemoryScope(ctx, session, {
+                        conversationId,
+                        presetLane,
+                        type
+                    })
+
+                    if (scope == null) {
+                        context.message = session.text('.edit_failed')
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+
                     const content = await session.prompt()
 
                     const layers =
                         await ctx.chatluna_long_memory.initMemoryLayers(
                             {
-                                presetId: type as string,
+                                ...scope.info,
                                 userId: session.userId,
                                 guildId: session.guildId || session.channelId,
                                 type: parsedLayerType,
                                 memoryId
                             },
-                            room.conversationId,
+                            scope.conversation.id,
                             parsedLayerType
                         )
 
@@ -70,7 +84,7 @@ export function apply(ctx: Context, config: Config) {
                         layers.map((layer) => layer.addMemories([memory]))
                     )
 
-                    await ctx.chatluna.clearCache(room)
+                    await ctx.chatluna.clearCache(scope.conversation)
                     context.message = session.text('.edit_success')
                 } catch (error) {
                     logger?.error(error)

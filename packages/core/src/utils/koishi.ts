@@ -1,8 +1,13 @@
-import { ForkScope, h } from 'koishi'
+import { ForkScope, h, Session, User } from 'koishi'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { Marked, Token } from 'marked'
 import type { MessageContent } from '@langchain/core/messages'
-import { isMessageContentImageUrl } from 'koishi-plugin-chatluna/utils/langchain'
+import {
+    isMessageContentAudio,
+    isMessageContentFileUrl,
+    isMessageContentImageUrl,
+    isMessageContentVideo
+} from 'koishi-plugin-chatluna/utils/langchain'
 
 const marked = new Marked({
     tokenizer: {
@@ -26,6 +31,29 @@ export function forkScopeToDisposable(scope: ForkScope): PromiseLikeDisposable {
     return () => {
         scope.dispose()
     }
+}
+
+export async function checkAdmin(session: Session) {
+    try {
+        const tested = await session.app.permissions.test(
+            'chatluna:admin',
+            session
+        )
+
+        if (tested) {
+            return true
+        }
+    } catch (error) {
+        session.app.logger.debug(`checkAdmin permission test failed: ${error}`)
+    }
+
+    const user = (session as Session<User.Field>).user
+
+    if (user == null) {
+        return false
+    }
+
+    return user.authority >= 3
 }
 
 const tagRegExp = /<(\/?)([^!\s>/]+)([^>]*?)\s*(\/?)>/
@@ -161,7 +189,24 @@ export function transformMessageContentToElements(content: MessageContent) {
                 : h.image(imageUrl.url)
         }
 
-        // TODO: support other message types (audio)
+        if (isMessageContentFileUrl(message)) {
+            return typeof message.file_url === 'string'
+                ? h.file(message.file_url)
+                : h.file(message.file_url.url)
+        }
+
+        if (isMessageContentAudio(message)) {
+            return typeof message.audio_url === 'string'
+                ? h.audio(message.audio_url)
+                : h.audio(message.audio_url.url)
+        }
+
+        if (isMessageContentVideo(message)) {
+            return typeof message.video_url === 'string'
+                ? h.video(message.video_url)
+                : h.video(message.video_url.url)
+        }
+
         return h.text(message.text)
     })
 }

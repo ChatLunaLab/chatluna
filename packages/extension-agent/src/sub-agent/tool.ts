@@ -14,13 +14,17 @@ export class TaskTool extends StructuredTool {
                 .enum(['run', 'status', 'list', 'message'])
                 .optional()
                 .describe(
-                    'run starts or resumes a sub-agent task, status inspects one task, list shows recent tasks in this conversation, message sends live guidance to a running background task.'
+                    'run starts or resumes a sub-agent task, status inspects ' +
+                        'one task, list shows recent tasks in this conversation, ' +
+                        'message sends live guidance to a running background task.'
                 ),
             agent: z
                 .string()
                 .optional()
                 .describe(
-                    'The exact sub-agent name from the injected sub-agent catalog. Required when starting a new task. Optional when resuming an existing task by id.'
+                    'The exact sub-agent name from the injected sub-agent catalog. ' +
+                        'Required when starting a new task. Optional when ' +
+                        'resuming an existing task by id.'
                 ),
             id: z
                 .string()

@@ -1,6 +1,5 @@
 import { CallbackManager } from '@langchain/core/callbacks/manager'
 import {
-    AIMessage,
     BaseMessage,
     BaseMessageChunk,
     HumanMessage,
@@ -357,13 +356,13 @@ function createAsyncQueue<T>() {
 }
 
 function createWaiter() {
-    let resolve: () => void
-    const promise = new Promise<void>((next) => {
-        resolve = next
+    let finish!: () => void
+    const promise = new Promise<void>((resolve) => {
+        finish = resolve
     })
 
     return {
         promise,
-        resolve
+        resolve: finish
     }
 }

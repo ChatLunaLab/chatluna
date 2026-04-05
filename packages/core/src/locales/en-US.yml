@@ -1,227 +1,175 @@
 commands:
     chatluna:
         description: 'ChatLuna related commands.'
-        room:
-            description: 'ChatLuna room management.'
-            create:
-                description: 'Create a new room.'
-                options:
-                    name: 'Room name'
-                    preset: 'Room preset'
-                    model: 'Room model'
-                    chatMode: 'Chat mode'
-                    password: 'Room password'
-                    visibility: 'Room visibility'
-                messages:
-                    confirm_create: 'Basic parameters provided. Create room directly? Y: Create, N: Interactive creation, Any other: Cancel.'
-                    timeout: 'Response timeout. Room creation cancelled.'
-                    cancelled: 'Room creation cancelled.'
-                    enter_name: 'Enter room name (e.g., My Room). Q to exit.'
-                    change_or_keep: '{0} {1}: {2}. Change? New {1} to change, N to keep. Q to exit.'
-                    enter_model: 'Enter model (e.g., openai/gpt-3.5-turbo). Q to exit.'
-                    model_not_found: 'Model not found: {0}. Please retry.'
-                    enter_preset: 'Enter preset (e.g., chatgpt). N for default. Q to exit.'
-                    preset_not_found: 'Preset not found: {0}. Please retry.'
-                    enter_visibility: 'Enter visibility (public/private). N for default. Q to exit.'
-                    visibility_not_recognized: 'Unrecognized visibility: {0}. Please retry.'
-                    enter_chat_mode: 'Enter chat mode. N for default. Q to exit.'
-                    enter_password: 'Enter password. N for no password. Q to exit.'
-                    invalid_chat_mode: 'Unable to recognize chat mode: {0}. Available chat modes are: {1}. Please try again. Q to exit.'
-                    template_room_created: 'Template room created successfully.'
-                    room_created: 'Room created. ID: {0}, Name: {1}.'
-                    action:
-                        input: 'Input'
-                        set: 'Set'
-                        select: 'Select'
-                    field:
-                        name: 'Room name'
-                        model: 'Model'
-                        preset: 'Preset'
-                        visibility: 'Visibility'
-                        chat_mode: 'Chat mode'
-                        password: 'Password'
-            delete:
-                description: 'Delete a room.'
+        conversation:
+            description: ChatLuna conversation lifecycle commands.
+            options:
+                conversation: Target conversation by seq, ID, or title.
+                page: Page number.
+                limit: Items per page.
+                archived: Include archived conversations.
+                preset: Preset lane.
+            new:
+                description: Create and switch to a new conversation.
                 arguments:
-                    room: 'Target room'
-                messages:
-                    room_not_found: 'Room not found.'
-                    not_room_master: 'Insufficient permissions: Not room owner.'
-                    confirm_delete: 'Confirm deletion of room {0}? All messages and members will be removed. Y to confirm.'
-                    timeout: 'Operation timed out. Automatically cancelled.'
-                    cancelled: 'Operation cancelled.'
-                    success: 'Room {0} deleted.'
-            auto-update:
-                description: 'Set auto-update for template clone rooms.'
-                options:
-                    room: 'Specify room'
-                messages:
-                    room_not_found: 'Room not found.'
-                    not_template_clone: 'Not a template clone room. Cannot set auto-update.'
-                    not_admin: 'Insufficient permissions: Not room owner.'
-                    success: 'Auto-update for room {0} set to {1}.'
-                    invalid-status: 'Invalid parameter. Use true or false.'
-            kick:
-                description: 'Kick user from current room.'
-                messages:
-                    no_room_specified: 'No room specified. Use chatluna.room.switch to select a room.'
-                    not_admin: 'Insufficient permissions: Not room admin.'
-                    success: 'Users kicked from room {0}: {1}'
-            invite:
-                description: 'Invite user to room.'
-                messages:
-                    no_room_specified: 'No room specified. Use chatluna.room.switch to select a room.'
-                    not_admin: 'Insufficient permissions: Not room admin.'
-                    success: 'User {0} invited to room {1}.'
-            join:
-                description: 'Join a room.'
-                arguments:
-                    id: 'Room ID or name'
-                messages:
-                    room_not_found: 'Room not found.'
-                    not_in_group: 'Room not in current group chat.'
-                    private_no_password: 'Private room. Owner invitation required.'
-                    private_group_join: 'Private room. Cannot join in group chat.'
-                    enter_password: 'Enter password for room {0}.'
-                    timeout: 'Operation timed out. Automatically cancelled.'
-                    wrong_password: 'Incorrect password. Operation cancelled.'
-                    success: 'Joined room {0}'
-            leave:
-                description: 'Leave current room.'
-                arguments:
-                    room: 'Target room'
-                messages:
-                    room_not_found: 'Room not found.'
-                    confirm_delete: 'Room owner detected. Leaving will delete the room. Y to confirm.'
-                    timeout: 'Operation timed out. Automatically cancelled.'
-                    cancelled: 'Operation cancelled.'
-                    success: 'Left room {0}. Rejoin or switch rooms if needed.'
-            clear:
-                description: 'Clear room chat history.'
-                arguments:
-                    room: 'Target room'
-                messages:
-                    success: 'Chat history cleared for room {0}.'
-                    no-room: 'Room not found.'
-            compress:
-                description: 'Manually compress room chat history using Infinite Context.'
-                arguments:
-                    room: 'Target room'
-                messages:
-                    success: '{0} -> {1}, {2}%'
-                    skipped: 'Compression skipped. {0} -> {1}, {2}%'
-                    no_room: 'Room not found.'
-                    failed: 'Failed to compress chat history for room {0}: {1}'
-            set:
-                description: 'Set room properties.'
-                options:
-                    name: 'Room name'
-                    preset: 'Room preset'
-                    model: 'Room model'
-                    chatMode: 'Chat mode'
-                    password: 'Room password'
-                    visibility: 'Room visibility'
-                messages:
-                    room_not_found: 'Room not found.'
-                    not_room_master: 'Insufficient permissions: Not room owner.'
-                    confirm_update: 'Update room properties? Y: Update, N: Interactive update, Any other: Cancel.'
-                    timeout: 'Response timeout. Update cancelled.'
-                    cancelled: 'Update cancelled.'
-                    no_password_in_public: 'Cannot set password for non-private room or group chat.'
-                    change_or_keep: '{0}: {1}. Change? New value to change, N to keep. Q to exit.'
-                    model_not_found: 'Model not found: {0}. Please retry.'
-                    preset_not_found: 'Preset not found: {0}. Please retry.'
-                    invalid_visibility: 'Invalid visibility: {0}. Please retry.'
-                    enter_password: 'Enter password. N for no password. Q to exit.'
-                    success_with_clear: 'Room {0} updated. Chat history cleared.'
-                    invalid_chat_mode: 'Unable to recognize chat mode: {0}. Available chat modes are: {1}. Please try again.'
-                    failed: 'Room {0} update failed. Please check your settings and try again.'
-                    success: 'Room {0} updated.'
-                    field:
-                        name: 'Room name'
-                        model: 'Model'
-                        preset: 'Preset'
-                        visibility: 'Visibility'
-                        chat_mode: 'Chat mode'
-                        password: 'Password'
-            list:
-                description: 'List joined rooms.'
-                options:
-                    page: 'Page number'
-                    limit: 'Items per page'
-                messages:
-                    header: 'Joined rooms:'
-                    footer: 'Use chatluna.room.switch [name/id] to change default room.'
-                    pages: 'Page: [page] / [total]'
-                    room_name: 'Name: {0}'
-                    room_id: 'ID: {0}'
-                    room_preset: 'Preset: {0}'
-                    room_model: "Model: {0} \nModel Availability: {1}"
-                    room_visibility: 'Visibility: {0}'
-                    room_chat_mode: 'Chat mode: {0}'
-                    room_master_id: 'Creator ID: {0}'
-                    room_availability: 'Availability: {0}'
-            transfer:
-                description: 'Transfer room ownership.'
-                messages:
-                    room_not_found: 'Room not found.'
-                    not_room_master: 'Insufficient permissions: Not room owner.'
-                    confirm_transfer: 'Transfer room {0} to user {1}? You will lose owner privileges. Y to confirm.'
-                    timeout: 'Operation timed out. Automatically cancelled.'
-                    cancelled: 'Operation cancelled.'
-                    success: 'Room {0} transferred to user {1}.'
-            info:
-                description: 'View current room information.'
-                arguments:
-                    room: 'Target room'
-                messages:
-                    room_not_found: 'Room not found.'
-                    header: 'Current room information:'
-                    room_name: 'Name: {0}'
-                    room_id: 'ID: {0}'
-                    room_preset: 'Preset: {0}'
-                    room_model: "Model: {0} \nModel Availability: {1}"
-                    room_visibility: 'Visibility: {0}'
-                    room_chat_mode: 'Chat mode: {0}'
-                    room_master_id: 'Creator ID: {0}'
+                    title: Conversation title.
             switch:
-                description: 'Switch to a joined room.'
+                description: Switch the active conversation.
                 arguments:
-                    name: 'Room name or ID'
-                messages:
-                    success: 'Switched to room {0}.'
-                    room_not_found: 'Room not found.'
-            permission:
-                description: 'Modify user permissions in room.'
+                    conversation: Target conversation by seq, ID, or title.
+            list:
+                description: List conversations in the current route.
+            current:
+                description: Show the current active conversation.
+            rename:
+                description: Rename the current or target conversation.
+                arguments:
+                    title: New conversation title.
+            archive:
+                description: Archive a conversation.
+                arguments:
+                    conversation: Target conversation by seq, ID, or title.
+            restore:
+                description: Restore an archived conversation.
+                arguments:
+                    conversation: Target conversation by seq, ID, or title.
+            export:
+                description: Export a conversation as a markdown transcript.
+                arguments:
+                    conversation: Target conversation by seq, ID, or title.
+            compress:
+                description: Compress a conversation without referencing rooms.
+                arguments:
+                    conversation: Target conversation by seq, ID, or title.
+            delete:
+                description: Delete the current or target conversation.
+                arguments:
+                    conversation: Target conversation by seq, ID, or title.
+        new:
+            description: Create and switch to a new conversation.
+            arguments:
+                title: Conversation title.
+            options:
+                preset: Preset lane.
+                model: Target model name.
+                chatMode: Target chat mode.
+        switch:
+            description: Switch the active conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        list:
+            description: List conversations in the current route.
+            options:
+                page: Page number.
+                limit: Items per page.
+                archived: Include archived conversations.
+                all: Include archived conversations.
+                preset: Preset lane.
+        current:
+            description: Show the current active conversation.
+            options:
+                preset: Preset lane.
+        rename:
+            description: Rename the current or target conversation.
+            arguments:
+                title: New conversation title.
+            options:
+                preset: Preset lane.
+        archive:
+            description: Archive a conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        restore:
+            description: Restore an archived conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        export:
+            description: Export a conversation as a markdown transcript.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        compress:
+            description: Compress a conversation without referencing rooms.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+            messages:
+                success: '{0} -> {1}, {2}%'
+                skipped: 'Compression skipped. {0} -> {1}, {2}%'
+                no_conversation: 'No conversation is available to compress.'
+                failed: 'Failed to compress chat history for conversation {0} ({1}): {2}'
+        delete:
+            description: Delete the current or target conversation.
+            arguments:
+                conversation: Target conversation by seq, ID, or title.
+            options:
+                preset: Preset lane.
+        use:
+            description: Update the active conversation usage settings.
+            model:
+                description: Switch the conversation model.
+                arguments:
+                    model: Target model name.
                 options:
-                    room: 'Specify room'
-                    user: 'Target user'
-                messages:
-                    room_not_found: 'Room not found.'
-                    not_admin: 'Insufficient permissions: Not room owner.'
-                    confirm_set: 'Set permissions for user {0} in room {1}? Available: member, admin. Enter permission or first letter. Any other: Cancel.'
-                    timeout: 'Operation timed out. Automatically cancelled.'
-                    invalid_permission: 'Invalid permission. Operation cancelled.'
-                    success: 'Permission for user {0} in room {1} set to {2}'
-            mute:
-                description: 'Mute a user in the room.'
+                    preset: Preset lane.
+            preset:
+                description: Switch the conversation preset.
+                arguments:
+                    preset: Target preset keyword.
                 options:
-                    room: 'Specify room'
-                messages:
-                    room_not_found: 'Room not found.'
-                    not_admin: 'Insufficient permissions: Not room admin.'
-                    success: 'User {0} muted/unmuted in room {1}.'
+                    lane: Preset lane to operate on.
+            mode:
+                description: Switch the conversation chat mode.
+                arguments:
+                    mode: Target chat mode.
+                options:
+                    preset: Preset lane.
+        rule:
+            description: Manage route-level conversation rules.
+            model:
+                description: Fix or reset the model for the current route.
+                arguments:
+                    model: Target model or `reset`.
+            preset:
+                description: Fix or reset the preset for the current route.
+                arguments:
+                    preset: Target preset or `reset`.
+            mode:
+                description: Fix or reset the chat mode for the current route.
+                arguments:
+                    mode: Target chat mode or `reset`.
+            share:
+                description: Set the route sharing mode for the current route.
+                arguments:
+                    mode: '`shared`, `personal`, or `reset`.'
+            lock:
+                description: Lock or unlock conversation management for the current route.
+                arguments:
+                    state: '`on`, `off`, `toggle`, or `reset`.'
+            show:
+                description: Show the current route rule state.
         chat:
             description: ChatLuna conversation commands.
+            messages:
+                conversation_not_exist: 'Conversation does not exist.'
             text:
                 description: Initiate a text conversation with the AI model.
                 options:
-                    room: Target conversation room.
+                    conversation: Target conversation by seq, ID, or title.
+                    preset: Preset lane.
                     type: Message rendering type.
                 examples:
                     - chatluna chat text -t text Hello, world!
                     - chatluna chat text -t voice Hello, world!
-                    - chatluna chat text -r Genshin -t text Hello, world!
+                    - chatluna chat text -c 123e4567-e89b-12d3-a456-426614174000 -t text Hello, world!
                 arguments:
                     message: Message content to send.
                 messages:
@@ -229,37 +177,38 @@ commands:
             rollback:
                 description: Regenerate last conversation content.
                 options:
-                    room: Target room for operation.
+                    conversation: Target conversation by seq, ID, or title.
+                    i: Number of rounds to roll back.
                 arguments:
                     message: New message content.
                 messages:
-                    room_not_found: 'Room not found.'
-                    conversation_not_exist: 'Room does not exist.'
+                    conversation_not_found: 'Conversation not found.'
+                    conversation_not_exist: 'Conversation does not exist.'
                     no_chat_history: 'Chat history not found.'
                     invalid_chat_history: 'Invalid chat history. Clear history and retry.'
-                    rollback_success_1: 'Successfully rolled back to {0} rounds ago.'
+                    rollback_success: 'Successfully rolled back to {0} rounds ago.'
             stop:
                 description: Immediately terminate ongoing conversation.
                 options:
-                    room: Target room to stop conversation.
+                    conversation: Target conversation by seq, ID, or title.
                 messages:
-                    room_not_found: 'Room not found.'
-                    no_active_chat: 'No active conversation in current room.'
+                    conversation_not_found: 'Conversation not found.'
+                    no_active_chat: 'No active conversation is running.'
                     stop_failed: 'Failed to stop conversation.'
                     success: 'Conversation stopped successfully.'
             compress:
                 description: Manually compress chat history using Infinite Context.
                 options:
-                    room: Target room for compression.
+                    conversation: Target conversation by seq, ID, or title.
                 messages:
                     success: '{0} -> {1}, {2}%'
                     skipped: 'Compression skipped. {0} -> {1}, {2}%'
-                    no_room: 'Room not found.'
-                    failed: 'Failed to compress chat history for room {0}: {1}'
+                    conversation_not_found: 'Conversation not found.'
+                    failed: 'Failed to compress chat history for conversation {0}: {1}'
             voice:
                 description: Converse with AI model and receive voice output.
                 options:
-                    room: Target conversation room.
+                    conversation: Target conversation by seq, ID, or title.
                     speaker: Character ID for voice service.
                 arguments:
                     message: Message content to send.
@@ -282,147 +231,9 @@ commands:
             messages:
                 success: Successfully restarted ChatLuna.
 
-        auth:
-            description: ChatLuna authentication commands.
-            list:
-                description: Display authorization groups.
-                options:
-                    page: Page number
-                    limit: Items per page
-                    platform: Specify platform
-                messages:
-                    header: 'Available quota groups:'
-                    footer: 'Use chatluna.auth.add [name/id] to join a quota group.'
-                    pages: 'Page: [page] / [total]'
-                    name: 'Name: {0}'
-                    platform: 'Model platform: {0}'
-                    cost: 'Cost: {0} / 1000 tokens'
-                    priority: 'Priority: {0}'
-                    support_models: 'Allowed models: {0}'
-                    limit_per_min: 'Limit: {0} messages/minute'
-                    limit_per_day: 'Limit: {0} messages/day'
-                    general: 'General'
-            add:
-                description: Add user to quota group.
-                usage: 'Usage: chatluna auth add [group] name -u @user'
-                options:
-                    user: Target user
-                messages:
-                    permission_denied: 'Insufficient permissions for this operation.'
-                    success: 'User {0} added to quota group {1}.'
-            kick:
-                description: Remove user from quota group.
-                usage: 'Usage: chatluna auth kick [group name] -u @user'
-                options:
-                    user: Target user
-                messages:
-                    permission_denied: 'Insufficient permissions for this operation.'
-                    success: 'User {0} removed from quota group {1}.'
-            create:
-                description: Create new authorization group.
-                options:
-                    name: Group name
-                    preMin: Per-minute limit
-                    preDay: Daily limit
-                    platform: Platform
-                    supportModels: 'Supported models'
-                    priority: Priority
-                    cost: Token cost
-                messages:
-                    enter_name: 'Enter quota group name (e.g., OpenAI Quota Group):'
-                    name_exists: 'Group name already exists. Please try again.'
-                    enter_limit_per_min: 'Enter per-minute limit (>0):'
-                    enter_limit_per_day: 'Enter daily limit (>per-minute limit):'
-                    enter_platform: 'Enter model platform ID (e.g., openai) or N to skip:'
-                    enter_priority: 'Enter priority (higher number = higher priority):'
-                    enter_cost: 'Enter token cost (per 1000 tokens):'
-                    enter_models: 'Enter allowed models (comma-separated) or N to skip:'
-                    invalid_input: 'Invalid input for {0}. Please try again.'
-                    confirm_create: 'Create quota group? Y: Create, N: Interactive mode, Any other: Cancel.'
-                    timeout: 'Response timeout. Creation cancelled.'
-                    cancelled: 'Quota group creation cancelled.'
-                    success: 'Quota group "{0}" created successfully.'
-                    change_or_keep: '{0} {1}: {2}. Change? New value or N to keep.'
-                    invalid_models: 'Invalid models detected. Please try again.'
-                    action:
-                        input: 'Input'
-                        set: 'Set'
-                        select: 'Select'
-                    field:
-                        name: 'Group name'
-                        limit_per_min: 'Per-minute limit'
-                        limit_per_day: 'Daily limit'
-                        platform: 'Platform ID'
-                        priority: 'Priority'
-                        cost: 'Cost'
-                        models: 'Allowed models'
-            set:
-                description: 'Modify existing authorization group.'
-                options:
-                    name: 'Group name'
-                    preMin: 'Per-minute limit'
-                    preDay: 'Daily limit'
-                    platform: 'Platform'
-                    supportModels: 'Supported models'
-                    priority: 'Priority'
-                    cost: 'Token cost'
-                messages:
-                    confirm_set: 'Modify quota group? Y: Direct modify, N: Interactive mode, Any other: Cancel.'
-                    timeout: 'Response timeout. Modification cancelled.'
-                    cancelled: 'Quota group modification cancelled.'
-                    enter_name: 'Enter new group name (e.g., OpenAI Quota Group) or Q to exit:'
-                    name_exists: 'Group name already exists. Please try again.'
-                    enter_limit_per_min: 'Enter new per-minute limit (>0) or Q to exit:'
-                    enter_limit_per_day: 'Enter new daily limit (>per-minute limit) or Q to exit:'
-                    enter_platform: 'Enter new platform ID (e.g., openai), N to skip, or Q to exit:'
-                    enter_priority: 'Enter new priority (higher = more priority) or Q to exit:'
-                    enter_cost: 'Enter new token cost (per 1000 tokens) or Q to exit:'
-                    enter_models: 'Enter new allowed models (comma-separated), N to skip, or Q to exit:'
-                    invalid_input: 'Invalid input for {0}. Please try again.'
-                    change_or_keep: '{0} {1}: {2}. Change? New value, N to keep, or Q to exit.'
-                    invalid_models: 'Invalid models detected. Please try again.'
-                    success: 'Quota group "{0}" modified successfully.'
-                    action:
-                        input: 'Input'
-                        set: 'Set'
-                        select: 'Select'
-                    field:
-                        name: 'Group name'
-                        limit_per_min: 'Per-minute limit'
-                        limit_per_day: 'Daily limit'
-                        platform: 'Platform ID'
-                        priority: 'Priority'
-                        cost: 'Cost'
-                        models: 'Allowed models'
-
-        balance:
-            description: ChatLuna balance management.
-            clear:
-                description: Reset user balance.
-                arguments:
-                    user: Target user
-                examples:
-                    - 'chatluna balance clear --user @username'
-                messages:
-                    success: 'User {0} balance reset to {1}'
-            set:
-                description: 'Adjust user balance.'
-                arguments:
-                    user: 'Target user'
-                    amount: 'New balance'
-                examples:
-                    - 'chatluna balance set --user @username --amount 1000'
-                messages:
-                    success: 'User {0} balance updated to {1}'
-            query:
-                description: Check user balance.
-                arguments:
-                    user: 'Target user (default: current user)'
-                examples:
-                    - 'chatluna balance query'
-                    - 'chatluna balance query --user @username'
-                messages:
-                    success: 'User {0} current balance: {1}'
+        admin:
+            purge-legacy:
+                description: Purge migrated legacy ChatLuna data.
 
         model:
             description: ChatLuna model management.
@@ -434,7 +245,7 @@ commands:
                     limit: Items per page
                 messages:
                     header: 'Available models:'
-                    footer: 'Set default model: chatluna.room.set -m [model]'
+                    footer: 'Set default model per conversation with chatluna.new -p [preset] or chatluna.switch.'
                     pages: 'Page: [page] / [total]'
             search:
                 description: 'Search available models.'
@@ -446,7 +257,7 @@ commands:
                     limit: 'Items per page'
                 messages:
                     header: 'Search results:'
-                    footer: 'Set default model: chatluna.room.set -m [model]'
+                    footer: 'Set default model per conversation with chatluna.new -p [preset] or chatluna.switch.'
                     pages: 'Page: [page] / [total]'
             test:
                 description: Test if a specified model or adapter is available.
@@ -546,6 +357,7 @@ commands:
                 options:
                     page: 'Page number.'
                     limit: 'Items per page.'
+                    preset: 'Preset lane.'
                     type: 'Memory preset.'
                     view: 'Memory layer.'
                 messages:
@@ -565,6 +377,7 @@ commands:
                 arguments:
                     ids: 'Memory ID list.'
                 options:
+                    preset: 'Preset lane.'
                     type: 'Memory preset.'
                     view: 'Memory layer.'
                 messages:
@@ -575,6 +388,7 @@ commands:
             clear:
                 description: 'Clear memory.'
                 options:
+                    preset: 'Preset lane.'
                     type: 'Memory preset.'
                     view: 'Memory layer.'
                 messages:
@@ -587,6 +401,7 @@ commands:
                 arguments:
                     content: 'Memory content.'
                 options:
+                    preset: 'Preset lane.'
                     type: 'Memory preset.'
                     view: 'Memory layer.'
                 messages:
@@ -599,6 +414,7 @@ commands:
                 arguments:
                     id: 'Memory ID.'
                 options:
+                    preset: 'Preset lane.'
                     type: 'Memory preset.'
                     view: 'Memory layer.'
                 messages:
@@ -616,7 +432,7 @@ commands:
                     limit: 'Items per page'
                 messages:
                     header: 'Available presets:'
-                    footer: 'Set default preset: chatluna.room.set -p [preset]'
+                    footer: 'Set default preset per conversation with chatluna.new -p [preset] or chatluna.switch.'
                     pages: 'Page: [page] / [total]'
                     preset_keyword: 'Keyword: {0}'
                     preset_content: 'Content: {0}'
@@ -658,7 +474,7 @@ commands:
                 messages:
                     only_one_preset: 'Cannot delete the only existing preset.'
                     not_found: 'Preset not found. Check the name and try again.'
-                    confirm_delete: 'Delete preset {0}? Y to confirm, any other key to cancel. Note: Associated sessions will be deleted.'
+                    confirm_delete: 'Delete preset {0}? Y to confirm, any other key to cancel. Note: Associated sessions will switch to another available preset.'
                     timeout: 'Operation timed out. Cancelled deleting preset: {0}.'
                     cancelled: 'Cancelled deleting preset: {0}'
                     success: 'Preset {0} deleted. Restarting to apply changes.'
@@ -715,21 +531,99 @@ chatluna:
     quote_said: 'said'
     aborted: 'Current conversation generation stopped successfully.'
     thinking_message: 'Processing... {0} messages in queue. Please wait.'
-    block_message: ''
     error_message: 'ChatLuna error occurred. Error code: %s. Contact developer for assistance.'
     middleware_error: 'Error in {0}: {1}'
     not_available_model: 'No models are currently available. Please check your configuration to ensure model adapters are properly installed and configured.'
     chat_limit_exceeded: 'Daily chat limit reached. Please try again in {0} minutes.'
-    room:
-        random_switch: 'No room specified. Switched to room {0}.'
-        not_joined: 'No room joined. Please join a room first.'
-        not_in_room: 'Not a member of this room. Please join room {0} first.'
-        muted: 'You are muted in room {0}.'
-        unavailable: 'The model {0} for this room is unavailable. Please contact an administrator to configure the API.'
-        auto_switch: 'User {0} switched to room {1}.'
-        auto_create: 'Room {1} created for user {0}.'
-        auto_create_template: 'Template clone room {1} created for user {0}.'
-        room_name: '{0} room'
-        template_clone_room_name: '{0} template clone room'
-        config_changed: 'Configuration updated for template room {0}.'
+    conversation:
+        default_title: 'New Conversation'
+        active: 'current'
+        status_value:
+            active: 'active'
+            archived: 'archived'
+            deleted: 'deleted'
+            broken: 'broken'
+        messages:
+            unavailable: 'The model {0} for this conversation is unavailable. Please contact an administrator to configure the API.'
+            new_success: 'Created conversation: {0}'
+            new_forbidden: 'Creating new conversations is disabled in the current route.'
+            admin_required: 'Conversation management requires administrator permission in the current route.'
+            target_required: 'Please provide a conversation target by seq, ID, or title.'
+            target_not_found: 'Conversation not found in the current route or shared ACL scope.'
+            target_ambiguous: 'More than one conversation matched. Please use the seq or ID.'
+            target_outside_route: 'The target conversation is outside the current route and has no permission grant.'
+            title_required: 'Conversation title is required.'
+            action_locked: 'Conversation {0} is locked by the current rule.'
+            action_disabled: 'Conversation {0} is disabled in the current route.'
+            action_failed: 'Conversation {0} failed: {1}'
+            fixed_model: 'The current route fixes the model to {0}.'
+            fixed_preset: 'The current route fixes the preset to {0}.'
+            fixed_chat_mode: 'The current route fixes the chat mode to {0}.'
+            switch_success: 'Switched to: {0}'
+            switch_failed: 'Failed to switch conversation: {0}'
+            list_header: 'Conversations in the current route:'
+            list_pages: 'Page [page] / [total]'
+            list_empty: 'No conversations were found in the current route.'
+            current_header: 'Current conversation:'
+            current_empty: 'No active conversation is bound to the current route.'
+            rename_success: 'Renamed to: {0}'
+            rename_failed: 'Failed to rename conversation: {0}'
+            delete_success: 'Deleted conversation: {0}'
+            delete_failed: 'Failed to delete conversation: {0}'
+            use_model_success: '{1} now uses model {0}.'
+            use_model_failed: 'Failed to switch model: {0}'
+            use_preset_success: '{1} now uses preset {0}.'
+            use_preset_failed: 'Failed to switch preset: {0}'
+            use_mode_success: '{1} now uses chat mode {0}.'
+            use_mode_failed: 'Failed to switch chat mode: {0}'
+            archive_empty: 'No conversation is available to archive.'
+            archive_success: 'Archived conversation: {0}'
+            archive_failed: 'Failed to archive conversation: {0}'
+            restore_empty: 'No conversation is available to restore.'
+            restore_success: 'Restored conversation: {0}'
+            restore_failed: 'Failed to restore conversation: {0}'
+            export_empty: 'No conversation is available to export.'
+            export_success: 'Exported conversation: {0}, file: {3}'
+            export_failed: 'Failed to export conversation: {0}'
+            rule_model_status: 'Model rule: default {0}, fixed {1}.'
+            rule_preset_status: 'Current preset lane: {0}. New conversation preset: {1}.'
+            rule_mode_status: 'Chat mode rule: default {0}, fixed {1}.'
+            rule_share_status: 'Route mode: {0}.'
+            rule_model_success: 'Rule fixed model set to {0}.'
+            rule_preset_success: 'Rule fixed preset set to {0}.'
+            rule_mode_success: 'Rule fixed chat mode set to {0}.'
+            rule_share_success: 'Rule route mode set to {0}.'
+            rule_share_failed: 'Failed to update route mode: {0}'
+            rule_lock_success: 'Rule lock state set to {0}.'
+            rule_lock_failed: 'Failed to update lock state: {0}'
+            rule_show_header: 'Current conversation rules:'
+        action:
+            create: 'creation'
+            switch: 'switch'
+            archive: 'archive'
+            restore: 'restore'
+            export: 'export'
+            rename: 'rename'
+            delete: 'delete'
+            update: 'update'
+            compress: 'compression'
+        conversation_line: '#{0} {1} [{2}] [{3}]'
+        conversation_line_with_status: '#{0} {1} [{2}] [{3}] [{4}]'
+        conversation_line_with_lane: '#{0} {1} [{2}] [{3}] ({4})'
+        conversation_line_with_lane_status: '#{0} {1} [{2}] [{3}] ({4}) [{5}]'
+        conversation_seq: 'Seq: {0}'
+        conversation_title: 'Title: {0}'
+        conversation_id: 'ID: {0}'
+        conversation_status: 'Status: {0}'
+        conversation_effective_model: 'Effective model: {0}'
+        conversation_effective_preset: 'Effective preset: {0}'
+        conversation_effective_chat_mode: 'Effective chat mode: {0}'
+        conversation_compression_count: 'Compression count: {0}'
+        conversation_updated_at: 'Updated at: {0}'
+        rule_share: 'Route rule: {0}'
+        rule_model: 'Fixed model: {0}'
+        rule_preset: 'Fixed preset: {0}'
+        rule_mode: 'Fixed chat mode: {0}'
+        rule_lock: 'Lock rule: {0}'
+        main_lane: 'main'
     cooldown_wait_message: 'Message rate limit reached. Please wait {0}s before sending another message.'

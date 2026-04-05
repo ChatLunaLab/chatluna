@@ -1,42 +1,6 @@
 import { MessageContent } from '@langchain/core/messages'
 import { h, Session } from 'koishi'
 
-export interface ConversationRoom {
-    visibility: 'public' | 'private' | 'template_clone'
-    roomMasterId: string
-    roomName: string
-    roomId: number
-    conversationId?: string
-    preset: string
-    model: string
-    chatMode: string
-    password?: string
-    autoUpdate?: boolean
-    updatedTime: Date
-
-    // allowGroups?: string[]
-    // allowUsers?: string[]
-}
-
-export interface ConversationRoomMemberInfo {
-    userId: string
-    roomId: number
-    mute?: boolean
-    roomPermission: 'owner' | 'admin' | 'member'
-}
-
-export interface ConversationRoomGroupInfo {
-    groupId: string
-    roomId: number
-    roomVisibility: 'public' | 'private' | 'template_clone'
-}
-
-export interface ConversationRoomUserInfo {
-    groupId?: string
-    defaultRoomId: number
-    userId: string
-}
-
 /**
  * 渲染参数
  */

@@ -9,7 +9,7 @@ $inner:
       allowAtReply: 是否允许通过 @ bot 来触发对话。
       allowQuoteReply: 是否允许通过引用 bot 的消息来触发对话。
       privateChatWithoutCommand: 在私聊中是否允许无需命令直接与 bot 对话。
-      allowChatWithRoomName: 是否允许使用房间名前缀触发对话。注意：启用此选项可能会显著影响 ChatLuna 的性能，建议配合过滤器仅在特定群组中启用。
+      allowConversationTriggerPrefix: 是否允许使用会话标题前缀触发对话。注意：启用此选项可能会显著影响 ChatLuna 的性能，建议配合过滤器仅在特定群组中启用。
       randomReplyFrequency: 设置随机回复的频率。
       includeQuoteReply: 是否在向模型的请求内容中添加被引用的消息内容
       attachForwardMsgIdToContext: 是否将合并转发聊天记录消息的 ID 附加到上下文中。启用后，检测到聊天记录会额外追加一条 [聊天记录] 消息。
@@ -40,35 +40,30 @@ $inner:
     - $desc: 黑名单选项
       blackList:
           $desc: 设置黑名单列表。请谨慎使用，只对需要拉黑的用户或群启用。1 表示启用黑名单，0 表示不启用黑名单。默认值为 0。
-      blockText: 设置对被拉黑用户的固定回复内容。
 
     - $desc: 历史记录选项
       infiniteContext: 启用「无限上下文」，当对话接近模型的上下文上限时自动压缩旧消息，保留关键话题和指令并丢弃无关内容。
       infiniteContextThreshold: 设置无限上下文的触发阈值（百分比）。当对话历史的 token 数量达到模型上下文上限的该百分比时，将触发压缩。
-      autoDelete: 是否自动删除长期未使用的房间。
-      autoDeleteTimeout: 设置自动删除未使用房间的时间阈值（单位：秒）。
+      autoArchive: 是否自动归档长期未使用的会话，而不是继续保留旧的房间状态。
+      autoArchiveTimeout: 设置自动归档未使用会话的时间阈值（单位：秒）。
+      autoPurgeArchive: 是否在归档会话超过保留时间后自动彻底删除。
+      autoPurgeArchiveTimeout: 设置归档会话被自动删除前的保留时间（单位：秒）。
 
     - $desc: 模型选项
       defaultEmbeddings: 设置默认使用的嵌入模型。
       defaultVectorStore: 设置默认使用的向量数据库。
 
-    - $desc: 模板房间选项
-      autoCreateRoomFromUser: 是否为每个用户自动创建专属房间。
+    - $desc: 会话路由默认配置
+      defaultGroupRouteMode:
+          $desc: 设置群聊场景下默认的会话路由模式，决定群成员是共享同一路由还是各自拥有独立路由，也会影响预设分流。
+          $inner:
+              - 群共享会话
+              - 成员独立会话
       defaultChatMode: 设置默认的聊天模式。
       defaultModel: 设置默认使用的聊天模型。
       defaultPreset: 设置默认使用的聊天预设。
-      autoUpdateRoomMode:
-          $desc: 自动更新房间配置模式。触发后，相关房间的配置将跟随模版房间的配置。
-          $inner:
-              - 所有房间更新
-              - 仅自动创建房间更新
-              - 禁用更新
 
     - $desc: 杂项
-      authSystem:
-          $desc: 是否启用配额组和用户权限系统（实验性功能）。启用后，各适配器设置的调用限额将失效。
-          $inner:
-              - true
       errorTemplate: 设置错误提示消息的模板（此设置在未来版本中可能会有变更）。
       voiceSpeakId: 设置使用 vits 服务时的默认发音人 ID。
       isLog: 是否启用调试模式。
@@ -80,8 +75,3 @@ $inner:
     - - $desc: 代理选项
         $inner:
             proxyAddress: 网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。如不填写，将尝试使用 Koishi 全局配置中的代理设置。
-
-    - - $desc: 配额组选项
-        $inner:
-            authUserDefaultGroup:
-                $desc: 格式为 [权限等级, 初始余额, 授权组名称]。权限等级：0 为 guest，1 为 user，2 为 admin。如不了解，请勿配置。

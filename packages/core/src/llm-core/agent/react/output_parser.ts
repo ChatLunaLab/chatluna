@@ -4,7 +4,7 @@ import {
     BaseOutputParser,
     OutputParserException
 } from '@langchain/core/output_parsers'
-import { FORMAT_INSTRUCTIONS } from './prompt.js'
+import { FORMAT_INSTRUCTIONS } from './prompt'
 
 /**
  * Parses ReAct-style LLM calls that support multiple tool inputs using XML tags.

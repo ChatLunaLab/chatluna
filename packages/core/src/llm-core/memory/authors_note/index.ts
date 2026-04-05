@@ -55,13 +55,23 @@ export function apply(ctx: Context, config: Config): void {
         authorsNoteCache.chatCount++
     })
 
-    ctx.on(
-        'chatluna/clear-chat-history',
-        async (conversationId, chatInterface) => {
-            cache.delete(conversationId)
-            ctx.chatluna.contextManager.clearConversation(conversationId)
-        }
-    )
+    const clear = (conversationId: string) => {
+        cache.delete(conversationId)
+        ctx.chatluna.contextManager.clearConversation(conversationId)
+    }
+
+    ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
+        clear(payload.conversation.id)
+    })
+    ctx.on('chatluna/conversation-after-archive', async (payload) => {
+        clear(payload.conversation.id)
+    })
+    ctx.on('chatluna/conversation-after-restore', async (payload) => {
+        clear(payload.conversation.id)
+    })
+    ctx.on('chatluna/conversation-after-delete', async (payload) => {
+        clear(payload.conversation.id)
+    })
 }
 
 interface AuthorsNoteCache {

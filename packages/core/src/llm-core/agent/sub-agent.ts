@@ -409,7 +409,9 @@ export function buildTaskToolDescription() {
         'Delegate a focused task to a specialized agent when parallel work, deeper investigation, or a narrower prompt will help.',
         'Use the exact agent name from the injected catalog.',
         'If delegated work may take a while, set background=true so it can continue beyond the normal tool timeout.',
-        'Use action=list or action=status to inspect background tasks, action=message to send more guidance while they run, and action=run with the same id to continue the same session later.'
+        'Use action=list or action=status to inspect background tasks, ' +
+            'action=message to send more guidance while they run, and ' +
+            'action=run with the same id to continue the same session later.'
     ].join('\n')
 }
 
@@ -464,7 +466,9 @@ class AgentTaskTool extends StructuredTool {
                 .enum(['run', 'status', 'list', 'message'])
                 .optional()
                 .describe(
-                    'run starts or resumes an agent task, status inspects one task, list shows recent tasks in this conversation, message sends live guidance to a running background task.'
+                    'run starts or resumes an agent task, status inspects one task, ' +
+                        'list shows recent tasks in this conversation, message sends ' +
+                        'live guidance to a running background task.'
                 ),
             agent: z
                 .string()
@@ -883,7 +887,8 @@ function formatTaskResult(
         `agent: ${task.agentName}`,
         `run_id: ${run.runId}`,
         `state: ${run.state}`,
-        `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} to continue this session. Add "background":true when the work may take a while.`,
+        `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
+            'to continue this session. Add "background":true when the work may take a while.',
         '',
         output.trim() || '(empty)'
     ].join('\n')
@@ -976,7 +981,8 @@ function formatTaskDetail(
 
     if (run?.state !== 'running') {
         lines.push(
-            `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} to continue this session. Add "background":true when the work may take a while.`
+            `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
+                'to continue this session. Add "background":true when the work may take a while.'
         )
     }
 

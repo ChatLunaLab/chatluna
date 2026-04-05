@@ -962,6 +962,11 @@ export function getUsage(data: ChatResponse) {
         completionTokens: getCompletionTokens(data),
         totalTokens: usage.totalTokenCount,
         inputAudioTokens: getModalityTokens(usage.promptTokensDetails, 'AUDIO'),
+        inputImageTokens: getModalityTokens(usage.promptTokensDetails, 'IMAGE'),
+        outputImageTokens: getModalityTokens(
+            usage.candidatesTokensDetails,
+            'IMAGE'
+        ),
         outputAudioTokens: getModalityTokens(
             usage.candidatesTokensDetails,
             'AUDIO'

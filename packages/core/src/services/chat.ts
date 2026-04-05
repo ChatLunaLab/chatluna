@@ -1,9 +1,5 @@
-import {
-    AIMessage,
-    HumanMessage,
-    type UsageMetadata
-} from '@langchain/core/messages'
 import fs from 'fs'
+import path from 'path'
 import {
     Awaitable,
     Computed,
@@ -13,9 +9,8 @@ import {
     Service,
     Session
 } from 'koishi'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
-import path from 'path'
-import { LRUCache } from 'lru-cache'
 import { Cache } from '../cache'
 import { ChatChain } from '../chains/chain'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
@@ -23,7 +18,6 @@ import {
     type ChatLunaAgent,
     createAgent,
     type CreateChatLunaAgentOptions,
-    MessageQueue,
     resolveAgentEmbeddings,
     resolveAgentModel,
     resolveAgentPreset,
@@ -48,16 +42,17 @@ import {
     ModelType,
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { PresetService } from 'koishi-plugin-chatluna/preset'
-import { ConversationRoom, Message } from '../types'
+import { Message } from '../types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { RequestIdQueue } from 'koishi-plugin-chatluna/utils/queue'
 import { MessageTransformer } from './message_transform'
 import { ChatEvents, ToolMaskArg, ToolMaskResolver } from './types'
+import { ConversationService } from './conversation'
+import { ConversationRuntime } from './conversation_runtime'
+import { ConstraintRecord, ConversationRecord } from './conversation_types'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
@@ -78,7 +73,6 @@ import { createChatPrompt } from 'koishi-plugin-chatluna/utils/chatluna'
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
-    private _chatInterfaceWrapper: ChatInterfaceWrapper
     private readonly _chain: ChatChain
     private readonly _keysCache: Cache<'chatluna/keys', string>
     private readonly _preset: PresetService
@@ -87,6 +81,8 @@ export class ChatLunaService extends Service<Config> {
     private readonly _renderer: DefaultRenderer
     private readonly _promptRenderer: ChatLunaPromptRenderService
     private readonly _contextManager: ChatLunaContextManagerService
+    private readonly _conversation: ConversationService
+    private readonly _conversationRuntime: ConversationRuntime
     private _toolMaskResolvers: Record<string, ToolMaskResolver> = {}
 
     declare public config: Config
@@ -108,9 +104,14 @@ export class ChatLunaService extends Service<Config> {
         this._renderer = new DefaultRenderer(ctx, config)
         this._promptRenderer = new ChatLunaPromptRenderService()
         this._contextManager = new ChatLunaContextManagerService(ctx)
+        this._conversation = new ConversationService(ctx, config)
+        this._conversationRuntime = new ConversationRuntime(this)
 
         this._createTempDir()
         this._defineDatabase()
+        this.ctx.on('ready', async () => {
+            await this._dedupeConstraintNames()
+        })
     }
 
     async installPlugin(plugin: ChatLunaPlugin) {
@@ -193,7 +194,7 @@ export class ChatLunaService extends Service<Config> {
 
         const platform = targetPlugin.platformName
 
-        this._chatInterfaceWrapper?.dispose(platform)
+        this._conversationRuntime.dispose(platform)
 
         delete this._plugins[platform]
 
@@ -224,12 +225,9 @@ export class ChatLunaService extends Service<Config> {
         return this._plugins[platformName]
     }
 
-    /**
-     * @internal
-     */
     chat(
         session: Session,
-        room: ConversationRoom,
+        conversation: ConversationRecord,
         message: Message,
         event: ChatEvents,
         stream: boolean = false,
@@ -239,78 +237,46 @@ export class ChatLunaService extends Service<Config> {
         requestId: string = randomUUID(),
         toolMask?: ToolMask
     ) {
-        const chatInterfaceWrapper =
-            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
-
-        return chatInterfaceWrapper.chat(
+        return this._conversationRuntime.chat(
             session,
-            room,
+            conversation,
             message,
             event,
             stream,
-            requestId,
             variables,
             postHandler,
+            requestId,
             toolMask
         )
     }
 
-    async stopChat(room: ConversationRoom, requestId: string) {
-        const chatInterfaceWrapper = this.queryInterfaceWrapper(room, false)
-
-        if (chatInterfaceWrapper == null) {
-            return undefined
-        }
-
-        return chatInterfaceWrapper.stopChat(requestId)
-    }
-
-    appendPendingMessage(
-        conversationId: string,
-        message: HumanMessage,
-        chatMode?: string
-    ) {
-        if (this._chatInterfaceWrapper == null) {
-            return false
-        }
-
-        return this._chatInterfaceWrapper.appendPendingMessage(
-            conversationId,
-            message,
-            chatMode
+    async clearCache(conversation: ConversationRecord) {
+        return this._conversationRuntime.clearConversationInterface(
+            conversation
         )
     }
 
-    queryInterfaceWrapper(room: ConversationRoom, autoCreate: boolean = true) {
-        return (
-            this._chatInterfaceWrapper ??
-            (autoCreate ? this._createChatInterfaceWrapper() : undefined)
-        )
-    }
+    async createChatInterface(conversation: ConversationRecord) {
+        const config = this.currentConfig
+        const chatInterface = new ChatInterface(this.ctx.root, {
+            chatMode: conversation.chatMode,
+            autoTitle: conversation.autoTitle ?? true,
+            botName: config.botNames[0],
+            preset: this.preset.getPreset(conversation.preset),
+            model: conversation.model,
+            conversationId: conversation.id,
+            embeddings:
+                config.defaultEmbeddings && config.defaultEmbeddings.length > 0
+                    ? config.defaultEmbeddings
+                    : undefined,
+            vectorStoreName:
+                config.defaultVectorStore &&
+                config.defaultVectorStore.length > 0
+                    ? config.defaultVectorStore
+                    : undefined
+        })
 
-    async clearChatHistory(room: ConversationRoom) {
-        const chatBridger =
-            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
-
-        return chatBridger.clearChatHistory(room)
-    }
-
-    async compressContext(room: ConversationRoom, force = false) {
-        const chatBridger =
-            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
-
-        return chatBridger.compressContext(room, force)
-    }
-
-    getCachedInterfaceWrapper() {
-        return this._chatInterfaceWrapper
-    }
-
-    async clearCache(room: ConversationRoom) {
-        const chatBridger =
-            this._chatInterfaceWrapper ?? this._createChatInterfaceWrapper()
-
-        return chatBridger.clearCache(room)
+        return chatInterface
     }
 
     async createChatModel(
@@ -458,8 +424,16 @@ export class ChatLunaService extends Service<Config> {
         return this._contextManager
     }
 
+    get conversation() {
+        return this._conversation
+    }
+
+    get conversationRuntime() {
+        return this._conversationRuntime
+    }
+
     protected async stop(): Promise<void> {
-        this._chatInterfaceWrapper?.dispose()
+        this._conversationRuntime.dispose()
         this._platformService.dispose()
         this._contextManager.clearAll()
     }
@@ -473,22 +447,463 @@ export class ChatLunaService extends Service<Config> {
         }
     }
 
+    private async _dedupeConstraintNames() {
+        const rows = (await this.ctx.database.get(
+            'chatluna_constraint',
+            {}
+        )) as ConstraintRecord[]
+
+        if (rows.length < 2) {
+            return
+        }
+
+        const names = new Set<string>()
+        const ids = [...rows]
+            .sort((left, right) => {
+                const leftTime = left.updatedAt?.getTime() ?? 0
+                const rightTime = right.updatedAt?.getTime() ?? 0
+                if (leftTime !== rightTime) {
+                    return rightTime - leftTime
+                }
+
+                return (right.id ?? 0) - (left.id ?? 0)
+            })
+            .filter((row) => {
+                if (!names.has(row.name)) {
+                    names.add(row.name)
+                    return false
+                }
+
+                return row.id != null
+            })
+            .map((row) => row.id!)
+
+        if (ids.length === 0) {
+            return
+        }
+
+        this.ctx.logger.warn(
+            `Removing ${ids.length} duplicate chatluna_constraint rows.`
+        )
+        await this.ctx.database.remove('chatluna_constraint', {
+            id: ids
+        })
+    }
+
     private _defineDatabase() {
         const ctx = this.ctx
 
         ctx.database.extend(
-            'chathub_conversation',
+            'chatluna_conversation',
             {
                 id: {
                     type: 'char',
                     length: 255
                 },
-                latestId: {
+                seq: {
+                    type: 'unsigned',
+                    nullable: true
+                },
+                bindingKey: {
+                    type: 'string',
+                    length: 255
+                },
+                title: 'string',
+                model: {
+                    type: 'char',
+                    length: 100
+                },
+                preset: {
+                    type: 'char',
+                    length: 255
+                },
+                chatMode: {
+                    type: 'char',
+                    length: 20
+                },
+                createdBy: {
+                    type: 'char',
+                    length: 255
+                },
+                createdAt: {
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
+                },
+                updatedAt: {
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
+                },
+                lastChatAt: {
+                    type: 'timestamp',
+                    nullable: true
+                },
+                status: {
+                    type: 'char',
+                    length: 20
+                },
+                latestMessageId: {
                     type: 'char',
                     length: 255,
                     nullable: true
                 },
                 additional_kwargs: {
+                    type: 'text',
+                    nullable: true
+                },
+                compression: {
+                    type: 'text',
+                    nullable: true
+                },
+                archivedAt: {
+                    type: 'timestamp',
+                    nullable: true
+                },
+                archiveId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                legacyRoomId: {
+                    type: 'unsigned',
+                    nullable: true
+                },
+                legacyMeta: {
+                    type: 'text',
+                    nullable: true
+                },
+                autoTitle: {
+                    type: 'boolean',
+                    nullable: true
+                }
+            },
+            {
+                autoInc: false,
+                primary: 'id',
+                unique: ['id']
+            }
+        )
+
+        ctx.database.extend(
+            'chatluna_message',
+            {
+                id: {
+                    type: 'char',
+                    length: 255
+                },
+                conversationId: {
+                    type: 'char',
+                    length: 255
+                },
+                parentId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                role: {
+                    type: 'char',
+                    length: 20
+                },
+                text: {
+                    type: 'text',
+                    nullable: true
+                },
+                content: {
+                    type: 'binary',
+                    nullable: true
+                },
+                name: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                tool_call_id: {
+                    type: 'string',
+                    nullable: true
+                },
+                tool_calls: {
+                    type: 'json',
+                    nullable: true
+                },
+                additional_kwargs: {
+                    type: 'text',
+                    nullable: true
+                },
+                additional_kwargs_binary: {
+                    type: 'binary',
+                    nullable: true
+                },
+                rawId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                createdAt: {
+                    type: 'timestamp',
+                    nullable: true
+                }
+            },
+            {
+                autoInc: false,
+                primary: 'id',
+                unique: ['id']
+            }
+        )
+
+        ctx.database.extend(
+            'chatluna_binding',
+            {
+                bindingKey: {
+                    type: 'string',
+                    length: 255
+                },
+                activeConversationId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                lastConversationId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                updatedAt: {
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
+                }
+            },
+            {
+                autoInc: false,
+                primary: 'bindingKey',
+                unique: ['bindingKey']
+            }
+        )
+
+        ctx.database.extend(
+            'chatluna_constraint',
+            {
+                id: 'unsigned',
+                name: 'string',
+                enabled: {
+                    type: 'boolean',
+                    initial: true
+                },
+                priority: {
+                    type: 'integer',
+                    initial: 0
+                },
+                createdBy: {
+                    type: 'char',
+                    length: 255
+                },
+                createdAt: {
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
+                },
+                updatedAt: {
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
+                },
+                platform: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                selfId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                guildId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                channelId: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                direct: {
+                    type: 'boolean',
+                    nullable: true
+                },
+                users: {
+                    type: 'text',
+                    nullable: true
+                },
+                excludeUsers: {
+                    type: 'text',
+                    nullable: true
+                },
+                routeMode: {
+                    type: 'char',
+                    length: 20,
+                    nullable: true
+                },
+                routeKey: {
+                    type: 'string',
+                    length: 255,
+                    nullable: true
+                },
+                activePresetLane: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                defaultModel: {
+                    type: 'char',
+                    length: 100,
+                    nullable: true
+                },
+                defaultPreset: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                defaultChatMode: {
+                    type: 'char',
+                    length: 20,
+                    nullable: true
+                },
+                fixedModel: {
+                    type: 'char',
+                    length: 100,
+                    nullable: true
+                },
+                fixedPreset: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                fixedChatMode: {
+                    type: 'char',
+                    length: 20,
+                    nullable: true
+                },
+                lockConversation: {
+                    type: 'boolean',
+                    nullable: true
+                },
+                allowNew: {
+                    type: 'boolean',
+                    nullable: true
+                },
+                allowSwitch: {
+                    type: 'boolean',
+                    nullable: true
+                },
+                allowArchive: {
+                    type: 'boolean',
+                    nullable: true
+                },
+                allowExport: {
+                    type: 'boolean',
+                    nullable: true
+                },
+                manageMode: {
+                    type: 'char',
+                    length: 20,
+                    nullable: true
+                }
+            },
+            {
+                autoInc: true,
+                primary: 'id',
+                unique: ['name']
+            }
+        )
+
+        ctx.database.extend(
+            'chatluna_archive',
+            {
+                id: {
+                    type: 'char',
+                    length: 255
+                },
+                conversationId: {
+                    type: 'char',
+                    length: 255
+                },
+                path: 'string',
+                formatVersion: {
+                    type: 'unsigned'
+                },
+                messageCount: {
+                    type: 'unsigned'
+                },
+                checksum: {
+                    type: 'char',
+                    length: 255,
+                    nullable: true
+                },
+                size: {
+                    type: 'unsigned'
+                },
+                state: {
+                    type: 'char',
+                    length: 20
+                },
+                createdAt: {
+                    type: 'timestamp',
+                    nullable: false,
+                    initial: new Date()
+                },
+                restoredAt: {
+                    type: 'timestamp',
+                    nullable: true
+                }
+            },
+            {
+                autoInc: false,
+                primary: 'id',
+                unique: ['id']
+            }
+        )
+
+        ctx.database.extend(
+            'chatluna_acl',
+            {
+                conversationId: {
+                    type: 'char',
+                    length: 255
+                },
+                principalType: {
+                    type: 'char',
+                    length: 20
+                },
+                principalId: {
+                    type: 'char',
+                    length: 255
+                },
+                permission: {
+                    type: 'char',
+                    length: 20
+                }
+            },
+            {
+                autoInc: false,
+                primary: [
+                    'conversationId',
+                    'principalType',
+                    'principalId',
+                    'permission'
+                ]
+            }
+        )
+
+        ctx.database.extend(
+            'chatluna_meta',
+            {
+                key: {
+                    type: 'string',
+                    length: 255
+                },
+                value: {
                     type: 'text',
                     nullable: true
                 },
@@ -500,189 +915,8 @@ export class ChatLunaService extends Service<Config> {
             },
             {
                 autoInc: false,
-                primary: 'id',
-                unique: ['id']
-            }
-        )
-
-        ctx.database.extend(
-            'chathub_message',
-            {
-                id: {
-                    type: 'char',
-                    length: 255
-                },
-                text: {
-                    type: 'text',
-                    nullable: true
-                },
-                content: {
-                    type: 'binary',
-                    nullable: true
-                },
-                parent: {
-                    type: 'char',
-                    length: 255,
-                    nullable: true
-                },
-                role: {
-                    type: 'char',
-                    length: 20
-                },
-                conversation: {
-                    type: 'char',
-                    length: 255
-                },
-                additional_kwargs: {
-                    type: 'text',
-                    nullable: true
-                },
-                additional_kwargs_binary: {
-                    type: 'binary',
-                    nullable: true
-                },
-                tool_call_id: 'string',
-                tool_calls: 'json',
-                name: {
-                    type: 'char',
-                    length: 255,
-                    nullable: true
-                },
-                rawId: {
-                    type: 'char',
-                    length: 255,
-                    nullable: true
-                }
-            },
-            {
-                autoInc: false,
-                primary: 'id',
-                unique: ['id']
-                /*  foreign: {
-                 conversation: ['chathub_conversaion', 'id']
-             } */
-            }
-        )
-
-        ctx.database.extend(
-            'chathub_room',
-            {
-                roomId: {
-                    type: 'integer'
-                },
-                roomName: 'string',
-                conversationId: {
-                    type: 'char',
-                    length: 255,
-                    nullable: true
-                },
-
-                roomMasterId: {
-                    type: 'char',
-                    length: 255
-                },
-                visibility: {
-                    type: 'char',
-                    length: 20
-                },
-                preset: {
-                    type: 'char',
-                    length: 255
-                },
-                model: {
-                    type: 'char',
-                    length: 100
-                },
-                chatMode: {
-                    type: 'char',
-                    length: 20
-                },
-                password: {
-                    type: 'char',
-                    length: 100
-                },
-                autoUpdate: {
-                    type: 'boolean',
-                    initial: false
-                },
-                updatedTime: {
-                    type: 'timestamp',
-                    nullable: false,
-                    initial: new Date()
-                }
-            },
-            {
-                autoInc: false,
-                primary: 'roomId',
-                unique: ['roomId']
-            }
-        )
-
-        ctx.database.extend(
-            'chathub_room_member',
-            {
-                userId: {
-                    type: 'string',
-                    length: 255
-                },
-                roomId: {
-                    type: 'integer'
-                },
-                roomPermission: {
-                    type: 'char',
-                    length: 50
-                },
-                mute: {
-                    type: 'boolean',
-                    initial: false
-                }
-            },
-            {
-                autoInc: false,
-                primary: ['userId', 'roomId']
-            }
-        )
-
-        ctx.database.extend(
-            'chathub_room_group_member',
-            {
-                groupId: {
-                    type: 'char',
-                    length: 255
-                },
-                roomId: {
-                    type: 'integer'
-                },
-                roomVisibility: {
-                    type: 'char',
-                    length: 20
-                }
-            },
-            {
-                autoInc: false,
-                primary: ['groupId', 'roomId']
-            }
-        )
-
-        ctx.database.extend(
-            'chathub_user',
-            {
-                userId: {
-                    type: 'char',
-                    length: 255
-                },
-                defaultRoomId: {
-                    type: 'integer'
-                },
-                groupId: {
-                    type: 'char',
-                    length: 255,
-                    nullable: true
-                }
-            },
-            {
-                autoInc: false,
-                primary: ['userId', 'groupId']
+                primary: 'key',
+                unique: ['key']
             }
         )
 
@@ -706,12 +940,6 @@ export class ChatLunaService extends Service<Config> {
                 primary: ['key', 'id']
             }
         )
-    }
-
-    private _createChatInterfaceWrapper(): ChatInterfaceWrapper {
-        const chatBridger = new ChatInterfaceWrapper(this)
-        this._chatInterfaceWrapper = chatBridger
-        return chatBridger
     }
 
     static inject = ['database']
@@ -956,473 +1184,6 @@ export class ChatLunaPlugin<
 
         return webSocket
     }
-}
-
-type ChatHubChatBridgerInfo = {
-    chatInterface: ChatInterface
-    room: ConversationRoom
-}
-
-type ActiveRequest = {
-    requestId: string
-    abortController: AbortController
-    chatMode: string
-    messageQueue: MessageQueue
-    roundDecisionResolvers: ((willConsume: boolean) => void)[]
-    lastDecision?: boolean
-}
-
-function createAbortError() {
-    return new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
-}
-
-class ChatInterfaceWrapper {
-    private _conversations: LRUCache<string, ChatHubChatBridgerInfo> =
-        new LRUCache({
-            max: 20
-        })
-
-    private _modelQueue = new RequestIdQueue()
-    private _conversationQueue = new RequestIdQueue()
-    private _platformService: PlatformService
-
-    private _requestIdMap: Map<string, AbortController> = new Map()
-    private _activeRequests: Map<string, ActiveRequest> = new Map()
-    private _platformToConversations: Map<string, string[]> = new Map()
-
-    constructor(private _service: ChatLunaService) {
-        this._platformService = _service.platform
-    }
-
-    async chat(
-        session: Session,
-        room: ConversationRoom,
-        message: Message,
-        event: ChatEvents,
-        stream: boolean,
-        requestId: string,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        variables: Record<string, any> = {},
-        postHandler?: PostHandler,
-        toolMask?: ToolMask
-    ): Promise<Message> {
-        const { conversationId, model: fullModelName } = room
-
-        const [platform] = parseRawModelName(fullModelName)
-        const client = await this._platformService.getClient(platform)
-        if (client.value == null) {
-            await this._service.awaitLoadPlatform(platform)
-        }
-        if (client.value == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.UNKNOWN_ERROR,
-                new Error(`Platform ${platform} is not available`)
-            )
-        }
-        const config = client.value.configPool.getConfig(true).value
-
-        try {
-            // Add to queues
-            await Promise.all([
-                this._conversationQueue.add(conversationId, requestId),
-                this._modelQueue.add(platform, requestId)
-            ])
-
-            const currentQueueLength =
-                await this._conversationQueue.getQueueLength(conversationId)
-            await event['llm-queue-waiting'](currentQueueLength)
-
-            // Wait for our turn
-            await Promise.all([
-                this._conversationQueue.wait(conversationId, requestId, 0),
-                this._modelQueue.wait(
-                    platform,
-                    requestId,
-                    config.concurrentMaxSize
-                )
-            ])
-
-            // Track conversation
-            const conversationIds =
-                this._platformToConversations.get(platform) ?? []
-            conversationIds.push(conversationId)
-            this._platformToConversations.set(platform, conversationIds)
-
-            const { chatInterface } =
-                this._conversations.get(conversationId) ??
-                (await this._createChatInterface(room))
-
-            const abortController = new AbortController()
-            const activeRequest: ActiveRequest = {
-                requestId,
-                abortController,
-                chatMode: room.chatMode,
-                messageQueue: new MessageQueue(),
-                roundDecisionResolvers: []
-            }
-
-            this._requestIdMap.set(requestId, abortController)
-            this._activeRequests.set(conversationId, activeRequest)
-
-            const humanMessage = new HumanMessage({
-                content: message.content,
-                name: message.name,
-                id: session.userId,
-                additional_kwargs: {
-                    ...message.additional_kwargs,
-                    preset: room.preset
-                }
-            })
-
-            const mask =
-                toolMask ??
-                (await this._service.resolveToolMask({
-                    session,
-                    room,
-                    source: 'chatluna'
-                }))
-
-            const chainValues = await chatInterface.chat({
-                message: humanMessage,
-                events: event,
-                stream,
-                conversationId,
-                requestId,
-                session,
-                variables,
-                signal: abortController.signal,
-                postHandler,
-                messageQueue: activeRequest.messageQueue,
-                toolMask: mask,
-                onAgentEvent: async (agentEvent) => {
-                    if (agentEvent.type === 'round-decision') {
-                        activeRequest.lastDecision = agentEvent.canContinue
-                        if (agentEvent.canContinue == null) {
-                            return
-                        }
-
-                        for (const resolve of activeRequest.roundDecisionResolvers) {
-                            resolve(agentEvent.canContinue)
-                        }
-                        activeRequest.roundDecisionResolvers = []
-                    }
-                }
-            })
-
-            const aiMessage = chainValues.message as AIMessage
-
-            const reasoningContent = aiMessage.additional_kwargs
-                ?.reasoning_content as string
-
-            const reasoningTime = aiMessage.additional_kwargs
-                ?.reasoning_time as number
-
-            const usageMetadata = aiMessage.usage_metadata
-
-            const additionalReplyMessages: Message[] = []
-
-            if (
-                reasoningContent != null &&
-                reasoningContent.length > 0 &&
-                this._service.currentConfig.showThoughtMessage
-            ) {
-                additionalReplyMessages.push({
-                    content:
-                        reasoningTime != null
-                            ? `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
-                            : `Thought: \n\n${reasoningContent}`
-                })
-            }
-
-            if (
-                usageMetadata != null &&
-                usageMetadata.total_tokens > 0 &&
-                this._service.currentConfig.showThoughtMessage
-            ) {
-                additionalReplyMessages.push({
-                    content: formatUsageMetadataMessage(usageMetadata)
-                })
-            }
-
-            return {
-                content: aiMessage.content as string,
-                additionalReplyMessages
-            }
-        } finally {
-            // Clean up resources
-            await Promise.all([
-                this._modelQueue.remove(platform, requestId),
-                this._conversationQueue.remove(conversationId, requestId)
-            ])
-            this._requestIdMap.delete(requestId)
-
-            const active = this._activeRequests.get(conversationId)
-            if (active?.requestId === requestId) {
-                for (const resolve of active.roundDecisionResolvers) {
-                    resolve(false)
-                }
-                this._activeRequests.delete(conversationId)
-            }
-        }
-    }
-
-    stopChat(requestId: string) {
-        const abortController = this._requestIdMap.get(requestId)
-        if (!abortController) {
-            return false
-        }
-        abortController.abort(createAbortError())
-        this._requestIdMap.delete(requestId)
-        return true
-    }
-
-    async appendPendingMessage(
-        conversationId: string,
-        message: HumanMessage,
-        chatMode?: string
-    ): Promise<boolean> {
-        if (chatMode != null && chatMode !== 'plugin') {
-            return false
-        }
-
-        const activeRequest = this._activeRequests.get(conversationId)
-
-        if (activeRequest == null) {
-            return false
-        }
-        if (activeRequest.chatMode !== 'plugin') {
-            return false
-        }
-
-        if (activeRequest.lastDecision != null) {
-            if (activeRequest.lastDecision) {
-                activeRequest.messageQueue.push(message)
-            }
-            return activeRequest.lastDecision
-        }
-
-        return new Promise((resolve) => {
-            activeRequest.roundDecisionResolvers.push((willConsume) => {
-                if (willConsume) {
-                    activeRequest.messageQueue.push(message)
-                }
-                resolve(willConsume)
-            })
-        })
-    }
-
-    async query(
-        room: ConversationRoom,
-        create: boolean = false
-    ): Promise<ChatInterface> {
-        const { conversationId } = room
-
-        const { chatInterface } = this._conversations.get(conversationId) ?? {}
-
-        if (chatInterface == null && create) {
-            return this._createChatInterface(room).then(
-                (result) => result.chatInterface
-            )
-        }
-
-        return chatInterface
-    }
-
-    async clearChatHistory(room: ConversationRoom) {
-        const { conversationId } = room
-        const requestId = randomUUID()
-
-        try {
-            await this._conversationQueue.add(conversationId, requestId)
-            await this._conversationQueue.wait(conversationId, requestId, 0)
-
-            const chatInterface = await this.query(room, true)
-            await chatInterface.clearChatHistory()
-        } finally {
-            this._conversations.delete(conversationId)
-            await this._conversationQueue.remove(conversationId, requestId)
-        }
-    }
-
-    async compressContext(room: ConversationRoom, force = false) {
-        const { conversationId, model: fullModelName } = room
-        const requestId = randomUUID()
-        const modelRequestId = randomUUID()
-
-        const [platform] = parseRawModelName(fullModelName)
-        const client = await this._platformService.getClient(platform)
-
-        if (client.value == null) {
-            await this._service.awaitLoadPlatform(platform)
-        }
-
-        if (client.value == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.UNKNOWN_ERROR,
-                new Error(`Platform ${platform} is not available`)
-            )
-        }
-
-        const config = client.value.configPool.getConfig(true).value
-
-        try {
-            await Promise.all([
-                this._conversationQueue.add(conversationId, requestId),
-                this._modelQueue.add(platform, modelRequestId)
-            ])
-
-            await Promise.all([
-                this._conversationQueue.wait(conversationId, requestId, 0),
-                this._modelQueue.wait(
-                    platform,
-                    modelRequestId,
-                    config.concurrentMaxSize
-                )
-            ])
-
-            const chatInterface = await this.query(room, true)
-            return await chatInterface.compressContext(force)
-        } finally {
-            await Promise.all([
-                this._conversationQueue.remove(conversationId, requestId),
-                this._modelQueue.remove(platform, modelRequestId)
-            ])
-        }
-    }
-
-    async clearCache(room: ConversationRoom) {
-        const { conversationId } = room
-        const requestId = randomUUID()
-
-        try {
-            await this._conversationQueue.add(conversationId, requestId)
-            await this._conversationQueue.wait(conversationId, requestId, 0)
-
-            const chatInterface = await this.query(room)
-
-            await this._service.ctx.root.parallel(
-                'chatluna/clear-chat-history',
-                conversationId,
-                chatInterface
-            )
-
-            return this._conversations.delete(conversationId)
-        } finally {
-            await this._conversationQueue.remove(conversationId, requestId)
-        }
-    }
-
-    getCachedConversations(): [string, ChatHubChatBridgerInfo][] {
-        return Array.from(this._conversations.entries())
-    }
-
-    async delete(room: ConversationRoom) {
-        const { conversationId } = room
-        const requestId = randomUUID()
-
-        try {
-            await this._conversationQueue.add(conversationId, requestId)
-            await this._conversationQueue.wait(conversationId, requestId, 1)
-
-            const chatInterface = await this.query(room)
-            if (!chatInterface) return
-
-            await chatInterface.delete(this._service.ctx, room)
-            await this.clearCache(room)
-        } finally {
-            await this._conversationQueue.remove(conversationId, requestId)
-        }
-    }
-
-    dispose(platform?: string) {
-        // Terminate all related requests
-        for (const controller of this._requestIdMap.values()) {
-            controller.abort(createAbortError())
-        }
-
-        if (!platform) {
-            // Clean up all resources
-            this._conversations.clear()
-            this._requestIdMap.clear()
-            this._activeRequests.clear()
-            this._platformToConversations.clear()
-            return
-        }
-
-        // Clean up resources for specific platform
-        const conversationIds = this._platformToConversations.get(platform)
-        if (!conversationIds?.length) return
-
-        for (const conversationId of conversationIds) {
-            this._conversations.delete(conversationId)
-            this._activeRequests.delete(conversationId)
-        }
-
-        this._platformToConversations.delete(platform)
-    }
-
-    private async _createChatInterface(
-        room: ConversationRoom
-    ): Promise<ChatHubChatBridgerInfo> {
-        const config = this._service.currentConfig
-
-        const chatInterface = new ChatInterface(this._service.ctx.root, {
-            chatMode: room.chatMode,
-            botName: config.botNames[0],
-            preset: this._service.preset.getPreset(room.preset),
-            model: room.model,
-            conversationId: room.conversationId,
-            embeddings:
-                config.defaultEmbeddings && config.defaultEmbeddings.length > 0
-                    ? config.defaultEmbeddings
-                    : undefined,
-            vectorStoreName:
-                config.defaultVectorStore &&
-                config.defaultVectorStore.length > 0
-                    ? config.defaultVectorStore
-                    : undefined
-        })
-
-        const result = {
-            chatInterface,
-            room
-        }
-
-        this._conversations.set(room.conversationId, result)
-
-        return result
-    }
-}
-
-function formatUsageMetadataMessage(usage: UsageMetadata) {
-    const input = [
-        ...(usage.input_token_details?.audio != null
-            ? [`audio=${usage.input_token_details.audio}`]
-            : []),
-        ...(usage.input_token_details?.cache_read != null
-            ? [`cache_read=${usage.input_token_details.cache_read}`]
-            : []),
-        ...(usage.input_token_details?.cache_creation != null
-            ? [`cache_creation=${usage.input_token_details.cache_creation}`]
-            : [])
-    ]
-    const output = [
-        ...(usage.output_token_details?.audio != null
-            ? [`audio=${usage.output_token_details.audio}`]
-            : []),
-        ...(usage.output_token_details?.reasoning != null
-            ? [`reasoning=${usage.output_token_details.reasoning}`]
-            : [])
-    ]
-
-    return [
-        'Token usage:',
-        `- input: ${usage.input_tokens}`,
-        `- output: ${usage.output_tokens}`,
-        `- total: ${usage.total_tokens}`,
-        ...(input.length > 0 ? [`- input details: ${input.join(', ')}`] : []),
-        ...(output.length > 0 ? [`- output details: ${output.join(', ')}`] : [])
-    ].join('\n')
 }
 
 // eslint-disable-next-line @typescript-eslint/no-namespace

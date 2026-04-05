@@ -1,9 +1,18 @@
-import { Context, h } from 'koishi'
+import type { Context, Session } from 'koishi'
+import { gzipDecode } from 'koishi-plugin-chatluna/utils/string'
 import { Config } from '../../config'
-import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
-import { getAllJoinedConversationRoom } from '../../chains/rooms'
-import { ChatLunaMessage } from '../../llm-core/memory/message/database_history'
-import { logger } from '../..'
+import {
+    ChainMiddlewareRunStatus,
+    type ChainMiddlewareContext,
+    type ChatChain
+} from '../../chains/chain'
+import { MessageRecord } from '../../services/conversation_types'
+import {
+    checkAdmin,
+    transformMessageContentToElements
+} from 'koishi-plugin-chatluna/utils/koishi'
+
+const MAX_ROLLBACK_HOPS = 1000
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -12,124 +21,239 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'rollback') return ChainMiddlewareRunStatus.SKIPPED
 
-            let room = context.options.room
-
             const rollbackRound = context.options.rollback_round ?? 1
+            let conversation =
+                context.options.resolvedConversation != null
+                    ? await ctx.chatluna.conversation.resolveCommandConversation(
+                          session,
+                          {
+                              conversationId:
+                                  context.options.resolvedConversation.id,
+                              presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
+                              permission: 'manage'
+                          }
+                      )
+                    : await ctx.chatluna.conversation.resolveCommandConversation(
+                          session,
+                          {
+                              conversationId: context.options.conversationId,
+                              targetConversation:
+                                  context.options.targetConversation,
+                              presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
+                              permission: 'manage'
+                          }
+                      )
 
-            if (room == null && context.options.room_resolve != null) {
-                // 尝试完整搜索一次
+            if (
+                conversation == null &&
+                context.options.conversationId == null &&
+                context.options.targetConversation == null &&
+                context.options.resolvedConversation == null
+            ) {
+                conversation = (
+                    await ctx.chatluna.conversation.getCurrentConversation(
+                        session
+                    )
+                ).conversation
 
-                const rooms = await getAllJoinedConversationRoom(
-                    ctx,
-                    session,
-                    true
-                )
-
-                const roomId = parseInt(context.options.room_resolve?.name)
-
-                room = rooms.find(
-                    (room) =>
-                        room.roomName === context.options.room_resolve?.name ||
-                        room.roomId === roomId
-                )
+                if (conversation != null) {
+                    conversation =
+                        await ctx.chatluna.conversation.resolveCommandConversation(
+                            session,
+                            {
+                                conversationId: conversation.id,
+                                presetLane: context.options.presetLane,
+                                allPresetLanes: context.options.allPresetLanes,
+                                permission: 'manage'
+                            }
+                        )
+                }
             }
 
-            if (room == null) {
-                context.message = session.text('.room_not_found')
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            // clear cache
-
-            await ctx.chatluna.clearCache(room)
-
-            // get messages
-            const conversation = (
-                await ctx.database.get('chathub_conversation', {
-                    id: room.conversationId
-                })
-            )?.[0]
-
-            if (conversation === null) {
+            if (conversation == null) {
                 context.message = session.text('.conversation_not_exist')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            let parentId = conversation.latestId
-            const messages: ChatLunaMessage[] = []
+            context.options.conversationId = conversation.id
 
-            // 获取 (轮数*2) 条消息，一轮对话 两条消息
-            while (messages.length < rollbackRound * 2) {
-                const message = await ctx.database.get('chathub_message', {
-                    conversation: room.conversationId,
-                    id: parentId
-                })
+            const result =
+                await ctx.chatluna.conversationRuntime.withConversationSync(
+                    conversation,
+                    () =>
+                        rollbackConversation(
+                            ctx,
+                            config,
+                            session,
+                            context,
+                            conversation,
+                            rollbackRound
+                        )
+                )
 
-                parentId = message[0]?.parent
-
-                messages.unshift(...message)
-
-                if (parentId == null) {
-                    break
-                }
+            if (result.status !== ChainMiddlewareRunStatus.CONTINUE) {
+                context.message = result.msg
+                return result.status
             }
 
-            // 小于目标轮次，就是没有
-            if (messages.length < rollbackRound * 2) {
-                context.message = session.text('.no_chat_history')
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            // 最后一条消息
-
-            const lastMessage =
-                parentId == null
-                    ? undefined
-                    : await ctx.database
-                          .get('chathub_message', {
-                              conversation: room.conversationId,
-                              id: parentId
-                          })
-                          .then((message) => message?.[0])
-
-            const humanMessage = messages[messages.length - 2]
-            await ctx.database.upsert('chathub_conversation', [
-                {
-                    id: room.conversationId,
-                    latestId: parentId == null ? null : lastMessage.id
-                }
-            ])
-
-            if ((context.options.message?.length ?? 0) < 1) {
-                context.options.inputMessage =
-                    await ctx.chatluna.messageTransformer.transform(
-                        session,
-                        [h.text(humanMessage.text)],
-                        room.model,
-                        undefined,
-                        {
-                            quote: false,
-                            includeQuoteReply: config.includeQuoteReply
-                        }
-                    )
-            }
-
-            await ctx.database.remove('chathub_message', {
-                id: messages.map((message) => message.id)
-            })
+            context.options.inputMessage = result.inputMessage
 
             await session.send(
                 session.text('.rollback_success', [rollbackRound])
             )
 
-            logger.debug(
-                `rollback chat ${room.roomName} ${context.options.inputMessage}`
+            ctx.logger.debug(
+                `rollback chat ${conversation.id} ${context.options.inputMessage}`
             )
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .after('lifecycle-handle_command')
-        .before('lifecycle-request_model')
+        .before('lifecycle-request_conversation')
+}
+
+async function decodeMessageContent(message: MessageRecord) {
+    try {
+        if (message.content != null) {
+            return JSON.parse(await gzipDecode(message.content))
+        }
+
+        return message.text ?? ''
+    } catch {
+        return message.text ?? ''
+    }
+}
+
+async function rollbackConversation(
+    ctx: Context,
+    config: Config,
+    session: Session,
+    context: ChainMiddlewareContext,
+    conversation: { id: string },
+    rollbackRound: number
+) {
+    const current = await ctx.chatluna.conversation.getConversation(
+        conversation.id
+    )
+
+    if (current == null) {
+        return {
+            status: ChainMiddlewareRunStatus.STOP,
+            msg: session.text('.conversation_not_exist')
+        }
+    }
+
+    const resolved = await ctx.chatluna.conversation.resolveContext(session, {
+        conversationId: current.id,
+        presetLane: context.options.presetLane,
+        bindingKey: current.bindingKey
+    })
+
+    if (
+        resolved.constraint.manageMode === 'admin' &&
+        !(await checkAdmin(session))
+    ) {
+        return {
+            status: ChainMiddlewareRunStatus.STOP,
+            msg: session.text('.conversation_not_exist')
+        }
+    }
+
+    if (resolved.constraint.lockConversation) {
+        return {
+            status: ChainMiddlewareRunStatus.STOP,
+            msg: session.text('.conversation_not_exist')
+        }
+    }
+
+    await ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+        current
+    )
+
+    let parentId = current.latestMessageId
+    const messages: MessageRecord[] = []
+    let humanMessage: MessageRecord | undefined
+    let humanCount = 0
+    const seen = new Set<string>()
+
+    while (parentId != null) {
+        if (seen.has(parentId)) {
+            ctx.logger.warn(`rollback cycle detected: ${parentId}`)
+            break
+        }
+
+        if (seen.size >= MAX_ROLLBACK_HOPS) {
+            ctx.logger.warn(`rollback hop limit reached: ${current.id}`)
+            break
+        }
+
+        seen.add(parentId)
+
+        const message = await ctx.database.get('chatluna_message', {
+            conversationId: current.id,
+            id: parentId
+        })
+        const currentMessage = message[0]
+
+        if (currentMessage == null) {
+            break
+        }
+
+        parentId = currentMessage.parentId
+        messages.unshift(currentMessage)
+
+        if (currentMessage.role === 'human') {
+            humanMessage = currentMessage
+            humanCount += 1
+
+            if (humanCount >= rollbackRound) {
+                break
+            }
+        }
+    }
+
+    if (humanCount < rollbackRound || humanMessage == null) {
+        return {
+            status: ChainMiddlewareRunStatus.STOP,
+            msg: session.text('.no_chat_history')
+        }
+    }
+
+    let inputMessage = context.options.inputMessage
+
+    if ((context.options.message?.length ?? 0) < 1) {
+        const humanContent = await decodeMessageContent(humanMessage)
+
+        inputMessage = await ctx.chatluna.messageTransformer.transform(
+            session,
+            transformMessageContentToElements(humanContent),
+            resolved.effectiveModel ?? current.model,
+            undefined,
+            {
+                quote: false,
+                includeQuoteReply: config.includeQuoteReply
+            }
+        )
+    }
+
+    await ctx.database.remove('chatluna_message', {
+        id: messages.map((message) => message.id)
+    })
+
+    await ctx.database.upsert('chatluna_conversation', [
+        {
+            id: current.id,
+            latestMessageId: humanMessage.parentId ?? null,
+            updatedAt: new Date()
+        }
+    ])
+
+    return {
+        status: ChainMiddlewareRunStatus.CONTINUE,
+        inputMessage
+    }
 }
 
 declare module '../../chains/chain' {

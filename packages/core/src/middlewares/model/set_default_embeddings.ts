@@ -49,8 +49,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
 
                 context.message = buffer.join('\n')
+                return ChainMiddlewareRunStatus.STOP
             } else if (targetEmbeddings.length === 0) {
                 context.message = session.text('.model_not_found')
+                return ChainMiddlewareRunStatus.STOP
             }
 
             const fullName = targetEmbeddings[0]
@@ -70,7 +72,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
-        .before('lifecycle-request_model')
+        .before('lifecycle-request_conversation')
 }
 
 export interface EmbeddingsInfo {

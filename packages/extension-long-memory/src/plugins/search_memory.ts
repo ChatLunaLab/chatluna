@@ -4,6 +4,7 @@ import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
 import { logger } from 'koishi-plugin-chatluna'
 import { EnhancedMemory, MemoryRetrievalLayerType } from '../types'
 import { Config } from '..'
+import { getMemoryScope } from '../utils/conversation'
 
 export function apply(ctx: Context, config: Config) {
     const chain = ctx.chatluna.chatChain
@@ -21,17 +22,21 @@ export function apply(ctx: Context, config: Config) {
         .middleware(
             'search_memory',
             async (session, context) => {
-                let {
+                const {
                     command,
-                    options: { page, limit, query, type, room, view }
+                    options: {
+                        page,
+                        limit,
+                        query,
+                        type,
+                        view,
+                        conversationId,
+                        presetLane
+                    }
                 } = context
 
                 if (command !== 'search_memory') {
                     return ChainMiddlewareRunStatus.SKIPPED
-                }
-
-                if (!type) {
-                    type = room.preset
                 }
 
                 let parsedLayerType = MemoryRetrievalLayerType.USER
@@ -66,22 +71,29 @@ export function apply(ctx: Context, config: Config) {
                     formatDocumentInfo(session, value)
                 )
 
-                query = query ?? ' '
+                const content = query ?? ' '
 
                 try {
+                    const scope = await getMemoryScope(ctx, session, {
+                        conversationId,
+                        presetLane,
+                        type
+                    })
+
+                    if (scope == null) {
+                        context.message = session.text('.search_failed')
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+
                     const layers =
                         await ctx.chatluna_long_memory.initMemoryLayers(
-                            {
-                                presetId: type as string,
-                                guildId: session.guildId || session.channelId,
-                                userId: session.userId
-                            },
-                            room.conversationId,
+                            scope.info,
+                            scope.conversation.id,
                             parsedLayerType
                         )
 
                     const documents = await Promise.all(
-                        layers.map((layer) => layer.retrieveMemory(query))
+                        layers.map((layer) => layer.retrieveMemory(content))
                     ).then((documents) => documents.flat())
 
                     await pagination.push(documents)

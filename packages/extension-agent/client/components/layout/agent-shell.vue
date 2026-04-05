@@ -3,80 +3,77 @@
         <div class="main-content">
             <el-scrollbar>
                 <div class="content-wrapper">
-                    <Transition name="fade-slide" mode="out-in">
-                        <div
-                            v-if="activeTab === 'mcp'"
-                            key="mcp"
-                            class="view-container"
-                        >
-                            <mcp-page
-                                :config="mcpCfg"
-                                :status="mcpStatus"
-                                :loading="loading"
-                                @refresh="refreshData"
-                                @save="saveMcp"
-                            />
-                        </div>
+                    <div
+                        v-if="activeTab === 'mcp'"
+                        key="mcp"
+                        class="view-container"
+                    >
+                        <mcp-page
+                            :config="mcpCfg"
+                            :status="mcpStatus"
+                            :loading="loading"
+                            @refresh="refreshData"
+                            @save="saveMcp"
+                        />
+                    </div>
 
-                        <div
-                            v-else-if="activeTab === 'skills'"
+                    <KeepAlive>
+                        <skills-page
+                            v-if="activeTab === 'skills'"
                             key="skills"
                             class="view-container"
-                        >
-                            <skills-page
-                                :config="skillsCfg"
-                                :status="skillsStatus"
-                                :agents="subAgentStatus?.catalog"
-                                :computer="computerStatus"
-                                :loading="loading"
-                                @refresh="refreshData"
-                                @save="(value) => saveSection('skills', value)"
-                            />
-                        </div>
+                            :config="skillsCfg"
+                            :status="skillsStatus"
+                            :agents="subAgentStatus?.catalog"
+                            :computer="computerStatus"
+                            :loading="loading"
+                            @refresh="refreshData"
+                            @save="(value) => saveSection('skills', value)"
+                        />
+                    </KeepAlive>
 
-                        <div
-                            v-else-if="activeTab === 'computer'"
-                            key="computer"
-                            class="view-container"
-                        >
-                            <computer-page
-                                :config="computerCfg"
-                                :status="computerStatus"
-                                :loading="loading"
-                            />
-                        </div>
+                    <div
+                        v-if="activeTab === 'computer'"
+                        key="computer"
+                        class="view-container"
+                    >
+                        <computer-page
+                            :config="computerCfg"
+                            :status="computerStatus"
+                            :loading="loading"
+                        />
+                    </div>
 
-                        <div
-                            v-else-if="activeTab === 'subAgent'"
+                    <KeepAlive>
+                        <sub-agent-page
+                            v-if="activeTab === 'subAgent'"
                             key="sub-agent"
                             class="view-container"
-                        >
-                            <sub-agent-page
-                                :config="subAgentCfg"
-                                :status="subAgentStatus"
-                                :skills="skillsStatus?.catalog"
-                                :mcp="mcpStatus?.servers"
-                                :computer="computerStatus"
-                                :tools="toolStatus?.catalog"
-                                :loading="loading"
-                                @refresh="refreshData"
-                                @save="
-                                    (value) => saveSection('subAgent', value)
-                                "
-                            />
-                        </div>
+                            :config="subAgentCfg"
+                            :status="subAgentStatus"
+                            :skills="skillsStatus?.catalog"
+                            :mcp="mcpStatus?.servers"
+                            :computer="computerStatus"
+                            :tools="toolStatus?.catalog"
+                            :loading="loading"
+                            @refresh="refreshData"
+                            @save="(value) => saveSection('subAgent', value)"
+                        />
+                    </KeepAlive>
 
-                        <div v-else key="tool" class="view-container">
-                            <tool-page
-                                :config="toolCfg"
-                                :status="toolStatus"
-                                :agents="subAgentStatus?.catalog"
-                                :loading="loading"
-                                @refresh="refreshData"
-                                @save="(value) => saveSection('tool', value)"
-                            />
-                        </div>
-                    </Transition>
+                    <KeepAlive>
+                        <tool-page
+                            v-if="activeTab === 'tool'"
+                            key="tool"
+                            class="view-container"
+                            :config="toolCfg"
+                            :status="toolStatus"
+                            :agents="subAgentStatus?.catalog"
+                            :loading="loading"
+                            @refresh="refreshData"
+                            @save="(value) => saveSection('tool', value)"
+                        />
+                    </KeepAlive>
                 </div>
             </el-scrollbar>
         </div>
@@ -99,10 +96,9 @@ import type { AgentConfig } from '../../../src/types'
 
 const activeTab = ref('mcp')
 const pending = ref(false)
-let refreshId = 0
+let refreshTask: Promise<void> | undefined
 const data = computed(() => store.chatluna_agent_webui)
 const config = computed(() => data.value?.config)
-const status = computed(() => data.value?.status)
 const mcpCfg = computed(() => data.value?.config?.mcp)
 const skillsCfg = computed(() => data.value?.config?.skills)
 const computerCfg = computed(() => data.value?.config?.computer)
@@ -116,17 +112,24 @@ const toolStatus = computed(() => data.value?.status?.tool)
 const loading = computed(() => pending.value || !data.value)
 
 const refreshData = async () => {
-    const id = ++refreshId
-    try {
-        pending.value = true
-        await send('chatluna-agent/refreshConsoleData')
-    } catch {
-        ElMessage.error('刷新 Agent 数据失败')
-    } finally {
-        if (id === refreshId) {
-            pending.value = false
-        }
+    if (refreshTask) {
+        await refreshTask
+        return
     }
+
+    refreshTask = (async () => {
+        try {
+            pending.value = true
+            await send('chatluna-agent/refreshConsoleData')
+        } catch {
+            ElMessage.error('刷新 Agent 数据失败')
+        } finally {
+            pending.value = false
+            refreshTask = undefined
+        }
+    })()
+
+    await refreshTask
 }
 
 const handleTabChange = (tab: string) => {

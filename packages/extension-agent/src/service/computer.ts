@@ -833,8 +833,9 @@ export class ChatLunaAgentComputerService {
             throw new Error(`Refusing to remove unsafe path: ${path}`)
         }
 
+        const quoted = quoteShellPath(target)
         const result = await session.execute(
-            `if [ -d ${quoteShellPath(target)} ]; then rm -rf ${quoteShellPath(target)}; elif [ -e ${quoteShellPath(target)} ]; then rm -f ${quoteShellPath(target)}; fi`,
+            `if [ -d ${quoted} ]; then rm -rf ${quoted}; elif [ -e ${quoted} ]; then rm -f ${quoted}; fi`,
             {
                 timeout: 15000
             }

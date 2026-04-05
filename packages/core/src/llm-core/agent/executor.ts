@@ -22,6 +22,7 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_namespace = ['chatluna', 'agent']
 
     agent: Runnable

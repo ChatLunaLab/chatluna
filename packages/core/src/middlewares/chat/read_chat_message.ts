@@ -22,6 +22,7 @@ import {
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
 import type { QQ } from '@koishijs/plugin-adapter-qq'
+import { parsePresetLaneInput } from '../../utils/message_content'
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -56,13 +57,115 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 message = [h.text(message)]
             }
 
-            const room = context.options.room
+            if (context.command == null) {
+                const text = h.select(message as h[], 'text').join('')
+                const parsed = parsePresetLaneInput(
+                    text,
+                    ctx.chatluna.preset
+                        .getAllPreset(true)
+                        .value.flatMap((entry) =>
+                            entry.split(',').map((item) => item.trim())
+                        )
+                )
+
+                if (parsed?.preset != null) {
+                    const preset = ctx.chatluna.preset.getPreset(
+                        parsed.preset,
+                        false
+                    ).value
+
+                    if (preset != null) {
+                        context.options.presetLane = parsed.preset
+
+                        if (
+                            parsed.queryOnly &&
+                            (message as h[]).every(
+                                (element) => element.type === 'text'
+                            )
+                        ) {
+                            context.command = 'conversation_current'
+                            context.options.conversation_manage = {
+                                ...context.options.conversation_manage,
+                                presetLane: parsed.preset
+                            }
+                            context.message = null
+                            return ChainMiddlewareRunStatus.CONTINUE
+                        }
+
+                        let skip = text.length - (parsed.content?.length ?? 0)
+                        const next: h[] = []
+
+                        for (const element of message as h[]) {
+                            if (element.type !== 'text') {
+                                next.push(element)
+                                continue
+                            }
+
+                            const content = String(element.attrs.content ?? '')
+                            if (skip >= content.length) {
+                                skip -= content.length
+                                continue
+                            }
+
+                            next.push(
+                                h('text', {
+                                    ...element.attrs,
+                                    content: content.slice(skip)
+                                })
+                            )
+                            skip = 0
+                        }
+
+                        message = next
+                    }
+                }
+            }
+
+            let conversationId = context.options.conversationId
+
+            if (
+                conversationId == null &&
+                context.options.targetConversation != null
+            ) {
+                const target =
+                    await ctx.chatluna.conversation.resolveCommandConversation(
+                        session,
+                        {
+                            targetConversation:
+                                context.options.targetConversation,
+                            presetLane: context.options.presetLane,
+                            allPresetLanes: context.options.allPresetLanes
+                        }
+                    )
+
+                if (target == null) {
+                    context.message = session.text(
+                        'commands.chatluna.chat.messages.conversation_not_exist'
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                conversationId = target.id
+                context.options.conversationId = target.id
+                context.options.resolvedConversation = target
+            }
+
+            const resolved =
+                context.options.resolvedConversationContext ??
+                (await ctx.chatluna.conversation.resolveContext(session, {
+                    conversationId,
+                    presetLane: context.options.presetLane
+                }))
+
+            context.options.resolvedConversationContext = resolved
+            context.options.resolvedConversation =
+                context.options.resolvedConversation ?? resolved.conversation
 
             const transformedMessage =
                 await ctx.chatluna.messageTransformer.transform(
                     session,
                     message as h[],
-                    room?.model ?? '',
+                    resolved.effectiveModel ?? '',
                     undefined,
                     {
                         quote: false,
@@ -100,7 +203,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.CONTINUE
         })
 
-        .after('resolve_room')
+        .after('lifecycle-prepare')
 
     ctx.chatluna.messageTransformer.before(async (session, elements) => {
         appendQQAttachments(session, elements)
@@ -177,7 +280,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ) {
                 if (!isInstalledImageService) {
                     logger.warn(
-                        `Model "${model}" does not support image input. Please use a model that supports vision capabilities, or install chatluna-multimodal-service plugin to enable image description.`
+                        `Model "${model}" does not support image input. ` +
+                            'Please use a model that supports vision capabilities, ' +
+                            'or install chatluna-multimodal-service plugin to enable image description.'
                     )
                 }
                 return false

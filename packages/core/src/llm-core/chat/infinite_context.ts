@@ -15,6 +15,8 @@ export interface CompressContextResult {
     reducedTokens: number
     reducedPercent: number
     compressed: boolean
+    originalMessageCount: number
+    remainingMessageCount: number
 }
 
 function formatTranscript(messages: BaseMessage[]) {
@@ -52,7 +54,9 @@ export class InfiniteContextManager {
                 outputTokens: 0,
                 reducedTokens: 0,
                 reducedPercent: 0,
-                compressed: false
+                compressed: false,
+                originalMessageCount: 0,
+                remainingMessageCount: 0
             }
         }
 
@@ -64,7 +68,9 @@ export class InfiniteContextManager {
                 outputTokens: 0,
                 reducedTokens: 0,
                 reducedPercent: 0,
-                compressed: false
+                compressed: false,
+                originalMessageCount: 0,
+                remainingMessageCount: 0
             }
         }
 
@@ -85,7 +91,9 @@ export class InfiniteContextManager {
                     outputTokens: inputTokens,
                     reducedTokens: 0,
                     reducedPercent: 0,
-                    compressed: false
+                    compressed: false,
+                    originalMessageCount: messages.length,
+                    remainingMessageCount: messages.length
                 }
             }
 
@@ -109,7 +117,9 @@ export class InfiniteContextManager {
                     outputTokens: inputTokens,
                     reducedTokens: 0,
                     reducedPercent: 0,
-                    compressed: false
+                    compressed: false,
+                    originalMessageCount: messages.length,
+                    remainingMessageCount: messages.length
                 }
             }
 
@@ -134,7 +144,9 @@ export class InfiniteContextManager {
                 outputTokens: inputTokens,
                 reducedTokens: 0,
                 reducedPercent: 0,
-                compressed: false
+                compressed: false,
+                originalMessageCount: messages.length,
+                remainingMessageCount: messages.length
             }
         }
 
@@ -151,7 +163,9 @@ export class InfiniteContextManager {
                 outputTokens: inputTokens,
                 reducedTokens: 0,
                 reducedPercent: 0,
-                compressed: false
+                compressed: false,
+                originalMessageCount: messages.length,
+                remainingMessageCount: messages.length
             }
         }
 
@@ -191,7 +205,9 @@ export class InfiniteContextManager {
             outputTokens,
             reducedTokens,
             reducedPercent,
-            compressed: true
+            compressed: true,
+            originalMessageCount: messages.length,
+            remainingMessageCount: 1
         }
     }
 

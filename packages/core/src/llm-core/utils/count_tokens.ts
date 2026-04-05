@@ -1,11 +1,6 @@
 import { MessageType } from '@langchain/core/messages'
 import { type TiktokenModel } from 'js-tiktoken/lite'
 import { encodingForModel } from './tiktoken'
-import {
-    ChatLunaError,
-    ChatLunaErrorCode
-} from 'koishi-plugin-chatluna/utils/error'
-import { logger } from 'koishi-plugin-chatluna'
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -192,14 +187,23 @@ export const getModelContextSize = (modelName: string): number => {
     }
 }
 
-export function parseRawModelName(modelName: string): [string, string] {
+export function parseRawModelName(
+    modelName: string
+): [string | undefined, string | undefined] {
     if (modelName == null || modelName.trim().length < 1) {
-        try {
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
-        } catch (error) {
-            logger.error(error)
-        }
         return [undefined, undefined]
     }
-    return modelName.split(/(?<=^[^\/]+)\//) as [string, string]
+
+    const value = modelName.trim()
+    const index = value.indexOf('/')
+
+    if (index === -1) {
+        return [undefined, value]
+    }
+
+    if (index === 0 || index === value.length - 1) {
+        return [undefined, undefined]
+    }
+
+    return [value.slice(0, index), value.slice(index + 1)]
 }
