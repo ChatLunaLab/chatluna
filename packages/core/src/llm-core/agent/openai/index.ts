@@ -30,6 +30,7 @@ import {
 } from './output_parser'
 import { BaseChatPromptTemplate } from '@langchain/core/prompts'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { observationToMessageContent } from '../legacy-executor'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.
@@ -55,16 +56,22 @@ function _convertAgentStepToMessages(
 ) {
     if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
         const log = action.messageLog as BaseMessage[]
+        const content = observationToMessageContent(observation)
         if (
-            observation.length < 1 ||
-            observation == null ||
-            observation === 'null'
+            content === observation &&
+            (content.length < 1 || content === 'null')
         ) {
-            observation = `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`
+            return log.concat(
+                new ToolMessage({
+                    content: `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`,
+                    name: action.tool,
+                    tool_call_id: action.toolCallId
+                })
+            )
         }
         return log.concat(
             new ToolMessage({
-                content: observation,
+                content,
                 name: action.tool,
                 tool_call_id: action.toolCallId
             })

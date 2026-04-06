@@ -6,7 +6,10 @@ import {
     HumanMessage,
     ToolMessage
 } from '@langchain/core/messages'
-import type { AgentStep } from 'koishi-plugin-chatluna/llm-core/agent'
+import {
+    type AgentStep,
+    observationToMessageContent
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { SubAgentInfo, SubAgentRunInfo } from '../types'
 
@@ -219,7 +222,7 @@ function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
         ...steps.map(
             (step) =>
                 new ToolMessage({
-                    content: step.observation,
+                    content: observationToMessageContent(step.observation),
                     tool_call_id: step.action.toolCallId,
                     name: step.action.tool
                 })

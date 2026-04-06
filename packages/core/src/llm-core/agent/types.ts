@@ -10,6 +10,7 @@ import type {
     MessageContentFileUrl,
     MessageContentVideo
 } from 'koishi-plugin-chatluna/utils/langchain'
+import type { DirectToolOutput } from '@langchain/core/messages/tool'
 
 export interface ChatCompletionMessageToolCall {
     /**
@@ -193,7 +194,14 @@ export type AgentObservationComplexContent =
     | MessageContentAudio
     | MessageContentVideo
 
-export type AgentObservation = AgentObservationComplexContent[] | string
+export type AgentDirectToolObservation = DirectToolOutput & {
+    replyEmitted?: boolean
+}
+
+export type AgentObservation =
+    | AgentObservationComplexContent[]
+    | AgentDirectToolObservation
+    | string
 
 export interface ToolMask {
     mode: 'all' | 'allow' | 'deny'
