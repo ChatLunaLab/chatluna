@@ -1,3 +1,4 @@
+import { existsSync } from 'fs'
 import { createHash, randomUUID } from 'crypto'
 import type { Context } from 'koishi'
 import type { Config } from '../config'
@@ -15,13 +16,19 @@ import type {
     LegacyRoomRecord,
     LegacyUserRecord
 } from '../services/types'
-import { defineLegacyMigrationTables } from './legacy_tables'
+import {
+    defineLegacyMigrationTables,
+    isMissingTableError,
+    LEGACY_MIGRATION_TABLES
+} from './legacy_tables'
 import type { BindingProgress, MessageProgress, RoomProgress } from './types'
 import {
     aclKey,
     createLegacyBindingKey,
     createLegacyTableRetention,
+    createPassedValidationResult,
     filterValidRooms,
+    getLegacySchemaSentinel,
     inferLegacyGroupRouteModes,
     isComplexRoom,
     LEGACY_RETENTION_META_KEY,
@@ -43,7 +50,13 @@ export async function runRoomToConversationMigration(
     ctx: Context,
     config: Config
 ) {
-    defineLegacyMigrationTables(ctx)
+    const hasSentinel = existsSync(getLegacySchemaSentinel(ctx.baseDir))
+
+    if (hasSentinel && !(await hasLegacyMigrationData(ctx))) {
+        return ensureMigrationValidated(ctx, config)
+    }
+
+    defineLegacyMigrationTables(ctx, hasSentinel)
 
     const result = await readMetaValue<
         Awaited<ReturnType<typeof validateRoomMigration>>
@@ -56,6 +69,7 @@ export async function runRoomToConversationMigration(
         (await readMetaValue<boolean>(ctx, 'message_migration_done')) ?? false
 
     if (
+        !hasSentinel &&
         schemaVersion >= BUILTIN_SCHEMA_VERSION &&
         (result?.passed === true || (roomDone && messageDone))
     ) {
@@ -88,6 +102,9 @@ export async function runRoomToConversationMigration(
         throw new Error('ChatLuna migration validation failed.')
     }
 
+    // Mark completion before purge so a restart after writing the sentinel
+    // can resume from the finished state instead of re-reading legacy tables.
+    await writeMigrationDone(ctx)
     await purgeLegacyTables(ctx)
     await writeMigrationFinished(ctx)
 
@@ -100,6 +117,18 @@ export async function runRoomToConversationMigration(
 // while runRoomToConversationMigration only calls ensureMigrationValidated when
 // flags indicate it IS complete — so the two paths are mutually exclusive.
 export async function ensureMigrationValidated(ctx: Context, config: Config) {
+    const hasSentinel = existsSync(getLegacySchemaSentinel(ctx.baseDir))
+    const hasLegacyData = hasSentinel
+        ? await hasLegacyMigrationData(ctx)
+        : false
+
+    if (hasSentinel && hasLegacyData) {
+        ctx.logger.warn(
+            'Legacy sentinel exists but legacy ChatHub data is still present; continuing migration from legacy tables.'
+        )
+        defineLegacyMigrationTables(ctx, true)
+    }
+
     const result = await readMetaValue<
         Awaited<ReturnType<typeof validateRoomMigration>>
     >(ctx, 'validation_result')
@@ -107,7 +136,70 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
         state?: string
     }>(ctx, LEGACY_RETENTION_META_KEY)
 
+    if (hasSentinel) {
+        if (hasLegacyData) {
+            return runRoomToConversationMigration(ctx, config)
+        }
+
+        if (result?.passed === true) {
+            await writeMetaValue(ctx, 'schema_version', BUILTIN_SCHEMA_VERSION)
+            await writeMigrationDone(ctx)
+            await writeMigrationFinished(ctx)
+            return result
+        }
+
+        const conversations = (await ctx.database.get(
+            'chatluna_conversation',
+            {},
+            {
+                limit: 1
+            }
+        )) as ConversationRecord[]
+        const messages = (await ctx.database.get(
+            'chatluna_message',
+            {},
+            {
+                limit: 1
+            }
+        )) as MessageRecord[]
+        const bindings = (await ctx.database.get(
+            'chatluna_binding',
+            {},
+            {
+                limit: 1
+            }
+        )) as BindingRecord[]
+        const acl = (await ctx.database.get(
+            'chatluna_acl',
+            {},
+            {
+                limit: 1
+            }
+        )) as ACLRecord[]
+        const hasData =
+            conversations.length > 0 ||
+            messages.length > 0 ||
+            bindings.length > 0 ||
+            acl.length > 0
+
+        ctx.logger.warn(
+            hasData
+                ? 'Legacy sentinel exists and ChatLuna data is present; adopting current ChatLuna state and marking migration finished.'
+                : 'Legacy sentinel exists and ChatLuna data is empty; treating startup as fresh install.'
+        )
+
+        const validated = createPassedValidationResult()
+        await writeMetaValue(ctx, 'schema_version', BUILTIN_SCHEMA_VERSION)
+        await writeMetaValue(ctx, 'validation_result', validated)
+        await writeMigrationDone(ctx)
+        await writeMigrationFinished(ctx)
+        return validated
+    }
+
     if (result?.passed === true) {
+        await writeMetaValue(ctx, 'schema_version', BUILTIN_SCHEMA_VERSION)
+        await writeMigrationDone(ctx)
+
         if (retention?.state !== 'purged') {
             await purgeLegacyTables(ctx)
         }
@@ -145,21 +237,53 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
         throw new Error('ChatLuna migration validation failed.')
     }
 
+    await writeMigrationDone(ctx)
     await purgeLegacyTables(ctx)
     await writeMigrationFinished(ctx)
 
     return validated
 }
 
-async function writeMigrationFinished(ctx: Context) {
-    await writeMetaValue(ctx, 'migration_finished_at', new Date().toISOString())
+async function writeMigrationDone(ctx: Context) {
     await writeMetaValue(ctx, 'room_migration_done', true)
     await writeMetaValue(ctx, 'message_migration_done', true)
+}
+
+async function writeMigrationFinished(ctx: Context) {
     await writeMetaValue(
         ctx,
         LEGACY_RETENTION_META_KEY,
         createLegacyTableRetention('purged')
     )
+    await writeMetaValue(ctx, 'migration_finished_at', new Date().toISOString())
+}
+
+async function hasLegacyMigrationData(ctx: Context) {
+    defineLegacyMigrationTables(ctx, true)
+
+    for (const table of LEGACY_MIGRATION_TABLES) {
+        try {
+            if (
+                (
+                    await ctx.database.get(
+                        table as never,
+                        {},
+                        {
+                            limit: 1
+                        }
+                    )
+                ).length > 0
+            ) {
+                return true
+            }
+        } catch (error) {
+            if (!isMissingTableError(error)) {
+                throw error
+            }
+        }
+    }
+
+    return false
 }
 
 // (#6) removed redundant inner `done` check — the caller already guards on room_migration_done
