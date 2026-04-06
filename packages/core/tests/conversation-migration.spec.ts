@@ -224,6 +224,94 @@ it('ensureMigrationValidated keeps existing chatluna data when sentinel already 
     assert.equal(JSON.parse(validation.value ?? '{}').passed, true)
 })
 
+it('ensureMigrationValidated ignores a stale sentinel when legacy data is still present', async () => {
+    const { ctx, database } = await createService({
+        tables: {
+            chatluna_meta: [
+                {
+                    key: 'validation_result',
+                    value: JSON.stringify({
+                        passed: true,
+                        checkedAt: '2026-04-06T05:59:16.380Z'
+                    }),
+                    updatedAt: new Date('2026-04-06T13:59:16.000Z')
+                } as unknown as TableRow,
+                {
+                    key: 'schema_version',
+                    value: JSON.stringify(1),
+                    updatedAt: new Date('2026-04-06T13:59:16.000Z')
+                } as unknown as TableRow
+            ],
+            chathub_room: [
+                {
+                    roomId: 1,
+                    roomName: 'Legacy Room',
+                    roomMasterId: 'owner',
+                    conversationId: 'legacy-conversation',
+                    preset: 'legacy-preset',
+                    model: 'legacy/model',
+                    chatMode: 'plugin',
+                    visibility: 'private',
+                    password: null,
+                    autoUpdate: false,
+                    updatedTime: new Date('2026-03-21T00:00:00.000Z')
+                } as unknown as TableRow
+            ],
+            chathub_conversation: [
+                {
+                    id: 'legacy-conversation',
+                    latestId: 'legacy-message-1',
+                    additional_kwargs: null,
+                    updatedAt: new Date('2026-03-21T01:00:00.000Z')
+                } as unknown as TableRow
+            ],
+            chathub_message: [
+                {
+                    id: 'legacy-message-1',
+                    conversation: 'legacy-conversation',
+                    parent: null,
+                    role: 'human',
+                    text: 'hello from legacy room',
+                    content: null,
+                    name: 'owner',
+                    tool_call_id: null,
+                    tool_calls: null,
+                    additional_kwargs: null,
+                    additional_kwargs_binary: null,
+                    rawId: null
+                } as unknown as TableRow
+            ],
+            chathub_room_member: [
+                {
+                    roomId: 1,
+                    userId: 'owner',
+                    roomPermission: 'owner',
+                    mute: false
+                } as unknown as TableRow
+            ],
+            chathub_room_group_member: [],
+            chathub_user: []
+        }
+    })
+
+    await fs.mkdir(getLegacySchemaSentinelDir(ctx.baseDir), { recursive: true })
+    await fs.writeFile(getLegacySchemaSentinel(ctx.baseDir), '{}', 'utf8')
+
+    await ensureMigrationValidated(ctx, createConfig())
+
+    const validation = database.tables.chatluna_meta.find(
+        (item) => item.key === 'validation_result'
+    ) as { value?: string | null }
+
+    assert.equal(database.tables.chatluna_conversation.length, 1)
+    assert.equal(
+        (database.tables.chatluna_conversation[0] as ConversationRecord).id,
+        'legacy-conversation'
+    )
+    assert.equal(database.tables.chatluna_message.length, 1)
+    assert.equal(JSON.parse(validation.value ?? '{}').passed, true)
+})
+
 it('runRoomToConversationMigration falls back to startup recovery when sentinel already exists', async () => {
     const { ctx, database } = await createService()
 

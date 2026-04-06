@@ -16,7 +16,11 @@ import type {
     LegacyRoomRecord,
     LegacyUserRecord
 } from '../services/types'
-import { defineLegacyMigrationTables } from './legacy_tables'
+import {
+    defineLegacyMigrationTables,
+    isMissingTableError,
+    LEGACY_MIGRATION_TABLES
+} from './legacy_tables'
 import type { BindingProgress, MessageProgress, RoomProgress } from './types'
 import {
     aclKey,
@@ -46,11 +50,13 @@ export async function runRoomToConversationMigration(
     ctx: Context,
     config: Config
 ) {
-    if (existsSync(getLegacySchemaSentinel(ctx.baseDir))) {
+    const hasSentinel = existsSync(getLegacySchemaSentinel(ctx.baseDir))
+
+    if (hasSentinel && !(await hasLegacyMigrationData(ctx))) {
         return ensureMigrationValidated(ctx, config)
     }
 
-    defineLegacyMigrationTables(ctx)
+    defineLegacyMigrationTables(ctx, hasSentinel)
 
     const result = await readMetaValue<
         Awaited<ReturnType<typeof validateRoomMigration>>
@@ -63,6 +69,7 @@ export async function runRoomToConversationMigration(
         (await readMetaValue<boolean>(ctx, 'message_migration_done')) ?? false
 
     if (
+        !hasSentinel &&
         schemaVersion >= BUILTIN_SCHEMA_VERSION &&
         (result?.passed === true || (roomDone && messageDone))
     ) {
@@ -110,15 +117,30 @@ export async function runRoomToConversationMigration(
 // while runRoomToConversationMigration only calls ensureMigrationValidated when
 // flags indicate it IS complete — so the two paths are mutually exclusive.
 export async function ensureMigrationValidated(ctx: Context, config: Config) {
+    const hasSentinel = existsSync(getLegacySchemaSentinel(ctx.baseDir))
+    const hasLegacyData = hasSentinel
+        ? await hasLegacyMigrationData(ctx)
+        : false
+
+    if (hasSentinel && hasLegacyData) {
+        ctx.logger.warn(
+            'Legacy sentinel exists but legacy ChatHub data is still present; continuing migration from legacy tables.'
+        )
+        defineLegacyMigrationTables(ctx, true)
+    }
+
     const result = await readMetaValue<
         Awaited<ReturnType<typeof validateRoomMigration>>
     >(ctx, 'validation_result')
     const retention = await readMetaValue<{
         state?: string
     }>(ctx, LEGACY_RETENTION_META_KEY)
-    const hasSentinel = existsSync(getLegacySchemaSentinel(ctx.baseDir))
 
     if (hasSentinel) {
+        if (hasLegacyData) {
+            return runRoomToConversationMigration(ctx, config)
+        }
+
         if (result?.passed === true) {
             await writeMetaValue(ctx, 'schema_version', BUILTIN_SCHEMA_VERSION)
             await writeMigrationDone(ctx)
@@ -234,6 +256,34 @@ async function writeMigrationFinished(ctx: Context) {
         createLegacyTableRetention('purged')
     )
     await writeMetaValue(ctx, 'migration_finished_at', new Date().toISOString())
+}
+
+async function hasLegacyMigrationData(ctx: Context) {
+    defineLegacyMigrationTables(ctx, true)
+
+    for (const table of LEGACY_MIGRATION_TABLES) {
+        try {
+            if (
+                (
+                    await ctx.database.get(
+                        table as never,
+                        {},
+                        {
+                            limit: 1
+                        }
+                    )
+                ).length > 0
+            ) {
+                return true
+            }
+        } catch (error) {
+            if (!isMissingTableError(error)) {
+                throw error
+            }
+        }
+    }
+
+    return false
 }
 
 // (#6) removed redundant inner `done` check — the caller already guards on room_migration_done

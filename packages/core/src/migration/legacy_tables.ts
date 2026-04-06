@@ -39,8 +39,8 @@ export function getLegacySchemaSentinelDir(baseDir: string) {
     return path.dirname(getLegacySchemaSentinel(baseDir))
 }
 
-export function defineLegacyMigrationTables(ctx: Context) {
-    if (existsSync(getLegacySchemaSentinel(ctx.baseDir))) {
+export function defineLegacyMigrationTables(ctx: Context, force = false) {
+    if (!force && existsSync(getLegacySchemaSentinel(ctx.baseDir))) {
         return
     }
 
@@ -255,7 +255,7 @@ export function defineLegacyMigrationTables(ctx: Context) {
     )
 }
 
-function isMissingTableError(error: unknown) {
+export function isMissingTableError(error: unknown) {
     const message = String(error).toLowerCase()
     return (
         message.includes('cannot resolve table') ||
