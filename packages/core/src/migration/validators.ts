@@ -17,9 +17,9 @@ import type {
 import type { MigrationValidationResult } from './types'
 export type { MigrationValidationResult } from './types'
 export {
+    getLegacySchemaSentinel,
     dropTableIfExists,
     getLegacySchemaSentinelDir,
-    getLegacySchemaSentinel,
     LEGACY_MIGRATION_TABLES,
     LEGACY_RETENTION_META_KEY,
     LEGACY_RUNTIME_TABLES,
@@ -29,6 +29,42 @@ export {
 } from './legacy_tables'
 
 const VALIDATION_BATCH_SIZE = 500
+
+export function createPassedValidationResult(): MigrationValidationResult {
+    return {
+        passed: true,
+        checkedAt: new Date().toISOString(),
+        conversation: {
+            legacy: 0,
+            migrated: 0,
+            matched: true
+        },
+        message: {
+            legacy: 0,
+            migrated: 0,
+            matched: true
+        },
+        latestMessageId: {
+            missingConversationIds: [],
+            matched: true
+        },
+        bindingKey: {
+            inconsistentConversationIds: [],
+            matched: true
+        },
+        binding: {
+            missingBindingKeys: [],
+            missingConversationIds: [],
+            matched: true
+        },
+        acl: {
+            expected: 0,
+            migrated: 0,
+            missing: [],
+            matched: true
+        }
+    }
+}
 
 export async function validateRoomMigration(ctx: Context, _config: Config) {
     ctx.logger.info('Validating built-in ChatLuna migration.')

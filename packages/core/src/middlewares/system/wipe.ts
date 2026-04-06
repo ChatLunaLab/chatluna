@@ -5,6 +5,7 @@ import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import fs from 'fs/promises'
 import {
     createLegacyTableRetention,
+    createPassedValidationResult,
     dropTableIfExists,
     getLegacySchemaSentinel,
     getLegacySchemaSentinelDir,
@@ -15,6 +16,7 @@ import {
     readMetaValue,
     writeMetaValue
 } from '../../migration/validators'
+import { BUILTIN_SCHEMA_VERSION } from '../../migration/room_to_conversation'
 
 let logger: Logger
 
@@ -76,11 +78,12 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
             'chatluna_binding',
             'chatluna_constraint',
             'chatluna_archive',
-            'chatluna_acl',
-            'chatluna_meta'
+            'chatluna_acl'
         ]) {
             await dropTableIfExists(ctx, table)
         }
+
+        await ctx.database.remove('chatluna_meta', {})
 
         for (const table of LEGACY_MIGRATION_TABLES) {
             await dropTableIfExists(ctx, table)
@@ -114,6 +117,22 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         } catch (e) {
             logger.warn(`wipe: ${e}`)
         }
+
+        const validated = createPassedValidationResult()
+        await writeMetaValue(ctx, 'schema_version', BUILTIN_SCHEMA_VERSION)
+        await writeMetaValue(ctx, 'validation_result', validated)
+        await writeMetaValue(ctx, 'room_migration_done', true)
+        await writeMetaValue(ctx, 'message_migration_done', true)
+        await writeMetaValue(
+            ctx,
+            LEGACY_RETENTION_META_KEY,
+            createLegacyTableRetention('purged')
+        )
+        await writeMetaValue(
+            ctx,
+            'migration_finished_at',
+            new Date().toISOString()
+        )
 
         const sentinelDir = getLegacySchemaSentinelDir(ctx.baseDir)
         const sentinelPath = getLegacySchemaSentinel(ctx.baseDir)

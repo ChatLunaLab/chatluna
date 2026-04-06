@@ -45,6 +45,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (
             resolved.constraint.manageMode === 'admin' &&
+            resolved.constraint.routeMode !== 'personal' &&
             !(await checkAdmin(session))
         ) {
             context.message = session.text(

@@ -258,6 +258,7 @@ export function defineLegacyMigrationTables(ctx: Context) {
 function isMissingTableError(error: unknown) {
     const message = String(error).toLowerCase()
     return (
+        message.includes('cannot resolve table') ||
         message.includes('no such table') ||
         message.includes('unknown table') ||
         message.includes('not found') ||

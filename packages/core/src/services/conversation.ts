@@ -336,8 +336,6 @@ export class ConversationService {
             }
         }
 
-        await assertManageAllowed(session, resolved.constraint)
-
         if (!resolved.constraint.allowNew) {
             throw new Error('Conversation creation is disabled by constraint.')
         }
