@@ -7,7 +7,6 @@ import {
     MessageContentComplex,
     ToolMessage
 } from '@langchain/core/messages'
-import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
 import {
     RunnableLambda,
@@ -31,6 +30,7 @@ import {
 } from './output_parser'
 import { BaseChatPromptTemplate } from '@langchain/core/prompts'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { observationToMessageContent } from '../legacy-executor'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.
@@ -56,9 +56,9 @@ function _convertAgentStepToMessages(
 ) {
     if (isToolsAgentAction(action) && action.toolCallId !== undefined) {
         const log = action.messageLog as BaseMessage[]
-        const content = isDirectToolOutput(observation) ? '' : observation
+        const content = observationToMessageContent(observation)
         if (
-            !isDirectToolOutput(observation) &&
+            content === observation &&
             (content.length < 1 || content === 'null')
         ) {
             return log.concat(

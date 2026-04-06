@@ -5,7 +5,6 @@ import {
     SystemMessage,
     ToolMessage
 } from '@langchain/core/messages'
-import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { StructuredTool } from '@langchain/core/tools'
 import { randomUUID } from 'crypto'
 import type { Awaitable, Session } from 'koishi'
@@ -13,6 +12,7 @@ import { z } from 'zod'
 import type { ChatLunaToolRunnable } from '../platform/types'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaAgent } from './agent'
+import { observationToMessageContent } from './legacy-executor'
 import { MessageQueue } from './types'
 import type { AgentEvent, AgentStep, SubagentContext, ToolMask } from './types'
 
@@ -869,9 +869,7 @@ function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
         ...steps.map(
             (step) =>
                 new ToolMessage({
-                    content: isDirectToolOutput(step.observation)
-                        ? ''
-                        : step.observation,
+                    content: observationToMessageContent(step.observation),
                     tool_call_id: step.action.toolCallId,
                     name: step.action.tool
                 })

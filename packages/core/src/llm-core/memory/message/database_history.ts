@@ -8,7 +8,6 @@ import {
     SystemMessage,
     ToolMessage
 } from '@langchain/core/messages'
-import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import {
     bufferToArrayBuffer,
@@ -16,6 +15,7 @@ import {
     gzipEncode
 } from 'koishi-plugin-chatluna/utils/string'
 import { randomUUID } from 'crypto'
+import { observationToMessageContent } from '../../agent/legacy-executor'
 import type { AgentStep } from '../../agent/types'
 import type { MessageRecord } from '../../../services/conversation_types'
 
@@ -72,9 +72,7 @@ function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
         ...steps.map(
             (step) =>
                 new ToolMessage({
-                    content: isDirectToolOutput(step.observation)
-                        ? ''
-                        : step.observation,
+                    content: observationToMessageContent(step.observation),
                     tool_call_id: step.action.toolCallId,
                     name: step.action.tool
                 })

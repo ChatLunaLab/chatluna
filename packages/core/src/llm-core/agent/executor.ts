@@ -11,6 +11,7 @@ import type { AgentExecutorInput, AgentExecutorOutput } from './legacy-executor'
 export {
     coerceToAgentObservation,
     LegacyAgentExecutor,
+    observationToMessageContent,
     runAgent,
     toToolInputErrorObservation,
     type AgentExecutorInput,

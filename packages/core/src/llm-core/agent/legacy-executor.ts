@@ -599,3 +599,7 @@ function toParsingErrorAction(
         log: text
     }
 }
+
+export function observationToMessageContent(observation: AgentObservation) {
+    return isDirectToolOutput(observation) ? '' : observation
+}
