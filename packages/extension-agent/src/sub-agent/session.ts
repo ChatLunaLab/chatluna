@@ -7,8 +7,8 @@ import {
     ToolMessage
 } from '@langchain/core/messages'
 import {
-    observationToMessageContent,
-    type AgentStep
+    type AgentStep,
+    observationToMessageContent
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import type { SubAgentInfo, SubAgentRunInfo } from '../types'
