@@ -62,6 +62,9 @@ Focus on information that would be helpful for continuing the conversation, incl
 - Key user requests, constraints, or preferences that should persist
 - Important technical decisions and why they were made
 
+Some old tool result messages may say that the original tool output expired and was removed.
+Treat those as intentional retention placeholders, not as meaningful tool output.
+
 Your summary should be comprehensive enough to provide context but concise enough to be quickly understood.
 
 Do not respond to any questions in the conversation, only output the summary.

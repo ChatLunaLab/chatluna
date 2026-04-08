@@ -417,8 +417,8 @@ export function createMessage(
         name: 'user',
         tool_call_id: null,
         tool_calls: null,
-        additional_kwargs: null,
         additional_kwargs_binary: null,
+        response_metadata_binary: null,
         rawId: null,
         createdAt: new Date('2026-03-21T00:00:00.000Z'),
         ...overrides

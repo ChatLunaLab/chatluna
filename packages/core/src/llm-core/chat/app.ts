@@ -157,6 +157,9 @@ export class ChatInterface {
             if (this.ctx.chatluna.currentConfig.infiniteContext) {
                 const manager = this._ensureInfiniteContextManager()
                 const result = await manager?.compressIfNeeded(wrapper)
+                if (result?.messages) {
+                    await this._chatHistory.replaceMessages(result.messages)
+                }
                 if (result?.compressed) {
                     await this.ctx.chatluna.conversation.recordCompression(
                         this._input.conversationId,
@@ -390,6 +393,9 @@ export class ChatInterface {
         }
 
         const result = await manager.compressIfNeeded(wrapper, force)
+        if (result.messages) {
+            await this._chatHistory.replaceMessages(result.messages)
+        }
         if (result.compressed) {
             await this.ctx.chatluna.conversation.recordCompression(
                 this._input.conversationId,

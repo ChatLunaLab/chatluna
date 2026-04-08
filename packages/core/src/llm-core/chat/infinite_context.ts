@@ -8,6 +8,7 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaInfiniteContextChain } from '../chain/infinite_context_chain'
+import type { ChatLunaMessageMeta } from '../../services/conversation_types'
 
 export interface CompressContextResult {
     inputTokens: number
@@ -17,6 +18,7 @@ export interface CompressContextResult {
     compressed: boolean
     originalMessageCount: number
     remainingMessageCount: number
+    messages?: BaseMessage[]
 }
 
 function formatTranscript(messages: BaseMessage[]) {
@@ -75,8 +77,51 @@ export class InfiniteContextManager {
         }
 
         const inputTokens = await this._countMessagesTokens(model, messages)
+        const expiredToolResultText =
+            'This tool result expired after 1 hour, so the original output was removed.'
+        let compactedCount = 0
+        const compactedMessages = messages.map((message) => {
+            if (message.getType() !== 'tool') {
+                return message
+            }
+
+            const meta = message.response_metadata?.chatluna as
+                | ChatLunaMessageMeta
+                | undefined
+
+            if (meta?.createdAt == null) {
+                return message
+            }
+
+            if (Date.now() - new Date(meta.createdAt).getTime() < 3600000) {
+                return message
+            }
+
+            if (
+                getMessageContent(message.content).trim() ===
+                expiredToolResultText
+            ) {
+                return message
+            }
+
+            message.content = expiredToolResultText
+            compactedCount++
+            return message
+        })
+        const nextMessages = compactedCount > 0 ? compactedMessages : messages
+        const compactedTokens =
+            compactedCount > 0
+                ? await this._countMessagesTokens(model, nextMessages)
+                : inputTokens
         let presetTokens = 0
         let threshold: number | undefined
+
+        if (compactedCount > 0) {
+            logger.info(
+                '[InfiniteContext] Replaced %d expired tool results before compression',
+                compactedCount
+            )
+        }
 
         if (!force) {
             const invocation = model.invocationParams()
@@ -88,12 +133,17 @@ export class InfiniteContextManager {
             if (!maxTokenLimit || maxTokenLimit <= 0) {
                 return {
                     inputTokens,
-                    outputTokens: inputTokens,
-                    reducedTokens: 0,
-                    reducedPercent: 0,
+                    outputTokens: compactedTokens,
+                    reducedTokens: inputTokens - compactedTokens,
+                    reducedPercent:
+                        inputTokens > 0
+                            ? ((inputTokens - compactedTokens) / inputTokens) *
+                              100
+                            : 0,
                     compressed: false,
                     originalMessageCount: messages.length,
-                    remainingMessageCount: messages.length
+                    remainingMessageCount: nextMessages.length,
+                    messages: compactedCount > 0 ? nextMessages : undefined
                 }
             }
 
@@ -111,42 +161,51 @@ export class InfiniteContextManager {
                 maxTokenLimit * (this.options.threshold ?? 0.85)
             )
 
-            if (inputTokens + presetTokens <= threshold) {
+            if (compactedTokens + presetTokens <= threshold) {
                 return {
                     inputTokens,
-                    outputTokens: inputTokens,
-                    reducedTokens: 0,
-                    reducedPercent: 0,
+                    outputTokens: compactedTokens,
+                    reducedTokens: inputTokens - compactedTokens,
+                    reducedPercent:
+                        inputTokens > 0
+                            ? ((inputTokens - compactedTokens) / inputTokens) *
+                              100
+                            : 0,
                     compressed: false,
                     originalMessageCount: messages.length,
-                    remainingMessageCount: messages.length
+                    remainingMessageCount: nextMessages.length,
+                    messages: compactedCount > 0 ? nextMessages : undefined
                 }
             }
 
             logger.info(
                 '[InfiniteContext] Start compression with history tokens: %d, total tokens: %d, threshold: %d',
-                inputTokens,
-                inputTokens + presetTokens,
+                compactedTokens,
+                compactedTokens + presetTokens,
                 threshold
             )
         } else {
             logger.info(
                 '[InfiniteContext] Start manual compression with history tokens: %d',
-                inputTokens
+                compactedTokens
             )
         }
 
-        const transcript = formatTranscript(messages)
+        const transcript = formatTranscript(nextMessages)
 
         if (!transcript.trim()) {
             return {
                 inputTokens,
-                outputTokens: inputTokens,
-                reducedTokens: 0,
-                reducedPercent: 0,
+                outputTokens: compactedTokens,
+                reducedTokens: inputTokens - compactedTokens,
+                reducedPercent:
+                    inputTokens > 0
+                        ? ((inputTokens - compactedTokens) / inputTokens) * 100
+                        : 0,
                 compressed: false,
                 originalMessageCount: messages.length,
-                remainingMessageCount: messages.length
+                remainingMessageCount: nextMessages.length,
+                messages: compactedCount > 0 ? nextMessages : undefined
             }
         }
 
@@ -160,12 +219,16 @@ export class InfiniteContextManager {
         if (!summary?.text.trim()) {
             return {
                 inputTokens,
-                outputTokens: inputTokens,
-                reducedTokens: 0,
-                reducedPercent: 0,
+                outputTokens: compactedTokens,
+                reducedTokens: inputTokens - compactedTokens,
+                reducedPercent:
+                    inputTokens > 0
+                        ? ((inputTokens - compactedTokens) / inputTokens) * 100
+                        : 0,
                 compressed: false,
                 originalMessageCount: messages.length,
-                remainingMessageCount: messages.length
+                remainingMessageCount: nextMessages.length,
+                messages: compactedCount > 0 ? nextMessages : undefined
             }
         }
 
@@ -176,8 +239,6 @@ export class InfiniteContextManager {
                 source: 'infinite-context'
             }
         })
-
-        await this._rewriteChatHistory([message])
 
         const outputTokens = summary.usageMetadata?.output_tokens ?? 0
         const reducedTokens = inputTokens - outputTokens
@@ -207,28 +268,9 @@ export class InfiniteContextManager {
             reducedPercent,
             compressed: true,
             originalMessageCount: messages.length,
-            remainingMessageCount: 1
+            remainingMessageCount: 1,
+            messages: [message]
         }
-    }
-
-    private async _rewriteChatHistory(messages: BaseMessage[]): Promise<void> {
-        const additionalArgs = {
-            ...(await this.options.chatHistory.getAdditionalArgs())
-        }
-
-        await this.options.chatHistory.clear()
-
-        for (const message of messages) {
-            await this.options.chatHistory.addMessage(message)
-        }
-
-        if (Object.keys(additionalArgs).length > 0) {
-            await this.options.chatHistory.overrideAdditionalArgs(
-                additionalArgs
-            )
-        }
-
-        await this.options.chatHistory.loadConversation()
     }
 
     private async _countMessagesTokens(

@@ -23,10 +23,18 @@ import {
 
 export function createDisplayResponse(responseMessage: AIMessage) {
     const msg = new AIMessage({
-        content: responseMessage.content
+        content: responseMessage.content,
+        id: responseMessage.id,
+        name: responseMessage.name,
+        tool_calls: responseMessage.tool_calls,
+        usage_metadata: responseMessage.usage_metadata,
+        additional_kwargs: {
+            ...responseMessage.additional_kwargs
+        },
+        response_metadata: {
+            ...responseMessage.response_metadata
+        }
     })
-
-    msg.additional_kwargs = responseMessage.additional_kwargs
     return msg
 }
 

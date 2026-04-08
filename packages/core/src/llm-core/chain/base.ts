@@ -393,7 +393,7 @@ export async function callChatLunaChain(
         ]
     })
 
-    await events?.['llm-used-token-count'](usedToken)
+    await events?.['llm-used-token-count']?.(usedToken)
 
     return response
 }

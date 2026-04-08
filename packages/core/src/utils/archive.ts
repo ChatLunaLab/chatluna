@@ -179,6 +179,9 @@ export function serializeMessage(
         additional_kwargs_binary: serializeBinary(
             message.additional_kwargs_binary
         ),
+        response_metadata_binary: serializeBinary(
+            message.response_metadata_binary
+        ),
         createdAt: message.createdAt?.toISOString() ?? null
     }
 }
@@ -191,6 +194,9 @@ export function deserializeMessage(
         content: deserializeBinary(message.content),
         additional_kwargs_binary: deserializeBinary(
             message.additional_kwargs_binary
+        ),
+        response_metadata_binary: deserializeBinary(
+            message.response_metadata_binary
         ),
         createdAt: message.createdAt ? new Date(message.createdAt) : null
     }
