@@ -75,7 +75,7 @@ async function executeTools(
 
                 return {
                     action,
-                    observation: `Tool '${action.tool}' is not allowed for the current sub-agent. Available tools: ${allowed.join(', ')}`
+                    observation: `Tool '${action.tool}' is not allowed for the current agent. Available tools: ${allowed.join(', ')}`
                 } as AgentStep
             }
 

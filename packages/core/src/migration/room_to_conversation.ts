@@ -38,6 +38,7 @@ import {
     validateRoomMigration,
     writeMetaValue
 } from './validators'
+import { bufferToArrayBuffer, gzipEncode } from '../utils/compression'
 
 export const BUILTIN_SCHEMA_VERSION = 1
 
@@ -482,33 +483,49 @@ async function migrateMessages(ctx: Context) {
             break
         }
 
-        const payload: MessageRecord[] = batch.flatMap((item) => {
+        const payload: MessageRecord[] = []
+
+        for (const item of batch) {
             const conversationIds = targets.get(item.conversation)
 
             if (conversationIds == null) {
-                return []
+                continue
             }
 
-            return conversationIds.map((conversationId) => ({
-                id: mapMessageId(item.conversation, conversationId, item.id)!,
-                conversationId,
-                parentId: mapMessageId(
-                    item.conversation,
+            const additionalKwargsBinary =
+                item.additional_kwargs_binary ??
+                (item.additional_kwargs != null
+                    ? await gzipEncode(item.additional_kwargs).then((buf) =>
+                          bufferToArrayBuffer(buf)
+                      )
+                    : null)
+
+            for (const conversationId of conversationIds) {
+                payload.push({
+                    id: mapMessageId(
+                        item.conversation,
+                        conversationId,
+                        item.id
+                    )!,
                     conversationId,
-                    item.parent ?? null
-                ),
-                role: item.role,
-                text: typeof item.text === 'string' ? item.text : null,
-                content: item.content ?? null,
-                name: item.name ?? null,
-                tool_call_id: item.tool_call_id ?? null,
-                tool_calls: item.tool_calls,
-                additional_kwargs: item.additional_kwargs ?? null,
-                additional_kwargs_binary: item.additional_kwargs_binary ?? null,
-                rawId: item.rawId ?? null,
-                createdAt: null
-            }))
-        })
+                    parentId: mapMessageId(
+                        item.conversation,
+                        conversationId,
+                        item.parent ?? null
+                    ),
+                    role: item.role,
+                    text: typeof item.text === 'string' ? item.text : null,
+                    content: item.content ?? null,
+                    name: item.name ?? null,
+                    tool_call_id: item.tool_call_id ?? null,
+                    tool_calls: item.tool_calls,
+                    additional_kwargs_binary: additionalKwargsBinary,
+                    response_metadata_binary: null,
+                    rawId: item.rawId ?? null,
+                    createdAt: null
+                })
+            }
+        }
 
         if (payload.length > 0) {
             await ctx.database.upsert('chatluna_message', payload)

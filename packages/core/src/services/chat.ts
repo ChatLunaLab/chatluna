@@ -619,11 +619,11 @@ export class ChatLunaService extends Service<Config> {
                     type: 'json',
                     nullable: true
                 },
-                additional_kwargs: {
-                    type: 'text',
+                additional_kwargs_binary: {
+                    type: 'binary',
                     nullable: true
                 },
-                additional_kwargs_binary: {
+                response_metadata_binary: {
                     type: 'binary',
                     nullable: true
                 },

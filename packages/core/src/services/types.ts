@@ -130,10 +130,14 @@ export interface ResolveTargetConversationOptions extends ResolveConversationCon
 
 export interface SerializedMessageRecord extends Omit<
     MessageRecord,
-    'content' | 'additional_kwargs_binary' | 'createdAt'
+    | 'content'
+    | 'additional_kwargs_binary'
+    | 'response_metadata_binary'
+    | 'createdAt'
 > {
     content?: string | null
     additional_kwargs_binary?: string | null
+    response_metadata_binary?: string | null
     createdAt?: string | null
 }
 

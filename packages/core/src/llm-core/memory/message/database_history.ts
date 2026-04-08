@@ -17,68 +17,10 @@ import {
 import { randomUUID } from 'crypto'
 import { observationToMessageContent } from '../../agent/legacy-executor'
 import type { AgentStep } from '../../agent/types'
-import type { MessageRecord } from '../../../services/conversation_types'
-
-async function serializeMessage(
-    message: BaseMessage,
-    conversationId: string,
-    parentId?: string | null
-): Promise<MessageRecord> {
-    let additionalArgs = Object.assign({}, message.additional_kwargs)
-
-    delete additionalArgs['preset']
-    delete additionalArgs['raw_content']
-    delete additionalArgs['type']
-
-    if (Object.keys(additionalArgs).length === 0) {
-        additionalArgs = null
-    }
-
-    return {
-        id: randomUUID(),
-        content: await gzipEncode(JSON.stringify(message.content)).then((buf) =>
-            bufferToArrayBuffer(buf)
-        ),
-        parentId: parentId ?? null,
-        role: message.getType(),
-        name: message.name,
-        tool_calls: message['tool_calls'],
-        tool_call_id: message['tool_call_id'],
-        additional_kwargs_binary:
-            additionalArgs && Object.keys(additionalArgs).length > 0
-                ? await gzipEncode(JSON.stringify(additionalArgs)).then((buf) =>
-                      bufferToArrayBuffer(buf)
-                  )
-                : null,
-        rawId: message.id ?? null,
-        conversationId,
-        createdAt: new Date()
-    }
-}
-
-function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
-    return [
-        new AIMessage({
-            content: '',
-            tool_calls: steps.map((step) => ({
-                id: step.action.toolCallId,
-                name: step.action.tool,
-                args:
-                    typeof step.action.toolInput !== 'string'
-                        ? step.action.toolInput
-                        : { input: step.action.toolInput }
-            }))
-        }),
-        ...steps.map(
-            (step) =>
-                new ToolMessage({
-                    content: observationToMessageContent(step.observation),
-                    tool_call_id: step.action.toolCallId,
-                    name: step.action.tool
-                })
-        )
-    ]
-}
+import type {
+    ChatLunaMessageMeta,
+    MessageRecord
+} from '../../../services/conversation_types'
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -182,6 +124,43 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         await this.addMessages(createAgentToolMessages(steps))
     }
 
+    async replaceMessages(messages: BaseMessage[]): Promise<void> {
+        await this.loadConversation()
+
+        const serializedMessages: MessageRecord[] = []
+        let parentId: string | null = null
+
+        for (const message of messages) {
+            const serializedMessage = await serializeMessage(
+                message,
+                this.conversationId,
+                parentId
+            )
+            serializedMessages.push(serializedMessage)
+            parentId = serializedMessage.id
+        }
+
+        await this._ctx.database.remove('chatluna_message', {
+            conversationId: this.conversationId
+        })
+
+        if (serializedMessages.length > 0) {
+            await this._ctx.database.upsert(
+                'chatluna_message',
+                serializedMessages
+            )
+        }
+
+        this._serializedChatHistory = serializedMessages
+        this._chatHistory = [...messages]
+        this._latestId =
+            serializedMessages[serializedMessages.length - 1]?.id ?? null
+        const updatedAt = new Date()
+        this._updatedAt = updatedAt
+
+        await this._saveConversation(updatedAt)
+    }
+
     async clear(): Promise<void> {
         await this._ctx.database.remove('chatluna_message', {
             conversationId: this.conversationId
@@ -229,60 +208,20 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         await this._saveConversation()
     }
 
-    async removeAllToolAndFunctionMessages() {
-        await this.loadConversation()
-
-        const toolAndFunctionMessages = this._serializedChatHistory.filter(
-            (msg) => msg.role === 'tool' || msg.role === 'function'
-        )
-
-        if (toolAndFunctionMessages.length === 0) {
-            return
-        }
-
-        const messageIds = toolAndFunctionMessages.map((msg) => msg.id)
-
-        await this._ctx.database.remove('chatluna_message', {
-            id: messageIds
+    async removeAllToolAndFunctionMessages(): Promise<BaseMessage[]> {
+        const messages = await this.getMessages()
+        const filtered = messages.filter((message) => {
+            const type = message.getType()
+            return type !== 'tool' && type !== 'function'
         })
 
-        this._serializedChatHistory = this._serializedChatHistory.filter(
-            (msg) => msg.role !== 'tool' && msg.role !== 'function'
-        )
-
-        for (let i = 0; i < this._serializedChatHistory.length; i++) {
-            const currentMsg = this._serializedChatHistory[i]
-            const prevMsg = this._serializedChatHistory[i - 1]
-
-            currentMsg.parentId = prevMsg?.id ?? null
+        if (filtered.length === messages.length) {
+            return messages
         }
 
-        if (this._serializedChatHistory.length > 0) {
-            const updatedMessages = this._serializedChatHistory.map((msg) => ({
-                id: msg.id,
-                parentId: msg.parentId,
-                content: msg.content,
-                role: msg.role,
-                conversationId: msg.conversationId,
-                name: msg.name,
-                tool_call_id: msg.tool_call_id,
-                tool_calls: msg.tool_calls,
-                additional_kwargs_binary: msg.additional_kwargs_binary,
-                rawId: msg.rawId
-            }))
+        await this.replaceMessages(filtered)
 
-            await this._ctx.database.upsert('chatluna_message', updatedMessages)
-
-            this._latestId =
-                this._serializedChatHistory[
-                    this._serializedChatHistory.length - 1
-                ].id
-        } else {
-            this._latestId = null
-        }
-
-        await this._saveConversation()
-        this._chatHistory = await this._loadMessages()
+        return filtered
     }
 
     async overrideAdditionalArgs(kwargs: {
@@ -363,8 +302,19 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
             const args = JSON.parse(
                 item.additional_kwargs_binary
                     ? await gzipDecode(item.additional_kwargs_binary)
-                    : (item.additional_kwargs ?? '{}')
+                    : '{}'
             )
+            const responseMetadata = JSON.parse(
+                item.response_metadata_binary
+                    ? await gzipDecode(item.response_metadata_binary)
+                    : '{}'
+            )
+
+            responseMetadata.chatluna = {
+                ...(responseMetadata.chatluna ?? {}),
+                recordId: item.id,
+                createdAt: item.createdAt?.toISOString()
+            }
 
             let content: MessageContent
             try {
@@ -392,6 +342,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 tool_calls:
                     (item.tool_calls as AIMessage['tool_calls']) ?? undefined,
                 tool_call_id: item.tool_call_id ?? undefined,
+                response_metadata: responseMetadata,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 additional_kwargs: args as any
             }
@@ -519,5 +470,115 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 updatedAt: time
             }
         ])
+    }
+}
+
+async function serializeMessage(
+    message: BaseMessage,
+    conversationId: string,
+    parentId?: string | null
+): Promise<MessageRecord> {
+    const meta = readMessageMeta(message)
+    const id = meta.recordId ?? randomUUID()
+    const createdAt = meta.createdAt ? new Date(meta.createdAt) : new Date()
+
+    writeMessageMeta(message, {
+        recordId: id,
+        createdAt: createdAt.toISOString()
+    })
+
+    let additionalArgs = Object.assign({}, message.additional_kwargs)
+
+    delete additionalArgs['preset']
+    delete additionalArgs['raw_content']
+    delete additionalArgs['type']
+
+    if (Object.keys(additionalArgs).length === 0) {
+        additionalArgs = null
+    }
+
+    let responseMetadata = Object.assign({}, message.response_metadata)
+
+    if (Object.keys(responseMetadata).length === 0) {
+        responseMetadata = null
+    }
+
+    return {
+        id,
+        content: await gzipEncode(JSON.stringify(message.content)).then((buf) =>
+            bufferToArrayBuffer(buf)
+        ),
+        parentId: parentId ?? null,
+        role: message.getType(),
+        name: message.name,
+        tool_calls: message['tool_calls'],
+        tool_call_id: message['tool_call_id'],
+        additional_kwargs_binary:
+            additionalArgs && Object.keys(additionalArgs).length > 0
+                ? await gzipEncode(JSON.stringify(additionalArgs)).then((buf) =>
+                      bufferToArrayBuffer(buf)
+                  )
+                : null,
+        response_metadata_binary:
+            responseMetadata && Object.keys(responseMetadata).length > 0
+                ? await gzipEncode(JSON.stringify(responseMetadata)).then(
+                      (buf) => bufferToArrayBuffer(buf)
+                  )
+                : null,
+        rawId: message.id ?? null,
+        conversationId,
+        createdAt
+    }
+}
+
+function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
+    return [
+        new AIMessage({
+            content: '',
+            tool_calls: steps.map((step) => ({
+                id: step.action.toolCallId,
+                name: step.action.tool,
+                args:
+                    typeof step.action.toolInput !== 'string'
+                        ? step.action.toolInput
+                        : { input: step.action.toolInput }
+            }))
+        }),
+        ...steps.map(
+            (step) =>
+                new ToolMessage({
+                    content: observationToMessageContent(step.observation),
+                    tool_call_id: step.action.toolCallId,
+                    name: step.action.tool
+                })
+        )
+    ]
+}
+
+function readMessageMeta(message: BaseMessage) {
+    const meta = message.response_metadata?.chatluna as
+        | ChatLunaMessageMeta
+        | undefined
+
+    return {
+        recordId:
+            typeof meta?.recordId === 'string' && meta.recordId.length > 0
+                ? meta.recordId
+                : undefined,
+        createdAt:
+            typeof meta?.createdAt === 'string' && meta.createdAt.length > 0
+                ? meta.createdAt
+                : undefined
+    }
+}
+
+function writeMessageMeta(message: BaseMessage, meta: ChatLunaMessageMeta) {
+    message.response_metadata = {
+        ...(message.response_metadata ?? {}),
+        chatluna: {
+            ...((message.response_metadata?.chatluna as ChatLunaMessageMeta) ??
+                {}),
+            ...meta
+        }
     }
 }

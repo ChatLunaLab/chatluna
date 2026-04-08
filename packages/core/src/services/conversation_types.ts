@@ -60,10 +60,15 @@ export interface MessageRecord {
     name?: string | null
     tool_call_id?: string | null
     tool_calls?: AIMessage['tool_calls']
-    additional_kwargs?: string | null
     additional_kwargs_binary?: ArrayBuffer | null
+    response_metadata_binary?: ArrayBuffer | null
     rawId?: string | null
     createdAt?: Date | null
+}
+
+export interface ChatLunaMessageMeta {
+    recordId?: string
+    createdAt?: string
 }
 
 export interface BindingRecord {
