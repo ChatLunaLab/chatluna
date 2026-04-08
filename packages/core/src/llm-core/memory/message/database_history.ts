@@ -208,7 +208,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         await this._saveConversation()
     }
 
-    async removeAllToolAndFunctionMessages() {
+    async removeAllToolAndFunctionMessages(): Promise<BaseMessage[]> {
         const messages = await this.getMessages()
         const filtered = messages.filter((message) => {
             const type = message.getType()
@@ -216,10 +216,12 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
         })
 
         if (filtered.length === messages.length) {
-            return
+            return messages
         }
 
         await this.replaceMessages(filtered)
+
+        return filtered
     }
 
     async overrideAdditionalArgs(kwargs: {

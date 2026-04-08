@@ -192,12 +192,12 @@ export class ChatLunaPluginChain
             .chatHistory as KoishiChatMessageHistory
 
         const messages = await chatHistory.getMessages()
+        const history =
+            this.agentMode === 'react'
+                ? await chatHistory.removeAllToolAndFunctionMessages()
+                : messages
 
-        if (this.agentMode === 'react') {
-            await chatHistory.removeAllToolAndFunctionMessages()
-        }
-
-        requests['chat_history'] = [...messages]
+        requests['chat_history'] = [...history]
         requests['id'] = conversationId
         requests['variables'] = Object.assign(nextVars, {
             prompt: getMessageContent(message.content)

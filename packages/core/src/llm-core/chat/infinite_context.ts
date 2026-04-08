@@ -1,5 +1,9 @@
 /* eslint-disable max-len */
-import { BaseMessage, HumanMessage } from '@langchain/core/messages'
+import {
+    BaseMessage,
+    HumanMessage,
+    mapStoredMessageToChatMessage
+} from '@langchain/core/messages'
 import { ComputedRef } from '@vue/reactivity'
 import { logger } from 'koishi-plugin-chatluna'
 import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
@@ -80,9 +84,13 @@ export class InfiniteContextManager {
         const expiredToolResultText =
             'This tool result expired after 1 hour, so the original output was removed.'
         let compactedCount = 0
-        const compactedMessages = messages.map((message) => {
+        const compactedIndexes = new Set<number>()
+
+        for (let idx = 0; idx < messages.length; idx++) {
+            const message = messages[idx]
+
             if (message.getType() !== 'tool') {
-                return message
+                continue
             }
 
             const meta = message.response_metadata?.chatluna as
@@ -90,24 +98,38 @@ export class InfiniteContextManager {
                 | undefined
 
             if (meta?.createdAt == null) {
-                return message
+                continue
             }
 
             if (Date.now() - new Date(meta.createdAt).getTime() < 3600000) {
-                return message
+                continue
             }
 
             if (
                 getMessageContent(message.content).trim() ===
                 expiredToolResultText
             ) {
-                return message
+                continue
             }
 
-            message.content = expiredToolResultText
             compactedCount++
-            return message
-        })
+            compactedIndexes.add(idx)
+        }
+
+        const compactedMessages =
+            compactedCount > 0
+                ? messages.map((message, idx) => {
+                      const cloned = mapStoredMessageToChatMessage(
+                          message.toDict()
+                      )
+
+                      if (compactedIndexes.has(idx)) {
+                          cloned.content = expiredToolResultText
+                      }
+
+                      return cloned
+                  })
+                : messages
         const nextMessages = compactedCount > 0 ? compactedMessages : messages
         const compactedTokens =
             compactedCount > 0
