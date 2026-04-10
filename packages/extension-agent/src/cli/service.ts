@@ -1,6 +1,7 @@
 /** @module cli/service */
 
 import { SystemMessage } from '@langchain/core/messages'
+import type {} from 'koishi-plugin-chatluna/llm-core/chat/app'
 import {
     countMessageTokens,
     PromptContextRuntime
@@ -46,18 +47,18 @@ export class ChatLunaAgentCliService {
         }
 
         this.ctx.on(
-            'chatluna/conversation-after-clear-history',
+            'chatluna/after-conversation-clear-history',
             async (payload) => {
                 clear(payload.conversation.id)
             }
         )
-        this.ctx.on('chatluna/conversation-after-archive', async (payload) => {
+        this.ctx.on('chatluna/after-conversation-archive', async (payload) => {
             clear(payload.conversation.id)
         })
-        this.ctx.on('chatluna/conversation-after-restore', async (payload) => {
+        this.ctx.on('chatluna/after-conversation-restore', async (payload) => {
             clear(payload.conversation.id)
         })
-        this.ctx.on('chatluna/conversation-after-delete', async (payload) => {
+        this.ctx.on('chatluna/after-conversation-delete', async (payload) => {
             clear(payload.conversation.id)
         })
     }

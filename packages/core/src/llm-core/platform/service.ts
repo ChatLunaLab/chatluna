@@ -59,11 +59,11 @@ export class PlatformService {
             this._tmpVectorStores.delete(payload.conversation.id)
         }
 
-        this.ctx.on('chatluna/conversation-after-clear-history', clear)
-        this.ctx.on('chatluna/conversation-after-cache-clear', clear)
-        this.ctx.on('chatluna/conversation-after-archive', clear)
-        this.ctx.on('chatluna/conversation-after-restore', clear)
-        this.ctx.on('chatluna/conversation-after-delete', clear)
+        this.ctx.on('chatluna/after-conversation-clear-history', clear)
+        this.ctx.on('chatluna/after-conversation-cache-clear', clear)
+        this.ctx.on('chatluna/after-conversation-archive', clear)
+        this.ctx.on('chatluna/after-conversation-restore', clear)
+        this.ctx.on('chatluna/after-conversation-delete', clear)
         this.ctx.on('chatluna/conversation-compressed', clear)
     }
 

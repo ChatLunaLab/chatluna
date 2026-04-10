@@ -385,7 +385,7 @@ export class ConversationRuntime {
         return this.withConversationLock(conversation.id, async () => {
             const chatInterface = await this.ensureChatInterface(conversation)
             await this.service.ctx.root.parallel(
-                'chatluna/conversation-before-clear-history',
+                'chatluna/before-conversation-clear-history',
                 {
                     conversation,
                     chatInterface
@@ -399,7 +399,7 @@ export class ConversationRuntime {
             await chatInterface.clearChatHistory()
             this.interfaces.delete(conversation.id)
             await this.service.ctx.root.parallel(
-                'chatluna/conversation-after-clear-history',
+                'chatluna/after-conversation-clear-history',
                 {
                     conversation,
                     chatInterface
@@ -422,7 +422,7 @@ export class ConversationRuntime {
         const cached = this.interfaces.get(conversation.id)
         const existed = cached != null
         await this.service.ctx.root.parallel(
-            'chatluna/conversation-before-cache-clear',
+            'chatluna/before-conversation-cache-clear',
             {
                 conversation,
                 chatInterface: cached?.chatInterface
@@ -430,7 +430,7 @@ export class ConversationRuntime {
         )
         this.interfaces.delete(conversation.id)
         await this.service.ctx.root.parallel(
-            'chatluna/conversation-after-cache-clear',
+            'chatluna/after-conversation-cache-clear',
             {
                 conversation
             }

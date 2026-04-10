@@ -2,6 +2,7 @@
 import { StructuredTool } from '@langchain/core/tools'
 import { HumanMessage } from '@langchain/core/messages'
 import { Context } from 'koishi'
+import type {} from 'koishi-plugin-chatluna/llm-core/chat/app'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import { z } from 'zod'
@@ -73,16 +74,16 @@ export async function apply(
         todosStore.delete(conversationId)
     }
 
-    ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
+    ctx.on('chatluna/after-conversation-clear-history', async (payload) => {
         clear(payload.conversation.id)
     })
-    ctx.on('chatluna/conversation-after-archive', async (payload) => {
+    ctx.on('chatluna/after-conversation-archive', async (payload) => {
         clear(payload.conversation.id)
     })
-    ctx.on('chatluna/conversation-after-restore', async (payload) => {
+    ctx.on('chatluna/after-conversation-restore', async (payload) => {
         clear(payload.conversation.id)
     })
-    ctx.on('chatluna/conversation-after-delete', async (payload) => {
+    ctx.on('chatluna/after-conversation-delete', async (payload) => {
         clear(payload.conversation.id)
     })
 }

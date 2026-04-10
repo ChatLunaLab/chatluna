@@ -2,6 +2,7 @@
 
 import { writeFile } from 'fs/promises'
 import { SystemMessage } from '@langchain/core/messages'
+import type {} from 'koishi-plugin-chatluna/llm-core/chat/app'
 import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     countMessageTokens,
@@ -89,10 +90,10 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             this._requested.delete(conversationId)
         }
 
-        ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
+        ctx.on('chatluna/after-conversation-clear-history', async (payload) => {
             clear(payload.conversation.id)
         })
-        ctx.on('chatluna/conversation-after-delete', async (payload) => {
+        ctx.on('chatluna/after-conversation-delete', async (payload) => {
             clear(payload.conversation.id)
         })
     }

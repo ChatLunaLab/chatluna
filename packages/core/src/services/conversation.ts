@@ -390,7 +390,7 @@ export class ConversationService {
             }
 
             await this.ctx.root.parallel(
-                'chatluna/conversation-before-create',
+                'chatluna/before-conversation-create',
                 {
                     conversation,
                     bindingKey: options.bindingKey
@@ -404,7 +404,7 @@ export class ConversationService {
                 options.bindingKey,
                 conversation.id
             )
-            await this.ctx.root.parallel('chatluna/conversation-after-create', {
+            await this.ctx.root.parallel('chatluna/after-conversation-create', {
                 conversation,
                 bindingKey: options.bindingKey
             })
@@ -598,13 +598,13 @@ export class ConversationService {
             })
         }
 
-        await this.ctx.root.parallel('chatluna/conversation-before-switch', {
+        await this.ctx.root.parallel('chatluna/before-conversation-switch', {
             bindingKey,
             conversation,
             previousConversation
         })
         await this.setActiveConversation(bindingKey, conversation.id)
-        await this.ctx.root.parallel('chatluna/conversation-after-switch', {
+        await this.ctx.root.parallel('chatluna/after-conversation-switch', {
             bindingKey,
             conversation,
             previousConversation
@@ -883,7 +883,7 @@ export class ConversationService {
                 }
 
                 await this.ctx.root.parallel(
-                    'chatluna/conversation-before-archive',
+                    'chatluna/before-conversation-archive',
                     {
                         conversation: current
                     }
@@ -964,7 +964,7 @@ export class ConversationService {
                     updatedConversation ?? current
                 )
                 await this.ctx.root.parallel(
-                    'chatluna/conversation-after-archive',
+                    'chatluna/after-conversation-archive',
                     {
                         conversation: updatedConversation ?? current,
                         archive,
@@ -1025,7 +1025,7 @@ export class ConversationService {
                 }
 
                 await this.ctx.root.parallel(
-                    'chatluna/conversation-before-restore',
+                    'chatluna/before-conversation-restore',
                     {
                         conversation: current,
                         archive
@@ -1113,7 +1113,7 @@ export class ConversationService {
                         updatedConversation
                     )
                     await this.ctx.root.parallel(
-                        'chatluna/conversation-after-restore',
+                        'chatluna/after-conversation-restore',
                         {
                             conversation: updatedConversation,
                             archive
@@ -1222,7 +1222,7 @@ export class ConversationService {
                 }
 
                 await this.ctx.root.parallel(
-                    'chatluna/conversation-before-delete',
+                    'chatluna/before-conversation-delete',
                     {
                         conversation: current
                     }
@@ -1244,7 +1244,7 @@ export class ConversationService {
                     updated ?? current
                 )
                 await this.ctx.root.parallel(
-                    'chatluna/conversation-after-delete',
+                    'chatluna/after-conversation-delete',
                     {
                         conversation: updated ?? current
                     }
