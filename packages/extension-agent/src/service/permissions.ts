@@ -367,7 +367,7 @@ export class ChatLunaAgentPermissionService {
         return true
     }
 
-    canUseSubAgent(info: SubAgentInfo, session?: Session, source?: string) {
+    canUseSubAgent(info: SubAgentInfo, session?: Session, source: string = 'chatluna') {
         if (!info.enabled || info.state !== 'ready') {
             return false
         }
