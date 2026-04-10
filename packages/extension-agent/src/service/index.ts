@@ -4,7 +4,6 @@ import { mkdir, rm, stat, writeFile } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { ChatLunaAgentCliService } from '../cli/service'
 import { createSubAgentItemConfig } from '../config/defaults'
 import { getSkillsRootPath, getSubAgentsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
@@ -34,14 +33,15 @@ import { createHashId } from '../utils/id'
 import { ChatLunaAgentComputerService } from './computer'
 import { ChatLunaAgentMcpService } from './mcp'
 import { ChatLunaAgentPermissionService } from './permissions'
+import { ChatLunaAgentRuntimeSyncService } from './runtime_sync'
 import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 
 export class ChatLunaAgentService extends Service {
-    public cli: ChatLunaAgentCliService
     public computer: ChatLunaAgentComputerService
     public mcp: ChatLunaAgentMcpService
     public permission: ChatLunaAgentPermissionService
+    public runtimeSync: ChatLunaAgentRuntimeSyncService
     public skills: ChatLunaAgentSkillsService
     public subAgent: ChatLunaAgentSubAgentService
     private _toolUpdateDispose?: () => void
@@ -54,9 +54,9 @@ export class ChatLunaAgentService extends Service {
         const { config, plugin } = args
 
         this.permission = new ChatLunaAgentPermissionService(ctx, config)
-        this.cli = new ChatLunaAgentCliService(ctx, () => this)
         this.computer = new ChatLunaAgentComputerService(ctx, config)
         this.mcp = new ChatLunaAgentMcpService(ctx, config, plugin)
+        this.runtimeSync = new ChatLunaAgentRuntimeSyncService(ctx, () => this)
         this.skills = new ChatLunaAgentSkillsService(
             ctx,
             config,
@@ -81,8 +81,8 @@ export class ChatLunaAgentService extends Service {
 
         await Promise.all([
             this.permission.start(),
-            this.cli.start(),
             this.computer.start(),
+            this.runtimeSync.start(),
             this.skills.start(),
             this.subAgent.start(),
             this.mcp.start()
@@ -96,8 +96,8 @@ export class ChatLunaAgentService extends Service {
         await this.subAgent.stop()
         await this.mcp.stop()
         await this.skills.stop()
+        await this.runtimeSync.stop()
         await this.computer.stop()
-        await this.cli.stop()
         await this.permission.stop()
     }
 
@@ -577,6 +577,47 @@ export class ChatLunaAgentService extends Service {
         return this.ctx.chatluna.preset.getAllPreset(false).value
     }
 
+    async updateConfigPath(
+        path: string,
+        operation: 'set' | 'remove',
+        value?: unknown
+    ) {
+        const parts = path
+            .split('.')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        if (parts.length < 1) {
+            throw new Error('Config path is required')
+        }
+
+        const prev = this.args.config
+        const next = structuredClone(prev) as AgentConfig
+        if (operation === 'remove') {
+            deleteConfigValue(next as unknown as Record<string, unknown>, parts)
+        } else {
+            setConfigValue(
+                next as unknown as Record<string, unknown>,
+                parts,
+                value
+            )
+        }
+
+        await writeConfig(this.ctx, next)
+        this._setConfig(next)
+        await this.afterConfigUpdate(parts[0] as keyof AgentConfig, prev, next)
+        await this.refreshConsoleData()
+
+        return {
+            path,
+            operation,
+            section: parts[0],
+            value: getConfigValue(
+                next as unknown as Record<string, unknown>,
+                parts
+            )
+        }
+    }
+
     private _setConfig(cfg: AgentConfig) {
         this.args.config = cfg
         this.permission.config = cfg
@@ -585,6 +626,32 @@ export class ChatLunaAgentService extends Service {
         this.mcp.config = cfg
         this.skills.config = cfg
         this.subAgent.config = cfg
+    }
+
+    private async afterConfigUpdate(
+        section: keyof AgentConfig,
+        prev: AgentConfig,
+        next: AgentConfig
+    ) {
+        if (section === 'mcp') {
+            await this.mcp.sync(prev.mcp, next.mcp)
+            return
+        }
+
+        if (section === 'skills') {
+            await this.skills.reload()
+            return
+        }
+
+        if (section === 'computer') {
+            await this.computer.reload()
+            await this.skills.reload()
+            return
+        }
+
+        if (section === 'subAgent') {
+            await this.subAgent.reload()
+        }
     }
 
     private async updateConfig<K extends keyof AgentConfig>(
@@ -627,6 +694,68 @@ function itemFromInfo(info: SubAgentInfo, enabled: boolean) {
         allowKoishiMessageTransform: info.allowKoishiMessageTransform,
         permissions: info.permissions
     })
+}
+
+function getConfigValue(
+    root: Record<string, unknown>,
+    parts: string[]
+): unknown {
+    let current: unknown = root
+    for (const part of parts) {
+        if (typeof current !== 'object' || current == null) {
+            return undefined
+        }
+
+        current = (current as Record<string, unknown>)[part]
+    }
+
+    return current
+}
+
+function setConfigValue(
+    root: Record<string, unknown>,
+    parts: string[],
+    value: unknown
+) {
+    let current: unknown = root
+    for (let idx = 0; idx < parts.length - 1; idx++) {
+        const part = parts[idx]
+        const next = parts[idx + 1]
+        if (typeof current !== 'object' || current == null) {
+            throw new Error(`Invalid config path: ${parts.join('.')}`)
+        }
+
+        const target = current as Record<string, unknown>
+        if (target[part] == null || typeof target[part] !== 'object') {
+            target[part] = /^\d+$/.test(next) ? [] : {}
+        }
+
+        current = target[part]
+    }
+
+    if (typeof current !== 'object' || current == null) {
+        throw new Error(`Invalid config path: ${parts.join('.')}`)
+    }
+
+    ;(current as Record<string, unknown>)[parts[parts.length - 1]] = value
+}
+
+function deleteConfigValue(root: Record<string, unknown>, parts: string[]) {
+    let current: unknown = root
+    for (let idx = 0; idx < parts.length - 1; idx++) {
+        const part = parts[idx]
+        if (typeof current !== 'object' || current == null) {
+            return
+        }
+
+        current = (current as Record<string, unknown>)[part]
+    }
+
+    if (typeof current !== 'object' || current == null) {
+        return
+    }
+
+    delete (current as Record<string, unknown>)[parts[parts.length - 1]]
 }
 
 declare module 'koishi' {

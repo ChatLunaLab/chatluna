@@ -104,7 +104,8 @@ export class ChatLunaChatChain
         conversationId,
         variables,
         signal,
-        maxToken
+        maxToken,
+        callbacks
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
@@ -134,7 +135,8 @@ export class ChatLunaChatChain
                 maxTokens: maxToken,
                 signal
             },
-            events
+            events,
+            callbacks
         )
 
         if (response == null || response.text == null) {

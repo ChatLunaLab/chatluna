@@ -1,3 +1,4 @@
+import type { Callbacks } from '@langchain/core/callbacks/manager'
 import { CallbackManager } from '@langchain/core/callbacks/manager'
 import {
     BaseMessage,
@@ -25,6 +26,7 @@ import { createAgentRunner, createToolsRef } from './creator'
 import type { AgentRunnerOutput } from './executor'
 import type {
     AgentEvent,
+    AgentRunContext,
     MessageQueue,
     SubagentContext,
     ToolMask
@@ -60,8 +62,10 @@ export interface AgentGenerateOptions {
     subagentContext?: SubagentContext
     source?: 'chatluna' | 'character'
     onStep?: (event: AgentEvent) => Promise<void> | void
+    requestId?: string
     onToken?: (token: string) => Promise<void> | void
     onChunk?: (chunk: BaseMessageChunk) => Promise<void> | void
+    callbacks?: Callbacks
 }
 
 export interface AgentStream {
@@ -132,13 +136,29 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                 input.subagentContext?.toolMask ??
                 input.toolMask ??
                 options.toolMask
+            const ctx = {
+                kind: input.subagentContext ? 'subagent' : 'main',
+                agentId: id,
+                agentName: name,
+                conversationId: input.conversationId,
+                parentConversationId:
+                    input.subagentContext?.parentConversationId,
+                requestId: input.requestId,
+                source: input.source,
+                userId: input.session?.userId,
+                guildId: input.session?.guildId,
+                channelId: input.session?.channelId,
+                toolMask,
+                subagentContext: input.subagentContext
+            } satisfies AgentRunContext
 
             toolsRef.update(input.session, history.concat(message), toolMask)
 
             const bound = runner.value.withConfig({
                 configurable: {
                     messageQueue: input.messageQueue,
-                    onAgentEvent: input.onStep
+                    onAgentEvent: input.onStep,
+                    agentContext: ctx
                 }
             })
 
@@ -152,12 +172,14 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                         session: input.session,
                         conversationId: input.conversationId,
                         toolMask,
-                        subagentContext: input.subagentContext
+                        subagentContext: input.subagentContext,
+                        agentContext: ctx
                     }
                 },
                 {
                     signal: input.signal,
-                    callbacks: [
+                    callbacks: CallbackManager.configure(
+                        input.callbacks,
                         CallbackManager.fromHandlers({
                             async handleLLMNewToken(token) {
                                 await input.onToken?.(token)
@@ -170,7 +192,8 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                                 }
                             }
                         })
-                    ],
+                    ),
+                    metadata: { chatlunaAgent: ctx },
                     configurable: {
                         session: input.session,
                         model: options.llm.value,
@@ -179,7 +202,8 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                         userId: input.session?.userId,
                         toolMask,
                         subagentContext: input.subagentContext,
-                        source: input.source
+                        source: input.source,
+                        agentContext: ctx
                     }
                 } as ChatLunaToolRunnable
             )
@@ -298,8 +322,10 @@ class AgentTool extends StructuredTool {
             session: runConfig?.configurable?.session,
             conversationId: runConfig?.configurable?.conversationId,
             toolMask: runConfig?.configurable?.toolMask,
-            subagentContext: runConfig?.configurable?.subagentContext,
+            subagentContext:
+                runConfig?.configurable?.agentContext?.subagentContext,
             signal: runConfig?.signal,
+            callbacks: runConfig?.callbacks,
             source: (
                 runConfig?.configurable as { source?: 'chatluna' | 'character' }
             )?.source

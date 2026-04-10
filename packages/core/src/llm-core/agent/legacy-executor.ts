@@ -23,12 +23,14 @@ import {
 } from 'koishi-plugin-chatluna/utils/langchain'
 import {
     AgentAction,
+    AgentCallbackEvent,
     AgentEvent,
     AgentFinish,
     AgentObservation,
     AgentRuntimeConfigurable,
     AgentStep,
     applyToolMask,
+    CHATLUNA_AGENT_EVENT,
     MessageQueue,
     ScratchpadEntry
 } from './types'
@@ -343,6 +345,18 @@ export async function* runAgent(
     }
 }
 
+export async function emitAgentEvent(
+    runManager: CallbackManagerForChainRun | undefined,
+    configurable: AgentRuntimeConfigurable,
+    event: AgentEvent
+) {
+    const payload = {
+        context: configurable.agentContext,
+        event
+    } satisfies AgentCallbackEvent
+    await runManager?.handleCustomEvent(CHATLUNA_AGENT_EVENT, payload)
+}
+
 export class LegacyAgentExecutor extends BaseChain<
     ChainValues,
     AgentExecutorOutput
@@ -410,6 +424,7 @@ export class LegacyAgentExecutor extends BaseChain<
                 }
             }
 
+            await emitAgentEvent(runManager, configurable, event)
             await configurable.onAgentEvent?.(event)
 
             if (event.type === 'done') {

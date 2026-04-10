@@ -7,13 +7,24 @@ import { ScannedSkill } from './scan'
 
 export function buildSkillCatalog(
     skills: ScannedSkill[],
-    configItems: AgentConfig['skills']['items']
+    configItems: AgentConfig['skills']['items'],
+    preferRemote = false
 ): SkillInfo[] {
     const skillMap = new Map(skills.map((s) => [s.id, s]))
+    const localByName = new Map(
+        skills
+            .filter((item) => item.remote !== true)
+            .map((item) => [item.name, item])
+    )
     const catalog: SkillInfo[] = []
 
-    for (const skill of applyShadowing(skills)) {
-        const cfg = createSkillItemConfig(configItems[skill.id])
+    for (const skill of applyShadowing(skills, preferRemote)) {
+        const base =
+            configItems[skill.id] ??
+            (skill.remote
+                ? configItems[localByName.get(skill.name)?.id ?? '']
+                : undefined)
+        const cfg = createSkillItemConfig(base)
         const mode = cfg.mode
         const visible =
             !skill.shadowedBy &&

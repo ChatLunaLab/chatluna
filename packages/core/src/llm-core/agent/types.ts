@@ -210,6 +210,21 @@ export interface ToolMask {
     toolCallMask?: ToolMask
 }
 
+export interface AgentRunContext {
+    kind: 'main' | 'subagent'
+    agentId?: string
+    agentName?: string
+    conversationId?: string
+    parentConversationId?: string
+    requestId?: string
+    source?: 'chatluna' | 'character'
+    userId?: string
+    guildId?: string
+    channelId?: string
+    toolMask?: ToolMask
+    subagentContext?: SubagentContext
+}
+
 export interface SubagentContext {
     agentId: string
     agentName: string
@@ -263,9 +278,17 @@ export type AgentEvent =
           replyEmitted?: boolean
       }
 
+export const CHATLUNA_AGENT_EVENT = 'chatluna-agent-event'
+
+export interface AgentCallbackEvent {
+    context?: AgentRunContext
+    event: AgentEvent
+}
+
 export interface AgentRuntimeConfigurable {
     messageQueue?: MessageQueue
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void
+    agentContext?: AgentRunContext
 }
 
 export class MessageQueue {

@@ -267,7 +267,10 @@ export class ChatLunaAgentPermissionService {
         }))
     }
 
-    createMainToolMask(session?: Session, source: string = 'chatluna'): ToolMask {
+    createMainToolMask(
+        session?: Session,
+        source: string = 'chatluna'
+    ): ToolMask {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
         const allow = tools
@@ -367,7 +370,11 @@ export class ChatLunaAgentPermissionService {
         return true
     }
 
-    canUseSubAgent(info: SubAgentInfo, session?: Session, source: string = 'chatluna') {
+    canUseSubAgent(
+        info: SubAgentInfo,
+        session?: Session,
+        source: string = 'chatluna'
+    ) {
         if (!info.enabled || info.state !== 'ready') {
             return false
         }

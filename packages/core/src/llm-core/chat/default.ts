@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ChatLunaChatChain } from '../chain/chat_chain'
-import { ChatLunaPluginChain } from '../chain/plugin_chat_chain'
+import { ChatLunaPluginChain } from '../chain/agent_chat_chain'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { computed } from '@vue/reactivity'
 import {

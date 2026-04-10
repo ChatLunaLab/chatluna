@@ -52,6 +52,7 @@ export interface ChatLunaLLMCallArg {
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void
     toolMask?: ToolMask
     subagentContext?: SubagentContext
+    callbacks?: Callbacks
 }
 
 export interface ChatLunaLLMChainInput extends ChainInputs {
@@ -370,27 +371,29 @@ export class ChatLunaLLMChain<
 export async function callChatLunaChain(
     chain: ChatLunaLLMChain,
     values: ChainValues & ChatLunaLLMChain['llm']['ParsedCallOptions'],
-    events: ChatEvents
+    events: ChatEvents,
+    callbacks?: Callbacks
 ): Promise<ChainValues> {
     let usedToken = 0
 
     const response = await chain.invoke(values, {
-        callbacks: [
-            {
-                handleLLMNewToken(token: string) {
-                    events?.['llm-new-token']?.(token)
+        callbacks: CallbackManager.configure(
+            callbacks,
+            CallbackManager.fromHandlers({
+                async handleLLMNewToken(token: string) {
+                    await events?.['llm-new-token']?.(token)
                 },
-                handleLLMEnd(output, runId, parentRunId, tags) {
+                async handleLLMEnd(output) {
                     usedToken +=
                         output.llmOutput?.usage_metadata?.total_tokens ?? 0
                 },
-                handleCustomEvent(eventName, data, runId, tags, metadata) {
+                async handleCustomEvent(eventName, data) {
                     if (eventName === 'LLMNewChunk') {
-                        events?.['llm-new-chunk']?.(data)
+                        await events?.['llm-new-chunk']?.(data)
                     }
                 }
-            }
-        ]
+            })
+        )
     })
 
     await events?.['llm-used-token-count']?.(usedToken)

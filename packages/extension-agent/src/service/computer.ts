@@ -4,7 +4,10 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import which from 'which'
-import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
+import type {
+    AgentRunContext,
+    ToolMask
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
@@ -759,6 +762,23 @@ export class ChatLunaAgentComputerService {
         )
     }
 
+    async getAgentSession(
+        context: AgentRunContext,
+        backend?: ComputerBackendType
+    ) {
+        return await this.getOrCreateSession(
+            this.resolveAgentSessionInput(context, backend)
+        )
+    }
+
+    async scanRemoteSkillsForSession(session: ComputerSessionApi) {
+        return await scanRemoteSkillCatalog(session, this.ctx, this.config)
+    }
+
+    async scanRemoteSubAgentsForSession(session: ComputerSessionApi) {
+        return await scanRemoteSubAgentCatalog(session, this.config.subAgent)
+    }
+
     async publishFile(
         filePaths: string[],
         runConfig?: ChatLunaToolRunnable
@@ -855,7 +875,8 @@ export class ChatLunaAgentComputerService {
         backend?: ComputerBackendType
     ) {
         const session = runConfig?.configurable?.session
-        const sub = runConfig?.configurable?.subagentContext
+        const context = runConfig?.configurable?.agentContext
+        const sub = context?.subagentContext
         const info = sub
             ? this.ctx.chatluna_agent?.subAgent
                   .getCatalogSync()
@@ -871,8 +892,33 @@ export class ChatLunaAgentComputerService {
                 : undefined,
             conversationId:
                 sub?.parentConversationId ??
+                context?.conversationId ??
                 runConfig?.configurable?.conversationId,
             userId: runConfig?.configurable?.userId ?? session?.userId
+        }
+    }
+
+    private resolveAgentSessionInput(
+        context: AgentRunContext,
+        backend?: ComputerBackendType
+    ) {
+        const sub = context.subagentContext
+        const info = sub
+            ? this.ctx.chatluna_agent?.subAgent
+                  .getCatalogSync()
+                  .find((item) => item.id === sub.agentId)
+            : undefined
+
+        return {
+            backend,
+            allowedBackends: info
+                ? this.ctx.chatluna_agent?.permission.filterComputerBackends(
+                      info,
+                      COMPUTER_BACKENDS
+                  )
+                : undefined,
+            conversationId: sub?.parentConversationId ?? context.conversationId,
+            userId: context.userId
         }
     }
 

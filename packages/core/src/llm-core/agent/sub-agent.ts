@@ -168,7 +168,8 @@ export function createTaskTool(
         },
         async runTask(input, runConfig) {
             const action = input.action ?? 'run'
-            const parent = runConfig?.configurable?.subagentContext
+            const parent =
+                runConfig?.configurable?.agentContext?.subagentContext
             const session = runConfig?.configurable?.session
             const conversationId = runConfig?.configurable?.conversationId
             const source =
@@ -650,12 +651,16 @@ async function runAgentTask(options: {
                 prompt: options.prompt,
                 session: options.session,
                 conversationId: options.task.conversationId,
+                requestId:
+                    options.runConfig?.configurable?.agentContext?.requestId ??
+                    runId,
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
                 toolMask,
                 subagentContext: subCtx,
                 source: options.source,
+                callbacks: options.runConfig?.callbacks,
                 onStep: async (event) => {
                     await onTaskEvent(options.task, run, saveUser, event)
                     await options.runtime.refresh?.()

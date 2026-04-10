@@ -1,4 +1,5 @@
-import { Session } from 'koishi'
+import type { Callbacks } from '@langchain/core/callbacks/manager'
+import type { Awaitable, Session } from 'koishi'
 import {
     ACLRecord,
     ArchiveRecord,
@@ -24,6 +25,8 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatInterface } from '../llm-core/chat/app'
 import { MessageQueue } from '../llm-core/agent/types'
+import type { Message } from '../types'
+import type { PostHandler } from '../utils/types'
 import type {
     ToolMaskArg,
     ToolMaskResolver
@@ -98,6 +101,24 @@ export interface ChatEvents {
     ) => Promise<void>
     'llm-new-chunk'?: (chunk: BaseMessageChunk) => Promise<void>
 }
+
+export interface ChatCallbackProviderInput {
+    session: Session
+    conversation: ConversationRecord
+    message: Message
+    event: ChatEvents
+    stream: boolean
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    variables: Record<string, any>
+    postHandler?: PostHandler
+    requestId: string
+    toolMask?: ToolMask
+    callbacks?: Callbacks
+}
+
+export type ChatCallbacksProvider = (
+    input: ChatCallbackProviderInput
+) => Awaitable<Callbacks | undefined>
 
 export interface RuntimeConversationEntry {
     conversation: ConversationRecord
