@@ -12,6 +12,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.options.reply_status = false
 
+            // 黑名单检查
+            if ((await session.resolve(config.blackList)) === 1) {
+                context.message = session.text('chatluna.block_message')
+                return ChainMiddlewareRunStatus.STOP
+            }
+
             const content = h
                 .select(session.elements, 'text')
                 .join('')
