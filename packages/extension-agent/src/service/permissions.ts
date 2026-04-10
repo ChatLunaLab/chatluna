@@ -267,7 +267,7 @@ export class ChatLunaAgentPermissionService {
         }))
     }
 
-    createMainToolMask(session?: Session, source?: string): ToolMask {
+    createMainToolMask(session?: Session, source: string = 'chatluna'): ToolMask {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
         const allow = tools
