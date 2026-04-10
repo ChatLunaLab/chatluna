@@ -477,6 +477,7 @@ export interface ToolMaskArg {
     session: Session
     conversation?: ConversationRecord
     bindingKey?: string
+    source?: string
 }
 
 export type ToolMaskResolver = (

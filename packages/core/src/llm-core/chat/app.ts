@@ -528,47 +528,47 @@ declare module 'koishi' {
             chatInterface: ChatInterface,
             session: Session
         ) => Promise<void>
-        'chatluna/conversation-before-create': (payload: {
+        'chatluna/before-conversation-create': (payload: {
             conversation: ConversationRecord
             bindingKey: string
         }) => Promise<void>
-        'chatluna/conversation-after-create': (payload: {
+        'chatluna/after-conversation-create': (payload: {
             conversation: ConversationRecord
             bindingKey: string
         }) => Promise<void>
-        'chatluna/conversation-before-switch': (payload: {
-            bindingKey: string
-            conversation: ConversationRecord
-            previousConversation?: ConversationRecord | null
-        }) => Promise<void>
-        'chatluna/conversation-after-switch': (payload: {
+        'chatluna/before-conversation-switch': (payload: {
             bindingKey: string
             conversation: ConversationRecord
             previousConversation?: ConversationRecord | null
         }) => Promise<void>
-        'chatluna/conversation-before-archive': (payload: {
+        'chatluna/after-conversation-switch': (payload: {
+            bindingKey: string
+            conversation: ConversationRecord
+            previousConversation?: ConversationRecord | null
+        }) => Promise<void>
+        'chatluna/before-conversation-archive': (payload: {
             conversation: ConversationRecord
         }) => Promise<void>
-        'chatluna/conversation-after-archive': (payload: {
+        'chatluna/after-conversation-archive': (payload: {
             conversation: ConversationRecord
             archive: ArchiveRecord
             path: string
         }) => Promise<void>
-        'chatluna/conversation-before-restore': (payload: {
+        'chatluna/before-conversation-restore': (payload: {
             conversation: ConversationRecord
             archive: ArchiveRecord
         }) => Promise<void>
-        'chatluna/conversation-after-restore': (payload: {
+        'chatluna/after-conversation-restore': (payload: {
             conversation: ConversationRecord
             archive: ArchiveRecord
         }) => Promise<void>
-        'chatluna/conversation-before-delete': (payload: {
+        'chatluna/before-conversation-delete': (payload: {
             conversation: ConversationRecord
         }) => Promise<void>
-        'chatluna/conversation-after-delete': (payload: {
+        'chatluna/after-conversation-delete': (payload: {
             conversation: ConversationRecord
         }) => Promise<void>
-        'chatluna/conversation-before-clear-history': (payload: {
+        'chatluna/before-conversation-clear-history': (payload: {
             conversation: ConversationRecord
             chatInterface: ChatInterface
         }) => Promise<void>
@@ -576,15 +576,15 @@ declare module 'koishi' {
             conversationId: string,
             chatInterface: ChatInterface
         ) => Promise<void>
-        'chatluna/conversation-after-clear-history': (payload: {
+        'chatluna/after-conversation-clear-history': (payload: {
             conversation: ConversationRecord
             chatInterface: ChatInterface
         }) => Promise<void>
-        'chatluna/conversation-before-cache-clear': (payload: {
+        'chatluna/before-conversation-cache-clear': (payload: {
             conversation: ConversationRecord
             chatInterface?: ChatInterface
         }) => Promise<void>
-        'chatluna/conversation-after-cache-clear': (payload: {
+        'chatluna/after-conversation-cache-clear': (payload: {
             conversation: ConversationRecord
         }) => Promise<void>
         'chatluna/conversation-compressed': (payload: {

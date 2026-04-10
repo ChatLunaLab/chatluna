@@ -514,8 +514,9 @@ exit
     }
 
     async openAsset(filePath: string) {
-        const url = new URL(this.url('/files/read'))
-        url.searchParams.set('path', filePath)
+        const target = this.resolvePath(filePath)
+        const url = new URL(this.url('/files/view'))
+        url.searchParams.set('path', target)
         const result = await fetch(url, {
             headers: this.headers()
         })
@@ -525,23 +526,7 @@ exit
         }
 
         const mimeType = result.headers.get('content-type')
-        const fallback = mimeTypes.lookup(filePath)
-        if (mimeType?.startsWith('application/json')) {
-            const data = await result.json()
-            const content =
-                typeof data?.content === 'string'
-                    ? data.content
-                    : typeof data === 'string'
-                      ? data
-                      : JSON.stringify(data)
-            const size = Buffer.byteLength(content)
-            return {
-                stream: Readable.from([Buffer.from(content, 'utf8')]),
-                size,
-                mimeType: fallback === false ? 'text/plain' : fallback
-            }
-        }
-
+        const fallback = mimeTypes.lookup(target)
         const size = Number(result.headers.get('content-length') ?? '')
         return {
             stream: Readable.fromWeb(result.body),

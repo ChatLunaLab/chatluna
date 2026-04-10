@@ -185,17 +185,6 @@ export function createDefaultToolConfig(): ToolConfig {
                     characterScope: 'group'
                 }
             }),
-            send_file: createToolMetaOverride({
-                source: 'extension',
-                group: 'plugin-common',
-                tags: ['plugin-common', 'file', 'onebot'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'none'
-                }
-            }),
             file_read: createToolMetaOverride({
                 defaultAvailability: {
                     enabled: true,
