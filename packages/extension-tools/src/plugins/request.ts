@@ -349,10 +349,18 @@ async function formatOutput(
     }
 
     const filePath = join(dir, `${name}-${Date.now()}-${randomUUID()}.txt`)
-    await mkdir(dir, { recursive: true })
-    await writeFile(filePath, text, 'utf-8')
-    return `Output too large (${text.length} chars). Truncated preview below.
+    try {
+        await mkdir(dir, { recursive: true })
+        await writeFile(filePath, text, 'utf-8')
+        return `Output too large (${text.length} chars). Truncated preview below.
 Full output saved to: ${filePath}
 
 ${text.slice(0, limit)}\n...[output truncated]`
+    } catch (err) {
+        ctx.logger.warn(err)
+        return `Output too large (${text.length} chars). Truncated preview below.
+Failed to save full output: ${err instanceof Error ? err.message : String(err)}
+
+${text.slice(0, limit)}\n...[output truncated]`
+    }
 }
