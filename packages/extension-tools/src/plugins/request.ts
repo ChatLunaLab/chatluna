@@ -31,6 +31,21 @@ Usage notes:
   - This tool is read-only and does not modify any files
   - Results may be summarized if the content is very large`
 
+const WEBPOST_DESCRIPTION = `- Sends a JSON payload to a specified URL using POST
+- Takes a URL, JSON payload, and optional format as input
+- Sends the payload, converts the response to requested format (markdown by default)
+- Returns the response in the specified format
+- Use this tool when you need to submit JSON data and analyze the response
+
+Usage notes:
+  - IMPORTANT: if another tool is present that offers better web request capabilities, is more targeted to the task, or has fewer restrictions, prefer using that tool instead of this one.
+  - The URL must be a fully-formed valid URL
+  - HTTP URLs will be automatically upgraded to HTTPS
+  - The payload is sent as JSON with Content-Type: application/json
+  - Format options: "markdown" (default), "text", or "html"
+  - This tool sends data to the remote server and does not modify local files
+  - Results may be summarized if the content is very large`
+
 const webFetchSchema = z.object({
     url: z.string().describe('The URL to fetch content from'),
     format: z
@@ -155,7 +170,7 @@ export async function apply(
         },
         {
             name: 'web_post',
-            description: WEBFETCH_DESCRIPTION,
+            description: WEBPOST_DESCRIPTION,
             schema: webPostSchema
         }
     )
