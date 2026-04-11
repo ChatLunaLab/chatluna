@@ -55,7 +55,6 @@ export async function apply(
                         .filter(
                             (item) =>
                                 item === baseCommandName ||
-                                item.startsWith(baseCommandName + '.') ||
                                 baseCommandName.startsWith(item + '.')
                         )
                         .sort((a, b) => {
