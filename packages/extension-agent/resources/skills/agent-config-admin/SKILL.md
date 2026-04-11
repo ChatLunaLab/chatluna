@@ -17,7 +17,7 @@ storage.
 ## Core protocol
 
 - Do not guess config, paths, or effective permissions.
-- Use the `agentcli` tool for commands that start with `agentcli`.
+- **Use the `agentcli` tool** for commands that start with `agentcli`.
 - Treat `agentcli` as a dedicated tool that accepts the same CLI syntax.
 - Do not mix `agentcli` work with normal shell commands in the same tool call.
 - Use `agentcli --help` or `agentcli <command> --help` when you need the exact command shape.

@@ -1,3 +1,4 @@
+import type { Callbacks } from '@langchain/core/callbacks/manager'
 import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import type { Session } from 'koishi'
 import { LRUCache } from 'lru-cache'
@@ -9,6 +10,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import type { ClientConfig } from '../llm-core/platform/config'
 import { parseRawModelName } from '../utils/model'
 import { ConversationRecord } from './conversation_types'
 import { Message } from '../types'
@@ -60,116 +62,194 @@ export class ConversationRuntime {
         variables: Record<string, any> = {},
         postHandler?: PostHandler,
         requestId: string = randomUUID(),
-        toolMask?: ToolMask
+        toolMask?: ToolMask,
+        callbacks?: Callbacks
     ): Promise<Message> {
-        return this.withConversationAndPlatformLock(conversation, async () => {
-            const [platform] = parseRawModelName(conversation.model)
-            if (platform == null) {
-                throw new ChatLunaError(
-                    ChatLunaErrorCode.UNKNOWN_ERROR,
-                    new Error(
-                        `Invalid conversation model: ${conversation.model}`
+        return this.withConversationAndPlatformLock(
+            conversation,
+            async (config) => {
+                const [platform] = parseRawModelName(conversation.model)
+                if (platform == null) {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.UNKNOWN_ERROR,
+                        new Error(
+                            `Invalid conversation model: ${conversation.model}`
+                        )
                     )
-                )
-            }
+                }
 
-            const chatInterface = await this.ensureChatInterface(conversation)
-            const abortController = new AbortController()
-            const activeRequest = this.registerRequest(
-                conversation.id,
-                requestId,
-                conversation.chatMode,
-                platform,
-                abortController,
-                session
-            )
-
-            try {
-                const humanMessage = new HumanMessage({
-                    content: message.content,
-                    name: message.name,
-                    id: session.userId,
-                    additional_kwargs: {
-                        ...message.additional_kwargs,
-                        preset: conversation.preset
-                    }
-                })
-
-                const mask =
-                    toolMask ??
-                    (await this.platformService.resolveToolMask({
-                        session,
-                        conversation,
-                        bindingKey: conversation.bindingKey
-                    }))
-
-                const chainValues = await chatInterface.chat({
-                    message: humanMessage,
-                    events: event,
-                    stream,
-                    conversationId: conversation.id,
+                const chatInterface =
+                    await this.ensureChatInterface(conversation)
+                const abortController = new AbortController()
+                const activeRequest = this.registerRequest(
+                    conversation.id,
                     requestId,
-                    session,
-                    variables,
-                    signal: abortController.signal,
-                    postHandler,
-                    messageQueue: activeRequest.messageQueue,
-                    toolMask: mask,
-                    onAgentEvent: async (agentEvent) => {
-                        if (agentEvent.type === 'round-decision') {
-                            activeRequest.lastDecision = agentEvent.canContinue
-                            if (agentEvent.canContinue == null) {
+                    conversation.chatMode,
+                    platform,
+                    abortController,
+                    session
+                )
+
+                let lastActiveAt = Date.now()
+                let idleDisponse: () => void = () => {}
+
+                const touch = () => {
+                    lastActiveAt = Date.now()
+                }
+
+                const events: ChatEvents = {
+                    'llm-new-token': async (token) => {
+                        touch()
+                        await event?.['llm-new-token']?.(token)
+                    },
+                    'llm-queue-waiting': async (size) => {
+                        touch()
+                        await event?.['llm-queue-waiting']?.(size)
+                    },
+                    'llm-used-token-count': async (token) => {
+                        touch()
+                        await event?.['llm-used-token-count']?.(token)
+                    },
+                    'llm-call-tool': async (tool, args, content, log) => {
+                        touch()
+                        await event?.['llm-call-tool']?.(
+                            tool,
+                            args,
+                            content,
+                            log
+                        )
+                    },
+                    'llm-new-chunk': async (chunk) => {
+                        touch()
+                        await event?.['llm-new-chunk']?.(chunk)
+                    }
+                }
+
+                if (config.timeout > 0) {
+                    idleDisponse = this.service.ctx.setInterval(
+                        () => {
+                            if (abortController.signal.aborted) {
                                 return
                             }
 
-                            flushRoundDecision(
-                                activeRequest,
-                                agentEvent.canContinue
+                            if (Date.now() - lastActiveAt < config.timeout) {
+                                return
+                            }
+
+                            abortController.abort(
+                                new ChatLunaError(
+                                    ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+                                    undefined,
+                                    true
+                                )
                             )
+                        },
+                        Math.min(config.timeout, 30000)
+                    )
+                }
+
+                try {
+                    const humanMessage = new HumanMessage({
+                        content: message.content,
+                        name: message.name,
+                        id: session.userId,
+                        additional_kwargs: {
+                            ...message.additional_kwargs,
+                            preset: conversation.preset
                         }
+                    })
+
+                    const mask =
+                        toolMask ??
+                        (await this.platformService.resolveToolMask({
+                            session,
+                            conversation,
+                            bindingKey: conversation.bindingKey
+                        }))
+
+                    const chainValues = await chatInterface.chat({
+                        message: humanMessage,
+                        events,
+                        stream,
+                        conversationId: conversation.id,
+                        requestId,
+                        session,
+                        variables,
+                        signal: abortController.signal,
+                        postHandler,
+                        messageQueue: activeRequest.messageQueue,
+                        toolMask: mask,
+                        callbacks: await this.service.resolveCallbacks({
+                            session,
+                            conversation,
+                            message,
+                            event: events,
+                            stream,
+                            variables,
+                            postHandler,
+                            requestId,
+                            toolMask: mask,
+                            callbacks
+                        }),
+                        onAgentEvent: async (agentEvent) => {
+                            touch()
+                            if (agentEvent.type === 'round-decision') {
+                                activeRequest.lastDecision =
+                                    agentEvent.canContinue
+                                if (agentEvent.canContinue == null) {
+                                    return
+                                }
+
+                                flushRoundDecision(
+                                    activeRequest,
+                                    agentEvent.canContinue
+                                )
+                            }
+                        }
+                    })
+
+                    const aiMessage = chainValues.message as AIMessage
+                    const reasoningContent = aiMessage.additional_kwargs
+                        ?.reasoning_content as string
+                    const reasoningTime = aiMessage.additional_kwargs
+                        ?.reasoning_time as number
+                    const usageMetadata = aiMessage.usage_metadata
+                    const additionalReplyMessages: Message[] = []
+
+                    if (
+                        reasoningContent != null &&
+                        reasoningContent.length > 0 &&
+                        this.service.currentConfig.showThoughtMessage
+                    ) {
+                        additionalReplyMessages.push({
+                            content:
+                                reasoningTime != null
+                                    ? `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
+                                    : `Thought: \n\n${reasoningContent}`
+                        })
                     }
-                })
 
-                const aiMessage = chainValues.message as AIMessage
-                const reasoningContent = aiMessage.additional_kwargs
-                    ?.reasoning_content as string
-                const reasoningTime = aiMessage.additional_kwargs
-                    ?.reasoning_time as number
-                const usageMetadata = aiMessage.usage_metadata
-                const additionalReplyMessages: Message[] = []
+                    if (
+                        usageMetadata != null &&
+                        usageMetadata.total_tokens > 0 &&
+                        this.service.currentConfig.showThoughtMessage
+                    ) {
+                        additionalReplyMessages.push({
+                            content: formatUsageMetadataMessage(usageMetadata)
+                        })
+                    }
 
-                if (
-                    reasoningContent != null &&
-                    reasoningContent.length > 0 &&
-                    this.service.currentConfig.showThoughtMessage
-                ) {
-                    additionalReplyMessages.push({
-                        content:
-                            reasoningTime != null
-                                ? `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoningContent}`
-                                : `Thought: \n\n${reasoningContent}`
-                    })
+                    return {
+                        content: aiMessage.content as string,
+                        additional_kwargs: aiMessage.additional_kwargs,
+                        additionalReplyMessages
+                    }
+                } finally {
+                    idleDisponse()
+                    this.completeRequest(conversation.id, requestId)
                 }
-
-                if (
-                    usageMetadata != null &&
-                    usageMetadata.total_tokens > 0 &&
-                    this.service.currentConfig.showThoughtMessage
-                ) {
-                    additionalReplyMessages.push({
-                        content: formatUsageMetadataMessage(usageMetadata)
-                    })
-                }
-
-                return {
-                    content: aiMessage.content as string,
-                    additional_kwargs: aiMessage.additional_kwargs,
-                    additionalReplyMessages
-                }
-            } finally {
-                this.completeRequest(conversation.id, requestId)
             }
-        })
+        )
     }
 
     updateConversationRecord(conversation: ConversationRecord) {
@@ -214,7 +294,7 @@ export class ConversationRuntime {
 
     async withConversationAndPlatformLock<T>(
         conversation: ConversationRecord,
-        callback: () => Promise<T>
+        callback: (config: ClientConfig) => Promise<T>
     ): Promise<T> {
         const requestId = randomUUID()
         const modelRequestId = randomUUID()
@@ -247,15 +327,21 @@ export class ConversationRuntime {
             ])
 
             await Promise.all([
-                this.conversationQueue.wait(conversation.id, requestId, 0),
+                this.conversationQueue.wait(
+                    conversation.id,
+                    requestId,
+                    0,
+                    config.timeout
+                ),
                 this.modelQueue.wait(
                     platform,
                     modelRequestId,
-                    config.concurrentMaxSize
+                    config.concurrentMaxSize,
+                    config.timeout
                 )
             ])
 
-            return await callback()
+            return await callback(config)
         } finally {
             await Promise.all([
                 this.conversationQueue.remove(conversation.id, requestId),
@@ -385,7 +471,7 @@ export class ConversationRuntime {
         return this.withConversationLock(conversation.id, async () => {
             const chatInterface = await this.ensureChatInterface(conversation)
             await this.service.ctx.root.parallel(
-                'chatluna/conversation-before-clear-history',
+                'chatluna/before-conversation-clear-history',
                 {
                     conversation,
                     chatInterface
@@ -399,7 +485,7 @@ export class ConversationRuntime {
             await chatInterface.clearChatHistory()
             this.interfaces.delete(conversation.id)
             await this.service.ctx.root.parallel(
-                'chatluna/conversation-after-clear-history',
+                'chatluna/after-conversation-clear-history',
                 {
                     conversation,
                     chatInterface
@@ -422,7 +508,7 @@ export class ConversationRuntime {
         const cached = this.interfaces.get(conversation.id)
         const existed = cached != null
         await this.service.ctx.root.parallel(
-            'chatluna/conversation-before-cache-clear',
+            'chatluna/before-conversation-cache-clear',
             {
                 conversation,
                 chatInterface: cached?.chatInterface
@@ -430,7 +516,7 @@ export class ConversationRuntime {
         )
         this.interfaces.delete(conversation.id)
         await this.service.ctx.root.parallel(
-            'chatluna/conversation-after-cache-clear',
+            'chatluna/after-conversation-cache-clear',
             {
                 conversation
             }

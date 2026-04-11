@@ -1206,15 +1206,15 @@ it('ConversationService emits conversation lifecycle events for switch archive r
     assert.deepEqual(
         events.map((item) => item.name),
         [
-            'chatluna/conversation-before-switch',
-            'chatluna/conversation-after-switch',
+            'chatluna/before-conversation-switch',
+            'chatluna/after-conversation-switch',
             'chatluna/conversation-compressed',
-            'chatluna/conversation-before-archive',
-            'chatluna/conversation-after-archive',
-            'chatluna/conversation-before-restore',
-            'chatluna/conversation-after-restore',
-            'chatluna/conversation-before-delete',
-            'chatluna/conversation-after-delete'
+            'chatluna/before-conversation-archive',
+            'chatluna/after-conversation-archive',
+            'chatluna/before-conversation-restore',
+            'chatluna/after-conversation-restore',
+            'chatluna/before-conversation-delete',
+            'chatluna/after-conversation-delete'
         ]
     )
     assert.deepEqual(syncCalls, [next.id, next.id, next.id])

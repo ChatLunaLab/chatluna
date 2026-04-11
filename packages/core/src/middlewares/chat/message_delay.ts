@@ -192,19 +192,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     }
 
-    ctx.on('chatluna/conversation-after-clear-history', async (payload) =>
+    ctx.on('chatluna/after-conversation-clear-history', async (payload) =>
         clearTurn(payload.conversation.id)
     )
-    ctx.on('chatluna/conversation-after-cache-clear', async (payload) =>
+    ctx.on('chatluna/after-conversation-cache-clear', async (payload) =>
         clearTurn(payload.conversation.id)
     )
-    ctx.on('chatluna/conversation-after-archive', async (payload) =>
+    ctx.on('chatluna/after-conversation-archive', async (payload) =>
         clearTurn(payload.conversation.id)
     )
-    ctx.on('chatluna/conversation-after-restore', async (payload) =>
+    ctx.on('chatluna/after-conversation-restore', async (payload) =>
         clearTurn(payload.conversation.id)
     )
-    ctx.on('chatluna/conversation-after-delete', async (payload) =>
+    ctx.on('chatluna/after-conversation-delete', async (payload) =>
         clearTurn(payload.conversation.id)
     )
 }

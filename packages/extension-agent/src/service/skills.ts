@@ -2,6 +2,7 @@
 
 import { writeFile } from 'fs/promises'
 import { SystemMessage } from '@langchain/core/messages'
+import type {} from 'koishi-plugin-chatluna/llm-core/chat/app'
 import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     countMessageTokens,
@@ -40,6 +41,8 @@ import { SkillTool } from '../skills/tool'
 import { buildSkillCatalog } from '../skills/catalog'
 import { getRemoteSkillDir, getRemoteSkillsRoot } from '../computer/materialize'
 import { ChatLunaAgentPermissionService } from './permissions'
+import { ComputerSessionApi } from '../computer/types'
+
 export class ChatLunaAgentSkillsService implements SkillToolService {
     private _catalog: SkillInfo[] = []
     private _skills = new Map<string, ScannedSkill>()
@@ -89,10 +92,10 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             this._requested.delete(conversationId)
         }
 
-        ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
+        ctx.on('chatluna/after-conversation-clear-history', async (payload) => {
             clear(payload.conversation.id)
         })
-        ctx.on('chatluna/conversation-after-delete', async (payload) => {
+        ctx.on('chatluna/after-conversation-delete', async (payload) => {
             clear(payload.conversation.id)
         })
     }
@@ -119,12 +122,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     async reload() {
         await syncBundledSkills(this.ctx)
         const local = await scanSkills(this.ctx, this.config)
-        const remote = this.ctx.chatluna_agent
-            ? await this.ctx.chatluna_agent.computer
-                  .scanRemoteSkills()
-                  .catch(() => [])
-            : []
-        const scanned = [...local, ...(remote ?? [])]
+        const scanned = local
         this._skills = new Map(scanned.map((s) => [s.id, s]))
         this._catalog = buildSkillCatalog(scanned, this.config.skills.items)
         this._visibleByName = new Map(
@@ -263,7 +261,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     async activateSkill(name: string, runConfig?: ChatLunaToolRunnable) {
         const skill = this._visibleByName.get(name)
         const conversationId = runConfig?.configurable?.conversationId
-        const sub = runConfig?.configurable?.subagentContext
+        const sub = runConfig?.configurable?.agentContext?.subagentContext
         const session = runConfig?.configurable?.session
         const source =
             (runConfig?.configurable as { source?: 'chatluna' | 'character' })
@@ -356,7 +354,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         } = {}
     ) {
         const computer = this.ctx.chatluna_agent?.computer
-        let session
+        let session: ComputerSessionApi
 
         if (this.hasComputer()) {
             if (input.runConfig) {
@@ -396,7 +394,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             return [] as SkillInfo[]
         }
 
-        const items = this._catalog.filter((s) => current.has(s.id))
+        const items = this._catalog.filter((item) => current.has(item.id))
         if (!remote) {
             return items
         }
@@ -494,7 +492,16 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 const conversationId = runtime.configurable?.conversationId
                 if (!conversationId) return next()
 
-                const sub = runtime.configurable?.subagentContext
+                const sub =
+                    (
+                        runtime.configurable?.agentContext as {
+                            subagentContext?: ChatLunaToolRunnable['configurable']['agentContext'] extends infer T
+                                ? T extends { subagentContext?: infer U }
+                                    ? U
+                                    : never
+                                : never
+                        }
+                    )?.subagentContext ?? runtime.configurable?.subagentContext
                 const session = runtime.configurable?.session
                 const source =
                     (

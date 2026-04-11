@@ -36,12 +36,12 @@ export class ChatLunaAgentPermissionService {
         this._toolMaskDispose =
             this.ctx.chatluna.platform.registerToolMaskResolver(
                 'agent',
-                async ({ conversation, session }) => {
+                async ({ conversation, session, source }) => {
                     if (conversation && conversation.chatMode !== 'plugin') {
                         return
                     }
 
-                    const mask = this.createMainToolMask()
+                    const mask = this.createMainToolMask(session, source)
                     return {
                         ...mask,
                         toolCallMask: await this.createToolCallMask(
@@ -269,7 +269,7 @@ export class ChatLunaAgentPermissionService {
 
     createMainToolMask(
         session?: Session,
-        source: 'chatluna' | 'character' = 'chatluna'
+        source: string = 'chatluna'
     ): ToolMask {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
@@ -315,7 +315,7 @@ export class ChatLunaAgentPermissionService {
 
     isSessionAllowed(
         session: Session | undefined,
-        source: 'chatluna' | 'character',
+        source: string,
         item: {
             chatlunaEnabled: boolean
             characterEnabled: boolean
@@ -373,7 +373,7 @@ export class ChatLunaAgentPermissionService {
     canUseSubAgent(
         info: SubAgentInfo,
         session?: Session,
-        source: 'chatluna' | 'character' = 'chatluna'
+        source: string = 'chatluna'
     ) {
         if (!info.enabled || info.state !== 'ready') {
             return false

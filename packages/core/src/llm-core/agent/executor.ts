@@ -5,7 +5,7 @@ import { Runnable, RunnableConfig } from '@langchain/core/runnables'
 import type { StructuredTool } from '@langchain/core/tools'
 import type { ChainValues } from '@langchain/core/utils/types'
 import type { AgentRuntimeConfigurable } from './types'
-import { runAgent } from './legacy-executor'
+import { emitAgentEvent, runAgent } from './legacy-executor'
 import type { AgentExecutorInput, AgentExecutorOutput } from './legacy-executor'
 
 export {
@@ -78,6 +78,7 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
                 }
             }
 
+            await emitAgentEvent(runManager, configurable, event)
             await configurable.onAgentEvent?.(event)
 
             if (event.type !== 'done') {

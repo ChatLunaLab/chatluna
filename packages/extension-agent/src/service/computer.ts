@@ -4,7 +4,10 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import which from 'which'
-import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
+import type {
+    AgentRunContext,
+    ToolMask
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
@@ -52,8 +55,6 @@ import { PublishFileTool } from '../computer/tools/publish_file'
 import { GrepTool } from '../computer/tools/grep'
 import { GlobTool } from '../computer/tools/glob'
 import { BashTool } from '../computer/tools/bash'
-import { scanRemoteSkills as scanRemoteSkillCatalog } from '../skills/scan'
-import { scanRemoteMarkdownAgents as scanRemoteSubAgentCatalog } from '../sub-agent/scan'
 import { quoteShell, quoteShellPath } from '../utils/shell'
 
 export class ChatLunaAgentComputerService {
@@ -644,24 +645,6 @@ export class ChatLunaAgentComputerService {
         return await session.glob(input.pattern, input.path)
     }
 
-    async scanRemoteSkills() {
-        const session = await this.getRemoteScanSession()
-        if (!session) {
-            return []
-        }
-
-        return await scanRemoteSkillCatalog(session, this.ctx, this.config)
-    }
-
-    async scanRemoteSubAgents() {
-        const session = await this.getRemoteScanSession()
-        if (!session) {
-            return []
-        }
-
-        return await scanRemoteSubAgentCatalog(session, this.config.subAgent)
-    }
-
     async removeRemoteSkill(dir: string) {
         await this.removeRemoteEntry(dir)
     }
@@ -756,6 +739,15 @@ export class ChatLunaAgentComputerService {
     ) {
         return await this.getOrCreateSession(
             this.resolveSessionInput(runConfig, backend)
+        )
+    }
+
+    async getAgentSession(
+        context: AgentRunContext,
+        backend?: ComputerBackendType
+    ) {
+        return await this.getOrCreateSession(
+            this.resolveAgentSessionInput(context, backend)
         )
     }
 
@@ -855,7 +847,8 @@ export class ChatLunaAgentComputerService {
         backend?: ComputerBackendType
     ) {
         const session = runConfig?.configurable?.session
-        const sub = runConfig?.configurable?.subagentContext
+        const context = runConfig?.configurable?.agentContext
+        const sub = context?.subagentContext
         const info = sub
             ? this.ctx.chatluna_agent?.subAgent
                   .getCatalogSync()
@@ -871,8 +864,33 @@ export class ChatLunaAgentComputerService {
                 : undefined,
             conversationId:
                 sub?.parentConversationId ??
+                context?.conversationId ??
                 runConfig?.configurable?.conversationId,
             userId: runConfig?.configurable?.userId ?? session?.userId
+        }
+    }
+
+    private resolveAgentSessionInput(
+        context: AgentRunContext,
+        backend?: ComputerBackendType
+    ) {
+        const sub = context.subagentContext
+        const info = sub
+            ? this.ctx.chatluna_agent?.subAgent
+                  .getCatalogSync()
+                  .find((item) => item.id === sub.agentId)
+            : undefined
+
+        return {
+            backend,
+            allowedBackends: info
+                ? this.ctx.chatluna_agent?.permission.filterComputerBackends(
+                      info,
+                      COMPUTER_BACKENDS
+                  )
+                : undefined,
+            conversationId: sub?.parentConversationId ?? context.conversationId,
+            userId: context.userId
         }
     }
 

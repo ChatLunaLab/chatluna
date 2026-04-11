@@ -1,7 +1,8 @@
 /* eslint-disable max-len */
-import { StructuredTool } from '@langchain/core/tools'
 import { HumanMessage } from '@langchain/core/messages'
+import { tool } from '@langchain/core/tools'
 import { Context } from 'koishi'
+import type {} from 'koishi-plugin-chatluna/llm-core/chat/app'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '..'
 import { z } from 'zod'
@@ -19,166 +20,25 @@ interface Todo {
 
 const todosStore = new Map<string, Todo[]>()
 
-export async function apply(
-    ctx: Context,
-    config: Config,
-    plugin: ChatLunaPlugin
-) {
-    if (config.todos !== true) {
-        return
-    }
-
-    plugin.registerTool('todos', {
-        description: new TodosTool(ctx, config).description,
-        selector() {
-            return true
-        },
-        meta: {
-            source: 'extension',
-            group: 'plugin-common',
-            tags: ['plugin-common', 'todos'],
-            defaultAvailability: {
-                enabled: true,
-                main: true,
-                chatluna: true,
-                characterScope: 'all'
-            }
-        },
-        createTool(params) {
-            return new TodosTool(ctx, config)
-        }
-    })
-
-    // Register a pipeline middleware at 'after_scratchpad' stage to inject
-    // the current todo state directly after the user message.
-    const contextManager = ctx.chatluna.contextManager
-    contextManager.pipeline(
-        'after_scratchpad',
-        async (runtime: PromptContextRuntime, next) => {
-            const conversationId = runtime.configurable?.conversationId
-            if (!conversationId) return next()
-
-            const todos = todosStore.get(conversationId)
-            if (!todos || todos.length === 0) return next()
-
-            const content = renderTodos(todos)
-            runtime.result.push(new HumanMessage(content))
-
-            return next()
-        },
-        10
-    )
-
-    const clear = (conversationId: string) => {
-        todosStore.delete(conversationId)
-    }
-
-    ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
-        clear(payload.conversation.id)
-    })
-    ctx.on('chatluna/conversation-after-archive', async (payload) => {
-        clear(payload.conversation.id)
-    })
-    ctx.on('chatluna/conversation-after-restore', async (payload) => {
-        clear(payload.conversation.id)
-    })
-    ctx.on('chatluna/conversation-after-delete', async (payload) => {
-        clear(payload.conversation.id)
-    })
-}
-
-export class TodosTool extends StructuredTool {
-    name = 'todos'
-
-    schema = z.object({
-        todos: z
-            .array(
-                z.object({
-                    content: z
-                        .string()
-                        .describe('Brief description of the task'),
-                    status: z
-                        .enum([
-                            'pending',
-                            'in_progress',
-                            'completed',
-                            'cancelled'
-                        ])
-                        .describe(
-                            'Current status of the task: pending, in_progress, completed, cancelled'
-                        ),
-                    priority: z
-                        .enum(['high', 'medium', 'low'])
-                        .describe(
-                            'Priority level of the task: high, medium, low'
-                        )
-                })
-            )
-            .describe('The updated todo list')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any
-
-    constructor(
-        private readonly ctx: Context,
-        private readonly config: Config
-    ) {
-        super({})
-    }
-
-    async _call(
-        input: z.infer<typeof this.schema>,
-        _,
-        toolConfig: ChatLunaToolRunnable
-    ) {
-        const { todos } = input as { todos: Todo[] }
-        const conversationId = toolConfig.configurable.conversationId
-        const session = toolConfig.configurable.session
-
-        // Update the todo list for this conversation
-        todosStore.set(conversationId, todos)
-
-        // Send notification if enabled
-        if (this.config.todosNotify && session) {
-            const lines = todos.map((todo) => {
-                const icon =
-                    todo.status === 'completed'
-                        ? '[x]'
-                        : todo.status === 'in_progress'
-                          ? '[~]'
-                          : todo.status === 'cancelled'
-                            ? '[-]'
-                            : '[ ]'
-                return `${icon} ${todo.content}`
+const todosSchema = z.object({
+    todos: z
+        .array(
+            z.object({
+                content: z.string().describe('Brief description of the task'),
+                status: z
+                    .enum(['pending', 'in_progress', 'completed', 'cancelled'])
+                    .describe(
+                        'Current status of the task: pending, in_progress, completed, cancelled'
+                    ),
+                priority: z
+                    .enum(['high', 'medium', 'low'])
+                    .describe('Priority level of the task: high, medium, low')
             })
-            const completedCount = todos.filter(
-                (t) => t.status === 'completed' || t.status === 'cancelled'
-            ).length
-            await session.send(
-                lines.join('\n') +
-                    `\n${completedCount}/${todos.length} tasks completed`
-            )
-        }
+        )
+        .describe('The updated todo list')
+})
 
-        const inProgressCount = todos.filter(
-            (t: Todo) => t.status === 'in_progress'
-        ).length
-        const completedCount = todos.filter(
-            (t: Todo) => t.status === 'completed' || t.status === 'cancelled'
-        ).length
-        const pendingCount = todos.filter(
-            (t: Todo) => t.status === 'pending'
-        ).length
-
-        return JSON.stringify({
-            success: true,
-            total: todos.length,
-            pending: pendingCount,
-            in_progress: inProgressCount,
-            completed: completedCount
-        })
-    }
-
-    description = `Use this tool to create and manage a structured task list for your current session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
+const TODOS_DESCRIPTION = `Use this tool to create and manage a structured task list for your current session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
 It also helps the user understand the progress of the task and overall progress of their requests.
 
 ## When to Use This Tool
@@ -224,6 +84,129 @@ When in doubt, use this tool. Being proactive with task management ensures you c
 
 Priority levels: high, medium, low
 Status options: pending, in_progress, completed, cancelled`
+
+export async function apply(
+    ctx: Context,
+    config: Config,
+    plugin: ChatLunaPlugin
+) {
+    if (config.todos !== true) {
+        return
+    }
+
+    const todosTool = tool(
+        async (
+            input: z.infer<typeof todosSchema>,
+            toolConfig: ChatLunaToolRunnable
+        ) => {
+            const todos = input.todos as Todo[]
+            const conversationId = toolConfig.configurable.conversationId
+            const session = toolConfig.configurable.session
+
+            todosStore.set(conversationId, todos)
+
+            if (config.todosNotify && session) {
+                const lines = todos.map((todo) => {
+                    const icon =
+                        todo.status === 'completed'
+                            ? '[x]'
+                            : todo.status === 'in_progress'
+                              ? '[~]'
+                              : todo.status === 'cancelled'
+                                ? '[-]'
+                                : '[ ]'
+                    return `${icon} ${todo.content}`
+                })
+                const completedCount = todos.filter(
+                    (t) => t.status === 'completed' || t.status === 'cancelled'
+                ).length
+                await session.send(
+                    lines.join('\n') +
+                        `\n${completedCount}/${todos.length} tasks completed`
+                )
+            }
+
+            const inProgressCount = todos.filter(
+                (t: Todo) => t.status === 'in_progress'
+            ).length
+            const completedCount = todos.filter(
+                (t: Todo) =>
+                    t.status === 'completed' || t.status === 'cancelled'
+            ).length
+            const pendingCount = todos.filter(
+                (t: Todo) => t.status === 'pending'
+            ).length
+
+            return JSON.stringify({
+                success: true,
+                total: todos.length,
+                pending: pendingCount,
+                in_progress: inProgressCount,
+                completed: completedCount
+            })
+        },
+        {
+            name: 'todos',
+            description: TODOS_DESCRIPTION,
+            schema: todosSchema
+        }
+    )
+
+    plugin.registerTool(todosTool.name, {
+        description: todosTool.description,
+        selector() {
+            return true
+        },
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'todos'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
+        },
+        createTool() {
+            return todosTool
+        }
+    })
+
+    const contextManager = ctx.chatluna.contextManager
+    contextManager.pipeline(
+        'after_scratchpad',
+        async (runtime: PromptContextRuntime, next) => {
+            const conversationId = runtime.configurable?.conversationId
+            if (!conversationId) return next()
+
+            const todos = todosStore.get(conversationId)
+            if (!todos || todos.length === 0) return next()
+
+            const content = renderTodos(todos)
+            runtime.result.push(new HumanMessage(content))
+
+            return next()
+        },
+        10
+    )
+
+    const clear = (conversationId: string) => {
+        todosStore.delete(conversationId)
+    }
+
+    ctx.on('chatluna/after-conversation-clear-history', async (payload) => {
+        clear(payload.conversation.id)
+    })
+    ctx.on('chatluna/after-conversation-archive', async (payload) => {
+        clear(payload.conversation.id)
+    })
+    ctx.on('chatluna/after-conversation-restore', async (payload) => {
+        clear(payload.conversation.id)
+    })
+    ctx.on('chatluna/after-conversation-delete', async (payload) => {
+        clear(payload.conversation.id)
+    })
 }
 
 function renderTodos(todos: Todo[]): string {

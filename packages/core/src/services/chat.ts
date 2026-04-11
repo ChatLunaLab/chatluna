@@ -1,3 +1,7 @@
+import {
+    CallbackManager,
+    type Callbacks
+} from '@langchain/core/callbacks/manager'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -53,7 +57,11 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { MessageTransformer } from './message_transform'
-import { ChatEvents } from './types'
+import {
+    ChatCallbackProviderInput,
+    ChatCallbacksProvider,
+    ChatEvents
+} from './types'
 import { ConversationService } from './conversation'
 import { ConversationRuntime } from './conversation_runtime'
 import { ConstraintRecord, ConversationRecord } from './conversation_types'
@@ -87,6 +95,7 @@ export class ChatLunaService extends Service<Config> {
     private readonly _contextManager: ChatLunaContextManagerService
     private readonly _conversation: ConversationService
     private readonly _conversationRuntime: ConversationRuntime
+    private readonly _callbackProviders = new Set<ChatCallbacksProvider>()
     declare public config: Config
 
     declare public currentConfig: Config
@@ -228,7 +237,8 @@ export class ChatLunaService extends Service<Config> {
         variables: Record<string, any> = {},
         postHandler?: PostHandler,
         requestId: string = randomUUID(),
-        toolMask?: ToolMask
+        toolMask?: ToolMask,
+        callbacks?: Callbacks
     ) {
         return this._conversationRuntime.chat(
             session,
@@ -239,8 +249,25 @@ export class ChatLunaService extends Service<Config> {
             variables,
             postHandler,
             requestId,
-            toolMask
+            toolMask,
+            callbacks
         )
+    }
+
+    registerCallbacksProvider(provider: ChatCallbacksProvider) {
+        this._callbackProviders.add(provider)
+        return () => {
+            this._callbackProviders.delete(provider)
+        }
+    }
+
+    async resolveCallbacks(input: ChatCallbackProviderInput) {
+        let merged = input.callbacks
+        for (const provider of this._callbackProviders) {
+            merged = CallbackManager.configure(merged, await provider(input))
+        }
+
+        return merged
     }
 
     async clearCache(conversation: ConversationRecord) {

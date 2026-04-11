@@ -206,17 +206,11 @@ export class ChatLunaAgentSubAgentService {
     }
 
     private async refreshCatalog() {
-        const remote = this.ctx.chatluna_agent
-            ? await this.ctx.chatluna_agent.computer
-                  .scanRemoteSubAgents()
-                  .catch(() => [])
-            : []
         const items = await buildSubAgentCatalog(
             this.ctx,
             this.config.subAgent,
             this.permission,
-            this._manual.values(),
-            remote
+            this._manual.values()
         )
         this._catalog = new Map(items.map((item) => [item.id, item]))
         this.syncTool()

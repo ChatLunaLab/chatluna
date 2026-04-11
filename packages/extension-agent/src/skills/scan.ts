@@ -4,7 +4,7 @@ import { execFile } from 'child_process'
 import { mkdir, readdir, readFile, stat } from 'fs/promises'
 import { load } from 'js-yaml'
 import { Context } from 'koishi'
-import { basename, dirname, join, posix } from 'path'
+import { basename, dirname, join } from 'path'
 import { promisify } from 'util'
 import { DEFAULT_SKILL_DIRS, getSkillsRootPath } from '../config/path'
 import { ComputerSessionApi } from '../computer/types'
@@ -20,7 +20,6 @@ import { collectFilesRecursive } from '../utils/fs'
 import { extractFrontmatter } from '../utils/frontmatter'
 import { createHashId } from '../utils/id'
 import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
-import { computeRemoteDir, isRemotePathInside } from '../utils/remote_path'
 import { quoteShellPath } from '../utils/shell'
 
 const execFileAsync = promisify(execFile)
@@ -90,57 +89,6 @@ export async function scanSkills(
             targets.map((target) => scanTarget(ctx, target, cfg, bins))
         )
     ).flat()
-
-    return skills.sort((a, b) =>
-        a.priority !== b.priority
-            ? a.priority - b.priority
-            : a.path.localeCompare(b.path)
-    )
-}
-
-export async function scanRemoteSkills(
-    session: ComputerSessionApi,
-    ctx: Context,
-    cfg: AgentConfig
-): Promise<ScannedSkill[]> {
-    const targets = getRemoteScanTargets(session, cfg.skills)
-    const bins = new Map<string, boolean>()
-    const seen = new Set<string>()
-    const skills = (
-        await Promise.all(
-            targets.map(async (target) => {
-                const files = await listRemoteSkillFiles(session, target.root)
-                return await Promise.all(
-                    files.map(async (file) => {
-                        if (seen.has(file)) {
-                            return undefined
-                        }
-
-                        seen.add(file)
-                        const dir = posix.dirname(file)
-                        const raw = await session.readFile(file).catch(() => '')
-                        const extra = await session
-                            .readFile(posix.join(dir, 'agents', 'openai.yaml'))
-                            .catch(() => undefined)
-
-                        return await parseSkillText({
-                            file,
-                            dir,
-                            target,
-                            cfg: cfg.skills,
-                            agentCfg: cfg,
-                            bins,
-                            ctx,
-                            raw,
-                            extra
-                        })
-                    })
-                )
-            })
-        )
-    )
-        .flat(2)
-        .filter((item): item is ScannedSkill => item != null)
 
     return skills.sort((a, b) =>
         a.priority !== b.priority
@@ -478,25 +426,6 @@ function parseExtraMetadata(content?: string): {
     }
 }
 
-async function listRemoteSkillFiles(session: ComputerSessionApi, root: string) {
-    const result = await session.execute(
-        `[ -d ${quoteShellPath(root)} ] && find ${quoteShellPath(root)} -type f -name SKILL.md -print || true`,
-        {
-            timeout: 10000
-        }
-    )
-
-    if (result.stderr.trim()) {
-        throw new Error(result.stderr.trim())
-    }
-
-    return result.stdout
-        .split('\n')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b))
-}
-
 function parseAllowedTools(value: unknown) {
     if (typeof value !== 'string' || !value.trim()) return undefined
 
@@ -779,50 +708,6 @@ async function getScanTargets(
     return targets
 }
 
-function getRemoteScanTargets(
-    session: ComputerSessionApi,
-    cfg: AgentConfig['skills']
-) {
-    const scope = session.getScopePath().replaceAll('\\', '/').trim() || '~'
-    const dirs = [...DEFAULT_SKILL_DIRS, ...cfg.dirs]
-    const seen = new Set([
-        REMOTE_SKILLS_ROOT.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
-    ])
-    const targets: ScanTarget[] = [
-        {
-            root: REMOTE_SKILLS_ROOT,
-            source: 'chatluna',
-            scope: 'data',
-            priority: 0,
-            remote: true
-        }
-    ]
-
-    for (let idx = 0; idx < dirs.length; idx++) {
-        const item = dirs[idx].trim()
-        if (!item) {
-            continue
-        }
-
-        const dir = computeRemoteDir(scope, item)
-        const key = dir.replaceAll('\\', '/').replace(/\/+$/, '') || '/'
-        if (seen.has(key)) {
-            continue
-        }
-
-        seen.add(key)
-        targets.push({
-            root: dir,
-            source: detectSkillSource(item, dir),
-            scope: detectRemoteSkillScope(scope, dir),
-            priority: 100 + idx,
-            remote: true
-        })
-    }
-
-    return targets
-}
-
 function detectSkillSource(raw: string, dir: string): SkillSource {
     const value = `${raw}\n${dir}`.replaceAll('\\', '/').toLowerCase()
 
@@ -853,12 +738,6 @@ function detectSkillSource(raw: string, dir: string): SkillSource {
 function detectSkillScope(ctx: Context, dir: string): SkillScope {
     if (isPathInside(dir, getSkillsRootPath(ctx))) return 'data'
     if (isPathInside(dir, ctx.baseDir)) return 'project'
-    return 'user'
-}
-
-function detectRemoteSkillScope(scope: string, dir: string): SkillScope {
-    if (isRemotePathInside(dir, REMOTE_SKILLS_ROOT)) return 'data'
-    if (isRemotePathInside(dir, scope)) return 'project'
     return 'user'
 }
 

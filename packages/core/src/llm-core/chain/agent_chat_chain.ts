@@ -1,3 +1,4 @@
+import { CallbackManager } from '@langchain/core/callbacks/manager'
 import { BaseMessage, HumanMessage } from '@langchain/core/messages'
 import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
@@ -13,6 +14,7 @@ import {
 import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     AgentAction,
+    AgentRunContext,
     AgentRunner,
     createAgentRunner,
     createToolsRef,
@@ -176,7 +178,9 @@ export class ChatLunaPluginChain
         messageQueue,
         onAgentEvent,
         toolMask: callToolMask,
-        subagentContext
+        subagentContext,
+        requestId,
+        callbacks
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues & {
             chat_history?: BaseMessage[]
@@ -190,6 +194,21 @@ export class ChatLunaPluginChain
 
         const chatHistory = this.historyMemory
             .chatHistory as KoishiChatMessageHistory
+        const preset = this.preset.value
+        const ctx = {
+            kind: subagentContext ? 'subagent' : 'main',
+            agentId: conversationId,
+            agentName: preset.triggerKeyword[0] ?? conversationId,
+            conversationId,
+            parentConversationId: subagentContext?.parentConversationId,
+            requestId,
+            source: 'chatluna',
+            userId: session.userId,
+            guildId: session.guildId,
+            channelId: session.channelId,
+            toolMask,
+            subagentContext
+        } satisfies AgentRunContext
 
         const messages = await chatHistory.getMessages()
         const history =
@@ -213,16 +232,16 @@ export class ChatLunaPluginChain
             session,
             conversationId,
             toolMask,
-            subagentContext
+            agentContext: ctx
         }
 
         this._toolsRef.update(session, messages.concat(message), toolMask)
 
-        const preset = this.preset.value
         const runner = this.runner.value.withConfig({
             configurable: {
                 messageQueue,
-                onAgentEvent
+                onAgentEvent,
+                agentContext: ctx
             }
         })
 
@@ -238,37 +257,39 @@ export class ChatLunaPluginChain
                 },
                 {
                     signal,
-                    callbacks: [
-                        {
-                            handleLLMEnd(out) {
+                    callbacks: CallbackManager.configure(
+                        callbacks,
+                        CallbackManager.fromHandlers({
+                            async handleLLMEnd(out) {
                                 usedToken +=
                                     out.llmOutput?.usage_metadata
                                         ?.total_tokens ?? 0
                             },
-                            handleAgentAction(action: AgentAction) {
-                                return events?.['llm-call-tool']?.(
+                            async handleAgentAction(action: AgentAction) {
+                                await events?.['llm-call-tool']?.(
                                     action.tool,
                                     action.toolInput,
                                     action.content,
                                     action.log
                                 )
                             },
-                            handleToolEnd(out) {
+                            async handleToolEnd(out) {
                                 logger.debug(
                                     'Tool end:',
                                     sanitizeToolLogValue(out)
                                 )
                             },
-                            handleLLMNewToken(token) {
-                                return events?.['llm-new-token']?.(token)
+                            async handleLLMNewToken(token) {
+                                await events?.['llm-new-token']?.(token)
                             },
-                            handleCustomEvent(name, data) {
+                            async handleCustomEvent(name, data) {
                                 if (name === 'LLMNewChunk') {
-                                    return events?.['llm-new-chunk']?.(data)
+                                    await events?.['llm-new-chunk']?.(data)
                                 }
                             }
-                        }
-                    ],
+                        })
+                    ),
+                    metadata: { chatlunaAgent: ctx },
                     configurable: {
                         session,
                         model: this.llm,
@@ -276,7 +297,7 @@ export class ChatLunaPluginChain
                         preset: preset.triggerKeyword[0],
                         userId: session.userId,
                         toolMask,
-                        subagentContext
+                        agentContext: ctx
                     }
                 }
             )

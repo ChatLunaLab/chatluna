@@ -36,7 +36,7 @@ it('conversation cleanup listeners in downstream packages use conversation lifec
         const content = await fs.readFile(file, 'utf8')
         assert.equal(content.includes('chatluna/clear-chat-history'), false)
         assert.equal(
-            content.includes('chatluna/conversation-after-clear-history'),
+            content.includes('chatluna/after-conversation-clear-history'),
             true
         )
     }

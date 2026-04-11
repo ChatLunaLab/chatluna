@@ -3,12 +3,9 @@
  * @description Computer 工具抽象基类。
  */
 
-import { randomUUID } from 'node:crypto'
 import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { truncateOutput } from '../backends/types'
 import type { ComputerSessionApi } from '../types'
-import { getErrorMessage } from '../../utils/shell'
 import type { ChatLunaAgentComputerService } from '../../service/computer'
 
 /** Computer 工具抽象基类。 */
@@ -38,33 +35,12 @@ export abstract class ComputerToolBase extends StructuredTool {
         text: string,
         limit = 8000
     ) {
-        if (text.length <= limit) {
-            return text
-        }
-
-        const base = session.cwd || session.getScopePath() || process.cwd()
-        const root = /^[A-Za-z]:[\\/]?$/.test(base)
-            ? `${base[0]}:/`
-            : base === '/'
-              ? '/'
-              : base.replace(/[\\/]+$/, '')
-        const sep = root.endsWith('/') ? '' : '/'
-        const filePath = `${root}${sep}.tmp-chatluna-${name}-${Date.now()}-${randomUUID()}.txt`
-
-        try {
-            await session.writeFile(filePath, text)
-            return `Output too large (${text.length} chars). Truncated preview below.
-Full output saved to: ${filePath}
-Use file_read with this path plus offset/limit to inspect more.
-
-${truncateOutput(text, limit)}`
-        } catch (err) {
-            this.computer.ctx.logger.warn(err)
-            return `Output too large (${text.length} chars). Truncated preview below.
-Failed to save full output: ${getErrorMessage(err)}
-
-${truncateOutput(text, limit)}`
-        }
+        return await this.computer.ctx.chatluna_agent.truncateTextOutput({
+            name,
+            text,
+            limit,
+            session
+        })
     }
 
     /** 格式化工具输出。 */

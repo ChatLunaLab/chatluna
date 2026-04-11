@@ -16,7 +16,7 @@ export function applyShadowing<
         priority: number
         remote?: boolean
     }
->(items: T[]): (T & { shadowedBy?: string })[] {
+>(items: T[], preferRemote = false): (T & { shadowedBy?: string })[] {
     const groups = new Map<string, T[]>()
 
     for (const item of items) {
@@ -38,6 +38,10 @@ export function applyShadowing<
 
         candidates.sort((a, b) => {
             if ((a.remote === true) !== (b.remote === true)) {
+                if (preferRemote) {
+                    return a.remote === true ? -1 : 1
+                }
+
                 return a.remote === true ? 1 : -1
             }
 

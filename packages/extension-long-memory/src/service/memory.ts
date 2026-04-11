@@ -1,4 +1,5 @@
 import { Context, Service } from 'koishi'
+import type {} from 'koishi-plugin-chatluna/llm-core/chat/app'
 import {
     Config,
     CreateMemoryLayersFunction,
@@ -44,19 +45,19 @@ export class ChatLunaLongMemoryService extends Service {
             delete this._memoryLayerNamespaces[conversationId]
         }
 
-        ctx.on('chatluna/conversation-after-clear-history', async (payload) => {
+        ctx.on('chatluna/after-conversation-clear-history', async (payload) => {
             clear(payload.conversation.id)
         })
-        ctx.on('chatluna/conversation-after-cache-clear', async (payload) => {
+        ctx.on('chatluna/after-conversation-cache-clear', async (payload) => {
             clear(payload.conversation.id)
         })
-        ctx.on('chatluna/conversation-after-archive', async (payload) => {
+        ctx.on('chatluna/after-conversation-archive', async (payload) => {
             clear(payload.conversation.id)
         })
-        ctx.on('chatluna/conversation-after-restore', async (payload) => {
+        ctx.on('chatluna/after-conversation-restore', async (payload) => {
             clear(payload.conversation.id)
         })
-        ctx.on('chatluna/conversation-after-delete', async (payload) => {
+        ctx.on('chatluna/after-conversation-delete', async (payload) => {
             clear(payload.conversation.id)
         })
 

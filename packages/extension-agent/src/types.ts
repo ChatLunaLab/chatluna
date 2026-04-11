@@ -39,6 +39,7 @@ import type {
     SubAgentStatus
 } from './types/sub_agent'
 import type { ToolAvailabilityInfo, ToolConfig, ToolStatus } from './types/tool'
+import { ChatLunaAgentService } from './service'
 
 export * from './types/computer'
 export * from './types/mcp'
@@ -256,5 +257,11 @@ declare module '@koishijs/plugin-console' {
             name: string
         ) => Promise<ActionResult>
         'chatluna-agent/refreshConsoleData': () => Promise<ActionResult>
+    }
+}
+
+declare module 'koishi' {
+    interface Context {
+        chatluna_agent: ChatLunaAgentService
     }
 }
