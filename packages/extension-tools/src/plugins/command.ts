@@ -49,41 +49,62 @@ export async function apply(
             }
 
             const baseCommandName = command.trim().split(/\s+/)[0]
-            const matchedCommand = commandList.find((cmd) => {
-                if (
-                    cmd.name === baseCommandName ||
-                    cmd.name.startsWith(baseCommandName + '.') ||
-                    baseCommandName.startsWith(cmd.name + '.')
-                ) {
-                    return true
-                }
+            const matched = commandList
+                .flatMap((cmd) => {
+                    const name = [cmd.name, ...(cmd.alias ?? [])]
+                        .filter(
+                            (item) =>
+                                item === baseCommandName ||
+                                item.startsWith(baseCommandName + '.') ||
+                                baseCommandName.startsWith(item + '.')
+                        )
+                        .sort((a, b) => {
+                            const aExact = a === baseCommandName ? 1 : 0
+                            const bExact = b === baseCommandName ? 1 : 0
+                            if (aExact !== bExact) {
+                                return bExact - aExact
+                            }
 
-                if (cmd.alias && cmd.alias.length > 0) {
-                    return cmd.alias.some(
-                        (alias) =>
-                            alias === baseCommandName ||
-                            alias.startsWith(baseCommandName + '.') ||
-                            baseCommandName.startsWith(alias + '.')
-                    )
-                }
+                            return b.length - a.length
+                        })[0]
 
-                return false
-            })
+                    return name ? [{ cmd, name }] : []
+                })
+                .sort((a, b) => {
+                    const aExact = a.name === baseCommandName ? 1 : 0
+                    const bExact = b.name === baseCommandName ? 1 : 0
+                    if (aExact !== bExact) {
+                        return bExact - aExact
+                    }
 
-            const session = runConfig.configurable.session
+                    if (a.name.length !== b.name.length) {
+                        return b.name.length - a.name.length
+                    }
+
+                    return b.cmd.name.length - a.cmd.name.length
+                })[0]
+            const matchedCommand = matched?.cmd
+            const resolvedCommandName =
+                matched?.name === baseCommandName
+                    ? (matchedCommand?.name ?? baseCommandName)
+                    : matched && baseCommandName.startsWith(matched.name + '.')
+                      ? `${matchedCommand?.name ?? matched.name}${baseCommandName.slice(matched.name.length)}`
+                      : baseCommandName
             const blocked = (config.commandBlacklist ?? []).some(
                 (item) =>
-                    item === baseCommandName ||
-                    baseCommandName.startsWith(item + '.')
+                    item === resolvedCommandName ||
+                    resolvedCommandName.startsWith(item + '.')
             )
 
             if (blocked) {
-                return `Failed to execute command "${command}". Error: Command "${baseCommandName}" is blocked by commandBlacklist.`
+                return `Failed to execute command "${command}". Error: Command "${resolvedCommandName}" is blocked by commandBlacklist.`
             }
 
             if (!matchedCommand) {
                 return `Failed to execute command "${command}". Error: Command "${baseCommandName}" is not in the allowed command list.`
             }
+
+            const session = runConfig.configurable.session
 
             if (!config.commandAutoExecute && matchedCommand.confirm) {
                 const chars =
@@ -275,13 +296,17 @@ function getCommandList(
 }
 
 async function removeCommandSkill(ctx: Context) {
-    await rm(
-        join(ctx.baseDir, 'data/chatluna/skills', 'koishi-command-skills'),
-        {
+    const root = join(ctx.baseDir, 'data/chatluna/skills')
+    await Promise.all([
+        rm(join(root, 'koishi-command-skills'), {
             recursive: true,
             force: true
-        }
-    )
+        }),
+        rm(join(root, 'koishi_command_skills'), {
+            recursive: true,
+            force: true
+        })
+    ])
 }
 
 async function syncCommandSkill(
@@ -290,11 +315,8 @@ async function syncCommandSkill(
     commandAutoExecute: boolean
 ) {
     const tree = buildCommandTree(commandList)
-    const skillDir = join(
-        ctx.baseDir,
-        'data/chatluna/skills',
-        'koishi-command-skills'
-    )
+    const root = join(ctx.baseDir, 'data/chatluna/skills')
+    const skillDir = join(root, 'koishi-command-skills')
     const refsDir = join(skillDir, 'references')
     const refs = tree.map((node, idx) => ({
         description: cleanText(node.command?.description ?? 'Command group'),
@@ -302,7 +324,13 @@ async function syncCommandSkill(
         node
     }))
 
-    await rm(skillDir, { recursive: true, force: true })
+    await Promise.all([
+        rm(skillDir, { recursive: true, force: true }),
+        rm(join(root, 'koishi_command_skills'), {
+            recursive: true,
+            force: true
+        })
+    ])
     await mkdir(refsDir, { recursive: true })
 
     await Promise.all([
