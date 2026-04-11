@@ -29,7 +29,7 @@ When to use:
 - You want user confirmation for important decisions
 
 Do NOT use this tool when:
-- You have specific solution options and just need user selection (use built_question instead)
+- You have specific solution options and just need user selection (use question instead)
 - You're just providing updates or notifications`
 
 const QuestionOptionSchema = z.object({

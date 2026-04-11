@@ -11,14 +11,16 @@ export function buildSkillCatalog(
     preferRemote = false
 ): SkillInfo[] {
     const skillMap = new Map(skills.map((s) => [s.id, s]))
+    const list = applyShadowing(skills, preferRemote)
     const localByName = new Map(
-        skills
+        list
             .filter((item) => item.remote !== true)
+            .filter((item) => !item.shadowedBy)
             .map((item) => [item.name, item])
     )
     const catalog: SkillInfo[] = []
 
-    for (const skill of applyShadowing(skills, preferRemote)) {
+    for (const skill of list) {
         const base =
             configItems[skill.id] ??
             (skill.remote

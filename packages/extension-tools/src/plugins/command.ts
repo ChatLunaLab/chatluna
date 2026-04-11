@@ -48,7 +48,7 @@ export async function apply(
                 return 'Error: Command string cannot be empty. Please provide a valid command.'
             }
 
-            const baseCommandName = command.split(/\s+/)[0]
+            const baseCommandName = command.trim().split(/\s+/)[0]
             const matchedCommand = commandList.find((cmd) => {
                 if (
                     cmd.name === baseCommandName ||
@@ -71,11 +71,21 @@ export async function apply(
             })
 
             const session = runConfig.configurable.session
+            const blocked = (config.commandBlacklist ?? []).some(
+                (item) =>
+                    item === baseCommandName ||
+                    baseCommandName.startsWith(item + '.')
+            )
 
-            if (
-                !config.commandAutoExecute &&
-                (matchedCommand?.confirm ?? true)
-            ) {
+            if (blocked) {
+                return `Failed to execute command "${command}". Error: Command "${baseCommandName}" is blocked by commandBlacklist.`
+            }
+
+            if (!matchedCommand) {
+                return `Failed to execute command "${command}". Error: Command "${baseCommandName}" is not in the allowed command list.`
+            }
+
+            if (!config.commandAutoExecute && matchedCommand.confirm) {
                 const chars =
                     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
                 let validationString = ''
