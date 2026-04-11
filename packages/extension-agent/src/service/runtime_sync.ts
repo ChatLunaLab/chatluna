@@ -55,16 +55,15 @@ export class ChatLunaAgentRuntimeSyncService {
 
     private createProvider(): ChatCallbacksProvider {
         return async () => {
-            const svc = this
             return CallbackManager.fromHandlers({
-                async handleChainStart(
+                handleChainStart: async (
                     _chain,
                     _inputs,
                     runId,
                     _parentRunId,
                     _tags,
                     metadata
-                ) {
+                ) => {
                     if (!runId) {
                         return
                     }
@@ -77,21 +76,21 @@ export class ChatLunaAgentRuntimeSyncService {
                         return
                     }
 
-                    svc.registerRun(String(runId), context)
+                    this.registerRun(String(runId), context)
                 },
-                async handleChainEnd(_output, runId) {
+                handleChainEnd: async (_output, runId) => {
                     if (!runId) {
                         return
                     }
 
-                    await svc.finishRun(String(runId))
+                    await this.finishRun(String(runId))
                 },
-                async handleChainError(_err, runId) {
+                handleChainError: async (_err, runId) => {
                     if (!runId) {
                         return
                     }
 
-                    await svc.finishRun(String(runId))
+                    await this.finishRun(String(runId))
                 }
             })
         }

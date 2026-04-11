@@ -501,8 +501,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                                     : never
                                 : never
                         }
-                    )?.subagentContext ??
-                    runtime.configurable?.subagentContext
+                    )?.subagentContext ?? runtime.configurable?.subagentContext
                 const session = runtime.configurable?.session
                 const source =
                     (

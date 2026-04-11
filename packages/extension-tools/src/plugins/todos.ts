@@ -26,12 +26,7 @@ const todosSchema = z.object({
             z.object({
                 content: z.string().describe('Brief description of the task'),
                 status: z
-                    .enum([
-                        'pending',
-                        'in_progress',
-                        'completed',
-                        'cancelled'
-                    ])
+                    .enum(['pending', 'in_progress', 'completed', 'cancelled'])
                     .describe(
                         'Current status of the task: pending, in_progress, completed, cancelled'
                     ),
@@ -123,8 +118,7 @@ export async function apply(
                     return `${icon} ${todo.content}`
                 })
                 const completedCount = todos.filter(
-                    (t) =>
-                        t.status === 'completed' || t.status === 'cancelled'
+                    (t) => t.status === 'completed' || t.status === 'cancelled'
                 ).length
                 await session.send(
                     lines.join('\n') +

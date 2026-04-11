@@ -29,7 +29,10 @@ export async function apply(
                     return 'Empty input. Please provide valid JavaScript code for music generation.'
                 }
 
-                const elements = await session.execute('musicjs ' + musicCode, true)
+                const elements = await session.execute(
+                    'musicjs ' + musicCode,
+                    true
+                )
 
                 await session.send(elements)
 

@@ -242,4 +242,3 @@ function detectHint(raw: string, dir: string) {
 function createAgentId(file: string) {
     return createHashId(file)
 }
-

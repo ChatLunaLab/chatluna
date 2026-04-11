@@ -72,7 +72,10 @@ export async function apply(
 
             const session = runConfig.configurable.session
 
-            if (!config.commandAutoExecute && (matchedCommand?.confirm ?? true)) {
+            if (
+                !config.commandAutoExecute &&
+                (matchedCommand?.confirm ?? true)
+            ) {
                 const chars =
                     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
                 let validationString = ''

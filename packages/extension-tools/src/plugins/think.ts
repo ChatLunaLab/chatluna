@@ -95,8 +95,7 @@ export async function apply(
                     const indices = parts
                         .map((p) => parseInt(p))
                         .filter(
-                            (n) =>
-                                !isNaN(n) && n >= 1 && n <= options.length
+                            (n) => !isNaN(n) && n >= 1 && n <= options.length
                         )
 
                     if (indices.length > 0) {
@@ -147,7 +146,9 @@ export async function apply(
             description: USER_CONFIRM_DESCRIPTION,
             schema: z
                 .string()
-                .describe('The open-ended prompt or confirmation message sent to the user.')
+                .describe(
+                    'The open-ended prompt or confirmation message sent to the user.'
+                )
         }
     )
 

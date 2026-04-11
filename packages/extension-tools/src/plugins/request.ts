@@ -5,7 +5,7 @@ import { join } from 'path'
 import { BaseMessage } from '@langchain/core/messages'
 import { tool } from '@langchain/core/tools'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import TurndownService from 'turndown'
+import turndownService from 'turndown'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { randomUA } from 'koishi-plugin-chatluna/utils/request'
@@ -17,6 +17,8 @@ import micromatch from 'micromatch'
 import z from 'zod'
 import { Config } from '..'
 
+const TURNDOWN = turndownService
+
 const WEBFETCH_DESCRIPTION = `- Fetches content from a specified URL
 - Takes a URL and optional format as input
 - Fetches the URL content, converts to requested format (markdown by default)
@@ -24,7 +26,9 @@ const WEBFETCH_DESCRIPTION = `- Fetches content from a specified URL
 - Use this tool when you need to retrieve and analyze web content
 
 Usage notes:
-  - IMPORTANT: if another tool is present that offers better web fetching capabilities, is more targeted to the task, or has fewer restrictions, prefer using that tool instead of this one.
+  - IMPORTANT: if another tool is present that offers better web fetching
+    capabilities, is more targeted to the task, or has fewer restrictions,
+    prefer using that tool instead of this one.
   - The URL must be a fully-formed valid URL
   - HTTP URLs will be automatically upgraded to HTTPS
   - Format options: "markdown" (default), "text", or "html"
@@ -38,7 +42,9 @@ const WEBPOST_DESCRIPTION = `- Sends a JSON payload to a specified URL using POS
 - Use this tool when you need to submit JSON data and analyze the response
 
 Usage notes:
-  - IMPORTANT: if another tool is present that offers better web request capabilities, is more targeted to the task, or has fewer restrictions, prefer using that tool instead of this one.
+  - IMPORTANT: if another tool is present that offers better web request
+    capabilities, is more targeted to the task, or has fewer restrictions,
+    prefer using that tool instead of this one.
   - The URL must be a fully-formed valid URL
   - HTTP URLs will be automatically upgraded to HTTPS
   - The payload is sent as JSON with Content-Type: application/json
@@ -61,7 +67,7 @@ const webFetchSchema = z.object({
 })
 
 const webPostSchema = z.object({
-    url: z.string().describe('The URL to fetch content from'),
+    url: z.string().describe('The URL to send JSON payload to'),
     data: z.record(z.any()).describe('The JSON payload to send'),
     format: z
         .enum(['text', 'markdown', 'html'])
@@ -75,7 +81,7 @@ const webPostSchema = z.object({
         .describe('Optional timeout in seconds (max 120)')
 })
 
-const markdown = new TurndownService({
+const markdown = new TURNDOWN({
     headingStyle: 'atx',
     hr: '---',
     bulletListMarker: '-',
@@ -226,7 +232,14 @@ async function requestUrl(
     headerConfigs: { matcher: string; headers: Record<string, string> }[],
     runConfig?: ChatLunaToolRunnable
 ) {
-    const url = normalizeUrl(input.url)
+    const trimmed = input.url.trim()
+    const url = trimmed.startsWith('http://')
+        ? `https://${trimmed.slice(7)}`
+        : trimmed
+    if (!url.startsWith('https://')) {
+        throw new Error('URL must be a fully-formed HTTP/HTTPS URL')
+    }
+
     const timeout = Math.min(Math.max(input.timeout ?? 30, 1), 120) * 1000
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeout)
@@ -309,19 +322,6 @@ async function requestUrl(
     } finally {
         clearTimeout(timer)
     }
-}
-
-function normalizeUrl(url: string) {
-    const trimmed = url.trim()
-    if (trimmed.startsWith('http://')) {
-        return `https://${trimmed.slice(7)}`
-    }
-
-    if (!trimmed.startsWith('https://')) {
-        throw new Error('URL must be a fully-formed HTTP/HTTPS URL')
-    }
-
-    return trimmed
 }
 
 function getAcceptHeader(format: 'text' | 'markdown' | 'html') {
