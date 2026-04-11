@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { Tool } from '@langchain/core/tools'
+import { tool } from '@langchain/core/tools'
 import { Context } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
@@ -9,9 +9,10 @@ import {
 import { Config } from '..'
 import { elementToString } from './command'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { z } from 'zod'
 
 export async function apply(
-    ctx: Context,
+    _ctx: Context,
     config: Config,
     plugin: ChatLunaPlugin
 ) {
@@ -19,66 +20,27 @@ export async function apply(
         return
     }
 
-    plugin.registerTool('music', {
-        description: new MusicTool().description,
-        selector(history) {
-            if (config.musicSelector.length === 0) {
-                return true
-            }
-            return history.some(
-                (message) =>
-                    message.content != null &&
-                    fuzzyQuery(
-                        getMessageContent(message.content),
-                        config.musicSelector
-                    )
-            )
-        },
-        meta: {
-            source: 'extension',
-            group: 'plugin-common',
-            tags: ['plugin-common', 'music'],
-            defaultAvailability: {
-                enabled: true,
-                main: true,
-                chatluna: true,
-                characterScope: 'all'
+    const musicTool = tool(
+        async (input: string, runConfig: ChatLunaToolRunnable) => {
+            const session = runConfig.configurable.session
+            try {
+                const musicCode = input.trim()
+                if (!musicCode) {
+                    return 'Empty input. Please provide valid JavaScript code for music generation.'
+                }
+
+                const elements = await session.execute('musicjs ' + musicCode, true)
+
+                await session.send(elements)
+
+                return `Successfully created music with the provided code. Result: ${elementToString(elements)}`
+            } catch (e) {
+                return `Music generation failed. Error: ${e.message}`
             }
         },
-
-        createTool(params) {
-            return new MusicTool()
-        }
-    })
-}
-
-export class MusicTool extends Tool {
-    name = 'music'
-
-    constructor() {
-        super({})
-    }
-
-    /** @ignore */
-    async _call(input: string, _, config: ChatLunaToolRunnable) {
-        const session = config.configurable.session
-        try {
-            const musicCode = input.trim()
-            if (!musicCode) {
-                return `Empty input. Please provide valid JavaScript code for music generation.`
-            }
-
-            const elements = await session.execute('musicjs ' + musicCode, true)
-
-            await session.send(elements)
-
-            return `Successfully created music with the provided code. Result: ${elementToString(elements)}`
-        } catch (e) {
-            return `Music generation failed. Error: ${e.message}`
-        }
-    }
-
-    description = `A music generation tool using JavaScript code. Provide your code directly without any tags.
+        {
+            name: 'music',
+            description: `A music generation tool using JavaScript code. Provide your code directly without any tags.
 
     Functions:
     - note(tone, beats, temperament = 12): Play a note (equal temperament)
@@ -104,5 +66,41 @@ export class MusicTool extends Tool {
 
     time = 0;      // New simultaneous track (if needed)
     note(-5, 2);   // E4, 2 beats
-`
+`,
+            schema: z
+                .string()
+                .describe('JavaScript code used to generate the music output.')
+        }
+    )
+
+    plugin.registerTool(musicTool.name, {
+        description: musicTool.description,
+        selector(history) {
+            if (config.musicSelector.length === 0) {
+                return true
+            }
+            return history.some(
+                (message) =>
+                    message.content != null &&
+                    fuzzyQuery(
+                        getMessageContent(message.content),
+                        config.musicSelector
+                    )
+            )
+        },
+        meta: {
+            source: 'extension',
+            group: 'plugin-common',
+            tags: ['plugin-common', 'music'],
+            defaultAvailability: {
+                enabled: true,
+                main: true,
+                chatluna: true,
+                characterScope: 'all'
+            }
+        },
+        createTool() {
+            return musicTool
+        }
+    })
 }

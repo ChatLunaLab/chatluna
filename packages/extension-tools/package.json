@@ -57,11 +57,13 @@
     "dependencies": {
         "@langchain/core": "^0.3.80",
         "micromatch": "^4.0.8",
+        "turndown": "^7.2.2",
         "which": "^6.0.1",
         "zod": "3.25.76"
     },
     "devDependencies": {
         "@types/micromatch": "^4.0.9",
+        "@types/turndown": "^5.0.6",
         "atsc": "^2.1.0",
         "koishi": "^4.18.9",
         "koishi-plugin-adapter-onebot": "^6.8.0"

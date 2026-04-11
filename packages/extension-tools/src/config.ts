@@ -155,7 +155,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = {
     required: ['chatluna'],
-    optional: ['chatluna_storage', 'database']
+    optional: ['chatluna_storage', 'database', 'chatluna_agent']
 }
 
 export const name = 'chatluna-plugin-common'

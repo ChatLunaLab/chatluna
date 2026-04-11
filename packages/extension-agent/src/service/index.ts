@@ -1,9 +1,12 @@
 /** @module service/index */
 
+import { randomUUID } from 'crypto'
 import { mkdir, rm, stat, writeFile } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { truncateOutput } from '../computer/backends/types'
+import type { ComputerSessionApi } from '../computer/types'
 import { createSubAgentItemConfig } from '../config/defaults'
 import { getSkillsRootPath, getSubAgentsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
@@ -30,6 +33,7 @@ import {
     SubAgentItemConfig
 } from '../types'
 import { createHashId } from '../utils/id'
+import { getErrorMessage } from '../utils/shell'
 import { ChatLunaAgentComputerService } from './computer'
 import { ChatLunaAgentMcpService } from './mcp'
 import { ChatLunaAgentPermissionService } from './permissions'
@@ -577,6 +581,72 @@ export class ChatLunaAgentService extends Service {
         return this.ctx.chatluna.preset.getAllPreset(false).value
     }
 
+    async truncateTextOutput(input: {
+        name: string
+        text: string
+        limit?: number
+        session?: ComputerSessionApi
+        outputDir?: string
+    }) {
+        const limit = input.limit ?? 8000
+        if (input.text.length <= limit) {
+            return input.text
+        }
+
+        if (input.session) {
+            const base =
+                input.session.cwd ||
+                input.session.getScopePath() ||
+                process.cwd()
+            const root = /^[A-Za-z]:[\\/]?$/.test(base)
+                ? `${base[0]}:/`
+                : base === '/'
+                  ? '/'
+                  : base.replace(/[\\/]+$/, '')
+            const sep = root.endsWith('/') ? '' : '/'
+            const filePath = `${root}${sep}.tmp-chatluna-${input.name}-${Date.now()}-${randomUUID()}.txt`
+
+            try {
+                await input.session.writeFile(filePath, input.text)
+                return `Output too large (${input.text.length} chars). Truncated preview below.
+Full output saved to: ${filePath}
+Use file_read with this path plus offset/limit to inspect more.
+
+${truncateOutput(input.text, limit)}`
+            } catch (err) {
+                this.ctx.logger.warn(err)
+                return `Output too large (${input.text.length} chars). Truncated preview below.
+Failed to save full output: ${getErrorMessage(err)}
+
+${truncateOutput(input.text, limit)}`
+            }
+        }
+
+        const dir =
+            input.outputDir ??
+            resolve(this.ctx.baseDir, 'data/chatluna/truncation')
+        const filePath = join(
+            dir,
+            `${input.name}-${Date.now()}-${randomUUID()}.txt`
+        )
+
+        try {
+            await mkdir(dir, { recursive: true })
+            await writeFile(filePath, input.text, 'utf-8')
+            return `Output too large (${input.text.length} chars). Truncated preview below.
+Full output saved to: ${filePath}
+Use file_read with this path plus offset/limit to inspect more.
+
+${truncateOutput(input.text, limit)}`
+        } catch (err) {
+            this.ctx.logger.warn(err)
+            return `Output too large (${input.text.length} chars). Truncated preview below.
+Failed to save full output: ${getErrorMessage(err)}
+
+${truncateOutput(input.text, limit)}`
+        }
+    }
+
     async updateConfigPath(
         path: string,
         operation: 'set' | 'remove',
@@ -756,10 +826,4 @@ function deleteConfigValue(root: Record<string, unknown>, parts: string[]) {
     }
 
     delete (current as Record<string, unknown>)[parts[parts.length - 1]]
-}
-
-declare module 'koishi' {
-    interface Context {
-        chatluna_agent: ChatLunaAgentService
-    }
 }

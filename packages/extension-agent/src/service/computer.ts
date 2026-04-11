@@ -55,8 +55,6 @@ import { PublishFileTool } from '../computer/tools/publish_file'
 import { GrepTool } from '../computer/tools/grep'
 import { GlobTool } from '../computer/tools/glob'
 import { BashTool } from '../computer/tools/bash'
-import { scanRemoteSkills as scanRemoteSkillCatalog } from '../skills/scan'
-import { scanRemoteMarkdownAgents as scanRemoteSubAgentCatalog } from '../sub-agent/scan'
 import { quoteShell, quoteShellPath } from '../utils/shell'
 
 export class ChatLunaAgentComputerService {
@@ -647,24 +645,6 @@ export class ChatLunaAgentComputerService {
         return await session.glob(input.pattern, input.path)
     }
 
-    async scanRemoteSkills() {
-        const session = await this.getRemoteScanSession()
-        if (!session) {
-            return []
-        }
-
-        return await scanRemoteSkillCatalog(session, this.ctx, this.config)
-    }
-
-    async scanRemoteSubAgents() {
-        const session = await this.getRemoteScanSession()
-        if (!session) {
-            return []
-        }
-
-        return await scanRemoteSubAgentCatalog(session, this.config.subAgent)
-    }
-
     async removeRemoteSkill(dir: string) {
         await this.removeRemoteEntry(dir)
     }
@@ -769,14 +749,6 @@ export class ChatLunaAgentComputerService {
         return await this.getOrCreateSession(
             this.resolveAgentSessionInput(context, backend)
         )
-    }
-
-    async scanRemoteSkillsForSession(session: ComputerSessionApi) {
-        return await scanRemoteSkillCatalog(session, this.ctx, this.config)
-    }
-
-    async scanRemoteSubAgentsForSession(session: ComputerSessionApi) {
-        return await scanRemoteSubAgentCatalog(session, this.config.subAgent)
     }
 
     async publishFile(

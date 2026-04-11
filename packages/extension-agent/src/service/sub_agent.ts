@@ -2,7 +2,6 @@
 
 import { Context } from 'koishi'
 import {
-    type AgentRunContext,
     type AgentTaskToolRuntime,
     createTaskTool,
     renderAvailableAgents
@@ -17,7 +16,6 @@ import { buildSubAgentCatalog } from '../sub-agent/catalog'
 import { createManualAgent } from '../sub-agent/manual'
 import { createSubAgent } from '../sub-agent/run'
 import { ensureSubAgentsRoot, REMOTE_SUBAGENTS_ROOT } from '../sub-agent/scan'
-import { applyShadowing } from '../utils/shadow'
 import {
     AgentConfig,
     ManualSubAgentInput,
@@ -31,7 +29,6 @@ import { ChatLunaAgentPermissionService } from './permissions'
 export class ChatLunaAgentSubAgentService {
     private _catalog = new Map<string, SubAgentInfo>()
     private _manual = new Map<string, ManualSubAgentInput>()
-    private _runtime = new Map<string, SubAgentInfo[]>()
     private _toolDispose?: () => void
     private _promptDispose?: () => void
     private _task: AgentTaskToolRuntime
@@ -57,88 +54,10 @@ export class ChatLunaAgentSubAgentService {
         this._promptDispose = undefined
         this._catalog.clear()
         this._manual.clear()
-        this._runtime.clear()
     }
 
     async reload() {
         await this.refreshCatalog()
-    }
-
-    setRuntimeCatalog(key: string, remote: SubAgentInfo[]) {
-        const local = this.getCatalogSync().filter((item) => !item.remote)
-        const fallback = new Map(local.map((item) => [item.name, item]))
-        const merged = [
-            ...local,
-            ...remote.map((item) => {
-                const localItem = fallback.get(item.name)
-                if (
-                    !item.remote ||
-                    !localItem ||
-                    this.config.subAgent.items[item.id]
-                ) {
-                    return item
-                }
-
-                return {
-                    ...item,
-                    enabled: localItem.enabled,
-                    chatlunaEnabled: localItem.chatlunaEnabled,
-                    characterEnabled: localItem.characterEnabled,
-                    characterGroupEnabled: localItem.characterGroupEnabled,
-                    characterPrivateEnabled: localItem.characterPrivateEnabled,
-                    characterGroupMode: localItem.characterGroupMode,
-                    characterPrivateMode: localItem.characterPrivateMode,
-                    characterGroupIds: localItem.characterGroupIds,
-                    characterPrivateIds: localItem.characterPrivateIds,
-                    authority: localItem.authority,
-                    hidden: localItem.hidden,
-                    model: localItem.model,
-                    maxTurns: localItem.maxTurns,
-                    permissions: localItem.permissions,
-                    allowKoishiMessageTransform:
-                        localItem.allowKoishiMessageTransform,
-                    promptMode: localItem.promptMode,
-                    preset: localItem.preset
-                } satisfies SubAgentInfo
-            })
-        ]
-
-        this._runtime.set(
-            key,
-            applyShadowing(merged, true)
-                .map((item) => ({
-                    ...item,
-                    permissions: this.permission.mergePermissions(
-                        item.permissions
-                    )
-                }))
-                .sort((a, b) => {
-                    if (a.priority !== b.priority) {
-                        return a.priority - b.priority
-                    }
-
-                    return a.name.localeCompare(b.name)
-                })
-        )
-    }
-
-    clearRuntimeCatalog(key: string) {
-        this._runtime.delete(key)
-    }
-
-    getCatalogForContext(context?: AgentRunContext) {
-        const key = context
-            ? [
-                  context.requestId ??
-                      context.conversationId ??
-                      context.parentConversationId ??
-                      'runtime',
-                  context.kind,
-                  context.agentId ?? 'main'
-              ].join(':')
-            : undefined
-        const runtime = key ? this._runtime.get(key) : undefined
-        return runtime ?? this.getCatalogSync()
     }
 
     getStatus(): SubAgentStatus {
@@ -166,12 +85,9 @@ export class ChatLunaAgentSubAgentService {
         session?: Parameters<
             ChatLunaAgentPermissionService['canUseSubAgent']
         >[1],
-        source?: Parameters<
-            ChatLunaAgentPermissionService['canUseSubAgent']
-        >[2],
-        context?: AgentRunContext
+        source?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[2]
     ) {
-        return this.getCatalogForContext(context).filter(
+        return this.getCatalogSync().filter(
             (item) =>
                 isRunnable(item) &&
                 this.permission.canUseSubAgent(item, session, source)
@@ -183,12 +99,9 @@ export class ChatLunaAgentSubAgentService {
         session?: Parameters<
             ChatLunaAgentPermissionService['canUseSubAgent']
         >[1],
-        source?: Parameters<
-            ChatLunaAgentPermissionService['canUseSubAgent']
-        >[2],
-        context?: AgentRunContext
+        source?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[2]
     ) {
-        return this.getCatalogForContext(context).find(
+        return this.getCatalogSync().find(
             (item) =>
                 item.name === name &&
                 isRunnable(item) &&
@@ -266,8 +179,7 @@ export class ChatLunaAgentSubAgentService {
                 const info = this.findRunnableAgent(
                     name,
                     ctx.session,
-                    ctx.source,
-                    ctx.runConfig?.configurable?.agentContext
+                    ctx.source
                 )
 
                 if (!info) {
@@ -294,17 +206,11 @@ export class ChatLunaAgentSubAgentService {
     }
 
     private async refreshCatalog() {
-        const remote = this.ctx.chatluna_agent
-            ? await this.ctx.chatluna_agent.computer
-                  .scanRemoteSubAgents()
-                  .catch(() => [])
-            : []
         const items = await buildSubAgentCatalog(
             this.ctx,
             this.config.subAgent,
             this.permission,
-            this._manual.values(),
-            remote
+            this._manual.values()
         )
         this._catalog = new Map(items.map((item) => [item.id, item]))
         this.syncTool()
@@ -367,13 +273,7 @@ export class ChatLunaAgentSubAgentService {
                     return next()
                 }
 
-                const agents = this.listRunnableAgents(
-                    session,
-                    source,
-                    runtime.configurable?.agentContext as
-                        | AgentRunContext
-                        | undefined
-                )
+                const agents = this.listRunnableAgents(session, source)
                 if (agents.length < 1) return next()
 
                 const status = this.ctx.chatluna_agent?.computer.getStatus()

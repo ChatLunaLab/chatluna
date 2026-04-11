@@ -3,11 +3,7 @@
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname, join, posix } from 'path'
 import { CallbackManager } from '@langchain/core/callbacks/manager'
-import {
-    type AgentCallbackEvent,
-    type AgentRunContext,
-    CHATLUNA_AGENT_EVENT
-} from 'koishi-plugin-chatluna/llm-core/agent'
+import { type AgentRunContext } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatCallbacksProvider } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import { getRemoteSkillsRoot } from '../computer/materialize'
@@ -31,7 +27,6 @@ interface RuntimeSyncFile {
 interface RuntimeSyncState {
     count: number
     context: AgentRunContext
-    remote: boolean
 }
 
 export class ChatLunaAgentRuntimeSyncService {
@@ -62,21 +57,27 @@ export class ChatLunaAgentRuntimeSyncService {
         return async () => {
             const svc = this
             return CallbackManager.fromHandlers({
-                async handleCustomEvent(name, data, runId) {
-                    if (name !== CHATLUNA_AGENT_EVENT) {
+                async handleChainStart(
+                    _chain,
+                    _inputs,
+                    runId,
+                    _parentRunId,
+                    _tags,
+                    metadata
+                ) {
+                    if (!runId) {
                         return
                     }
 
-                    const payload = data as AgentCallbackEvent
-                    if (payload.event.type !== 'round-decision') {
+                    const context = (metadata?.chatlunaAgent ??
+                        metadata?.['chatlunaAgent']) as
+                        | AgentRunContext
+                        | undefined
+                    if (!context) {
                         return
                     }
 
-                    if (!payload.context || !runId) {
-                        return
-                    }
-
-                    await svc.prepareRun(String(runId), payload.context)
+                    svc.registerRun(String(runId), context)
                 },
                 async handleChainEnd(_output, runId) {
                     if (!runId) {
@@ -96,7 +97,7 @@ export class ChatLunaAgentRuntimeSyncService {
         }
     }
 
-    private async prepareRun(runId: string, context: AgentRunContext) {
+    private registerRun(runId: string, context: AgentRunContext) {
         if (this._runs.has(runId)) {
             return
         }
@@ -109,42 +110,10 @@ export class ChatLunaAgentRuntimeSyncService {
             return
         }
 
-        const agent = this.getAgent()
-        const session = await agent.computer
-            .getAgentSession(context)
-            .catch((err) => {
-                this.ctx.logger.warn(
-                    'Failed to create runtime sync session',
-                    err
-                )
-                return undefined
-            })
-
-        if (!session || session.backend === 'local') {
-            this._states.set(key, {
-                count: 1,
-                context,
-                remote: false
-            })
-            return
-        }
-
         this._states.set(key, {
             count: 1,
-            context,
-            remote: true
+            context
         })
-
-        try {
-            const [skills, subagents] = await Promise.all([
-                agent.computer.scanRemoteSkillsForSession(session),
-                agent.computer.scanRemoteSubAgentsForSession(session)
-            ])
-            await agent.skills.setRuntimeCatalog(key, skills)
-            agent.subAgent.setRuntimeCatalog(key, subagents)
-        } catch (err) {
-            this.ctx.logger.warn('Failed to prepare runtime sync catalogs', err)
-        }
     }
 
     private async finishRun(runId: string) {
@@ -168,19 +137,14 @@ export class ChatLunaAgentRuntimeSyncService {
         const agent = this.getAgent()
 
         try {
-            if (state.remote) {
-                const session = await agent.computer
-                    .getAgentSession(state.context)
-                    .catch(() => undefined)
-                if (session) {
-                    await syncRuntimeSession(agent, session)
-                }
+            const session = await agent.computer
+                .getAgentSession(state.context)
+                .catch(() => undefined)
+            if (session && session.backend !== 'local') {
+                await syncRuntimeSession(agent, session)
             }
         } catch (err) {
             this.ctx.logger.warn('Failed to flush runtime sync files', err)
-        } finally {
-            agent.skills.clearRuntimeCatalog(key)
-            agent.subAgent.clearRuntimeCatalog(key)
         }
     }
 }

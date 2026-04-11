@@ -651,16 +651,19 @@ async function runAgentTask(options: {
                 prompt: options.prompt,
                 session: options.session,
                 conversationId: options.task.conversationId,
-                requestId:
-                    options.runConfig?.configurable?.agentContext?.requestId ??
-                    runId,
+                requestId: options.input.background
+                    ? runId
+                    : (options.runConfig?.configurable?.agentContext
+                          ?.requestId ?? runId),
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
                 toolMask,
                 subagentContext: subCtx,
                 source: options.source,
-                callbacks: options.runConfig?.callbacks,
+                callbacks: options.input.background
+                    ? undefined
+                    : options.runConfig?.callbacks,
                 onStep: async (event) => {
                     await onTaskEvent(options.task, run, saveUser, event)
                     await options.runtime.refresh?.()

@@ -2,8 +2,7 @@
 
 import { mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager'
-import { StructuredTool } from '@langchain/core/tools'
+import { tool } from '@langchain/core/tools'
 import type { Command as CommandType } from '@satorijs/protocol'
 import { Context, h } from 'koishi'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -11,6 +10,14 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import type {} from 'koishi-plugin-chatluna-agent'
 import { z } from 'zod'
 import { Config } from '..'
+
+const commandExecuteSchema = z.object({
+    command: z
+        .string()
+        .describe(
+            'Full Koishi command string, for example "help" or "weather beijing --unit celsius".'
+        )
+})
 
 export async function apply(
     ctx: Context,
@@ -30,13 +37,120 @@ export async function apply(
 
     await syncCommandSkill(ctx, commandList, config.commandAutoExecute)
 
-    plugin.registerTool('koishi_command_execute', {
-        description: new CommandExecuteTool(
-            ctx,
-            commandList,
-            config.commandWithSend,
-            config.commandAutoExecute
-        ).description,
+    const commandExecuteTool = tool(
+        async (
+            input: z.infer<typeof commandExecuteSchema>,
+            runConfig: ChatLunaToolRunnable
+        ) => {
+            const { command } = input
+
+            if (!command || command.trim().length === 0) {
+                return 'Error: Command string cannot be empty. Please provide a valid command.'
+            }
+
+            const baseCommandName = command.split(/\s+/)[0]
+            const matchedCommand = commandList.find((cmd) => {
+                if (
+                    cmd.name === baseCommandName ||
+                    cmd.name.startsWith(baseCommandName + '.') ||
+                    baseCommandName.startsWith(cmd.name + '.')
+                ) {
+                    return true
+                }
+
+                if (cmd.alias && cmd.alias.length > 0) {
+                    return cmd.alias.some(
+                        (alias) =>
+                            alias === baseCommandName ||
+                            alias.startsWith(baseCommandName + '.') ||
+                            baseCommandName.startsWith(alias + '.')
+                    )
+                }
+
+                return false
+            })
+
+            const session = runConfig.configurable.session
+
+            if (!config.commandAutoExecute && (matchedCommand?.confirm ?? true)) {
+                const chars =
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+                let validationString = ''
+
+                for (let i = 0; i < 8; i++) {
+                    validationString += chars.charAt(
+                        Math.floor(Math.random() * chars.length)
+                    )
+                }
+
+                await session.send(
+                    `模型请求执行指令 ${command}，如需同意，请输入以下字符：${validationString}`
+                )
+                const canRun = await session.prompt()
+
+                if (canRun !== validationString) {
+                    await session.send('指令执行失败')
+                    return `The command ${command} execution failed, because the user didn't confirm`
+                }
+            }
+
+            try {
+                const result = await session.execute(command, true)
+
+                let shouldSend = config.commandWithSend
+
+                const transformedMessage =
+                    await ctx.chatluna.messageTransformer.transform(
+                        session,
+                        result,
+                        ''
+                    )
+
+                const content =
+                    typeof transformedMessage.content === 'string'
+                        ? transformedMessage.content
+                        : transformedMessage.content
+                              .map((part) => {
+                                  if ('text' in part) {
+                                      return part.text
+                                  }
+                                  if ('image_url' in part) {
+                                      const imageUrl =
+                                          typeof part.image_url === 'string'
+                                              ? part.image_url
+                                              : part.image_url.url
+
+                                      if (imageUrl.includes('data:')) {
+                                          shouldSend = true
+                                          return `[image:${imageUrl.substring(0, 12)}]`
+                                      }
+
+                                      return `[image:${imageUrl}] Please use ![image](url) to send image to user`
+                                  }
+                                  return ''
+                              })
+                              .join('\n\n')
+
+                if (shouldSend) {
+                    await session.send(result)
+                }
+
+                return `Successfully executed command "${command}".\nResult: ${content}`
+            } catch (e) {
+                ctx.logger.error(e)
+                return `Failed to execute command "${command}". Error: ${e.message}`
+            }
+        },
+        {
+            name: 'koishi_command_execute',
+            description:
+                'Execute a Koishi command string. Use this instead of bash for Koishi commands.',
+            schema: commandExecuteSchema
+        }
+    )
+
+    plugin.registerTool(commandExecuteTool.name, {
+        description: commandExecuteTool.description,
         selector() {
             return true
         },
@@ -52,12 +166,7 @@ export async function apply(
             }
         },
         createTool() {
-            return new CommandExecuteTool(
-                ctx,
-                commandList,
-                config.commandWithSend,
-                config.commandAutoExecute
-            )
+            return commandExecuteTool
         }
     })
 }
@@ -154,7 +263,7 @@ function getCommandList(
 
 async function removeCommandSkill(ctx: Context) {
     await rm(
-        join(ctx.baseDir, 'data/chatluna/skills', 'koishi_command_skills'),
+        join(ctx.baseDir, 'data/chatluna/skills', 'koishi-command-skills'),
         {
             recursive: true,
             force: true
@@ -171,7 +280,7 @@ async function syncCommandSkill(
     const skillDir = join(
         ctx.baseDir,
         'data/chatluna/skills',
-        'koishi_command_skills'
+        'koishi-command-skills'
     )
     const refsDir = join(skillDir, 'references')
     const refs = tree.map((node, idx) => ({
@@ -204,7 +313,7 @@ function renderCommandSkill(
 ) {
     const lines = [
         '---',
-        'name: koishi_command_skills',
+        'name: koishi-command-skills',
         'description: >',
         '  Use this skill when you need to run a Koishi command, inspect the real',
         '  Koishi command hierarchy, or handle a task that should go through',
@@ -424,136 +533,6 @@ function getCommandSyntax(cmd: PickCommandType) {
     }
 
     return `${cmd.name} ${cmd.arguments.map((item) => item.name).join(' ')}`
-}
-
-export class CommandExecuteTool extends StructuredTool {
-    name = 'koishi_command_execute'
-
-    description =
-        'Execute a Koishi command string. Use this instead of bash for Koishi commands.'
-
-    schema = z.object({
-        command: z
-            .string()
-            .describe(
-                'Full Koishi command string, for example "help" or "weather beijing --unit celsius".'
-            )
-    })
-
-    constructor(
-        public ctx: Context,
-        private commandList: PickCommandType[],
-        private commandWithSend: boolean,
-        private commandAutoExecute: boolean
-    ) {
-        super()
-    }
-
-    async _call(
-        input: { command: string },
-        runManager: CallbackManagerForToolRun,
-        config: ChatLunaToolRunnable
-    ): Promise<string> {
-        const { command } = input
-
-        if (!command || command.trim().length === 0) {
-            return 'Error: Command string cannot be empty. Please provide a valid command.'
-        }
-
-        const baseCommandName = command.split(/\s+/)[0]
-        const matchedCommand = this.commandList.find((cmd) => {
-            if (
-                cmd.name === baseCommandName ||
-                cmd.name.startsWith(baseCommandName + '.') ||
-                baseCommandName.startsWith(cmd.name + '.')
-            ) {
-                return true
-            }
-
-            if (cmd.alias && cmd.alias.length > 0) {
-                return cmd.alias.some(
-                    (alias) =>
-                        alias === baseCommandName ||
-                        alias.startsWith(baseCommandName + '.') ||
-                        baseCommandName.startsWith(alias + '.')
-                )
-            }
-
-            return false
-        })
-
-        const session = config.configurable.session
-
-        if (!this.commandAutoExecute && (matchedCommand?.confirm ?? true)) {
-            const validationString = randomString(8)
-
-            await session.send(
-                `模型请求执行指令 ${command}，如需同意，请输入以下字符：${validationString}`
-            )
-            const canRun = await session.prompt()
-
-            if (canRun !== validationString) {
-                await session.send('指令执行失败')
-                return `The command ${command} execution failed, because the user didn't confirm`
-            }
-        }
-
-        try {
-            const result = await session.execute(command, true)
-
-            let shouldSend = this.commandWithSend
-
-            const transformedMessage =
-                await this.ctx.chatluna.messageTransformer.transform(
-                    session,
-                    result,
-                    ''
-                )
-
-            const content =
-                typeof transformedMessage.content === 'string'
-                    ? transformedMessage.content
-                    : transformedMessage.content
-                          .map((part) => {
-                              if ('text' in part) {
-                                  return part.text
-                              }
-                              if ('image_url' in part) {
-                                  const imageUrl =
-                                      typeof part.image_url === 'string'
-                                          ? part.image_url
-                                          : part.image_url.url
-
-                                  if (imageUrl.includes('data:')) {
-                                      shouldSend = true
-                                      return `[image:${imageUrl.substring(0, 12)}]`
-                                  }
-
-                                  return `[image:${imageUrl}] Please use ![image](url) to send image to user`
-                              }
-                              return ''
-                          })
-                          .join('\n\n')
-
-            if (shouldSend) {
-                await session.send(result)
-            }
-
-            return `Successfully executed command "${command}".\nResult: ${content}`
-        } catch (e) {
-            this.ctx.logger.error(e)
-            return `Failed to execute command "${command}". Error: ${e.message}`
-        }
-    }
-}
-
-export function randomString(size: number) {
-    let text = ''
-    const possible =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    for (let i = 0; i < size; i++)
-        text += possible.charAt(Math.floor(Math.random() * possible.length))
-    return text
 }
 
 export function elementToString(elements: h[]) {
