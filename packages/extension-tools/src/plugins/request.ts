@@ -248,12 +248,58 @@ async function requestUrl(
             throw new Error(`Request failed with status code: ${res.status}`)
         }
 
+        const size = Number(res.headers.get('content-length') ?? '')
+        if (Number.isFinite(size) && size > maxOutputLength) {
+            controller.abort()
+            await res.body?.cancel().catch(() => undefined)
+            throw new Error(
+                `Response body too large (${size} bytes > ${maxOutputLength} bytes)`
+            )
+        }
+
+        let text = ''
+        if (res.body != null) {
+            const reader = res.body.getReader()
+            const chunks: Buffer[] = []
+            let total = 0
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read()
+                    if (done) {
+                        break
+                    }
+
+                    if (!value?.byteLength) {
+                        continue
+                    }
+
+                    total += value.byteLength
+                    if (total > maxOutputLength) {
+                        controller.abort()
+                        await reader
+                            .cancel('response exceeds max size')
+                            .catch(() => undefined)
+                        throw new Error(
+                            `Response body too large (${total} bytes > ${maxOutputLength} bytes)`
+                        )
+                    }
+
+                    chunks.push(Buffer.from(value))
+                }
+            } finally {
+                reader.releaseLock()
+            }
+
+            text = Buffer.concat(chunks, total).toString('utf-8')
+        }
+
         return await formatOutput(
             ctx,
             outputDir,
             input.name,
             convertContent(
-                await res.text(),
+                text,
                 input.format,
                 res.headers.get('content-type') ?? ''
             ),
