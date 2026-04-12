@@ -12,7 +12,8 @@ export async function completeConversationTarget(
     presetLane?: string,
     includeArchived = true,
     suffix = 'commands.chatluna.chat.text.options.conversation',
-    allPresetLanes = false
+    allPresetLanes = false,
+    resolveIncludeArchived = includeArchived
 ) {
     const value =
         target == null || target.trim().length < 1 ? undefined : target.trim()
@@ -32,39 +33,41 @@ export async function completeConversationTarget(
         new Set(
             entries.flatMap((item) => [
                 item.conversation.id,
-                String(
-                    allPresetLanes && presetLane == null
-                        ? item.displaySeq
-                        : (item.conversation.seq ?? '')
-                ),
+                String(item.displaySeq),
                 item.conversation.title
             ])
         )
     ).filter((item) => item.length > 0)
 
-    if (expect.length === 0) {
-        return value
-    }
+    if (/^\d+$/.test(value)) {
+        const seq = Number(value)
+        const bySeq = entries.filter((item) => item.displaySeq === seq)
 
-    if (expect.includes(value)) {
-        return value
+        if (bySeq.length === 1) {
+            return bySeq[0].conversation.id
+        }
     }
 
     try {
-        if (
-            (await ctx.chatluna.conversation.resolveCommandConversation(
+        const conversation =
+            await ctx.chatluna.conversation.resolveCommandConversation(
                 session,
                 {
                     targetConversation: value,
                     presetLane,
-                    includeArchived,
+                    includeArchived: resolveIncludeArchived,
                     allPresetLanes
                 }
-            )) != null
-        ) {
-            return value
+            )
+
+        if (conversation != null) {
+            return conversation.id
         }
     } catch {}
+
+    if (expect.length === 0) {
+        return value
+    }
 
     return session.suggest({
         actual: value,

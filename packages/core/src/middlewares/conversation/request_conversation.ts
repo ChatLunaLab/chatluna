@@ -43,7 +43,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const useRoutePresetLane =
                 context.options.presetLane == null &&
                 context.options.conversationId == null &&
-                (context.command == null || context.command.length === 0)
+                context.options.resolvedConversation == null &&
+                context.options.targetConversation == null
             const resolved =
                 await ctx.chatluna.conversation.ensureActiveConversation(
                     session,

@@ -89,18 +89,24 @@ commands:
                 conversation: 目标会话，可使用序号、ID 或标题。
             options:
                 preset: 预设分流。
+                archived: 包含已归档会话。
+                all: 包含已归档会话。
         export:
             description: 将会话导出为 Markdown 记录。
             arguments:
                 conversation: 目标会话，可使用序号、ID 或标题。
             options:
                 preset: 预设分流。
+                archived: 包含已归档会话。
+                all: 包含已归档会话。
         compress:
             description: 在不引用房间的情况下压缩一个会话。
             arguments:
                 conversation: 目标会话，可使用序号、ID 或标题。
             options:
                 preset: 预设分流。
+                archived: 包含已归档会话。
+                all: 包含已归档会话。
             messages:
                 success: '{0} -> {1}, {2}%'
                 skipped: '未执行压缩。{0} -> {1}, {2}%'
@@ -112,6 +118,8 @@ commands:
                 conversation: 目标会话，可使用序号、ID 或标题。
             options:
                 preset: 预设分流。
+                archived: 包含已归档会话。
+                all: 包含已归档会话。
         use:
             description: 调整当前会话的使用配置。
             model:
