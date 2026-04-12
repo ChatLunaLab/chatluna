@@ -89,18 +89,24 @@ commands:
                 conversation: Target conversation by seq, ID, or title.
             options:
                 preset: Preset lane.
+                archived: Include archived conversations.
+                all: Include archived conversations.
         export:
             description: Export a conversation as a markdown transcript.
             arguments:
                 conversation: Target conversation by seq, ID, or title.
             options:
                 preset: Preset lane.
+                archived: Include archived conversations.
+                all: Include archived conversations.
         compress:
             description: Compress a conversation without referencing rooms.
             arguments:
                 conversation: Target conversation by seq, ID, or title.
             options:
                 preset: Preset lane.
+                archived: Include archived conversations.
+                all: Include archived conversations.
             messages:
                 success: '{0} -> {1}, {2}%'
                 skipped: 'Compression skipped. {0} -> {1}, {2}%'
@@ -112,6 +118,8 @@ commands:
                 conversation: Target conversation by seq, ID, or title.
             options:
                 preset: Preset lane.
+                archived: Include archived conversations.
+                all: Include archived conversations.
         use:
             description: Update the active conversation usage settings.
             model:

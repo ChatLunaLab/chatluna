@@ -58,26 +58,33 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     const switchCommand = ctx.command('chatluna.switch <conversation:string>', {
         authority: 1
     })
-    switchCommand.action(async ({ session }, conversation) => {
-        await chain.receiveCommand(
-            session,
-            'conversation_switch',
-            {
-                conversation_manage: {
-                    targetConversation: await completeConversationTarget(
-                        ctx,
-                        session,
-                        conversation,
-                        undefined,
-                        false,
-                        'commands.chatluna.conversation.options.conversation',
-                        true
-                    )
-                }
-            },
-            ctx
-        )
-    })
+    switchCommand
+        .option('preset', '-p <preset:string>')
+        .action(async ({ options, session }, conversation) => {
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
+            await chain.receiveCommand(
+                session,
+                'conversation_switch',
+                {
+                    conversation_manage: {
+                        targetConversation: await completeConversationTarget(
+                            ctx,
+                            session,
+                            conversation,
+                            presetLane,
+                            false,
+                            'commands.chatluna.conversation.options.conversation',
+                            presetLane == null
+                        ),
+                        presetLane
+                    }
+                },
+                ctx
+            )
+        })
 
     ctx.command('chatluna.list', {
         authority: 1
@@ -86,7 +93,12 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         .option('limit', '-l <limit:number>')
         .option('archived', '-a')
         .option('all', '--all')
+        .option('preset', '-P <preset:string>')
         .action(async ({ options, session }) => {
+            const presetLane =
+                options.preset == null || options.preset.trim().length < 1
+                    ? undefined
+                    : options.preset.trim()
             await chain.receiveCommand(
                 session,
                 'conversation_list',
@@ -94,6 +106,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                     page: options.page ?? 1,
                     limit: options.limit ?? 5,
                     conversation_manage: {
+                        presetLane,
                         includeArchived:
                             options.archived === true || options.all === true
                     }
@@ -147,7 +160,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             session,
                             conversation,
                             presetLane,
-                            true,
+                            false,
                             'commands.chatluna.conversation.options.conversation',
                             presetLane == null
                         ),
@@ -166,11 +179,15 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     )
     restoreCommand
         .option('preset', '-p <preset:string>')
+        .option('archived', '-a')
+        .option('all', '--all')
         .action(async ({ options, session }, conversation) => {
             const presetLane =
                 options.preset == null || options.preset.trim().length < 1
                     ? undefined
                     : options.preset.trim()
+            const includeArchived =
+                options.archived === true || options.all === true
             await chain.receiveCommand(
                 session,
                 'conversation_restore',
@@ -181,11 +198,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             session,
                             conversation,
                             presetLane,
-                            true,
+                            includeArchived,
                             'commands.chatluna.conversation.options.conversation',
-                            presetLane == null
+                            presetLane == null,
+                            true
                         ),
-                        presetLane
+                        presetLane,
+                        includeArchived
                     }
                 },
                 ctx
@@ -197,11 +216,15 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     })
     exportCommand
         .option('preset', '-p <preset:string>')
+        .option('archived', '-a')
+        .option('all', '--all')
         .action(async ({ options, session }, conversation) => {
             const presetLane =
                 options.preset == null || options.preset.trim().length < 1
                     ? undefined
                     : options.preset.trim()
+            const includeArchived =
+                options.archived === true || options.all === true
             await chain.receiveCommand(
                 session,
                 'conversation_export',
@@ -212,11 +235,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             session,
                             conversation,
                             presetLane,
-                            true,
+                            includeArchived,
                             'commands.chatluna.conversation.options.conversation',
-                            presetLane == null
+                            presetLane == null,
+                            true
                         ),
-                        presetLane
+                        presetLane,
+                        includeArchived
                     }
                 },
                 ctx
@@ -231,11 +256,15 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     )
     compressCommand
         .option('preset', '-p <preset:string>')
+        .option('archived', '-a')
+        .option('all', '--all')
         .action(async ({ options, session }, conversation) => {
             const presetLane =
                 options.preset == null || options.preset.trim().length < 1
                     ? undefined
                     : options.preset.trim()
+            const includeArchived =
+                options.archived === true || options.all === true
             await chain.receiveCommand(
                 session,
                 'conversation_compress',
@@ -247,11 +276,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             session,
                             conversation,
                             presetLane,
-                            true,
+                            includeArchived,
                             'commands.chatluna.conversation.options.conversation',
-                            presetLane == null
+                            presetLane == null,
+                            true
                         ),
-                        presetLane
+                        presetLane,
+                        includeArchived
                     },
                     i18n_base: 'commands.chatluna.compress.messages'
                 },
@@ -288,11 +319,15 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         authority: 1
     })
         .option('preset', '-p <preset:string>')
+        .option('archived', '-a')
+        .option('all', '--all')
         .action(async ({ options, session }, conversation) => {
             const presetLane =
                 options.preset == null || options.preset.trim().length < 1
                     ? undefined
                     : options.preset.trim()
+            const includeArchived =
+                options.archived === true || options.all === true
             await chain.receiveCommand(
                 session,
                 'conversation_delete',
@@ -303,11 +338,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                             session,
                             conversation,
                             presetLane,
-                            true,
+                            includeArchived,
                             'commands.chatluna.conversation.options.conversation',
-                            presetLane == null
+                            presetLane == null,
+                            true
                         ),
-                        presetLane
+                        presetLane,
+                        includeArchived
                     }
                 },
                 ctx

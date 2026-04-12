@@ -1555,8 +1555,6 @@ export class ConversationService {
         }
 
         const target = options.targetConversation?.trim()
-        const useDisplaySeq =
-            options.allPresetLanes === true && options.presetLane == null
 
         if (target == null || target.length === 0) {
             return resolved.conversation ?? null
@@ -1576,11 +1574,9 @@ export class ConversationService {
 
         if (/^\d+$/.test(target)) {
             const seq = Number(target)
-            const bySeq = useDisplaySeq
-                ? entries
-                      .filter((item) => item.displaySeq === seq)
-                      .map((item) => item.conversation)
-                : conversations.filter((c) => c.seq === seq)
+            const bySeq = entries
+                .filter((item) => item.displaySeq === seq)
+                .map((item) => item.conversation)
             if (bySeq.length === 1) {
                 return bySeq[0]
             }
@@ -1618,29 +1614,12 @@ export class ConversationService {
             ...options,
             bindingKey: resolved.bindingKey,
             query: normalized,
-            exactId: target,
-            seq:
-                /^\d+$/.test(target) && !useDisplaySeq
-                    ? Number(target)
-                    : undefined
+            exactId: target
         })
 
         const globalById = globalMatches.find((c) => c.id === target)
         if (globalById != null) {
             return globalById
-        }
-
-        if (/^\d+$/.test(target) && !useDisplaySeq) {
-            const seq = Number(target)
-            const globalBySeq = globalMatches.filter((c) => c.seq === seq)
-
-            if (globalBySeq.length === 1) {
-                return globalBySeq[0]
-            }
-
-            if (globalBySeq.length > 1) {
-                throw new Error('Conversation target is ambiguous.')
-            }
         }
 
         const globalExactTitle = globalMatches.filter(

@@ -30,6 +30,8 @@ it('ConversationService resolves routed constraints and preset lanes', async () 
         createdBy: 'admin',
         createdAt: new Date(),
         updatedAt: new Date(),
+        users: null,
+        excludeUsers: null,
         guildId: 'guild',
         routeMode: 'custom',
         routeKey: 'team-alpha',
@@ -49,6 +51,8 @@ it('ConversationService resolves routed constraints and preset lanes', async () 
         createdBy: 'admin',
         createdAt: new Date(),
         updatedAt: new Date(),
+        users: null,
+        excludeUsers: null,
         defaultPreset: 'constraint-default-preset',
         defaultChatMode: 'chat-mode-x',
         fixedModel: null,
@@ -89,6 +93,8 @@ it('ConversationService gives fixed preset precedence over preset lane', async (
         createdBy: 'admin',
         createdAt: new Date(),
         updatedAt: new Date(),
+        users: null,
+        excludeUsers: null,
         fixedPreset: 'fixed-preset'
     }
 
@@ -421,7 +427,7 @@ it('ConversationService ensureActiveConversation respects personal default group
     assert.equal(resolved.conversation.seq, 1)
 })
 
-it('ConversationService switches and resolves friendly conversation targets within the same binding', async () => {
+it('ConversationService resolves numeric conversation targets by visible list order', async () => {
     const older = createConversation({
         id: 'conversation-old',
         seq: 1,
@@ -472,7 +478,7 @@ it('ConversationService switches and resolves friendly conversation targets with
     })
     const binding = database.tables.chatluna_binding[0] as BindingRecord
 
-    assert.equal(bySeq.id, 'conversation-new')
+    assert.equal(bySeq.id, 'conversation-old')
     assert.equal(byId.id, 'conversation-old')
     assert.equal(byTitle.id, 'conversation-new')
     assert.equal(byPartialTitle.id, 'conversation-new')
@@ -820,6 +826,7 @@ it('ConversationService records compression metadata and use rejects fixed field
         id: 'summary',
         conversationId: conversation.id,
         text: 'compressed summary',
+        content: await gzipEncode(JSON.stringify('compressed summary')),
         name: 'infinite_context'
     })
     const { service } = await createService({
@@ -1172,6 +1179,7 @@ it('ConversationService emits conversation lifecycle events for switch archive r
                 createMessage({
                     id: 'summary-message',
                     conversationId: next.id,
+                    content: await gzipEncode(JSON.stringify('summary')),
                     name: 'infinite_context',
                     text: 'summary'
                 }) as unknown as TableRow

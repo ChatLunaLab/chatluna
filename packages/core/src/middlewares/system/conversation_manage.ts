@@ -134,6 +134,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_switch', async (session, context) => {
         const targetConversation =
             context.options.conversation_manage?.targetConversation
+        const presetLane = context.options.conversation_manage?.presetLane
 
         if (targetConversation == null) {
             context.message = session.text(
@@ -146,7 +147,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const conversation =
                 await ctx.chatluna.conversation.switchConversation(session, {
                     targetConversation,
-                    allPresetLanes: true
+                    presetLane,
+                    allPresetLanes: presetLane == null
                 })
 
             context.options.conversationId = conversation.id
@@ -171,17 +173,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_list', async (session, context) => {
         const page = context.options.page ?? 1
         const limit = context.options.limit ?? 5
+        const presetLane = context.options.conversation_manage?.presetLane
         const includeArchived =
             context.options.conversation_manage?.includeArchived === true
         const resolved = await ctx.chatluna.conversation.getCurrentConversation(
             session,
             {
-                useRoutePresetLane: true
+                presetLane,
+                useRoutePresetLane: presetLane == null
             }
         )
         const conversations =
             await ctx.chatluna.conversation.listConversationEntries(session, {
-                allPresetLanes: true,
+                presetLane,
+                allPresetLanes: presetLane == null,
                 includeArchived
             })
 
@@ -212,7 +217,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         })
 
-        const key = `${getBaseBindingKey(resolved.bindingKey)}:all`
+        const key = `${presetLane == null ? getBaseBindingKey(resolved.bindingKey) : resolved.bindingKey}:${includeArchived ? 'all' : 'active'}`
         await pagination.push(conversations, key)
         context.message = await pagination.getFormattedPage(page, limit, key)
         return ChainMiddlewareRunStatus.STOP
@@ -282,12 +287,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_delete', async (session, context) => {
         try {
             const presetLane = context.options.conversation_manage?.presetLane
+            const includeArchived =
+                context.options.conversation_manage?.includeArchived === true
             const conversation =
                 await ctx.chatluna.conversation.deleteConversation(session, {
                     conversationId: context.options.conversationId,
                     targetConversation:
                         context.options.conversation_manage?.targetConversation,
                     presetLane,
+                    includeArchived: includeArchived || undefined,
                     allPresetLanes: presetLane == null
                 })
 
@@ -374,11 +382,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         try {
             const presetLane = context.options.conversation_manage?.presetLane
+            const includeArchived =
+                context.options.conversation_manage?.includeArchived === true
             const result = await ctx.chatluna.conversation.archiveConversation(
                 session,
                 {
                     targetConversation,
                     presetLane,
+                    includeArchived: includeArchived || undefined,
                     allPresetLanes: presetLane == null
                 }
             )
@@ -407,12 +418,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         try {
             const presetLane = context.options.conversation_manage?.presetLane
+            const includeArchived =
+                context.options.conversation_manage?.includeArchived === true
             const conversation =
                 await ctx.chatluna.conversation.reopenConversation(session, {
                     targetConversation,
                     presetLane,
                     allPresetLanes: presetLane == null,
-                    includeArchived: true
+                    includeArchived: includeArchived || undefined
                 })
 
             context.options.conversationId = conversation.id
@@ -439,13 +452,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         try {
             const presetLane = context.options.conversation_manage?.presetLane
+            const includeArchived =
+                context.options.conversation_manage?.includeArchived === true
             const result = await ctx.chatluna.conversation.exportConversation(
                 session,
                 {
                     targetConversation,
                     presetLane,
                     allPresetLanes: presetLane == null,
-                    includeArchived: true
+                    includeArchived: includeArchived || undefined
                 }
             )
 
@@ -721,6 +736,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const key =
             context.options.i18n_base ?? 'commands.chatluna.compress.messages'
         const presetLane = context.options.conversation_manage?.presetLane
+        const includeArchived =
+            context.options.conversation_manage?.includeArchived === true
         const resolved = await ctx.chatluna.conversation.resolveContext(
             session,
             { presetLane, conversationId: context.options.conversationId }
@@ -739,9 +756,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                           targetConversation,
                           conversationId: context.options.conversationId,
                           permission: 'manage',
-                          includeArchived:
-                              context.options.conversation_manage
-                                  ?.includeArchived === true
+                          includeArchived: includeArchived || undefined
                       }
                   )
                 : null

@@ -31,8 +31,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const targetConversation = getTargetConversation(context)
             const useRoutePresetLane =
                 presetLane == null &&
-                targetConversation == null &&
-                (context.command == null || context.command.length === 0)
+                context.options.conversationId == null &&
+                context.options.resolvedConversation == null &&
+                targetConversation == null
 
             context.options.presetLane = presetLane
 
