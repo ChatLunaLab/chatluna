@@ -205,6 +205,7 @@ export type AgentObservation =
 
 export interface ToolMask {
     mode: 'all' | 'allow' | 'deny'
+    tools?: string[]
     allow: string[]
     deny: string[]
     toolCallMask?: ToolMask
@@ -310,6 +311,10 @@ export class MessageQueue {
 
 export function applyToolMask(name: string, mask?: ToolMask) {
     if (!mask || mask.mode === 'all') {
+        return true
+    }
+
+    if (mask.tools && !mask.tools.includes(name)) {
         return true
     }
 
