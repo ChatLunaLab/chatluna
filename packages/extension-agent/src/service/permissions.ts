@@ -480,15 +480,15 @@ export class ChatLunaAgentPermissionService {
 
 function buildToolMask(allNames: string[], allow: string[]): ToolMask {
     if (allow.length >= allNames.length) {
-        return { mode: 'all', allow: [], deny: [] }
+        return { mode: 'all', tools: allNames, allow: [], deny: [] }
     }
 
     const deny = allNames.filter((name) => !allow.includes(name))
     if (allow.length <= deny.length) {
-        return { mode: 'allow', allow, deny: [] }
+        return { mode: 'allow', tools: allNames, allow, deny: [] }
     }
 
-    return { mode: 'deny', allow: [], deny }
+    return { mode: 'deny', tools: allNames, allow: [], deny }
 }
 
 function matchRule(name: string, rule: PermissionRule) {

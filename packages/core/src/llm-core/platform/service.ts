@@ -208,16 +208,19 @@ export class PlatformService {
 
     getFilteredTools(mask: ToolMask) {
         const allNames = Object.keys(this._tools)
+        const names = mask.tools
+            ? allNames.filter((name) => mask.tools.includes(name))
+            : allNames
 
         if (mask.mode === 'all') {
-            return allNames
+            return names
         }
 
         if (mask.mode === 'allow') {
-            return allNames.filter((name) => mask.allow.includes(name))
+            return names.filter((name) => mask.allow.includes(name))
         }
 
-        return allNames.filter((name) => !mask.deny.includes(name))
+        return names.filter((name) => !mask.deny.includes(name))
     }
 
     registerToolMaskResolver(name: string, resolver: ToolMaskResolver) {
