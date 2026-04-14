@@ -16,7 +16,7 @@ export interface Config {
     isReplyWithAt: boolean
     replyQuoteThreshold?: number
     allowQuoteReply: boolean
-    proxyAddress: string
+    proxyAddress?: string
     isProxy: boolean
     outputMode: string
     sendThinkingMessage: boolean

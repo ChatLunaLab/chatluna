@@ -72,4 +72,4 @@ $inner:
           $desc: 是否启用代理。启用后，ChatLuna 全家桶插件的网络请求将使用此代理。
           $inner:
               - true
-      proxyAddress: 网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。如不填写，将尝试使用 Koishi 全局配置中的代理设置。
+      proxyAddress: 网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。若为空，将尝试使用 Koishi 全局配置中的代理设置。

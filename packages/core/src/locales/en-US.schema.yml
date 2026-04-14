@@ -71,4 +71,4 @@ $inner:
           $desc: Enable proxy for ChatLuna family plugin network requests.
           $inner:
               - true
-      proxyAddress: Set proxy address for network requests. Falls back to Koishi global proxy settings if empty.
+      proxyAddress: Set proxy address for network requests. Falls back to Koishi global proxy settings if cleared.
