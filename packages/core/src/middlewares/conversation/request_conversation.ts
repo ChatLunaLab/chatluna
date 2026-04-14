@@ -45,7 +45,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     session,
                     {
                         conversationId:
-                            context.options.conversationId ?? undefined,
+                            context.options.conversation?.conversationId ??
+                            context.options.conversation?.conversation?.id,
                         bindingKey: context.options.conversation?.bindingKey,
                         presetLane: context.options.conversation?.presetLane,
                         useRoutePresetLane: false
@@ -53,7 +54,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             const conversation = resolved.conversation
 
-            context.options.conversationId = conversation.id
             context.options.conversation = resolved
 
             const presetTemplate = ctx.chatluna.preset.getPreset(

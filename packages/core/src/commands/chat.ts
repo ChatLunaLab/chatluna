@@ -14,10 +14,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .option('type', '-t <type: string>')
         .action(async ({ options, session }, message) => {
             const renderType = options.type ?? config.outputMode
-            const presetLane =
-                options.preset == null || options.preset.trim().length < 1
-                    ? undefined
-                    : options.preset.trim()
+            const presetLane = options.preset?.trim() || undefined
             const allPresetLanes = presetLane == null
 
             if (
@@ -35,10 +32,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 {
                     message: elements,
                     targetConversation:
-                        options.conversation == null ||
-                        options.conversation.trim().length < 1
-                            ? undefined
-                            : options.conversation.trim(),
+                        options.conversation?.trim() || undefined,
                     allPresetLanes,
                     presetLane,
                     renderOptions: {
@@ -62,10 +56,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 {
                     message: elements,
                     targetConversation:
-                        options.conversation == null ||
-                        options.conversation.trim().length < 1
-                            ? undefined
-                            : options.conversation.trim(),
+                        options.conversation?.trim() || undefined,
                     allPresetLanes: true,
                     renderOptions: {
                         session,
@@ -86,10 +77,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'stop_chat',
                 {
                     targetConversation:
-                        options.conversation == null ||
-                        options.conversation.trim().length < 1
-                            ? undefined
-                            : options.conversation.trim(),
+                        options.conversation?.trim() || undefined,
                     allPresetLanes: true
                 },
                 ctx
@@ -107,10 +95,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 {
                     message: elements,
                     targetConversation:
-                        options.conversation == null ||
-                        options.conversation.trim().length < 1
-                            ? undefined
-                            : options.conversation.trim(),
+                        options.conversation?.trim() || undefined,
                     allPresetLanes: true,
                     renderOptions: {
                         split: config.splitMessage,

@@ -1,7 +1,19 @@
 import { Context } from 'koishi'
 import { Config } from '../../config'
-import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../../chains/chain'
+import type { ConversationResolution } from '../../services/conversation_types'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
+
+function getTargetConversation(context: ChainMiddlewareContext) {
+    return (
+        context.options.conversation_manage?.targetConversation ??
+        context.options.targetConversation
+    )
+}
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -10,56 +22,44 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'stop_chat') return ChainMiddlewareRunStatus.SKIPPED
 
-            const conversationId =
-                context.options.conversationId ??
-                context.options.conversation?.conversation?.id
-            const conversation = (
-                await ctx.chatluna.conversation.resolveConversation(session, {
-                    conversationId,
-                    presetLane: context.options.presetLane,
-                    allPresetLanes: context.options.allPresetLanes,
-                    permission: 'manage',
-                    useRoutePresetLane:
-                        context.options.presetLane == null &&
-                        conversationId == null,
-                    mode: 'target'
-                })
-            ).conversation
+            const current = context.options.conversation
+            const targetConversation = getTargetConversation(context)
+            const resolved =
+                current?.constraint != null && current?.bindingKey != null
+                    ? (current as ConversationResolution)
+                    : await ctx.chatluna.conversation.resolveConversation(
+                          session,
+                          {
+                              targetConversation,
+                              presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
+                              permission: 'manage',
+                              useRoutePresetLane:
+                                  context.options.presetLane == null &&
+                                  targetConversation == null,
+                              mode: 'target'
+                          }
+                      )
+            const conversation = resolved.conversation
 
             if (conversation == null) {
                 context.message = session.text('.no_active_chat')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const resolvedContext =
-                await ctx.chatluna.conversation.resolveConversation(session, {
-                    conversationId: conversation.id,
-                    presetLane: context.options.presetLane,
-                    bindingKey: conversation.bindingKey,
-                    mode: 'context'
-                })
-
             if (
-                resolvedContext.constraint.manageMode === 'admin' &&
+                resolved.constraint.manageMode === 'admin' &&
                 !(await checkAdmin(session))
             ) {
                 context.message = session.text('.stop_failed')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            if (resolvedContext.constraint.lockConversation) {
+            if (resolved.constraint.lockConversation) {
                 context.message = session.text('.stop_failed')
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            context.options.conversationId = conversation.id
-            context.options.conversation = {
-                ...context.options.conversation,
-                ...resolvedContext,
-                conversation,
-                conversationId: conversation.id,
-                mode: context.options.conversation?.mode ?? 'target'
-            }
             const status =
                 ctx.chatluna.conversationRuntime.stopConversationRequest(
                     conversation.id

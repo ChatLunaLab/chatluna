@@ -1,11 +1,16 @@
 /// <reference types="mocha" />
 
+import { createHash } from 'crypto'
 import { assert } from 'chai'
 import { ChainMiddlewareRunStatus, ChatChain } from '../src/chains/chain'
+import { apply as applyRead } from '../src/middlewares/chat/read_chat_message'
+import { apply as applyMessageDelay } from '../src/middlewares/chat/message_delay'
+import { apply as applyTimeLimitSave } from '../src/middlewares/chat/chat_time_limit_save'
 import { apply as applyResolve } from '../src/middlewares/conversation/resolve_conversation'
 import { apply as applyRequest } from '../src/middlewares/conversation/request_conversation'
 import { apply as applyManage } from '../src/middlewares/system/conversation_manage'
 import { apply as applyLifecycle } from '../src/middlewares/system/lifecycle'
+import { ConversationResolutionError } from '../src/services/conversation_types'
 import {
     createConfig,
     createConversation,
@@ -129,6 +134,73 @@ it('request_conversation inherits active preset lane for explicit commands witho
     }
 })
 
+it('request_conversation uses resolved conversation state instead of legacy top-level ids', async () => {
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        let opts: any
+
+        ctx.chatluna.conversation.ensureActiveConversation = async (
+            _session,
+            value
+        ) => {
+            opts = value
+            throw new Error('stop-after-ensure')
+        }
+
+        applyRequest(
+            ctx as never,
+            {
+                streamResponse: false,
+                splitMessage: false
+            } as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        try {
+            await run!(session, {
+                command: 'chat',
+                options: {
+                    conversationId: 'legacy-conversation',
+                    conversation: {
+                        conversationId: 'resolved-conversation',
+                        bindingKey: 'shared:discord:bot:guild',
+                        presetLane: 'helper'
+                    },
+                    inputMessage: {
+                        content: 'hello'
+                    }
+                }
+            })
+            assert.fail('Expected middleware to stop after ensure.')
+        } catch (err) {
+            assert.match(String(err), /stop-after-ensure/)
+        }
+
+        assert.equal(opts.conversationId, 'resolved-conversation')
+        assert.equal(opts.bindingKey, 'shared:discord:bot:guild')
+        assert.equal(opts.presetLane, 'helper')
+    } finally {
+        await app.stop()
+    }
+})
+
 it('resolve_conversation restores target suggestions for mistyped explicit targets', async () => {
     const { app, ctx } = await createMemoryService()
 
@@ -214,7 +286,7 @@ it('resolve_conversation restores target-specific ambiguous errors', async () =>
 
         session.text = (key) => key
         ctx.chatluna.conversation.resolveConversation = async () => {
-            throw new Error('Conversation target is ambiguous.')
+            throw new ConversationResolutionError('ambiguous_target')
         }
 
         applyResolve(
@@ -250,6 +322,188 @@ it('resolve_conversation restores target-specific ambiguous errors', async () =>
             state.message,
             'chatluna.conversation.messages.target_ambiguous'
         )
+    } finally {
+        await app.stop()
+    }
+})
+
+it('resolve_conversation prefers pre-resolved conversation state over legacy top-level ids', async () => {
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        let opts: any
+
+        ctx.chatluna.conversation.resolveConversation = async (_session, value) => {
+            opts = value
+            return {
+                bindingKey: 'shared:discord:bot:guild',
+                constraint: {
+                    bindingKey: 'shared:discord:bot:guild'
+                },
+                effectiveModel: 'test-platform/test-model',
+                effectivePreset: 'default-preset',
+                effectiveChatMode: 'plugin',
+                conversation: createConversation({
+                    id: 'resolved-conversation'
+                }),
+                conversationId: 'resolved-conversation',
+                mode: 'target'
+            }
+        }
+
+        applyResolve(
+            ctx as never,
+            {} as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const state = {
+            command: 'chat',
+            options: {
+                conversationId: 'stale-conversation',
+                conversation: {
+                    conversationId: 'resolved-conversation'
+                }
+            }
+        }
+        const status = await run!(session, state)
+
+        assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+        assert.equal(opts.mode, 'target')
+        assert.equal(opts.conversationId, 'resolved-conversation')
+        assert.equal(
+            state.options.conversation.conversationId,
+            'resolved-conversation'
+        )
+    } finally {
+        await app.stop()
+    }
+})
+
+it('resolve_conversation maps outside-route errors by code', async () => {
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+
+        session.text = (key) => key
+        ctx.chatluna.conversation.resolveConversation = async () => {
+            throw new ConversationResolutionError('target_outside_route')
+        }
+
+        applyResolve(
+            ctx as never,
+            {} as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const state = {
+            command: 'conversation_restore',
+            options: {
+                conversation_manage: {
+                    targetConversation: 'conversation-1'
+                }
+            }
+        }
+        const status = await run!(session, state)
+
+        assert.equal(status, ChainMiddlewareRunStatus.STOP)
+        assert.equal(
+            state.message,
+            'chatluna.conversation.messages.target_outside_route'
+        )
+    } finally {
+        await app.stop()
+    }
+})
+
+it('transform_chat_message continues when conversation resolution stopped earlier', async () => {
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        let calls = 0
+
+        ctx.chatluna.messageTransformer.transform = async () => {
+            calls += 1
+            return 'unexpected'
+        }
+
+        applyRead(
+            ctx as never,
+            {
+                includeQuoteReply: false,
+                attachForwardMsgIdToContext: false
+            } as never,
+            {
+                middleware: (name, fn) => {
+                    if (name === 'transform_chat_message') {
+                        run = fn as never
+                    }
+
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const status = await run!(session, {
+            options: {
+                chatMessage: []
+            }
+        })
+
+        assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+        assert.equal(calls, 0)
     } finally {
         await app.stop()
     }
@@ -453,7 +707,6 @@ it('conversation_switch accepts resolved direct conversation ids', async () => {
 
         assert.equal(status, ChainMiddlewareRunStatus.STOP)
         assert.equal(conversationId, 'conversation-direct')
-        assert.equal(state.options.conversationId, 'conversation-1')
         assert.equal(
             state.message,
             'chatluna.conversation.messages.switch_success:First Topic,1,conversation-1'
@@ -670,7 +923,7 @@ it('conversation_switch prefers explicit target over preexisting chain conversat
     }
 })
 
-it('conversation_switch prefers explicit target over preexisting chain conversationId', async () => {
+it('conversation_switch prefers explicit target over preexisting resolved conversation ids', async () => {
     const { app, ctx } = await createMemoryService()
 
     try {
@@ -745,7 +998,9 @@ it('conversation_switch prefers explicit target over preexisting chain conversat
         }
 
         const handled = await chain.receiveCommand(session, 'conversation_switch', {
-            conversationId: 'conversation-direct',
+            conversation: {
+                conversationId: 'conversation-direct'
+            },
             conversation_manage: {
                 targetConversation: 'conversation-target'
             }
@@ -759,6 +1014,125 @@ it('conversation_switch prefers explicit target over preexisting chain conversat
         assert.deepEqual(sent, [
             'chatluna.conversation.messages.switch_success:Target Topic,2,conversation-target'
         ])
+    } finally {
+        await app.stop()
+    }
+})
+
+it('message_delay uses the resolved conversation only', async () => {
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        let appendedId: string | undefined
+
+        ctx.chatluna.conversationRuntime.appendPendingMessage = async (id) => {
+            appendedId = id
+            return true
+        }
+
+        applyMessageDelay(
+            ctx as never,
+            {
+                messageQueue: true,
+                messageQueueDelay: 0
+            } as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const status = await run!(session, {
+            options: {
+                conversationId: 'legacy-conversation',
+                inputMessage: {
+                    content: 'hello',
+                    name: 'tester'
+                },
+                conversation: {
+                    conversation: createConversation({
+                        id: 'resolved-conversation'
+                    })
+                }
+            }
+        })
+
+        assert.equal(status, ChainMiddlewareRunStatus.STOP)
+        assert.equal(appendedId, 'resolved-conversation')
+    } finally {
+        await app.stop()
+    }
+})
+
+it('chat_time_limit_save uses the resolved conversation only', async () => {
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        let key: string | undefined
+
+        applyTimeLimitSave(
+            ctx as never,
+            {} as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const status = await run!(session, {
+            options: {
+                conversationId: 'legacy-conversation',
+                conversation: {
+                    conversationId: 'resolved-conversation'
+                },
+                chatLimit: {
+                    count: 0
+                },
+                chatLimitCache: {
+                    set: async (value, data) => {
+                        key = value
+                        assert.equal(data.count, 1)
+                    }
+                }
+            }
+        })
+
+        assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+        assert.equal(
+            key,
+            createHash('md5')
+                .update(`resolved-conversation-${session.userId}`)
+                .digest('hex')
+        )
     } finally {
         await app.stop()
     }

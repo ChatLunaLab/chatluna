@@ -5,35 +5,35 @@ import {
     ChatChain
 } from '../../chains/chain'
 import { Config } from '../../config'
+import { ConversationResolutionError } from '../../services/conversation_types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_conversation', async (session, context) => {
             const presetLane = getPresetLane(context)
             const targetConversation = getTargetConversation(context)
+            const explicitConversationId = getExplicitConversationId(context)
+            const hasExplicitTarget =
+                targetConversation != null || explicitConversationId != null
             const conversationId = getConversationId(
-                context,
-                targetConversation != null
+                targetConversation != null,
+                explicitConversationId
             )
-            const targetValue = getTargetValue(context)
-            const includeArchived = getIncludeArchived(context)
-            const useRoutePresetLane =
-                presetLane == null &&
-                conversationId == null &&
-                targetConversation == null
+            const targetValue =
+                targetConversation ?? explicitConversationId ?? conversationId
+            const includeArchived =
+                context.options.conversation_manage?.includeArchived
+            const useRoutePresetLane = presetLane == null && !hasExplicitTarget
 
             context.options.presetLane = presetLane
 
-            let resolved
-
             try {
-                resolved = await ctx.chatluna.conversation.resolveConversation(
+                const resolved =
+                    await ctx.chatluna.conversation.resolveConversation(
                     session,
                     {
                         mode:
-                            conversationId != null || targetConversation != null
-                                ? 'target'
-                                : 'context',
+                            hasExplicitTarget ? 'target' : 'context',
                         conversationId,
                         targetConversation,
                         presetLane,
@@ -42,10 +42,32 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         useRoutePresetLane
                     }
                 )
+
+                if (
+                    hasExplicitTarget &&
+                    resolved.conversation == null
+                ) {
+                    context.message =
+                        targetValue == null
+                            ? getNotFoundMessage(session, context)
+                            : await getTargetNotFoundMessage(
+                                  ctx,
+                                  session,
+                                  context,
+                                  targetValue,
+                                  presetLane,
+                                  includeArchived
+                              )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                context.options.conversation = resolved
+
+                return ChainMiddlewareRunStatus.CONTINUE
             } catch (error) {
                 if (
-                    error instanceof Error &&
-                    error.message === 'Conversation target is ambiguous.'
+                    error instanceof ConversationResolutionError &&
+                    error.code === 'ambiguous_target'
                 ) {
                     context.message = session.text(
                         'chatluna.conversation.messages.target_ambiguous'
@@ -54,9 +76,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 if (
-                    error instanceof Error &&
-                    error.message ===
-                        'Conversation does not belong to current route.'
+                    error instanceof ConversationResolutionError &&
+                    error.code === 'target_outside_route'
                 ) {
                     context.message = session.text(
                         'chatluna.conversation.messages.target_outside_route'
@@ -66,32 +87,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 throw error
             }
-
-            if (
-                (conversationId != null || targetConversation != null) &&
-                resolved.conversation == null
-            ) {
-                context.message =
-                    targetValue == null
-                        ? getNotFoundMessage(session, context)
-                        : await getTargetNotFoundMessage(
-                              ctx,
-                              session,
-                              context,
-                              targetValue,
-                              presetLane,
-                              includeArchived
-                          )
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            context.options.conversation = resolved
-
-            if (resolved.conversationId != null) {
-                context.options.conversationId = resolved.conversationId
-            }
-
-            return ChainMiddlewareRunStatus.CONTINUE
         })
         .after('read_chat_message')
         .before('transform_chat_message')
@@ -123,30 +118,20 @@ function getTargetConversation(context: ChainMiddlewareContext) {
 }
 
 function getConversationId(
-    context: ChainMiddlewareContext,
-    hasTargetConversation: boolean
+    hasTargetConversation: boolean,
+    explicitConversationId?: string
 ) {
     if (hasTargetConversation) {
         return undefined
     }
 
+    return explicitConversationId
+}
+
+function getExplicitConversationId(context: ChainMiddlewareContext) {
     return (
-        context.options.conversationId ??
         context.options.conversation?.conversationId ??
         context.options.conversation?.conversation?.id
-    )
-}
-
-function getIncludeArchived(context: ChainMiddlewareContext) {
-    return context.options.conversation_manage?.includeArchived
-}
-
-function getTargetValue(context: ChainMiddlewareContext) {
-    const targetConversation = getTargetConversation(context)
-
-    return (
-        getConversationId(context, targetConversation != null) ??
-        targetConversation
     )
 }
 

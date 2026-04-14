@@ -41,6 +41,7 @@ import {
     ConversationCompressionRecord,
     ConversationListEntry,
     ConversationRecord,
+    ConversationResolutionError,
     getBaseBindingKey,
     getPresetLane,
     MessageRecord,
@@ -54,6 +55,65 @@ import {
     ConversationArchivePayload,
     ListConversationsOptions
 } from './types'
+
+function matchTargetConversation(
+    target: string,
+    normalized: string,
+    conversations: ConversationRecord[],
+    entries?: ConversationListEntry[]
+) {
+    const pick = (matches: ConversationRecord[]) => {
+        const active = matches.filter((c) => c.status !== 'archived')
+
+        if (active.length === 1) {
+            return active[0]
+        }
+
+        if (active.length > 1) {
+            throw new ConversationResolutionError('ambiguous_target')
+        }
+
+        if (matches.length === 1) {
+            return matches[0]
+        }
+
+        if (matches.length > 1) {
+            throw new ConversationResolutionError('ambiguous_target')
+        }
+
+        return null
+    }
+
+    const byId = conversations.find((c) => c.id === target)
+    if (byId != null) {
+        return byId
+    }
+
+    if (entries != null && /^\d+$/.test(target)) {
+        const seq = Number(target)
+        const bySeq = entries
+            .filter((item) => item.displaySeq === seq)
+            .map((item) => item.conversation)
+        const match = pick(bySeq)
+
+        if (match != null) {
+            return match
+        }
+    }
+
+    const exact = pick(
+        conversations.filter((c) => c.title.toLocaleLowerCase() === normalized)
+    )
+    if (exact != null) {
+        return exact
+    }
+
+    return pick(
+        conversations.filter((c) =>
+            c.title.toLocaleLowerCase().includes(normalized)
+        )
+    )
+}
 
 export class ConversationService {
     private readonly _bindingLocks = new Map<string, ObjectLock>()
@@ -249,7 +309,7 @@ export class ConversationService {
         session: Session,
         options: ResolveConversationOptions = {}
     ): Promise<ConversationResolution> {
-        const mode = options.mode ?? 'current'
+        const mode = options.mode ?? 'context'
         const resolved = await this.resolveConversationContext(session, options)
         const resolveTarget = async (conversation: ConversationRecord) => {
             const target = await this.resolveConversationContext(session, {
@@ -268,7 +328,7 @@ export class ConversationService {
             }
         }
 
-        if (mode === 'context' || mode === 'current') {
+        if (mode === 'context') {
             return {
                 ...resolved,
                 mode,
@@ -381,7 +441,7 @@ export class ConversationService {
                 return {
                     ...resolved,
                     mode,
-                    conversationId: options.conversationId,
+                    conversationId: null,
                     conversation: null
                 }
             }
@@ -393,7 +453,7 @@ export class ConversationService {
                 return {
                     ...resolved,
                     mode,
-                    conversationId: options.conversationId,
+                    conversationId: null,
                     conversation: null
                 }
             }
@@ -406,7 +466,7 @@ export class ConversationService {
                 return {
                     ...resolved,
                     mode,
-                    conversationId: options.conversationId,
+                    conversationId: null,
                     conversation: null
                 }
             }
@@ -428,9 +488,7 @@ export class ConversationService {
                     resolved.bindingKey
                 ))
             ) {
-                throw new Error(
-                    'Conversation does not belong to current route.'
-                )
+                throw new ConversationResolutionError('target_outside_route')
             }
 
             return resolveTarget(conversation)
@@ -462,164 +520,27 @@ export class ConversationService {
             includeArchived: options.includeArchived
         })
         const conversations = entries.map((item) => item.conversation)
+        const normalized = target.toLocaleLowerCase()
 
-        conversation = conversations.find((c) => c.id === target) ?? null
+        conversation =
+            matchTargetConversation(target, normalized, conversations, entries) ??
+            null
         if (conversation != null) {
             return resolveTarget(conversation)
-        }
-
-        if (/^\d+$/.test(target)) {
-            const seq = Number(target)
-            const bySeq = entries
-                .filter((item) => item.displaySeq === seq)
-                .map((item) => item.conversation)
-            if (bySeq.length === 1) {
-                return resolveTarget(bySeq[0])
-            }
-
-            if (bySeq.length > 1) {
-                throw new Error('Conversation target is ambiguous.')
-            }
-        }
-
-        const normalized = target.toLocaleLowerCase()
-        const exactTitle = conversations.filter(
-            (c) => c.title.toLocaleLowerCase() === normalized
-        )
-        if (exactTitle.length === 1) {
-            return resolveTarget(exactTitle[0])
-        }
-
-        if (exactTitle.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
-        }
-
-        const partialMatches = conversations.filter((c) =>
-            c.title.toLocaleLowerCase().includes(normalized)
-        )
-
-        if (partialMatches.length === 1) {
-            return resolveTarget(partialMatches[0])
-        }
-
-        if (partialMatches.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
         }
 
         const globalMatches = await this.findAccessibleConversations(session, {
             ...options,
             bindingKey: resolved.bindingKey,
+            includeArchived: options.includeArchived,
             query: normalized,
             exactId: target
         })
 
-        conversation = globalMatches.find((c) => c.id === target) ?? null
+        conversation =
+            matchTargetConversation(target, normalized, globalMatches) ?? null
         if (conversation != null) {
             return resolveTarget(conversation)
-        }
-
-        const globalExactTitle = globalMatches.filter(
-            (c) => c.title.toLocaleLowerCase() === normalized
-        )
-        if (globalExactTitle.length === 1) {
-            return resolveTarget(globalExactTitle[0])
-        }
-
-        if (globalExactTitle.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
-        }
-
-        const globalPartialMatches = globalMatches.filter((c) =>
-            c.title.toLocaleLowerCase().includes(normalized)
-        )
-
-        if (globalPartialMatches.length === 1) {
-            return resolveTarget(globalPartialMatches[0])
-        }
-
-        if (globalPartialMatches.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
-        }
-
-        if (!options.includeArchived) {
-            const archivedEntries = (
-                await this.listConversationEntries(session, {
-                    presetLane: options.presetLane,
-                    allPresetLanes: options.allPresetLanes,
-                    includeArchived: true
-                })
-            ).filter((item) => item.conversation.status === 'archived')
-            const archivedConversations = archivedEntries.map(
-                (item) => item.conversation
-            )
-
-            conversation =
-                archivedConversations.find((c) => c.id === target) ?? null
-            if (conversation != null) {
-                return resolveTarget(conversation)
-            }
-
-            const archivedExactTitle = archivedConversations.filter(
-                (c) => c.title.toLocaleLowerCase() === normalized
-            )
-            if (archivedExactTitle.length === 1) {
-                return resolveTarget(archivedExactTitle[0])
-            }
-
-            if (archivedExactTitle.length > 1) {
-                throw new Error('Conversation target is ambiguous.')
-            }
-
-            const archivedPartialMatches = archivedConversations.filter((c) =>
-                c.title.toLocaleLowerCase().includes(normalized)
-            )
-
-            if (archivedPartialMatches.length === 1) {
-                return resolveTarget(archivedPartialMatches[0])
-            }
-
-            if (archivedPartialMatches.length > 1) {
-                throw new Error('Conversation target is ambiguous.')
-            }
-
-            const globalArchivedMatches = (
-                await this.findAccessibleConversations(session, {
-                    ...options,
-                    bindingKey: resolved.bindingKey,
-                    includeArchived: true,
-                    query: normalized,
-                    exactId: target
-                })
-            ).filter((c) => c.status === 'archived')
-
-            conversation =
-                globalArchivedMatches.find((c) => c.id === target) ?? null
-            if (conversation != null) {
-                return resolveTarget(conversation)
-            }
-
-            const globalArchivedExactTitle = globalArchivedMatches.filter(
-                (c) => c.title.toLocaleLowerCase() === normalized
-            )
-            if (globalArchivedExactTitle.length === 1) {
-                return resolveTarget(globalArchivedExactTitle[0])
-            }
-
-            if (globalArchivedExactTitle.length > 1) {
-                throw new Error('Conversation target is ambiguous.')
-            }
-
-            const globalArchivedPartialMatches = globalArchivedMatches.filter(
-                (c) => c.title.toLocaleLowerCase().includes(normalized)
-            )
-
-            if (globalArchivedPartialMatches.length === 1) {
-                return resolveTarget(globalArchivedPartialMatches[0])
-            }
-
-            if (globalArchivedPartialMatches.length > 1) {
-                throw new Error('Conversation target is ambiguous.')
-            }
         }
 
         return {

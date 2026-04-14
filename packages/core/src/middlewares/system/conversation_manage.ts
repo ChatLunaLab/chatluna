@@ -6,6 +6,7 @@ import {
 } from '../../chains/chain'
 import { Config } from '../../config'
 import {
+    ConversationResolutionError,
     ConversationListEntry,
     ConversationRecord,
     getBaseBindingKey,
@@ -140,7 +141,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
         )
 
-        context.options.conversationId = conversation.id
         context.message = session.text(
             'chatluna.conversation.messages.new_success',
             [
@@ -156,7 +156,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const presetLane = context.options.conversation_manage?.presetLane
         const resolved = context.options.conversation
         const conversationId =
-            context.options.conversationId ?? resolved?.conversationId
+            resolved?.conversationId ?? resolved?.conversation?.id
 
         if (conversationId == null) {
             context.message = session.text(
@@ -173,7 +173,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     allPresetLanes: presetLane == null
                 })
 
-            context.options.conversationId = conversation.id
             context.message = session.text(
                 'chatluna.conversation.messages.switch_success',
                 [
@@ -283,7 +282,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         try {
             const conversation =
                 await ctx.chatluna.conversation.renameConversation(session, {
-                    conversationId: context.options.conversationId,
+                    conversationId:
+                        context.options.conversation?.conversationId ??
+                        context.options.conversation?.conversation?.id,
                     presetLane: context.options.conversation_manage?.presetLane,
                     title
                 })
@@ -313,7 +314,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.conversation_manage?.includeArchived === true
             const conversation =
                 await ctx.chatluna.conversation.deleteConversation(session, {
-                    conversationId: context.options.conversationId,
+                    conversationId:
+                        context.options.conversation?.conversationId ??
+                        context.options.conversation?.conversation?.id,
                     presetLane,
                     includeArchived: includeArchived || undefined,
                     allPresetLanes: presetLane == null
@@ -368,7 +371,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     await ctx.chatluna.conversation.updateConversationUsage(
                         session,
                         {
-                            conversationId: context.options.conversationId,
+                            conversationId:
+                                context.options.conversation?.conversationId ??
+                                context.options.conversation?.conversation?.id,
                             presetLane:
                                 context.options.conversation_manage?.presetLane,
                             [fieldMap.optKey]:
@@ -472,7 +477,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     includeArchived: includeArchived || undefined
                 })
 
-            context.options.conversationId = conversation.id
             context.message = session.text(
                 'chatluna.conversation.messages.restore_success',
                 [
@@ -906,18 +910,24 @@ function formatConversationError(
     error: Error,
     action?: string
 ) {
-    if (error.message === 'Conversation not found.') {
-        return session.text('chatluna.conversation.messages.target_not_found')
-    }
-
-    if (error.message === 'Conversation target is ambiguous.') {
+    if (
+        error instanceof ConversationResolutionError &&
+        error.code === 'ambiguous_target'
+    ) {
         return session.text('chatluna.conversation.messages.target_ambiguous')
     }
 
-    if (error.message === 'Conversation does not belong to current route.') {
+    if (
+        error instanceof ConversationResolutionError &&
+        error.code === 'target_outside_route'
+    ) {
         return session.text(
             'chatluna.conversation.messages.target_outside_route'
         )
+    }
+
+    if (error.message === 'Conversation not found.') {
+        return session.text('chatluna.conversation.messages.target_not_found')
     }
 
     if (

@@ -169,9 +169,22 @@ export interface ResolvedConversationContext {
 
 export type ConversationResolveMode =
     | 'context'
-    | 'current'
     | 'active'
     | 'target'
+
+export type ConversationResolutionErrorCode =
+    | 'ambiguous_target'
+    | 'target_outside_route'
+
+export class ConversationResolutionError extends Error {
+    constructor(public readonly code: ConversationResolutionErrorCode) {
+        super(
+            code === 'ambiguous_target'
+                ? 'Conversation target is ambiguous.'
+                : 'Conversation does not belong to current route.'
+        )
+    }
+}
 
 export interface ResolveConversationOptions {
     mode?: ConversationResolveMode
@@ -187,7 +200,7 @@ export interface ResolveConversationOptions {
 
 export interface ConversationResolution extends ResolvedConversationContext {
     mode: ConversationResolveMode
-    conversationId?: string | null
+    conversationId: string | null
 }
 
 export function getBaseBindingKey(bindingKey: string) {

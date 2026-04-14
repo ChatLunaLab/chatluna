@@ -49,8 +49,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const { inputMessage } = context.options
             const resolved = context.options.conversation
             const conversation = resolved?.conversation
-            const conversationId =
-                conversation?.id ?? context.options.conversationId
+            const conversationId = conversation?.id
 
             if (conversationId == null || conversation == null) {
                 return ChainMiddlewareRunStatus.CONTINUE

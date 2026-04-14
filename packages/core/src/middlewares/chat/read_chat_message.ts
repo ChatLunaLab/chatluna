@@ -133,7 +133,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const message = context.options.chatMessage
             const resolved = context.options.conversation
 
-            if (message == null) {
+            if (message == null || resolved == null) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 

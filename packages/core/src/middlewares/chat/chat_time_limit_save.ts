@@ -20,7 +20,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         context: ChainMiddlewareContext
     ) {
         const { chatLimit, chatLimitCache } = context.options
-        const conversationId = context.options.conversationId
+        const conversationId =
+            context.options.conversation?.conversationId ??
+            context.options.conversation?.conversation?.id
 
         if (
             conversationId == null ||

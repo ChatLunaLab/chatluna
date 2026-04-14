@@ -1162,7 +1162,6 @@ export interface ChainMiddlewareContext {
 }
 
 export interface ChainMiddlewareContextOptions {
-    conversationId?: string
     conversation?: ConversationResolution
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any

@@ -6,13 +6,23 @@ import {
     ChainMiddlewareRunStatus,
     type ChatChain
 } from '../../chains/chain'
-import { MessageRecord } from '../../services/conversation_types'
+import {
+    MessageRecord,
+    type ConversationResolution
+} from '../../services/conversation_types'
 import {
     checkAdmin,
     transformMessageContentToElements
 } from 'koishi-plugin-chatluna/utils/koishi'
 
 const MAX_ROLLBACK_HOPS = 1000
+
+function getTargetConversation(context: ChainMiddlewareContext) {
+    return (
+        context.options.conversation_manage?.targetConversation ??
+        context.options.targetConversation
+    )
+}
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -22,28 +32,30 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'rollback') return ChainMiddlewareRunStatus.SKIPPED
 
             const rollbackRound = context.options.rollback_round ?? 1
-            const conversationId =
-                context.options.conversationId ??
-                context.options.conversation?.conversation?.id
-            const conversation = (
-                await ctx.chatluna.conversation.resolveConversation(session, {
-                    conversationId,
-                    presetLane: context.options.presetLane,
-                    allPresetLanes: context.options.allPresetLanes,
-                    permission: 'manage',
-                    useRoutePresetLane:
-                        context.options.presetLane == null &&
-                        conversationId == null,
-                    mode: 'target'
-                })
-            ).conversation
+            const current = context.options.conversation
+            const targetConversation = getTargetConversation(context)
+            const resolved =
+                current?.constraint != null && current?.bindingKey != null
+                    ? (current as ConversationResolution)
+                    : await ctx.chatluna.conversation.resolveConversation(
+                          session,
+                          {
+                              targetConversation,
+                              presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
+                              permission: 'manage',
+                              useRoutePresetLane:
+                                  context.options.presetLane == null &&
+                                  targetConversation == null,
+                              mode: 'target'
+                          }
+                      )
+            const conversation = resolved.conversation
 
             if (conversation == null) {
                 context.message = session.text('.conversation_not_exist')
                 return ChainMiddlewareRunStatus.STOP
             }
-
-            context.options.conversationId = conversation.id
 
             const result =
                 await ctx.chatluna.conversationRuntime.withConversationSync(
@@ -55,7 +67,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             session,
                             context,
                             conversation,
-                            rollbackRound
+                            rollbackRound,
+                            resolved
                         )
                 )
 
@@ -99,7 +112,8 @@ async function rollbackConversation(
     session: Session,
     context: ChainMiddlewareContext,
     conversation: { id: string },
-    rollbackRound: number
+    rollbackRound: number,
+    resolved: ConversationResolution
 ) {
     const current = await ctx.chatluna.conversation.getConversation(
         conversation.id
@@ -111,16 +125,6 @@ async function rollbackConversation(
             msg: session.text('.conversation_not_exist')
         }
     }
-
-    const resolved = await ctx.chatluna.conversation.resolveConversation(
-        session,
-        {
-            conversationId: current.id,
-            presetLane: context.options.presetLane,
-            bindingKey: current.bindingKey,
-            mode: 'context'
-        }
-    )
 
     if (
         resolved.constraint.manageMode === 'admin' &&
