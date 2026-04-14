@@ -737,15 +737,36 @@ export class ConversationService {
                   bindingKey: keys.length === 1 ? keys[0] : { $in: keys }
               })) as ConversationRecord[])
 
-        return conversations
-            .filter(
-                (conversation) =>
-                    conversation.status !== 'deleted' &&
-                    conversation.status !== 'broken' &&
-                    (options.includeArchived ||
-                        conversation.status !== 'archived')
-            )
-            .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))
+        const filtered = conversations.filter(
+            (conversation) =>
+                conversation.status !== 'deleted' &&
+                conversation.status !== 'broken' &&
+                (options.includeArchived || conversation.status !== 'archived')
+        )
+        const merged =
+            new Set(filtered.map((conversation) => conversation.bindingKey))
+                .size > 1
+
+        return filtered.sort((a, b) => {
+            if (merged) {
+                const key = a.bindingKey.localeCompare(b.bindingKey)
+                if (key !== 0) {
+                    return key
+                }
+            }
+
+            const seq = (a.seq ?? 0) - (b.seq ?? 0)
+            if (seq !== 0) {
+                return seq
+            }
+
+            const created = a.createdAt.getTime() - b.createdAt.getTime()
+            if (created !== 0) {
+                return created
+            }
+
+            return a.id.localeCompare(b.id)
+        })
     }
 
     async listConversationEntries(
@@ -753,9 +774,14 @@ export class ConversationService {
         options: ListConversationsOptions = {}
     ): Promise<ConversationListEntry[]> {
         const conversations = await this.listConversations(session, options)
-        return conversations.map((conversation) => ({
+        const merged =
+            new Set(
+                conversations.map((conversation) => conversation.bindingKey)
+            ).size > 1
+
+        return conversations.map((conversation, idx) => ({
             conversation,
-            displaySeq: conversation.seq ?? 0
+            displaySeq: merged ? idx + 1 : (conversation.seq ?? 0)
         }))
     }
 
