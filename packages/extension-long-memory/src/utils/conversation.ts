@@ -17,10 +17,14 @@ export async function getMemoryScope(
         userId: string
     }
 } | null> {
-    const resolved = await ctx.chatluna.conversation.resolveContext(session, {
-        conversationId: options.conversationId,
-        presetLane: options.presetLane
-    })
+    const resolved = await ctx.chatluna.conversation.resolveConversation(
+        session,
+        {
+            conversationId: options.conversationId,
+            presetLane: options.presetLane,
+            mode: 'context'
+        }
+    )
     const conversation = resolved.conversation
 
     if (conversation == null) {

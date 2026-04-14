@@ -85,7 +85,9 @@ it('rollback_chat keeps plain text rollback input as string and runs in sync loc
             message: '',
             options: {
                 rollback_round: 1,
-                resolvedConversation: conversation
+                conversation: {
+                    conversation
+                }
             }
         })
 
@@ -249,7 +251,9 @@ it('rollback_chat keeps history untouched when rebuilding the input fails', asyn
                 message: '',
                 options: {
                     rollback_round: 1,
-                    resolvedConversation: conversation
+                    conversation: {
+                        conversation
+                    }
                 }
             }),
             /transform failed/

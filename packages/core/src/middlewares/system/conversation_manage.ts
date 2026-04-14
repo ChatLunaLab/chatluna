@@ -33,15 +33,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return fn(session, context)
             })
             .after('lifecycle-handle_command')
+            .after('resolve_conversation')
             .before('lifecycle-request_conversation')
     }
 
     middleware('conversation_new', async (session, context) => {
-        const presetLane = context.options.conversation_create?.preset
-        const resolved = await ctx.chatluna.conversation.resolveContext(
-            session,
-            { presetLane }
-        )
+        const presetLane = context.options.presetLane
+        const resolved = context.options.conversation
+        const createPreset = context.options.conversation_create?.preset
+
+        if (resolved == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.target_not_found'
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         if (
             resolved.constraint.manageMode === 'admin' &&
@@ -74,6 +80,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.message = session.text(
                 'chatluna.conversation.messages.fixed_model',
                 [resolved.constraint.fixedModel]
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
+
+        if (
+            createPreset != null &&
+            resolved.constraint.fixedPreset != null &&
+            createPreset !== resolved.constraint.fixedPreset
+        ) {
+            context.message = session.text(
+                'chatluna.conversation.messages.fixed_preset',
+                [resolved.constraint.fixedPreset]
             )
             return ChainMiddlewareRunStatus.STOP
         }
@@ -111,7 +129,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     createModel ??
                     resolved.effectiveModel ??
                     config.defaultModel,
-                preset: resolved.effectivePreset ?? config.defaultPreset,
+                preset:
+                    createPreset ??
+                    resolved.effectivePreset ??
+                    config.defaultPreset,
                 chatMode:
                     createChatMode ??
                     resolved.effectiveChatMode ??
@@ -132,11 +153,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     middleware('conversation_switch', async (session, context) => {
-        const targetConversation =
-            context.options.conversation_manage?.targetConversation
         const presetLane = context.options.conversation_manage?.presetLane
+        const resolved = context.options.conversation
+        const conversationId =
+            context.options.conversationId ?? resolved?.conversationId
 
-        if (targetConversation == null) {
+        if (conversationId == null) {
             context.message = session.text(
                 'chatluna.conversation.messages.target_required'
             )
@@ -146,7 +168,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         try {
             const conversation =
                 await ctx.chatluna.conversation.switchConversation(session, {
-                    targetConversation,
+                    conversationId,
                     presetLane,
                     allPresetLanes: presetLane == null
                 })
@@ -176,13 +198,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const presetLane = context.options.conversation_manage?.presetLane
         const includeArchived =
             context.options.conversation_manage?.includeArchived === true
-        const resolved = await ctx.chatluna.conversation.getCurrentConversation(
-            session,
-            {
-                presetLane,
-                useRoutePresetLane: presetLane == null
-            }
-        )
+        const resolved = context.options.conversation
+
+        if (resolved == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.list_empty'
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
+
         const conversations =
             await ctx.chatluna.conversation.listConversationEntries(session, {
                 presetLane,
@@ -224,14 +248,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     middleware('conversation_current', async (session, context) => {
-        const presetLane = context.options.conversation_manage?.presetLane
-        const resolved = await ctx.chatluna.conversation.getCurrentConversation(
-            session,
-            {
-                presetLane,
-                useRoutePresetLane: presetLane == null
-            }
-        )
+        const resolved = context.options.conversation
+
+        if (resolved == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.current_empty'
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         if (resolved.conversation == null) {
             context.message = session.text(
@@ -260,8 +284,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const conversation =
                 await ctx.chatluna.conversation.renameConversation(session, {
                     conversationId: context.options.conversationId,
-                    targetConversation:
-                        context.options.conversation_manage?.targetConversation,
                     presetLane: context.options.conversation_manage?.presetLane,
                     title
                 })
@@ -292,8 +314,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const conversation =
                 await ctx.chatluna.conversation.deleteConversation(session, {
                     conversationId: context.options.conversationId,
-                    targetConversation:
-                        context.options.conversation_manage?.targetConversation,
                     presetLane,
                     includeArchived: includeArchived || undefined,
                     allPresetLanes: presetLane == null
@@ -378,7 +398,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }
 
     middleware('conversation_archive', async (session, context) => {
-        const targetConversation = pickConversationTarget(context)
+        const conversation = context.options.conversation?.conversation
+
+        if (conversation == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.archive_failed',
+                [
+                    session.text(
+                        'chatluna.conversation.messages.target_not_found'
+                    )
+                ]
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         try {
             const presetLane = context.options.conversation_manage?.presetLane
@@ -387,7 +419,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await ctx.chatluna.conversation.archiveConversation(
                 session,
                 {
-                    targetConversation,
+                    conversationId: conversation.id,
                     presetLane,
                     includeArchived: includeArchived || undefined,
                     allPresetLanes: presetLane == null
@@ -414,7 +446,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     middleware('conversation_restore', async (session, context) => {
-        const targetConversation = pickConversationTarget(context)
+        const current = context.options.conversation?.conversation
+
+        if (current == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.restore_failed',
+                [
+                    session.text(
+                        'chatluna.conversation.messages.target_not_found'
+                    )
+                ]
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         try {
             const presetLane = context.options.conversation_manage?.presetLane
@@ -422,7 +466,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.conversation_manage?.includeArchived === true
             const conversation =
                 await ctx.chatluna.conversation.reopenConversation(session, {
-                    targetConversation,
+                    conversationId: current.id,
                     presetLane,
                     allPresetLanes: presetLane == null,
                     includeArchived: includeArchived || undefined
@@ -448,7 +492,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     middleware('conversation_export', async (session, context) => {
-        const targetConversation = pickConversationTarget(context)
+        const conversation = context.options.conversation?.conversation
+
+        if (conversation == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.export_failed',
+                [
+                    session.text(
+                        'chatluna.conversation.messages.target_not_found'
+                    )
+                ]
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         try {
             const presetLane = context.options.conversation_manage?.presetLane
@@ -457,7 +513,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result = await ctx.chatluna.conversation.exportConversation(
                 session,
                 {
-                    targetConversation,
+                    conversationId: conversation.id,
                     presetLane,
                     allPresetLanes: presetLane == null,
                     includeArchived: includeArchived || undefined
@@ -609,10 +665,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     middleware('conversation_rule_share', async (session, context) => {
         const share = context.options.conversation_rule?.share
+        const resolved = context.options.conversation
+
+        if (resolved == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.target_not_found'
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
 
         if (share == null) {
-            const resolved =
-                await ctx.chatluna.conversation.resolveContext(session)
             context.message = session.text(
                 'chatluna.conversation.messages.rule_share_status',
                 [resolved.constraint.routeMode]
@@ -636,15 +698,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         try {
-            await ctx.chatluna.conversation.updateManagedConstraint(session, {
-                routeMode
-            })
-            const resolved =
-                await ctx.chatluna.conversation.resolveContext(session)
+            const current =
+                await ctx.chatluna.conversation.updateManagedConstraint(session, {
+                    routeMode
+                })
+            const nextRouteMode = current.routeMode
+                ? current.routeMode
+                : (await ctx.chatluna.conversation.resolveConstraint(session))
+                      .routeMode
 
             context.message = session.text(
                 'chatluna.conversation.messages.rule_share_status',
-                [resolved.constraint.routeMode]
+                [nextRouteMode]
             )
         } catch (error) {
             context.message = formatConversationError(session, error, 'share')
@@ -694,10 +759,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     middleware('conversation_rule_show', async (session, context) => {
-        const resolved = await ctx.chatluna.conversation.resolveContext(
-            session,
-            { presetLane: context.options.conversation_manage?.presetLane }
-        )
+        const resolved = context.options.conversation
+
+        if (resolved == null) {
+            context.message = session.text(
+                'chatluna.conversation.messages.target_not_found'
+            )
+            return ChainMiddlewareRunStatus.STOP
+        }
+
         const current =
             await ctx.chatluna.conversation.getManagedConstraint(session)
 
@@ -735,33 +805,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     middleware('conversation_compress', async (session, context) => {
         const key =
             context.options.i18n_base ?? 'commands.chatluna.compress.messages'
-        const presetLane = context.options.conversation_manage?.presetLane
-        const includeArchived =
-            context.options.conversation_manage?.includeArchived === true
-        const resolved = await ctx.chatluna.conversation.resolveContext(
-            session,
-            { presetLane, conversationId: context.options.conversationId }
-        )
-        const targetConversation = pickConversationTarget(
-            context,
-            resolved.conversation
-        )
-        const conversation =
-            targetConversation != null
-                ? await ctx.chatluna.conversation.resolveTargetConversation(
-                      session,
-                      {
-                          presetLane,
-                          allPresetLanes: presetLane == null,
-                          targetConversation,
-                          conversationId: context.options.conversationId,
-                          permission: 'manage',
-                          includeArchived: includeArchived || undefined
-                      }
-                  )
-                : null
+        const resolved = context.options.conversation
+        const conversation = resolved?.conversation ?? null
 
-        if (conversation == null) {
+        if (resolved == null || conversation == null) {
             context.message = session.text(`${key}.no_conversation`)
             return ChainMiddlewareRunStatus.STOP
         }
@@ -808,17 +855,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         return ChainMiddlewareRunStatus.STOP
     })
-}
-
-function pickConversationTarget(
-    context: ChainMiddlewareContext,
-    current?: ConversationRecord | null
-) {
-    return (
-        context.options.conversation_manage?.targetConversation ??
-        context.options.conversationId ??
-        current?.id
-    )
 }
 
 function formatConversationStatus(

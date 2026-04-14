@@ -47,32 +47,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             context.options.messageId = randomUUID()
 
             const { inputMessage } = context.options
-            const conversationId = context.options.conversationId
+            const resolved = context.options.conversation
+            const conversation = resolved?.conversation
+            const conversationId =
+                conversation?.id ?? context.options.conversationId
 
-            if (conversationId == null) {
+            if (conversationId == null || conversation == null) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
-
-            const resolved = await ctx.chatluna.conversation.resolveContext(
-                session,
-                {
-                    conversationId
-                }
-            )
-            const resolvedConversation = resolved.conversation
             const userName = inputMessage.name || 'unknown'
             const messageId = context.options.messageId
 
             if (
-                resolvedConversation?.chatMode === 'plugin' &&
+                conversation.chatMode === 'plugin' &&
                 (await ctx.chatluna.conversationRuntime.appendPendingMessage(
                     conversationId,
-                    createPendingMessage(
-                        session,
-                        resolvedConversation,
-                        inputMessage
-                    ),
-                    resolvedConversation.chatMode
+                    createPendingMessage(session, conversation, inputMessage),
+                    conversation.chatMode
                 ))
             ) {
                 logger.debug(
@@ -81,13 +72,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            const conversation = queues.get(conversationId) ?? {
+            const queue = queues.get(conversationId) ?? {
                 turns: [],
                 inFlight: false
             }
-            queues.set(conversationId, conversation)
+            queues.set(conversationId, queue)
 
-            const tailTurn = conversation.turns[conversation.turns.length - 1]
+            const tailTurn = queue.turns[queue.turns.length - 1]
 
             let turn: MessageTurn
             if (
@@ -101,8 +92,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             } else {
                 const state: MessageTurn['state'] =
-                    conversation.turns.length === 0 &&
-                    config.messageQueueDelay > 0
+                    queue.turns.length === 0 && config.messageQueueDelay > 0
                         ? 'collecting'
                         : 'waiting'
                 turn = {
@@ -110,9 +100,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     userName,
                     state
                 }
-                conversation.turns.push(turn)
+                queue.turns.push(turn)
                 logger.debug(
-                    `Creating new turn for ${conversationId}, messageId: ${messageId}, user: ${userName}, queue: ${conversation.turns.length}`
+                    `Creating new turn for ${conversationId}, messageId: ${messageId}, user: ${userName}, queue: ${queue.turns.length}`
                 )
             }
 
@@ -124,10 +114,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 resetTurnTimeout(ctx, config, conversationId, turn)
             }
 
-            tryStartHeadTurn(conversationId, conversation)
+            tryStartHeadTurn(conversationId, queue)
             return await statusPromise
         })
-        .after('read_chat_message')
+        .after('transform_chat_message')
         .before('lifecycle-handle_command')
 
     const completeTurn = async (conversationId: string) => {

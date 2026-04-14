@@ -1,7 +1,6 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
-import { completeConversationTarget } from '../utils/conversation'
 
 export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     ctx.command('chatluna.conversation', {
@@ -69,16 +68,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 session,
                 'conversation_switch',
                 {
+                    allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: await completeConversationTarget(
-                            ctx,
-                            session,
-                            conversation,
-                            presetLane,
-                            false,
-                            'commands.chatluna.conversation.options.conversation',
-                            presetLane == null
-                        ),
+                        targetConversation:
+                            conversation == null ||
+                            conversation.trim().length < 1
+                                ? undefined
+                                : conversation.trim(),
                         presetLane
                     }
                 },
@@ -154,16 +150,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 session,
                 'conversation_archive',
                 {
+                    allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: await completeConversationTarget(
-                            ctx,
-                            session,
-                            conversation,
-                            presetLane,
-                            false,
-                            'commands.chatluna.conversation.options.conversation',
-                            presetLane == null
-                        ),
+                        targetConversation:
+                            conversation == null ||
+                            conversation.trim().length < 1
+                                ? undefined
+                                : conversation.trim(),
                         presetLane
                     }
                 },
@@ -192,17 +185,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 session,
                 'conversation_restore',
                 {
+                    allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: await completeConversationTarget(
-                            ctx,
-                            session,
-                            conversation,
-                            presetLane,
-                            includeArchived,
-                            'commands.chatluna.conversation.options.conversation',
-                            presetLane == null,
-                            true
-                        ),
+                        targetConversation:
+                            conversation == null ||
+                            conversation.trim().length < 1
+                                ? undefined
+                                : conversation.trim(),
                         presetLane,
                         includeArchived
                     }
@@ -229,17 +218,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 session,
                 'conversation_export',
                 {
+                    allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: await completeConversationTarget(
-                            ctx,
-                            session,
-                            conversation,
-                            presetLane,
-                            includeArchived,
-                            'commands.chatluna.conversation.options.conversation',
-                            presetLane == null,
-                            true
-                        ),
+                        targetConversation:
+                            conversation == null ||
+                            conversation.trim().length < 1
+                                ? undefined
+                                : conversation.trim(),
                         presetLane,
                         includeArchived
                     }
@@ -270,17 +255,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 'conversation_compress',
                 {
                     force: true,
+                    allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: await completeConversationTarget(
-                            ctx,
-                            session,
-                            conversation,
-                            presetLane,
-                            includeArchived,
-                            'commands.chatluna.conversation.options.conversation',
-                            presetLane == null,
-                            true
-                        ),
+                        targetConversation:
+                            conversation == null ||
+                            conversation.trim().length < 1
+                                ? undefined
+                                : conversation.trim(),
                         presetLane,
                         includeArchived
                     },
@@ -332,17 +313,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 session,
                 'conversation_delete',
                 {
+                    allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: await completeConversationTarget(
-                            ctx,
-                            session,
-                            conversation,
-                            presetLane,
-                            includeArchived,
-                            'commands.chatluna.conversation.options.conversation',
-                            presetLane == null,
-                            true
-                        ),
+                        targetConversation:
+                            conversation == null ||
+                            conversation.trim().length < 1
+                                ? undefined
+                                : conversation.trim(),
                         presetLane,
                         includeArchived
                     }

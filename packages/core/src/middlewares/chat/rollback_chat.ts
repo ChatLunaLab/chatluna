@@ -22,60 +22,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'rollback') return ChainMiddlewareRunStatus.SKIPPED
 
             const rollbackRound = context.options.rollback_round ?? 1
-            const hasTarget =
-                context.options.resolvedConversation != null ||
-                context.options.conversationId != null ||
-                context.options.targetConversation != null
-            let conversation = !hasTarget
-                ? null
-                : context.options.resolvedConversation != null
-                  ? await ctx.chatluna.conversation.resolveCommandConversation(
-                        session,
-                        {
-                            conversationId:
-                                context.options.resolvedConversation.id,
-                            presetLane: context.options.presetLane,
-                            allPresetLanes: context.options.allPresetLanes,
-                            permission: 'manage'
-                        }
-                    )
-                  : await ctx.chatluna.conversation.resolveCommandConversation(
-                        session,
-                        {
-                            conversationId: context.options.conversationId,
-                            targetConversation:
-                                context.options.targetConversation,
-                            presetLane: context.options.presetLane,
-                            allPresetLanes: context.options.allPresetLanes,
-                            permission: 'manage'
-                        }
-                    )
-
-            if (conversation == null && !hasTarget) {
-                conversation = (
-                    await ctx.chatluna.conversation.getCurrentConversation(
-                        session,
-                        {
-                            presetLane: context.options.presetLane,
-                            useRoutePresetLane:
-                                context.options.presetLane == null
-                        }
-                    )
-                ).conversation
-
-                if (conversation != null) {
-                    conversation =
-                        await ctx.chatluna.conversation.resolveCommandConversation(
-                            session,
-                            {
-                                conversationId: conversation.id,
-                                presetLane: context.options.presetLane,
-                                allPresetLanes: context.options.allPresetLanes,
-                                permission: 'manage'
-                            }
-                        )
-                }
-            }
+            const conversationId =
+                context.options.conversationId ??
+                context.options.conversation?.conversation?.id
+            const conversation = (
+                await ctx.chatluna.conversation.resolveConversation(session, {
+                    conversationId,
+                    presetLane: context.options.presetLane,
+                    allPresetLanes: context.options.allPresetLanes,
+                    permission: 'manage',
+                    useRoutePresetLane:
+                        context.options.presetLane == null &&
+                        conversationId == null,
+                    mode: 'target'
+                })
+            ).conversation
 
             if (conversation == null) {
                 context.message = session.text('.conversation_not_exist')
@@ -116,6 +77,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return ChainMiddlewareRunStatus.CONTINUE
         })
         .after('lifecycle-handle_command')
+        .after('resolve_conversation')
         .before('lifecycle-request_conversation')
 }
 
@@ -150,11 +112,15 @@ async function rollbackConversation(
         }
     }
 
-    const resolved = await ctx.chatluna.conversation.resolveContext(session, {
-        conversationId: current.id,
-        presetLane: context.options.presetLane,
-        bindingKey: current.bindingKey
-    })
+    const resolved = await ctx.chatluna.conversation.resolveConversation(
+        session,
+        {
+            conversationId: current.id,
+            presetLane: context.options.presetLane,
+            bindingKey: current.bindingKey,
+            mode: 'context'
+        }
+    )
 
     if (
         resolved.constraint.manageMode === 'admin' &&
@@ -171,6 +137,14 @@ async function rollbackConversation(
             status: ChainMiddlewareRunStatus.STOP,
             msg: session.text('.conversation_not_exist')
         }
+    }
+
+    context.options.conversation = {
+        ...context.options.conversation,
+        ...resolved,
+        conversation: current,
+        conversationId: current.id,
+        mode: context.options.conversation?.mode ?? 'target'
     }
 
     await ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(

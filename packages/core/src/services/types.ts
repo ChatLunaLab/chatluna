@@ -4,12 +4,13 @@ import {
     ACLRecord,
     ArchiveRecord,
     BindingRecord,
-    ConstraintPermission,
+    ConversationResolution,
+    ConversationResolveMode,
     ConstraintRecord,
     ConversationRecord,
     MessageRecord,
     MetaRecord,
-    ResolveConversationContextOptions
+    ResolveConversationOptions
 } from './conversation_types'
 import { ChatLunaService } from './chat'
 import {
@@ -137,17 +138,10 @@ export interface ActiveRequest {
     lastDecision?: boolean
 }
 
-export interface ListConversationsOptions extends ResolveConversationContextOptions {
-    includeArchived?: boolean
-    allPresetLanes?: boolean
-}
-
-export interface ResolveTargetConversationOptions extends ResolveConversationContextOptions {
-    targetConversation?: string
-    includeArchived?: boolean
-    permission?: ConstraintPermission
-    allPresetLanes?: boolean
-}
+export interface ListConversationsOptions extends Omit<
+    ResolveConversationOptions,
+    'mode' | 'targetConversation' | 'permission'
+> {}
 
 export interface SerializedMessageRecord extends Omit<
     MessageRecord,
@@ -224,5 +218,11 @@ declare module '@chatluna/shared-prompt-renderer' {
 }
 
 export * from '@chatluna/shared-prompt-renderer'
+
+export type {
+    ConversationResolution,
+    ConversationResolveMode,
+    ResolveConversationOptions
+}
 
 export type { ToolMaskArg, ToolMaskResolver }

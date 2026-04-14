@@ -2,7 +2,6 @@ import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
-import { completeConversationTarget } from '../utils/conversation'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.command('chatluna', {
@@ -35,15 +34,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 '',
                 {
                     message: elements,
-                    targetConversation: await completeConversationTarget(
-                        ctx,
-                        session,
-                        options.conversation,
-                        presetLane,
-                        false,
-                        'commands.chatluna.chat.text.options.conversation',
-                        allPresetLanes
-                    ),
+                    targetConversation:
+                        options.conversation == null ||
+                        options.conversation.trim().length < 1
+                            ? undefined
+                            : options.conversation.trim(),
                     allPresetLanes,
                     presetLane,
                     renderOptions: {
@@ -66,15 +61,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 'rollback',
                 {
                     message: elements,
-                    targetConversation: await completeConversationTarget(
-                        ctx,
-                        session,
-                        options.conversation,
-                        undefined,
-                        false,
-                        'commands.chatluna.chat.text.options.conversation',
-                        true
-                    ),
+                    targetConversation:
+                        options.conversation == null ||
+                        options.conversation.trim().length < 1
+                            ? undefined
+                            : options.conversation.trim(),
                     allPresetLanes: true,
                     renderOptions: {
                         session,
@@ -94,15 +85,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 session,
                 'stop_chat',
                 {
-                    targetConversation: await completeConversationTarget(
-                        ctx,
-                        session,
-                        options.conversation,
-                        undefined,
-                        false,
-                        'commands.chatluna.chat.text.options.conversation',
-                        true
-                    ),
+                    targetConversation:
+                        options.conversation == null ||
+                        options.conversation.trim().length < 1
+                            ? undefined
+                            : options.conversation.trim(),
                     allPresetLanes: true
                 },
                 ctx
@@ -119,15 +106,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 '',
                 {
                     message: elements,
-                    targetConversation: await completeConversationTarget(
-                        ctx,
-                        session,
-                        options.conversation,
-                        undefined,
-                        false,
-                        'commands.chatluna.chat.text.options.conversation',
-                        true
-                    ),
+                    targetConversation:
+                        options.conversation == null ||
+                        options.conversation.trim().length < 1
+                            ? undefined
+                            : options.conversation.trim(),
                     allPresetLanes: true,
                     renderOptions: {
                         split: config.splitMessage,
@@ -162,7 +145,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 declare module '../chains/chain' {
     interface ChainMiddlewareContextOptions {
         message?: h[]
-        conversationId?: string
         targetConversation?: string
         presetLane?: string
         allPresetLanes?: boolean
