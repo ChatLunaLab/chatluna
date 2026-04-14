@@ -1239,7 +1239,7 @@ export namespace ChatLunaPlugin {
         Schema.union([
             Schema.object({
                 proxyMode: Schema.const('on').required(),
-                proxyAddress: Schema.string().default('')
+                proxyAddress: Schema.string().default('http://127.0.0.1:7897')
             }),
             Schema.object({
                 proxyMode: Schema.const('off').required()
