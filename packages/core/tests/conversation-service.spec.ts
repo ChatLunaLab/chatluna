@@ -457,7 +457,7 @@ it('ConversationService ensureActiveConversation respects personal default group
     assert.equal(resolved.conversation.seq, 1)
 })
 
-it('ConversationService resolves numeric conversation targets by visible list order', async () => {
+it('ConversationService resolves numeric conversation targets by stable seq order', async () => {
     const older = createConversation({
         id: 'conversation-old',
         seq: 1,
@@ -491,7 +491,7 @@ it('ConversationService resolves numeric conversation targets by visible list or
     const listed = await service.listConversations(createSession())
     assert.deepEqual(
         listed.map((item) => item.id),
-        ['conversation-new', 'conversation-old']
+        ['conversation-old', 'conversation-new']
     )
 
     const bySeq = await service.switchConversation(createSession(), {
@@ -508,7 +508,7 @@ it('ConversationService resolves numeric conversation targets by visible list or
     })
     const binding = database.tables.chatluna_binding[0] as BindingRecord
 
-    assert.equal(bySeq.id, 'conversation-old')
+    assert.equal(bySeq.id, 'conversation-new')
     assert.equal(byId.id, 'conversation-old')
     assert.equal(byTitle.id, 'conversation-new')
     assert.equal(byPartialTitle.id, 'conversation-new')
@@ -536,21 +536,21 @@ it('ConversationService lists and switches preset lanes across canonical and leg
         id: 'conversation-aqua',
         bindingKey: `${canonicalBase}:preset:Aqua`,
         title: 'Aqua',
-        seq: 1,
+        seq: 3,
         lastChatAt: new Date('2026-03-22T00:00:00.000Z')
     })
     const chatgpt = createConversation({
         id: 'conversation-chatgpt',
         bindingKey: `${canonicalBase}:preset:chatgpt`,
         title: 'ChatGPT',
-        seq: 1,
+        seq: 2,
         lastChatAt: new Date('2026-03-23T00:00:00.000Z')
     })
     const sydney = createConversation({
         id: 'conversation-sydney',
         bindingKey: `${canonicalBase}:preset:sydney`,
         title: 'Sydney',
-        seq: 1,
+        seq: 4,
         lastChatAt: new Date('2026-03-24T00:00:00.000Z')
     })
 
@@ -594,23 +594,23 @@ it('ConversationService lists and switches preset lanes across canonical and leg
     assert.deepEqual(
         listed.map((item) => item.id),
         [
-            'conversation-sydney',
+            'conversation-legacy',
             'conversation-chatgpt',
             'conversation-aqua',
-            'conversation-legacy'
+            'conversation-sydney'
         ]
     )
     assert.deepEqual(
         entries.map((item) => [item.displaySeq, item.conversation.id]),
         [
-            [1, 'conversation-sydney'],
+            [1, 'conversation-legacy'],
             [2, 'conversation-chatgpt'],
             [3, 'conversation-aqua'],
-            [4, 'conversation-legacy']
+            [4, 'conversation-sydney']
         ]
     )
     assert.equal(switched.id, 'conversation-chatgpt')
-    assert.equal(legacyBinding?.activeConversationId, 'conversation-legacy')
+    assert.equal(legacyBinding?.activeConversationId, 'conversation-chatgpt')
     assert.equal(laneBinding?.activeConversationId, 'conversation-chatgpt')
     assert.equal(managed?.activePresetLane, 'chatgpt')
 })
@@ -766,7 +766,7 @@ it('ConversationService allows exact id across legacy and canonical route family
     assert.equal(resolved?.id, canonical.id)
 })
 
-it('ConversationService keeps current lane binding untouched when switching across preset lanes', async () => {
+it('ConversationService keeps current lane binding untouched and syncs route binding when switching across preset lanes', async () => {
     const laneA = createConversation({
         id: 'conversation-switch-lane-a',
         bindingKey: 'shared:discord:bot:guild:preset:A'
@@ -804,9 +804,13 @@ it('ConversationService keeps current lane binding untouched when switching acro
     const bindingB = database.tables.chatluna_binding.find(
         (item) => item.bindingKey === laneB.bindingKey
     ) as BindingRecord | undefined
+    const routeBinding = database.tables.chatluna_binding.find(
+        (item) => item.bindingKey === 'shared:discord:bot:guild'
+    ) as BindingRecord | undefined
 
     assert.equal(bindingA?.activeConversationId, laneA.id)
     assert.equal(bindingB?.activeConversationId, laneB.id)
+    assert.equal(routeBinding?.activeConversationId, laneB.id)
 })
 
 it('ConversationService syncs managed preset lane when reopening archived route-family conversation', async () => {
