@@ -11,6 +11,7 @@ import type {
     ConversationRecord,
     ConstraintRecord
 } from '../src/services/conversation_types'
+import { ConversationResolutionError } from '../src/services/conversation_types'
 import { gzipEncode } from '../src/utils/compression'
 import {
     createConversation,
@@ -104,14 +105,25 @@ it('ConversationService gives fixed preset precedence over preset lane', async (
         }
     })
 
-    const resolved = await service.resolveContext(createSession(), {
-        presetLane: 'helper'
+    const resolved = await service.resolveConversation(createSession(), {
+        presetLane: 'helper',
+        mode: 'context'
     })
 
     assert.equal(resolved.effectivePreset, 'fixed-preset')
 })
 
-it('ConversationService resolveContext uses explicit binding key constraints', async () => {
+it('ConversationService defaults resolveConversation mode to context and sets null conversationId', async () => {
+    const { service } = await createService()
+
+    const resolved = await service.resolveConversation(createSession())
+
+    assert.equal(resolved.mode, 'context')
+    assert.equal(resolved.conversation, null)
+    assert.equal(resolved.conversationId, null)
+})
+
+it('ConversationService resolveConversation uses explicit binding key constraints', async () => {
     const remote = createConversation({
         id: 'conversation-remote-binding',
         bindingKey: 'shared:discord:bot:other-guild'
@@ -184,16 +196,19 @@ it('ConversationService resolveContext uses explicit binding key constraints', a
         }
     })
 
-    const resolved = await service.resolveContext(
+    const resolved = await service.resolveConversation(
         createSession({ authority: 1 }),
         {
             conversationId: remote.id,
-            bindingKey: remote.bindingKey
+            bindingKey: remote.bindingKey,
+            mode: 'context'
         }
     )
 
     assert.equal(resolved.bindingKey, remote.bindingKey)
     assert.equal(resolved.conversation?.id, remote.id)
+    assert.equal(resolved.conversationId, remote.id)
+    assert.equal(resolved.mode, 'context')
     assert.equal(resolved.constraint.manageMode, 'anyone')
     assert.equal(resolved.constraint.lockConversation, true)
 })
@@ -208,12 +223,27 @@ it('ConversationService ensureActiveConversation creates conversation and bindin
     assert.equal(resolved.bindingKey, 'shared:discord:bot:guild')
     assert.equal(binding.activeConversationId, resolved.conversation.id)
     assert.equal(conversation.id, resolved.conversation.id)
+    assert.equal(resolved.conversationId, resolved.conversation.id)
+    assert.equal(resolved.mode, 'active')
     assert.equal(conversation.seq, 1)
     assert.equal(conversation.legacyRoomId, null)
     assert.equal(conversation.legacyMeta, null)
     assert.equal(resolved.effectiveModel, 'test-platform/test-model')
     assert.equal(resolved.effectivePreset, 'default-preset')
     assert.equal(resolved.effectiveChatMode, 'plugin')
+})
+
+it('ConversationService returns null conversationId when explicit target conversation is missing', async () => {
+    const { service } = await createService()
+
+    const resolved = await service.resolveConversation(createSession(), {
+        conversationId: 'missing-conversation',
+        mode: 'target'
+    })
+
+    assert.equal(resolved.conversation, null)
+    assert.equal(resolved.conversationId, null)
+    assert.equal(resolved.mode, 'target')
 })
 
 it('ConversationService restores archived current conversation automatically', async () => {
@@ -604,13 +634,91 @@ it('ConversationService allows exact id across preset lanes when allPresetLanes 
         }
     })
 
-    const resolved = await service.resolveCommandConversation(createSession(), {
+    const resolved = await service.resolveConversation(createSession(), {
         conversationId: laneB.id,
         allPresetLanes: true,
-        permission: 'manage'
+        permission: 'manage',
+        mode: 'target'
     })
 
-    assert.equal(resolved?.id, laneB.id)
+    assert.equal(resolved.conversation?.id, laneB.id)
+    assert.equal(resolved.conversationId, laneB.id)
+})
+
+it('ConversationService resolves active preset lane conversation for untargeted command lookups', async () => {
+    const main = createConversation({
+        id: 'conversation-main-lane-command'
+    })
+    const helper = createConversation({
+        id: 'conversation-helper-lane-command',
+        bindingKey: 'shared:discord:bot:guild:preset:helper'
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                main as unknown as TableRow,
+                helper as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: main.bindingKey,
+                    activeConversationId: main.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow,
+                {
+                    bindingKey: helper.bindingKey,
+                    activeConversationId: helper.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ],
+            chatluna_constraint: [
+                {
+                    id: 1,
+                    name: 'managed:discord:bot:guild:guild',
+                    enabled: true,
+                    priority: 1000,
+                    createdBy: 'user',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    platform: 'discord',
+                    selfId: 'bot',
+                    guildId: 'guild',
+                    channelId: null,
+                    direct: false,
+                    users: null,
+                    excludeUsers: null,
+                    routeMode: null,
+                    routeKey: null,
+                    activePresetLane: 'helper',
+                    defaultModel: null,
+                    defaultPreset: null,
+                    defaultChatMode: null,
+                    fixedModel: null,
+                    fixedPreset: null,
+                    fixedChatMode: null,
+                    lockConversation: false,
+                    allowNew: true,
+                    allowSwitch: true,
+                    allowArchive: true,
+                    allowExport: true,
+                    manageMode: 'anyone'
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = (
+        await service.resolveConversation(createSession(), {
+            permission: 'manage',
+            useRoutePresetLane: true,
+            mode: 'target'
+        })
+    ).conversation
+
+    assert.equal(resolved?.id, helper.id)
 })
 
 it('ConversationService allows exact id across legacy and canonical route family', async () => {
@@ -646,11 +754,14 @@ it('ConversationService allows exact id across legacy and canonical route family
         }
     })
 
-    const resolved = await service.resolveCommandConversation(session, {
-        conversationId: canonical.id,
-        allPresetLanes: true,
-        permission: 'manage'
-    })
+    const resolved = (
+        await service.resolveConversation(session, {
+            conversationId: canonical.id,
+            allPresetLanes: true,
+            permission: 'manage',
+            mode: 'target'
+        })
+    ).conversation
 
     assert.equal(resolved?.id, canonical.id)
 })
@@ -820,6 +931,275 @@ it('ConversationService rejects ambiguous friendly conversation targets', async 
     )
 })
 
+it('ConversationService prefers active local exact title matches over archived ones', async () => {
+    const active = createConversation({
+        id: 'conversation-title-active',
+        title: 'Shared Topic'
+    })
+    const archived = createConversation({
+        id: 'conversation-title-archived',
+        title: 'Shared Topic',
+        status: 'archived',
+        archiveId: 'archive-title-exact',
+        archivedAt: new Date('2026-03-24T00:00:00.000Z')
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                active as unknown as TableRow,
+                archived as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: active.bindingKey,
+                    activeConversationId: active.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = (
+        await service.resolveConversation(createSession(), {
+            targetConversation: 'Shared Topic',
+            permission: 'manage',
+            mode: 'target'
+        })
+    ).conversation
+
+    assert.equal(resolved?.id, active.id)
+})
+
+it('ConversationService prefers active local partial title matches over archived ones', async () => {
+    const active = createConversation({
+        id: 'conversation-partial-active',
+        title: 'Project Mercury Active'
+    })
+    const archived = createConversation({
+        id: 'conversation-partial-archived',
+        title: 'Project Mercury Archived',
+        status: 'archived',
+        archiveId: 'archive-title-partial',
+        archivedAt: new Date('2026-03-24T00:00:00.000Z')
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                active as unknown as TableRow,
+                archived as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: active.bindingKey,
+                    activeConversationId: active.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = (
+        await service.resolveConversation(createSession(), {
+            targetConversation: 'Mercury',
+            permission: 'manage',
+            mode: 'target'
+        })
+    ).conversation
+
+    assert.equal(resolved?.id, active.id)
+})
+
+it('ConversationService rejects ambiguous active exact title matches', async () => {
+    const first = createConversation({
+        id: 'conversation-exact-active-a',
+        title: 'Shared Exact Topic'
+    })
+    const second = createConversation({
+        id: 'conversation-exact-active-b',
+        title: 'Shared Exact Topic'
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                first as unknown as TableRow,
+                second as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: first.bindingKey,
+                    activeConversationId: first.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    try {
+        await service.resolveConversation(createSession(), {
+            targetConversation: 'Shared Exact Topic',
+            permission: 'manage',
+            mode: 'target'
+        })
+        assert.fail('Expected ambiguous target to throw.')
+    } catch (error) {
+        assert.instanceOf(error, ConversationResolutionError)
+        assert.equal(
+            (error as ConversationResolutionError).code,
+            'ambiguous_target'
+        )
+    }
+})
+
+it('ConversationService resolves archived title targets when includeArchived is enabled', async () => {
+    const archived = createConversation({
+        id: 'conversation-archived-explicit',
+        title: 'Archived Topic',
+        status: 'archived',
+        archiveId: 'archive-explicit',
+        archivedAt: new Date('2026-03-24T00:00:00.000Z')
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [archived as unknown as TableRow],
+            chatluna_binding: [
+                {
+                    bindingKey: archived.bindingKey,
+                    activeConversationId: null,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const byId = (
+        await service.resolveConversation(createSession(), {
+            conversationId: archived.id,
+            permission: 'manage',
+            mode: 'target'
+        })
+    ).conversation
+    const byTitle = (
+        await service.resolveConversation(createSession(), {
+            targetConversation: archived.title,
+            permission: 'manage',
+            includeArchived: true,
+            mode: 'target'
+        })
+    ).conversation
+
+    assert.equal(byId?.id, archived.id)
+    assert.equal(byTitle?.id, archived.id)
+})
+
+it('ConversationService rejects ambiguous archived-only exact title matches when includeArchived is enabled', async () => {
+    const first = createConversation({
+        id: 'conversation-archived-a',
+        title: 'Archived Shared Topic',
+        status: 'archived',
+        archiveId: 'archive-archived-a',
+        archivedAt: new Date('2026-03-24T00:00:00.000Z')
+    })
+    const second = createConversation({
+        id: 'conversation-archived-b',
+        title: 'Archived Shared Topic',
+        status: 'archived',
+        archiveId: 'archive-archived-b',
+        archivedAt: new Date('2026-03-25T00:00:00.000Z')
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                first as unknown as TableRow,
+                second as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: first.bindingKey,
+                    activeConversationId: null,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    try {
+        await service.resolveConversation(createSession(), {
+            targetConversation: 'Archived Shared Topic',
+            permission: 'manage',
+            includeArchived: true,
+            mode: 'target'
+        })
+        assert.fail('Expected ambiguous target to throw.')
+    } catch (error) {
+        assert.instanceOf(error, ConversationResolutionError)
+        assert.equal(
+            (error as ConversationResolutionError).code,
+            'ambiguous_target'
+        )
+    }
+})
+
+it('ConversationService keeps local archived matches ahead of global active matches when includeArchived is enabled', async () => {
+    const local = createConversation({
+        id: 'conversation-local-archived-precedence',
+        title: 'Scoped Topic',
+        status: 'archived',
+        archiveId: 'archive-local-precedence',
+        archivedAt: new Date('2026-03-24T00:00:00.000Z')
+    })
+    const remote = createConversation({
+        id: 'conversation-remote-active-precedence',
+        bindingKey: 'shared:discord:bot:other-guild',
+        title: 'Scoped Topic'
+    })
+
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [
+                local as unknown as TableRow,
+                remote as unknown as TableRow
+            ],
+            chatluna_binding: [
+                {
+                    bindingKey: local.bindingKey,
+                    activeConversationId: null,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                } as unknown as TableRow
+            ],
+            chatluna_acl: [
+                {
+                    conversationId: remote.id,
+                    principalType: 'user',
+                    principalId: 'user',
+                    permission: 'manage'
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = (
+        await service.resolveConversation(createSession({ authority: 1 }), {
+            targetConversation: 'Scoped Topic',
+            permission: 'manage',
+            includeArchived: true,
+            mode: 'target'
+        })
+    ).conversation
+
+    assert.equal(resolved?.id, local.id)
+})
+
 it('ConversationService records compression metadata and use rejects fixed fields', async () => {
     const conversation = createConversation()
     const message = createMessage({
@@ -934,23 +1314,34 @@ it('ConversationService blocks raw id access outside route without ACL and allow
         }
     })
 
-    await expectRejected(
-        service.resolveCommandConversation(createSession({ authority: 1 }), {
+    try {
+        await service.resolveConversation(createSession({ authority: 1 }), {
             conversationId: remote.id,
-            permission: 'manage'
-        }),
-        /does not belong to current route/
-    )
+            permission: 'manage',
+            mode: 'target'
+        })
+        assert.fail('Expected outside-route target to throw.')
+    } catch (error) {
+        assert.instanceOf(error, ConversationResolutionError)
+        assert.equal(
+            (error as ConversationResolutionError).code,
+            'target_outside_route'
+        )
+        assert.equal(
+            (error as Error).message,
+            'Conversation does not belong to current route.'
+        )
+    }
 
     database.tables.chatluna_acl.push(acl as unknown as TableRow)
 
-    const resolved = await service.resolveCommandConversation(
-        createSession({ authority: 1 }),
-        {
+    const resolved = (
+        await service.resolveConversation(createSession({ authority: 1 }), {
             conversationId: remote.id,
-            permission: 'manage'
-        }
-    )
+            permission: 'manage',
+            mode: 'target'
+        })
+    ).conversation
 
     assert.equal(resolved.id, remote.id)
 })
@@ -992,20 +1383,20 @@ it('ConversationService resolves ACL-backed cross-route targetConversation', asy
         }
     })
 
-    const byId = await service.resolveCommandConversation(
-        createSession({ authority: 1 }),
-        {
+    const byId = (
+        await service.resolveConversation(createSession({ authority: 1 }), {
             targetConversation: remote.id,
-            permission: 'manage'
-        }
-    )
-    const byTitle = await service.resolveCommandConversation(
-        createSession({ authority: 1 }),
-        {
+            permission: 'manage',
+            mode: 'target'
+        })
+    ).conversation
+    const byTitle = (
+        await service.resolveConversation(createSession({ authority: 1 }), {
             targetConversation: 'Remote Shared Topic',
-            permission: 'manage'
-        }
-    )
+            permission: 'manage',
+            mode: 'target'
+        })
+    ).conversation
 
     assert.equal(byId?.id, remote.id)
     assert.equal(byTitle?.id, remote.id)
@@ -1059,13 +1450,24 @@ it('ConversationService rejects ambiguous global exact title matches', async () 
         }
     })
 
-    await expectRejected(
-        service.resolveCommandConversation(createSession({ authority: 1 }), {
+    try {
+        await service.resolveConversation(createSession({ authority: 1 }), {
             targetConversation: 'Shared Topic',
-            permission: 'manage'
-        }),
-        /Conversation target is ambiguous\./
-    )
+            permission: 'manage',
+            mode: 'target'
+        })
+        assert.fail('Expected ambiguous target to throw.')
+    } catch (error) {
+        assert.instanceOf(error, ConversationResolutionError)
+        assert.equal(
+            (error as ConversationResolutionError).code,
+            'ambiguous_target'
+        )
+        assert.equal(
+            (error as Error).message,
+            'Conversation target is ambiguous.'
+        )
+    }
 })
 
 it('ConversationService keeps local bindings untouched for cross-route switch and reopen', async () => {

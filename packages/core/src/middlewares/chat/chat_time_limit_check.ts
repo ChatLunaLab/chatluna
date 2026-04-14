@@ -18,7 +18,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('chat_time_limit_check', async (session, context) => {
             return await oldChatLimitCheck(session, context)
         })
-        .after('resolve_conversation')
+        .after('transform_chat_message')
         .after('rollback_chat')
         .before('lifecycle-request_conversation')
 
@@ -116,21 +116,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             return null
         }
 
-        const resolved = context.options.resolvedConversationContext
-        const conversation =
-            context.options.resolvedConversation ??
-            resolved?.conversation ??
-            null
+        const resolved = context.options.conversation
+        const conversation = resolved?.conversation ?? null
 
         if (conversation == null) {
             return null
         }
 
-        context.options.conversationId = conversation.id
-        context.options.resolvedConversation = conversation
-
         return {
-            model: resolved?.effectiveModel ?? conversation.model,
+            model: resolved.effectiveModel ?? conversation.model,
             conversationId: conversation.id
         }
     }

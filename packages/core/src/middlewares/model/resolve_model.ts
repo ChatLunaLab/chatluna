@@ -8,37 +8,25 @@ import { Config } from '../../config'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_model', async (session, context) => {
-            const conversationId = context.options.conversationId
-            const resolved = context.options.resolvedConversationContext
+            const resolved = context.options.conversation
 
             if ((context.command?.length ?? 0) > 1) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            if (conversationId == null && resolved == null) {
+            if (resolved == null) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
             try {
-                let conversation =
-                    context.options.resolvedConversation ??
-                    resolved?.conversation
-
-                if (conversation == null && conversationId != null) {
-                    conversation =
-                        await ctx.chatluna.conversation.getConversation(
-                            conversationId
-                        )
-                }
-
                 const modelName =
-                    resolved?.effectiveModel ??
-                    conversation?.model ??
+                    resolved.effectiveModel ??
+                    resolved.conversation?.model ??
                     config.defaultModel ??
                     'empty'
                 const presetName =
-                    resolved?.effectivePreset ??
-                    conversation?.preset ??
+                    resolved.effectivePreset ??
+                    resolved.conversation?.preset ??
                     config.defaultPreset
                 const presetExists =
                     presetName != null &&

@@ -34,6 +34,7 @@ it('rollback_chat keeps plain text rollback input as string and runs in sync loc
     try {
         const sent: string[] = []
         const syncCalls: string[] = []
+        let resolveCalls = 0
         const session = createSession() as any
         let run:
             | ((
@@ -52,6 +53,10 @@ it('rollback_chat keeps plain text rollback input as string and runs in sync loc
         ) => {
             syncCalls.push(current.id)
             return withSync(current, callback)
+        }
+        ctx.chatluna.conversation.resolveConversation = async () => {
+            resolveCalls += 1
+            throw new Error('resolveConversation should not be called')
         }
         ctx.chatluna.messageTransformer.transform = async () => 'transformed'
         session.text = (key, params) =>
@@ -85,11 +90,24 @@ it('rollback_chat keeps plain text rollback input as string and runs in sync loc
             message: '',
             options: {
                 rollback_round: 1,
-                resolvedConversation: conversation
+                conversation: {
+                    bindingKey: conversation.bindingKey,
+                    constraint: {
+                        manageMode: 'anyone',
+                        lockConversation: false
+                    },
+                    effectiveModel: 'test-platform/test-model',
+                    effectivePreset: 'default-preset',
+                    effectiveChatMode: 'plugin',
+                    conversationId: conversation.id,
+                    conversation,
+                    mode: 'target'
+                }
             }
         })
 
         assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+        assert.equal(resolveCalls, 0)
         assert.deepEqual(syncCalls, [conversation.id])
         assert.equal((await database.get('chatluna_message', {})).length, 0)
         assert.equal(
@@ -101,6 +119,156 @@ it('rollback_chat keeps plain text rollback input as string and runs in sync loc
             null
         )
         assert.deepEqual(sent, ['.rollback_success:1'])
+    } finally {
+        await app.stop()
+    }
+})
+
+it('stop_chat uses pre-resolved conversation without re-resolving', async () => {
+    const conversation = createConversation({
+        id: 'conversation-stop-resolved'
+    })
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        let resolveCalls = 0
+        let stoppedId: string | undefined
+
+        ctx.chatluna.conversation.resolveConversation = async () => {
+            resolveCalls += 1
+            throw new Error('resolveConversation should not be called')
+        }
+        ctx.chatluna.conversationRuntime.stopConversationRequest = (id) => {
+            stoppedId = id
+            return true
+        }
+        session.text = (key) => key
+
+        applyStop(
+            ctx as never,
+            {} as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const status = await run!(session, {
+            command: 'stop_chat',
+            options: {
+                conversation: {
+                    bindingKey: conversation.bindingKey,
+                    constraint: {
+                        manageMode: 'anyone',
+                        lockConversation: false
+                    },
+                    effectiveModel: 'test-platform/test-model',
+                    effectivePreset: 'default-preset',
+                    effectiveChatMode: 'plugin',
+                    conversationId: conversation.id,
+                    conversation,
+                    mode: 'target'
+                }
+            }
+        })
+
+        assert.equal(status, ChainMiddlewareRunStatus.STOP)
+        assert.equal(resolveCalls, 0)
+        assert.equal(stoppedId, conversation.id)
+    } finally {
+        await app.stop()
+    }
+})
+
+it('stop_chat re-resolves when conversation state is partial', async () => {
+    const conversation = createConversation({
+        id: 'conversation-stop-partial'
+    })
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        const session = createSession() as any
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        let resolveCalls = 0
+        let resolveOpts: any
+        let stoppedId: string | undefined
+
+        ctx.chatluna.conversation.resolveConversation = async (_session, opts) => {
+            resolveCalls += 1
+            resolveOpts = opts
+            return {
+                bindingKey: conversation.bindingKey,
+                constraint: {
+                    manageMode: 'anyone',
+                    lockConversation: false
+                },
+                effectiveModel: 'test-platform/test-model',
+                effectivePreset: 'default-preset',
+                effectiveChatMode: 'plugin',
+                conversationId: conversation.id,
+                conversation,
+                mode: 'target'
+            }
+        }
+        ctx.chatluna.conversationRuntime.stopConversationRequest = (id) => {
+            stoppedId = id
+            return true
+        }
+        session.text = (key) => key
+
+        applyStop(
+            ctx as never,
+            {} as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const status = await run!(session, {
+            command: 'stop_chat',
+            options: {
+                conversation: {
+                    conversation
+                }
+            }
+        })
+
+        assert.equal(status, ChainMiddlewareRunStatus.STOP)
+        assert.equal(resolveCalls, 1)
+        assert.equal(resolveOpts.targetConversation, undefined)
+        assert.equal(resolveOpts.useRoutePresetLane, true)
+        assert.equal(stoppedId, conversation.id)
     } finally {
         await app.stop()
     }
@@ -169,7 +337,7 @@ it('rollback_chat does not fall back to current conversation for an explicit mis
             message: '',
             options: {
                 rollback_round: 1,
-                conversationId: 'missing-conversation'
+                targetConversation: 'missing-conversation'
             }
         }
         const status = await run!(session, state)
@@ -216,7 +384,24 @@ it('rollback_chat keeps history untouched when rebuilding the input fails', asyn
                   context: any
               ) => Promise<ChainMiddlewareRunStatus>)
             | undefined
+        let resolveCalls = 0
 
+        ctx.chatluna.conversation.resolveConversation = async () => {
+            resolveCalls += 1
+            return {
+                bindingKey: conversation.bindingKey,
+                constraint: {
+                    manageMode: 'anyone',
+                    lockConversation: false
+                },
+                effectiveModel: 'test-platform/test-model',
+                effectivePreset: 'default-preset',
+                effectiveChatMode: 'plugin',
+                conversationId: conversation.id,
+                conversation,
+                mode: 'target'
+            }
+        }
         ctx.chatluna.messageTransformer.transform = async () => {
             throw new Error('transform failed')
         }
@@ -249,12 +434,15 @@ it('rollback_chat keeps history untouched when rebuilding the input fails', asyn
                 message: '',
                 options: {
                     rollback_round: 1,
-                    resolvedConversation: conversation
+                    conversation: {
+                        conversation
+                    }
                 }
             }),
             /transform failed/
         )
 
+        assert.equal(resolveCalls, 1)
         assert.equal((await database.get('chatluna_message', {})).length, 1)
         assert.equal(
             (

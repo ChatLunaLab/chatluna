@@ -167,11 +167,37 @@ export interface ResolvedConversationContext {
     constraint: ResolvedConstraint
 }
 
-export interface ResolveConversationContextOptions {
+export type ConversationResolveMode = 'context' | 'active' | 'target'
+
+export type ConversationResolutionErrorCode =
+    | 'ambiguous_target'
+    | 'target_outside_route'
+
+export class ConversationResolutionError extends Error {
+    constructor(public readonly code: ConversationResolutionErrorCode) {
+        super(
+            code === 'ambiguous_target'
+                ? 'Conversation target is ambiguous.'
+                : 'Conversation does not belong to current route.'
+        )
+    }
+}
+
+export interface ResolveConversationOptions {
+    mode?: ConversationResolveMode
     presetLane?: string
     conversationId?: string
     bindingKey?: string
     useRoutePresetLane?: boolean
+    targetConversation?: string
+    includeArchived?: boolean
+    permission?: ConstraintPermission
+    allPresetLanes?: boolean
+}
+
+export interface ConversationResolution extends ResolvedConversationContext {
+    mode: ConversationResolveMode
+    conversationId: string | null
 }
 
 export function getBaseBindingKey(bindingKey: string) {

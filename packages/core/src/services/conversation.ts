@@ -40,10 +40,12 @@ import {
     ConversationCompressionRecord,
     ConversationListEntry,
     ConversationRecord,
+    ConversationResolution,
+    ConversationResolutionError,
     getBaseBindingKey,
     getPresetLane,
     MessageRecord,
-    ResolveConversationContextOptions,
+    ResolveConversationOptions,
     ResolvedConstraint,
     ResolvedConversationContext,
     RouteMode
@@ -51,9 +53,67 @@ import {
 import {
     ArchiveManifest,
     ConversationArchivePayload,
-    ListConversationsOptions,
-    ResolveTargetConversationOptions
+    ListConversationsOptions
 } from './types'
+
+function matchTargetConversation(
+    target: string,
+    normalized: string,
+    conversations: ConversationRecord[],
+    entries?: ConversationListEntry[]
+) {
+    const pick = (matches: ConversationRecord[]) => {
+        const active = matches.filter((c) => c.status !== 'archived')
+
+        if (active.length === 1) {
+            return active[0]
+        }
+
+        if (active.length > 1) {
+            throw new ConversationResolutionError('ambiguous_target')
+        }
+
+        if (matches.length === 1) {
+            return matches[0]
+        }
+
+        if (matches.length > 1) {
+            throw new ConversationResolutionError('ambiguous_target')
+        }
+
+        return null
+    }
+
+    const byId = conversations.find((c) => c.id === target)
+    if (byId != null) {
+        return byId
+    }
+
+    if (entries != null && /^\d+$/.test(target)) {
+        const seq = Number(target)
+        const bySeq = entries
+            .filter((item) => item.displaySeq === seq)
+            .map((item) => item.conversation)
+        const match = pick(bySeq)
+
+        if (match != null) {
+            return match
+        }
+    }
+
+    const exact = pick(
+        conversations.filter((c) => c.title.toLocaleLowerCase() === normalized)
+    )
+    if (exact != null) {
+        return exact
+    }
+
+    return pick(
+        conversations.filter((c) =>
+            c.title.toLocaleLowerCase().includes(normalized)
+        )
+    )
+}
 
 export class ConversationService {
     private readonly _bindingLocks = new Map<string, ObjectLock>()
@@ -101,7 +161,7 @@ export class ConversationService {
 
     async resolveConstraint(
         session: Session,
-        options: ResolveConversationContextOptions = {}
+        options: ResolveConversationOptions = {}
     ): Promise<ResolvedConstraint> {
         let constraints = (await this.listConstraints()).filter((c) =>
             isConstraintMatched(c, session)
@@ -186,9 +246,9 @@ export class ConversationService {
         }
     }
 
-    async resolveContext(
+    private async resolveConversationContext(
         session: Session,
-        options: ResolveConversationContextOptions = {}
+        options: ResolveConversationOptions = {}
     ): Promise<ResolvedConversationContext> {
         const constraint = await this.resolveConstraint(session, options)
         const matched =
@@ -245,6 +305,256 @@ export class ConversationService {
         }
     }
 
+    async resolveConversation(
+        session: Session,
+        options: ResolveConversationOptions = {}
+    ): Promise<ConversationResolution> {
+        const mode = options.mode ?? 'context'
+        const resolved = await this.resolveConversationContext(session, options)
+        const resolveTarget = async (conversation: ConversationRecord) => {
+            const target = await this.resolveConversationContext(session, {
+                ...options,
+                bindingKey: conversation.bindingKey,
+                conversationId: conversation.id,
+                presetLane: getPresetLane(conversation.bindingKey),
+                useRoutePresetLane: false
+            })
+
+            return {
+                ...target,
+                mode,
+                conversation,
+                conversationId: conversation.id
+            }
+        }
+
+        if (mode === 'context') {
+            return {
+                ...resolved,
+                mode,
+                conversationId: resolved.conversation?.id ?? null
+            }
+        }
+
+        if (mode === 'active') {
+            let current = resolved
+
+            if (
+                current.constraint.lockConversation &&
+                current.binding?.activeConversationId != null
+            ) {
+                const conversation = await this.getConversation(
+                    current.binding.activeConversationId
+                )
+
+                if (
+                    conversation != null &&
+                    conversation.status !== 'deleted' &&
+                    conversation.status !== 'broken' &&
+                    (await hasConversationPermission(
+                        this.ctx,
+                        session,
+                        conversation,
+                        'view',
+                        current.bindingKey
+                    ))
+                ) {
+                    current = {
+                        ...current,
+                        conversation,
+                        effectiveModel:
+                            current.constraint.fixedModel ?? conversation.model,
+                        effectivePreset:
+                            current.constraint.fixedPreset ??
+                            conversation.preset,
+                        effectiveChatMode:
+                            current.constraint.fixedChatMode ??
+                            conversation.chatMode
+                    }
+                }
+            }
+
+            if (current.conversation != null) {
+                if (current.conversation.status === 'archived') {
+                    await assertManageAllowed(session, current.constraint)
+
+                    if (!current.constraint.allowArchive) {
+                        throw new Error(
+                            'Conversation restore is disabled by constraint.'
+                        )
+                    }
+
+                    const conversation = await this.restoreConversation(
+                        session,
+                        {
+                            conversationId: current.conversation.id
+                        }
+                    )
+
+                    return {
+                        ...current,
+                        mode,
+                        conversation,
+                        conversationId: conversation.id,
+                        effectiveModel: conversation.model,
+                        effectivePreset: conversation.preset,
+                        effectiveChatMode: conversation.chatMode
+                    }
+                }
+
+                return {
+                    ...current,
+                    mode,
+                    conversationId: current.conversation.id
+                }
+            }
+
+            if (!current.constraint.allowNew) {
+                throw new Error(
+                    'Conversation creation is disabled by constraint.'
+                )
+            }
+
+            const conversation = await this.createConversation(session, {
+                bindingKey: current.bindingKey,
+                preset: current.effectivePreset,
+                model: current.effectiveModel,
+                chatMode: current.effectiveChatMode,
+                title: current.presetLane ?? 'New Conversation'
+            })
+
+            return {
+                ...current,
+                mode,
+                conversation,
+                conversationId: conversation.id
+            }
+        }
+
+        let conversation: ConversationRecord | null = null
+
+        if (options.conversationId != null) {
+            conversation =
+                (await this.getConversation(options.conversationId)) ?? null
+
+            if (conversation == null) {
+                return {
+                    ...resolved,
+                    mode,
+                    conversationId: null,
+                    conversation: null
+                }
+            }
+
+            if (
+                conversation.status === 'deleted' ||
+                conversation.status === 'broken'
+            ) {
+                return {
+                    ...resolved,
+                    mode,
+                    conversationId: null,
+                    conversation: null
+                }
+            }
+
+            if (
+                conversation.status === 'archived' &&
+                !options.includeArchived &&
+                mode !== 'target'
+            ) {
+                return {
+                    ...resolved,
+                    mode,
+                    conversationId: null,
+                    conversation: null
+                }
+            }
+
+            if (
+                !(
+                    options.allPresetLanes === true &&
+                    getLookupKeys(
+                        session,
+                        resolved.constraint.bindingKey,
+                        true
+                    ).includes(getBaseBindingKey(conversation.bindingKey))
+                ) &&
+                !(await hasConversationPermission(
+                    this.ctx,
+                    session,
+                    conversation,
+                    options.permission ?? 'view',
+                    resolved.bindingKey
+                ))
+            ) {
+                throw new ConversationResolutionError('target_outside_route')
+            }
+
+            return resolveTarget(conversation)
+        }
+
+        const hasTarget = options.targetConversation != null
+        const target = options.targetConversation?.trim()
+
+        if (hasTarget && (target == null || target.length === 0)) {
+            return {
+                ...resolved,
+                mode,
+                conversation: null,
+                conversationId: null
+            }
+        }
+
+        if (!hasTarget) {
+            return {
+                ...resolved,
+                mode,
+                conversationId: resolved.conversation?.id ?? null
+            }
+        }
+
+        const entries = await this.listConversationEntries(session, {
+            presetLane: options.presetLane,
+            allPresetLanes: options.allPresetLanes,
+            includeArchived: options.includeArchived
+        })
+        const conversations = entries.map((item) => item.conversation)
+        const normalized = target.toLocaleLowerCase()
+
+        conversation =
+            matchTargetConversation(
+                target,
+                normalized,
+                conversations,
+                entries
+            ) ?? null
+        if (conversation != null) {
+            return resolveTarget(conversation)
+        }
+
+        const globalMatches = await this.findAccessibleConversations(session, {
+            ...options,
+            bindingKey: resolved.bindingKey,
+            includeArchived: options.includeArchived,
+            query: normalized,
+            exactId: target
+        })
+
+        conversation =
+            matchTargetConversation(target, normalized, globalMatches) ?? null
+        if (conversation != null) {
+            return resolveTarget(conversation)
+        }
+
+        return {
+            ...resolved,
+            mode,
+            conversation: null,
+            conversationId: null
+        }
+    }
+
     private async resolveBindingForKey(session: Session, bindingKey: string) {
         const binding = await this.getBinding(bindingKey)
 
@@ -270,87 +580,15 @@ export class ConversationService {
 
     async ensureActiveConversation(
         session: Session,
-        options: ResolveConversationContextOptions = {}
-    ) {
-        let resolved = await this.resolveContext(session, options)
-
-        if (
-            resolved.constraint.lockConversation &&
-            resolved.binding?.activeConversationId != null
-        ) {
-            const conversation = await this.getConversation(
-                resolved.binding.activeConversationId
-            )
-
-            if (
-                conversation != null &&
-                conversation.status !== 'deleted' &&
-                conversation.status !== 'broken' &&
-                (await hasConversationPermission(
-                    this.ctx,
-                    session,
-                    conversation,
-                    'view',
-                    resolved.bindingKey
-                ))
-            ) {
-                resolved = {
-                    ...resolved,
-                    conversation,
-                    effectiveModel:
-                        resolved.constraint.fixedModel ?? conversation.model,
-                    effectivePreset:
-                        resolved.constraint.fixedPreset ?? conversation.preset,
-                    effectiveChatMode:
-                        resolved.constraint.fixedChatMode ??
-                        conversation.chatMode
-                }
-            }
-        }
-
-        if (resolved.conversation != null) {
-            if (resolved.conversation.status === 'archived') {
-                await assertManageAllowed(session, resolved.constraint)
-
-                if (!resolved.constraint.allowArchive) {
-                    throw new Error(
-                        'Conversation restore is disabled by constraint.'
-                    )
-                }
-
-                const conversation = await this.restoreConversation(session, {
-                    conversationId: resolved.conversation.id
-                })
-
-                return {
-                    ...resolved,
-                    conversation,
-                    effectiveModel: conversation.model,
-                    effectivePreset: conversation.preset,
-                    effectiveChatMode: conversation.chatMode
-                }
-            }
-
-            return resolved as ResolvedConversationContext & {
-                conversation: ConversationRecord
-            }
-        }
-
-        if (!resolved.constraint.allowNew) {
-            throw new Error('Conversation creation is disabled by constraint.')
-        }
-
-        const conversation = await this.createConversation(session, {
-            bindingKey: resolved.bindingKey,
-            preset: resolved.effectivePreset,
-            model: resolved.effectiveModel,
-            chatMode: resolved.effectiveChatMode,
-            title: resolved.presetLane ?? 'New Conversation'
+        options: ResolveConversationOptions = {}
+    ): Promise<ConversationResolution & { conversation: ConversationRecord }> {
+        const resolved = await this.resolveConversation(session, {
+            ...options,
+            mode: 'active'
         })
 
-        return {
-            ...resolved,
-            conversation
+        return resolved as ConversationResolution & {
+            conversation: ConversationRecord
         }
     }
 
@@ -472,7 +710,10 @@ export class ConversationService {
         session: Session,
         options: ListConversationsOptions = {}
     ) {
-        const resolved = await this.resolveContext(session, options)
+        const resolved = await this.resolveConversation(session, {
+            ...options,
+            mode: 'context'
+        })
         const keys = getLookupKeys(
             session,
             resolved.constraint.bindingKey,
@@ -524,22 +765,19 @@ export class ConversationService {
 
     private async getTarget(
         session: Session,
-        options: ResolveTargetConversationOptions,
+        options: ResolveConversationOptions,
         permission: ConstraintPermission,
         includeArchived = false
     ) {
-        const resolved = await this.resolveContext(session, options)
+        const resolved = await this.resolveConversation(session, {
+            ...options,
+            includeArchived,
+            permission,
+            mode: 'target'
+        })
         await assertManageAllowed(session, resolved.constraint)
 
-        const conversation = await this.resolveTargetConversation(
-            session,
-            {
-                ...options,
-                includeArchived,
-                permission
-            },
-            resolved
-        )
+        const conversation = resolved.conversation
         if (conversation == null) {
             throw new Error('Conversation not found.')
         }
@@ -561,7 +799,7 @@ export class ConversationService {
 
     async switchConversation(
         session: Session,
-        options: ResolveTargetConversationOptions
+        options: ResolveConversationOptions
     ) {
         const { resolved, conversation, managed } = await this.getTarget(
             session,
@@ -569,7 +807,10 @@ export class ConversationService {
             'manage'
         )
         const current = options.allPresetLanes
-            ? await this.resolveContext(session, { useRoutePresetLane: true })
+            ? await this.resolveConversation(session, {
+                  useRoutePresetLane: true,
+                  mode: 'context'
+              })
             : resolved
 
         if (managed?.lockConversation ?? resolved.constraint.lockConversation) {
@@ -613,16 +854,9 @@ export class ConversationService {
         return conversation
     }
 
-    async getCurrentConversation(
-        session: Session,
-        options: ResolveConversationContextOptions = {}
-    ) {
-        return this.resolveContext(session, options)
-    }
-
     async reopenConversation(
         session: Session,
-        options: ResolveTargetConversationOptions
+        options: ResolveConversationOptions
     ) {
         const { resolved, conversation, managed } = await this.getTarget(
             session,
@@ -790,7 +1024,7 @@ export class ConversationService {
 
     async exportConversation(
         session: Session,
-        options: ResolveTargetConversationOptions & {
+        options: ResolveConversationOptions & {
             outputPath?: string
         } = {}
     ) {
@@ -824,7 +1058,7 @@ export class ConversationService {
 
     async archiveConversation(
         session: Session,
-        options: ResolveTargetConversationOptions = {}
+        options: ResolveConversationOptions = {}
     ) {
         const { conversation, managed, resolved } = await this.getTarget(
             session,
@@ -983,7 +1217,7 @@ export class ConversationService {
 
     async restoreConversation(
         session: Session,
-        options: ResolveTargetConversationOptions & {
+        options: ResolveConversationOptions & {
             archiveId?: string
         } = {}
     ) {
@@ -1179,7 +1413,7 @@ export class ConversationService {
 
     async renameConversation(
         session: Session,
-        options: ResolveTargetConversationOptions & {
+        options: ResolveConversationOptions & {
             title: string
         }
     ) {
@@ -1201,7 +1435,7 @@ export class ConversationService {
 
     async deleteConversation(
         session: Session,
-        options: ResolveTargetConversationOptions = {}
+        options: ResolveConversationOptions = {}
     ) {
         const { resolved, conversation, managed } = await this.getTarget(
             session,
@@ -1256,27 +1490,33 @@ export class ConversationService {
 
     async updateConversationUsage(
         session: Session,
-        options: ResolveConversationContextOptions & {
+        options: ResolveConversationOptions & {
             model?: string
             preset?: string
             chatMode?: string
         }
     ) {
-        const resolved = await this.resolveContext(session, options)
+        const resolved = await this.resolveConversation(session, {
+            ...options,
+            mode: 'context'
+        })
         await assertManageAllowed(session, resolved.constraint)
 
         const conversation =
             options.conversationId == null
-                ? (await this.ensureActiveConversation(session, options))
-                      .conversation
-                : await this.resolveTargetConversation(
-                      session,
-                      {
+                ? (
+                      await this.resolveConversation(session, {
                           ...options,
-                          permission: 'manage'
-                      },
-                      resolved
-                  )
+                          mode: 'active'
+                      })
+                  ).conversation
+                : (
+                      await this.resolveConversation(session, {
+                          ...options,
+                          permission: 'manage',
+                          mode: 'target'
+                      })
+                  ).conversation
 
         if (conversation == null) {
             throw new Error('Conversation not found.')
@@ -1499,158 +1739,9 @@ export class ConversationService {
         return (latest?.seq ?? 0) + 1
     }
 
-    async resolveTargetConversation(
-        session: Session,
-        options: ResolveTargetConversationOptions = {},
-        resolved?: ResolvedConversationContext
-    ) {
-        resolved = resolved ?? (await this.resolveContext(session, options))
-
-        if (options.conversationId != null) {
-            const conversation = await this.getConversation(
-                options.conversationId
-            )
-
-            if (conversation == null) {
-                return null
-            }
-
-            if (
-                conversation.status === 'deleted' ||
-                conversation.status === 'broken'
-            ) {
-                return null
-            }
-
-            if (
-                conversation.status === 'archived' &&
-                !options.includeArchived
-            ) {
-                return null
-            }
-
-            if (
-                !(
-                    options.allPresetLanes === true &&
-                    getLookupKeys(
-                        session,
-                        resolved.constraint.bindingKey,
-                        true
-                    ).includes(getBaseBindingKey(conversation.bindingKey))
-                ) &&
-                !(await hasConversationPermission(
-                    this.ctx,
-                    session,
-                    conversation,
-                    options.permission ?? 'view',
-                    resolved.bindingKey
-                ))
-            ) {
-                throw new Error(
-                    'Conversation does not belong to current route.'
-                )
-            }
-
-            return conversation
-        }
-
-        const target = options.targetConversation?.trim()
-
-        if (target == null || target.length === 0) {
-            return resolved.conversation ?? null
-        }
-
-        const entries = await this.listConversationEntries(session, {
-            presetLane: options.presetLane,
-            allPresetLanes: options.allPresetLanes,
-            includeArchived: options.includeArchived
-        })
-        const conversations = entries.map((item) => item.conversation)
-
-        const byId = conversations.find((c) => c.id === target)
-        if (byId != null) {
-            return byId
-        }
-
-        if (/^\d+$/.test(target)) {
-            const seq = Number(target)
-            const bySeq = entries
-                .filter((item) => item.displaySeq === seq)
-                .map((item) => item.conversation)
-            if (bySeq.length === 1) {
-                return bySeq[0]
-            }
-
-            if (bySeq.length > 1) {
-                throw new Error('Conversation target is ambiguous.')
-            }
-        }
-
-        const normalized = target.toLocaleLowerCase()
-        const exactTitle = conversations.filter(
-            (c) => c.title.toLocaleLowerCase() === normalized
-        )
-        if (exactTitle.length === 1) {
-            return exactTitle[0]
-        }
-
-        if (exactTitle.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
-        }
-
-        const partialMatches = conversations.filter((c) =>
-            c.title.toLocaleLowerCase().includes(normalized)
-        )
-
-        if (partialMatches.length === 1) {
-            return partialMatches[0]
-        }
-
-        if (partialMatches.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
-        }
-
-        const globalMatches = await this.findAccessibleConversations(session, {
-            ...options,
-            bindingKey: resolved.bindingKey,
-            query: normalized,
-            exactId: target
-        })
-
-        const globalById = globalMatches.find((c) => c.id === target)
-        if (globalById != null) {
-            return globalById
-        }
-
-        const globalExactTitle = globalMatches.filter(
-            (c) => c.title.toLocaleLowerCase() === normalized
-        )
-        if (globalExactTitle.length === 1) {
-            return globalExactTitle[0]
-        }
-
-        if (globalExactTitle.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
-        }
-
-        const globalPartialMatches = globalMatches.filter((c) =>
-            c.title.toLocaleLowerCase().includes(normalized)
-        )
-
-        if (globalPartialMatches.length === 1) {
-            return globalPartialMatches[0]
-        }
-
-        if (globalPartialMatches.length > 1) {
-            throw new Error('Conversation target is ambiguous.')
-        }
-
-        return null
-    }
-
     private async findAccessibleConversations(
         session: Session,
-        options: ResolveTargetConversationOptions & {
+        options: ResolveConversationOptions & {
             bindingKey: string
             query: string
             exactId: string
@@ -1763,13 +1854,6 @@ export class ConversationService {
         }
 
         return matches
-    }
-
-    async resolveCommandConversation(
-        session: Session,
-        options: ResolveTargetConversationOptions = {}
-    ) {
-        return this.resolveTargetConversation(session, options)
     }
 
     private async ensureDataDir(name: string) {

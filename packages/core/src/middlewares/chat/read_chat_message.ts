@@ -121,50 +121,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
             }
 
-            let conversationId = context.options.conversationId
+            context.options.chatMessage = message as h[]
 
-            if (
-                conversationId == null &&
-                context.options.targetConversation != null
-            ) {
-                const target =
-                    await ctx.chatluna.conversation.resolveCommandConversation(
-                        session,
-                        {
-                            targetConversation:
-                                context.options.targetConversation,
-                            presetLane: context.options.presetLane,
-                            allPresetLanes: context.options.allPresetLanes
-                        }
-                    )
+            return ChainMiddlewareRunStatus.CONTINUE
+        })
+        .after('lifecycle-prepare')
+        .before('resolve_conversation')
 
-                if (target == null) {
-                    context.message = session.text(
-                        'commands.chatluna.chat.messages.conversation_not_exist'
-                    )
-                    return ChainMiddlewareRunStatus.STOP
-                }
+    chain
+        .middleware('transform_chat_message', async (session, context) => {
+            const message = context.options.chatMessage
+            const resolved = context.options.conversation
 
-                conversationId = target.id
-                context.options.conversationId = target.id
-                context.options.resolvedConversation = target
+            if (message == null || resolved == null) {
+                return ChainMiddlewareRunStatus.CONTINUE
             }
-
-            const resolved =
-                context.options.resolvedConversationContext ??
-                (await ctx.chatluna.conversation.resolveContext(session, {
-                    conversationId,
-                    presetLane: context.options.presetLane
-                }))
-
-            context.options.resolvedConversationContext = resolved
-            context.options.resolvedConversation =
-                context.options.resolvedConversation ?? resolved.conversation
 
             const transformedMessage =
                 await ctx.chatluna.messageTransformer.transform(
                     session,
-                    message as h[],
+                    message,
                     resolved.effectiveModel ?? '',
                     undefined,
                     {
@@ -202,8 +178,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
-
-        .after('lifecycle-prepare')
+        .after('resolve_conversation')
+        .before('message_delay')
 
     ctx.chatluna.messageTransformer.before(async (session, elements) => {
         appendQQAttachments(session, elements)
@@ -997,5 +973,10 @@ function appendQQAttachments(session: Session, elements: h[]) {
 declare module '../../chains/chain' {
     export interface ChainMiddlewareName {
         read_chat_message: string
+        transform_chat_message: string
+    }
+
+    export interface ChainMiddlewareContextOptions {
+        chatMessage?: h[]
     }
 }

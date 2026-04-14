@@ -6,6 +6,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
+import type { ConversationResolution } from '../services/conversation_types'
 import { lifecycleNames } from '../middlewares/system/lifecycle'
 import { formatDuration } from '../utils/time'
 import type { QQBot } from '@koishijs/plugin-adapter-qq'
@@ -1161,6 +1162,7 @@ export interface ChainMiddlewareContext {
 }
 
 export interface ChainMiddlewareContextOptions {
+    conversation?: ConversationResolution
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any
 }
