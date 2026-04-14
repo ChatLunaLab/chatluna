@@ -67,11 +67,9 @@ $inner:
       errorTemplate: 设置错误提示消息的模板（此设置在未来版本中可能会有变更）。
       voiceSpeakId: 设置使用 vits 服务时的默认发音人 ID。
       isLog: 是否启用调试模式。
-      isProxy:
+
+    - isProxy:
           $desc: 是否启用代理。启用后，ChatLuna 全家桶插件的网络请求将使用此代理。
           $inner:
               - true
-
-    - - $desc: 代理选项
-        $inner:
-            proxyAddress: 网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。如不填写，将尝试使用 Koishi 全局配置中的代理设置。
+      proxyAddress: 网络请求的代理地址。填写后，ChatLuna 相关插件的网络服务将使用此代理地址。若为空，将尝试使用 Koishi 全局配置中的代理设置。

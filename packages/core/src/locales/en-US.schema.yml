@@ -66,11 +66,9 @@ $inner:
       errorTemplate: Set error prompt message template (subject to change).
       voiceSpeakId: Set default speaker ID for vits service.
       isLog: Enable debug mode.
-      isProxy:
+
+    - isProxy:
           $desc: Enable proxy for ChatLuna family plugin network requests.
           $inner:
               - true
-
-    - - $desc: Proxy Configuration
-        $inner:
-            proxyAddress: Set proxy address for network requests. Falls back to Koishi global proxy settings if empty.
+      proxyAddress: Set proxy address for network requests. Falls back to Koishi global proxy settings if cleared.

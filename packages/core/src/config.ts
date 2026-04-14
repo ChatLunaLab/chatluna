@@ -16,7 +16,7 @@ export interface Config {
     isReplyWithAt: boolean
     replyQuoteThreshold?: number
     allowQuoteReply: boolean
-    proxyAddress: string
+    proxyAddress?: string
     isProxy: boolean
     outputMode: string
     sendThinkingMessage: boolean
@@ -171,17 +171,21 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        isProxy: Schema.boolean().default(false),
         voiceSpeakId: Schema.number().default(0),
         isLog: Schema.boolean().default(false)
     }),
 
-    Schema.union([
+    Schema.intersect([
         Schema.object({
-            isProxy: Schema.const(true).required(),
-            proxyAddress: Schema.string().default('')
+            isProxy: Schema.boolean().default(false)
         }),
-        Schema.object({})
+        Schema.union([
+            Schema.object({
+                isProxy: Schema.const(true).required(),
+                proxyAddress: Schema.string().default('http://127.0.0.1:7897')
+            }),
+            Schema.object({})
+        ])
     ])
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema'),

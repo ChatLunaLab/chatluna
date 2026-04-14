@@ -13,10 +13,8 @@ $inner:
           proxyMode:
               $desc: Plugin proxy mode.
               $inner:
-                  - Use global proxy
+                  - Use ChatLuna global proxy settings
                   - Disable proxy
                   - Use custom proxy
 
-    - - $desc: Proxy Configuration
-        $inner:
-            proxyAddress: Custom proxy for plugin. Overrides global proxy if set. (e.g., "http://127.0.0.1:7890" or "socks5://proxy.example.com:1080")
+    - proxyAddress: Custom proxy for plugin. Only used when custom proxy mode is selected. (e.g., "http://127.0.0.1:7897" or "socks5://proxy.example.com:1080")
