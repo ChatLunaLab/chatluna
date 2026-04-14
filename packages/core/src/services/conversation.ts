@@ -745,11 +745,7 @@ export class ConversationService {
                     (options.includeArchived ||
                         conversation.status !== 'archived')
             )
-            .sort((a, b) => {
-                const left = a.lastChatAt ?? a.updatedAt
-                const right = b.lastChatAt ?? b.updatedAt
-                return right.getTime() - left.getTime()
-            })
+            .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))
     }
 
     async listConversationEntries(
@@ -757,9 +753,9 @@ export class ConversationService {
         options: ListConversationsOptions = {}
     ): Promise<ConversationListEntry[]> {
         const conversations = await this.listConversations(session, options)
-        return conversations.map((conversation, idx) => ({
+        return conversations.map((conversation) => ({
             conversation,
-            displaySeq: idx + 1
+            displaySeq: conversation.seq ?? 0
         }))
     }
 
@@ -845,6 +841,12 @@ export class ConversationService {
             previousConversation
         })
         await this.setActiveConversation(bindingKey, conversation.id)
+        if (current.bindingKey !== bindingKey) {
+            await this.setActiveConversation(
+                current.bindingKey,
+                conversation.id
+            )
+        }
         await this.ctx.root.parallel('chatluna/after-conversation-switch', {
             bindingKey,
             conversation,
