@@ -6,10 +6,7 @@ import {
     ChainMiddlewareRunStatus,
     type ChatChain
 } from '../../chains/chain'
-import {
-    type ConversationResolution,
-    MessageRecord
-} from '../../services/conversation_types'
+import { MessageRecord } from '../../services/conversation_types'
 import {
     checkAdmin,
     transformMessageContentToElements
@@ -24,6 +21,13 @@ function getTargetConversation(context: ChainMiddlewareContext) {
     )
 }
 
+function getConversationId(context: ChainMiddlewareContext) {
+    return (
+        context.options.conversation?.conversationId ??
+        context.options.conversation?.conversation?.id
+    )
+}
+
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('rollback_chat', async (session, context) => {
@@ -32,24 +36,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'rollback') return ChainMiddlewareRunStatus.SKIPPED
 
             const rollbackRound = context.options.rollback_round ?? 1
-            const current = context.options.conversation
             const targetConversation = getTargetConversation(context)
+            const conversationId =
+                targetConversation == null
+                    ? getConversationId(context)
+                    : undefined
             const resolved =
-                current?.constraint != null && current?.bindingKey != null
-                    ? (current as ConversationResolution)
-                    : await ctx.chatluna.conversation.resolveConversation(
-                          session,
-                          {
-                              targetConversation,
-                              presetLane: context.options.presetLane,
-                              allPresetLanes: context.options.allPresetLanes,
-                              permission: 'manage',
-                              useRoutePresetLane:
-                                  context.options.presetLane == null &&
-                                  targetConversation == null,
-                              mode: 'target'
-                          }
-                      )
+                await ctx.chatluna.conversation.resolveConversation(session, {
+                    targetConversation,
+                    conversationId,
+                    presetLane: context.options.presetLane,
+                    allPresetLanes: context.options.allPresetLanes,
+                    permission: 'manage',
+                    useRoutePresetLane:
+                        context.options.presetLane == null &&
+                        targetConversation == null &&
+                        conversationId == null,
+                    mode: 'target'
+                })
             const conversation = resolved.conversation
 
             if (conversation == null) {
