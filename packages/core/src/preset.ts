@@ -139,6 +139,11 @@ export class PresetService {
                     return
                 }
 
+                const ext = path.extname(filename)
+                if (ext !== '.txt' && ext !== '.yml') {
+                    return
+                }
+
                 if (fsWait) return
                 fsWait = setTimeout(() => {
                     fsWait = false
@@ -149,14 +154,6 @@ export class PresetService {
                 try {
                     const fileStat = await fs.stat(filePath)
                     if (fileStat.isDirectory()) return
-
-                    if (event === 'rename' && !fileStat) {
-                        this._removePreset(filePath)
-                        md5Cache.delete(filePath)
-                        logger.debug(`Removed preset: ${filename}`)
-                        this._updateSchema()
-                        return
-                    }
 
                     const md5Current = createHash('md5')
                         .update(await fs.readFile(filePath))
@@ -172,6 +169,18 @@ export class PresetService {
                         this._updateSchema()
                     }
                 } catch (e) {
+                    if (e.code === 'ENOENT') {
+                        this._removePreset(filePath)
+                        md5Cache.delete(filePath)
+
+                        if (event === 'rename') {
+                            logger.debug(`Removed preset: ${filename}`)
+                            this._updateSchema()
+                        }
+
+                        return
+                    }
+
                     logger.error(
                         `Error when watching preset file ${filePath}`,
                         e
