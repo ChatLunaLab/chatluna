@@ -5,7 +5,6 @@ import {
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../../chains/chain'
-import type { ConversationResolution } from '../../services/conversation_types'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 
 function getTargetConversation(context: ChainMiddlewareContext) {
@@ -22,24 +21,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'stop_chat') return ChainMiddlewareRunStatus.SKIPPED
 
-            const current = context.options.conversation
             const targetConversation = getTargetConversation(context)
-            const resolved =
-                current?.constraint != null && current?.bindingKey != null
-                    ? (current as ConversationResolution)
-                    : await ctx.chatluna.conversation.resolveConversation(
-                          session,
-                          {
-                              targetConversation,
-                              presetLane: context.options.presetLane,
-                              allPresetLanes: context.options.allPresetLanes,
-                              permission: 'manage',
-                              useRoutePresetLane:
-                                  context.options.presetLane == null &&
-                                  targetConversation == null,
-                              mode: 'target'
-                          }
-                      )
+            const resolved = await ctx.chatluna.conversation.resolveConversation(
+                session,
+                {
+                    targetConversation,
+                    presetLane: context.options.presetLane,
+                    allPresetLanes: context.options.allPresetLanes,
+                    permission: 'manage',
+                    useRoutePresetLane:
+                        context.options.presetLane == null &&
+                        targetConversation == null,
+                    mode: 'target'
+                }
+            )
             const conversation = resolved.conversation
 
             if (conversation == null) {
