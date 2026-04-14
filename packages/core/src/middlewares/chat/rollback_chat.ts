@@ -7,8 +7,8 @@ import {
     type ChatChain
 } from '../../chains/chain'
 import {
-    MessageRecord,
-    type ConversationResolution
+    type ConversationResolution,
+    MessageRecord
 } from '../../services/conversation_types'
 import {
     checkAdmin,

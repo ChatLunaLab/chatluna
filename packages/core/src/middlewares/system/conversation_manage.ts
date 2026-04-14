@@ -6,9 +6,9 @@ import {
 } from '../../chains/chain'
 import { Config } from '../../config'
 import {
-    ConversationResolutionError,
     ConversationListEntry,
     ConversationRecord,
+    ConversationResolutionError,
     getBaseBindingKey,
     getPresetLane,
     ResolvedConversationContext
@@ -703,9 +703,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         try {
             const current =
-                await ctx.chatluna.conversation.updateManagedConstraint(session, {
-                    routeMode
-                })
+                await ctx.chatluna.conversation.updateManagedConstraint(
+                    session,
+                    {
+                        routeMode
+                    }
+                )
             const nextRouteMode = current.routeMode
                 ? current.routeMode
                 : (await ctx.chatluna.conversation.resolveConstraint(session))

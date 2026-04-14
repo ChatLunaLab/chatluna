@@ -167,10 +167,7 @@ export interface ResolvedConversationContext {
     constraint: ResolvedConstraint
 }
 
-export type ConversationResolveMode =
-    | 'context'
-    | 'active'
-    | 'target'
+export type ConversationResolveMode = 'context' | 'active' | 'target'
 
 export type ConversationResolutionErrorCode =
     | 'ambiguous_target'

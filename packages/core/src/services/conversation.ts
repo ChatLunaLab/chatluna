@@ -35,12 +35,12 @@ import {
     ArchiveRecord,
     BindingRecord,
     computeBaseBindingKey,
-    ConversationResolution,
     ConstraintPermission,
     ConstraintRecord,
     ConversationCompressionRecord,
     ConversationListEntry,
     ConversationRecord,
+    ConversationResolution,
     ConversationResolutionError,
     getBaseBindingKey,
     getPresetLane,
@@ -523,8 +523,12 @@ export class ConversationService {
         const normalized = target.toLocaleLowerCase()
 
         conversation =
-            matchTargetConversation(target, normalized, conversations, entries) ??
-            null
+            matchTargetConversation(
+                target,
+                normalized,
+                conversations,
+                entries
+            ) ?? null
         if (conversation != null) {
             return resolveTarget(conversation)
         }

@@ -4,10 +4,10 @@ import {
     ACLRecord,
     ArchiveRecord,
     BindingRecord,
-    ConversationResolution,
-    ConversationResolveMode,
     ConstraintRecord,
     ConversationRecord,
+    ConversationResolution,
+    ConversationResolveMode,
     MessageRecord,
     MetaRecord,
     ResolveConversationOptions

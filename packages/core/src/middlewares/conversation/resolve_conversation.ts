@@ -30,23 +30,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             try {
                 const resolved =
                     await ctx.chatluna.conversation.resolveConversation(
-                    session,
-                    {
-                        mode:
-                            hasExplicitTarget ? 'target' : 'context',
-                        conversationId,
-                        targetConversation,
-                        presetLane,
-                        includeArchived,
-                        allPresetLanes: context.options.allPresetLanes,
-                        useRoutePresetLane
-                    }
-                )
+                        session,
+                        {
+                            mode: hasExplicitTarget ? 'target' : 'context',
+                            conversationId,
+                            targetConversation,
+                            presetLane,
+                            includeArchived,
+                            allPresetLanes: context.options.allPresetLanes,
+                            useRoutePresetLane
+                        }
+                    )
 
-                if (
-                    hasExplicitTarget &&
-                    resolved.conversation == null
-                ) {
+                if (hasExplicitTarget && resolved.conversation == null) {
                     context.message =
                         targetValue == null
                             ? getNotFoundMessage(session, context)

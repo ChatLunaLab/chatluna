@@ -52,8 +52,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 {
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation:
-                            conversation?.trim() || undefined,
+                        targetConversation: conversation?.trim() || undefined,
                         presetLane
                     }
                 },
@@ -121,8 +120,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 {
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation:
-                            conversation?.trim() || undefined,
+                        targetConversation: conversation?.trim() || undefined,
                         presetLane
                     }
                 },
@@ -150,8 +148,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 {
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation:
-                            conversation?.trim() || undefined,
+                        targetConversation: conversation?.trim() || undefined,
                         presetLane,
                         includeArchived
                     }
@@ -177,8 +174,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 {
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation:
-                            conversation?.trim() || undefined,
+                        targetConversation: conversation?.trim() || undefined,
                         presetLane,
                         includeArchived
                     }
@@ -208,8 +204,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                     force: true,
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation:
-                            conversation?.trim() || undefined,
+                        targetConversation: conversation?.trim() || undefined,
                         presetLane,
                         includeArchived
                     },
@@ -253,8 +248,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 {
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation:
-                            conversation?.trim() || undefined,
+                        targetConversation: conversation?.trim() || undefined,
                         presetLane,
                         includeArchived
                     }
