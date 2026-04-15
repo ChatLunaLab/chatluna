@@ -101,11 +101,15 @@ export class ChatLunaAgentSubAgentService {
         >[1],
         source?: Parameters<ChatLunaAgentPermissionService['canUseSubAgent']>[2]
     ) {
-        return this.getCatalogSync().find(
+        const items = this.getCatalogSync().filter(
             (item) =>
-                item.name === name &&
                 isRunnable(item) &&
                 this.permission.canUseSubAgent(item, session, source)
+        )
+
+        return (
+            items.find((item) => item.name === name) ??
+            items.find((item) => item.name.toLowerCase() === name.toLowerCase())
         )
     }
 
@@ -186,17 +190,13 @@ export class ChatLunaAgentSubAgentService {
                     return undefined
                 }
 
-                const mask = this.permission.createSubAgentToolMask(info)
-
                 return {
                     agent: await createSubAgent({
                         ctx: this.ctx,
                         permission: this.permission,
                         info,
-                        mask,
                         model: ctx.runConfig?.configurable?.model
-                    }),
-                    toolMask: mask
+                    })
                 }
             },
             refresh: async () => {

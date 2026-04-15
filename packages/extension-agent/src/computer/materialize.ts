@@ -7,10 +7,15 @@ import {
     REMOTE_SKILLS_ROOT,
     ScannedSkill
 } from '../skills/scan'
+import { quoteShellPath } from '../utils/shell'
 import { ComputerSessionApi } from './types'
 
 export class SkillMaterializer {
     private _items = new Map<string, Map<string, string>>()
+
+    clear() {
+        this._items.clear()
+    }
 
     getPath(skill: ScannedSkill, session: ComputerSessionApi) {
         if (session.backend === 'local') {
@@ -43,6 +48,7 @@ export class SkillMaterializer {
             return current
         }
 
+        await resetRemoteSkillDir(root, session)
         const files = await listSkillResources(skill.dir)
 
         await session.writeFile(posix.join(root, 'SKILL.md'), skill.raw)
@@ -83,6 +89,24 @@ export function getRemoteSkillsRoot() {
 
 export function getRemoteSkillDir(name: string) {
     return posix.join(REMOTE_SKILLS_ROOT, name)
+}
+
+async function resetRemoteSkillDir(root: string, session: ComputerSessionApi) {
+    const quoted = quoteShellPath(root)
+    const result = await session.execute(
+        `if [ -d ${quoted} ]; then rm -rf ${quoted}; elif [ -e ${quoted} ]; then rm -f ${quoted}; fi`,
+        {
+            timeout: 15000
+        }
+    )
+
+    if (result.exitCode !== 0) {
+        throw new Error(
+            result.stderr.trim() ||
+                result.stdout.trim() ||
+                `Failed to reset remote skill dir: ${root}`
+        )
+    }
 }
 
 function normalizeRemotePath(value: string) {

@@ -8,7 +8,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { truncateOutput } from '../computer/backends/types'
 import type { ComputerSessionApi } from '../computer/types'
 import { createSubAgentItemConfig } from '../config/defaults'
-import { getSkillsRootPath, getSubAgentsRootPath } from '../config/path'
+import { getSubAgentsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import { writeConfig } from '../config/write'
 import {
@@ -32,7 +32,6 @@ import {
     SubAgentInfo,
     SubAgentItemConfig
 } from '../types'
-import { createHashId } from '../utils/id'
 import { getErrorMessage } from '../utils/shell'
 import { ChatLunaAgentComputerService } from './computer'
 import { ChatLunaAgentMcpService } from './mcp'
@@ -203,14 +202,6 @@ export class ChatLunaAgentService extends Service {
             dirs: [...this.args.config.skills.dirs],
             items: { ...this.args.config.skills.items },
             githubToken: this.args.config.skills.githubToken ?? ''
-        }
-
-        for (const name of result.imported) {
-            skills.items[
-                createHashId(
-                    join(getSkillsRootPath(this.ctx), name, 'SKILL.md')
-                )
-            ] = { enabled: false, mode: 'off', remote: false }
         }
 
         await this.updateConfig('skills', skills, async () => {

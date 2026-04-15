@@ -64,7 +64,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 const name = getSlashSkillName(message)
                 if (!name) return
 
-                const skill = this._visibleByName.get(name)
+                const skill = this.getVisibleSkillByName(name)
                 if (
                     !skill ||
                     !this.canUseSkill(skill.id, session, 'chatluna') ||
@@ -112,6 +112,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         this._toolDispose = undefined
         this._promptDispose?.()
         this._promptDispose = undefined
+        this.ctx.chatluna_agent?.computer.materializer.clear()
         this._catalog = []
         this._skills.clear()
         this._visibleByName.clear()
@@ -125,10 +126,11 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         const scanned = local
         this._skills = new Map(scanned.map((s) => [s.id, s]))
         this._catalog = buildSkillCatalog(scanned, this.config.skills.items)
+        this.ctx.chatluna_agent?.computer.materializer.clear()
         this._visibleByName = new Map(
             this._catalog
                 .filter((s) => s.visible)
-                .map((s) => [s.name, this._skills.get(s.id)!])
+                .map((s) => [s.name.toLowerCase(), this._skills.get(s.id)!])
         )
 
         this.pruneActiveSkills()
@@ -167,11 +169,11 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     }
 
     getVisibleSkillByName(name: string) {
-        return this._visibleByName.get(name)
+        return this._visibleByName.get(name.toLowerCase())
     }
 
     hasActiveSkill(conversationId: string, name: string) {
-        const skill = this._visibleByName.get(name)
+        const skill = this.getVisibleSkillByName(name)
         if (!skill) {
             return false
         }
@@ -259,7 +261,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     }
 
     async activateSkill(name: string, runConfig?: ChatLunaToolRunnable) {
-        const skill = this._visibleByName.get(name)
+        const skill = this.getVisibleSkillByName(name)
         const conversationId = runConfig?.configurable?.conversationId
         const sub = runConfig?.configurable?.agentContext?.subagentContext
         const session = runConfig?.configurable?.session
@@ -283,7 +285,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 )
                 .map((item) => item.name)
 
-            if (!names.includes(name)) {
+            if (!names.some((item) => item.toLowerCase() === name.toLowerCase())) {
                 throw new Error(`Skill is not available: ${name}`)
             }
         }
@@ -315,7 +317,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     }
 
     async renderSkill(name: string, loaded = false) {
-        const skill = this._visibleByName.get(name)
+        const skill = this.getVisibleSkillByName(name)
         if (!skill?.enabled || skill.state !== 'ready') return undefined
 
         return await renderSkillContent(skill, loaded)

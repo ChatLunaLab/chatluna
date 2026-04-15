@@ -5,8 +5,7 @@ import {
     type AgentGenerateOptions,
     type AgentToolOptions,
     type ChatLunaAgent,
-    createAgentTool,
-    type ToolMask
+    createAgentTool
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     ChatLunaBaseEmbeddings,
@@ -28,7 +27,6 @@ export interface CreateSubAgentOptions {
     ctx: Context
     permission: ChatLunaAgentPermissionService
     info: SubAgentInfo
-    mask: ToolMask
     model?: ChatLunaChatModel
 }
 
@@ -97,7 +95,7 @@ async function createInnerAgent(
         : []
     const subCtx =
         input.subagentContext ??
-        createFallbackSubagentContext(options.info, options.mask, input)
+        createFallbackSubagentContext(options.info, input)
     const system = renderSubAgentSystemPrompt(
         options.info,
         subCtx,
@@ -125,7 +123,7 @@ async function createInnerAgent(
             description: options.info.description,
             model: llm,
             embeddings,
-            tools: createTools(options.ctx, options.mask),
+            tools: createTools(options.ctx, options.permission, options.info),
             system,
             preset:
                 options.info.promptMode === 'preset'
@@ -140,7 +138,6 @@ async function createInnerAgent(
 
 function createFallbackSubagentContext(
     info: SubAgentInfo,
-    mask: ToolMask,
     input: AgentGenerateOptions
 ) {
     return {
@@ -149,7 +146,11 @@ function createFallbackSubagentContext(
         parentConversationId: input.conversationId ?? '',
         depth: 1,
         maxDepth: 1,
-        toolMask: mask,
+        toolMask: input.toolMask ?? {
+            mode: 'all',
+            allow: [],
+            deny: []
+        },
         disableHandoff: true,
         traceInfo: {
             runId: info.id,
@@ -161,11 +162,14 @@ function createFallbackSubagentContext(
 
 function createTools(
     ctx: Context,
-    mask: ToolMask
+    permission: ChatLunaAgentPermissionService,
+    info: SubAgentInfo
 ): ComputedRef<ChatLunaTool[]> {
     return computed(() =>
-        ctx.chatluna.platform
-            .getFilteredTools(mask)
+        permission
+            .listTools()
+            .map((item) => item.name)
+            .filter((name) => permission.canUseTool(info, name))
             .map((name) => ctx.chatluna.platform.getTool(name))
     )
 }
