@@ -285,7 +285,9 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 )
                 .map((item) => item.name)
 
-            if (!names.some((item) => item.toLowerCase() === name.toLowerCase())) {
+            if (
+                !names.some((item) => item.toLowerCase() === name.toLowerCase())
+            ) {
                 throw new Error(`Skill is not available: ${name}`)
             }
         }
