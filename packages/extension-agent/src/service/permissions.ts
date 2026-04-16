@@ -100,7 +100,7 @@ export class ChatLunaAgentPermissionService {
             this.config.subAgent.defaults.skills
         )
 
-        return names.filter((name) => matchRule(name, rule))
+        return names.filter((name) => matchRuleIgnoreCase(name, rule))
     }
 
     filterSkills(info: SubAgentInfo, items: SkillInfo[]) {
@@ -110,7 +110,7 @@ export class ChatLunaAgentPermissionService {
         )
 
         return items.filter((item) => {
-            if (!matchRule(item.name, rule)) {
+            if (!matchRuleIgnoreCase(item.name, rule)) {
                 return false
             }
 
@@ -498,6 +498,20 @@ function matchRule(name: string, rule: PermissionRule) {
 
     if (rule.mode === 'deny') {
         return !rule.deny.includes(name)
+    }
+
+    return true
+}
+
+function matchRuleIgnoreCase(name: string, rule: PermissionRule) {
+    const value = name.toLowerCase()
+
+    if (rule.mode === 'allow') {
+        return rule.allow.some((item) => item.toLowerCase() === value)
+    }
+
+    if (rule.mode === 'deny') {
+        return !rule.deny.some((item) => item.toLowerCase() === value)
     }
 
     return true
