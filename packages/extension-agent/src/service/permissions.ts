@@ -141,7 +141,15 @@ export class ChatLunaAgentPermissionService {
 
     listTools(): ToolInfo[] {
         const registry = this.getRegistry()
-        const key = Object.keys(registry).sort().join('\n')
+        const key = JSON.stringify(
+            Object.values(registry)
+                .map((item) => ({
+                    name: item.name,
+                    description: item.description,
+                    meta: item.meta
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name))
+        )
         if (this._toolCache && this._toolCacheKey === key) {
             return this._toolCache
         }
