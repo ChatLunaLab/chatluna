@@ -196,7 +196,12 @@ export class ChatLunaAgentSubAgentService {
                         permission: this.permission,
                         info,
                         model: ctx.runConfig?.configurable?.model
-                    })
+                    }),
+                    toolMask: await this.permission.createSubAgentToolMask(
+                        info,
+                        ctx.session,
+                        ctx.source ?? 'chatluna'
+                    )
                 }
             },
             refresh: async () => {

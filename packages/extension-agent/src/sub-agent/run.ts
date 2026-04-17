@@ -4,8 +4,10 @@ import { HumanMessage } from '@langchain/core/messages'
 import {
     type AgentGenerateOptions,
     type AgentToolOptions,
+    applyToolMask,
     type ChatLunaAgent,
-    createAgentTool
+    createAgentTool,
+    type ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     ChatLunaBaseEmbeddings,
@@ -49,7 +51,9 @@ export async function createSubAgent(
 
             return await base.agent.generate({
                 ...input,
-                prompt
+                prompt,
+                toolMask: base.toolMask,
+                subagentContext: base.subCtx
             })
         },
         async stream(input) {
@@ -64,7 +68,9 @@ export async function createSubAgent(
 
             return await base.agent.stream({
                 ...input,
-                prompt
+                prompt,
+                toolMask: base.toolMask,
+                subagentContext: base.subCtx
             })
         },
         asTool(toolOptions?: AgentToolOptions) {
@@ -79,12 +85,19 @@ async function createInnerAgent(
     options: CreateSubAgentOptions,
     input: AgentGenerateOptions
 ) {
+    const source = input.source ?? 'chatluna'
+    const toolMask = await options.permission.createSubAgentToolMask(
+        options.info,
+        input.session,
+        source
+    )
     const llm = await resolveModel(options.ctx, options.info, options.model)
     const embeddings = await resolveEmbeddings(options.ctx)
     const skills = await resolveSkillPrompt(
         options.ctx,
         options.permission,
-        options.info
+        options.info,
+        toolMask
     )
     const computer = options.ctx.chatluna_agent?.computer
     const backends = computer
@@ -94,8 +107,9 @@ async function createInnerAgent(
           )
         : []
     const subCtx =
-        input.subagentContext ??
-        createFallbackSubagentContext(options.info, input)
+        input.subagentContext != null
+            ? { ...input.subagentContext, toolMask }
+            : createFallbackSubagentContext(options.info, input, toolMask)
     const system = renderSubAgentSystemPrompt(
         options.info,
         subCtx,
@@ -117,6 +131,8 @@ async function createInnerAgent(
 
     return {
         llm,
+        toolMask,
+        subCtx,
         agent: await options.ctx.chatluna.createAgent({
             id: options.info.id,
             name: options.info.name,
@@ -131,14 +147,16 @@ async function createInnerAgent(
                     : undefined,
             mode: 'tool-calling',
             maxSteps: options.info.maxTurns,
-            handleParsingErrors: true
+            handleParsingErrors: true,
+            toolMask
         })
     }
 }
 
 function createFallbackSubagentContext(
     info: SubAgentInfo,
-    input: AgentGenerateOptions
+    input: AgentGenerateOptions,
+    toolMask: ToolMask
 ) {
     return {
         agentId: info.id,
@@ -146,11 +164,7 @@ function createFallbackSubagentContext(
         parentConversationId: input.conversationId ?? '',
         depth: 1,
         maxDepth: 1,
-        toolMask: input.toolMask ?? {
-            mode: 'all',
-            allow: [],
-            deny: []
-        },
+        toolMask,
         disableHandoff: true,
         traceInfo: {
             runId: info.id,
@@ -205,10 +219,13 @@ async function resolveEmbeddings(ctx: Context) {
 async function resolveSkillPrompt(
     ctx: Context,
     permission: ChatLunaAgentPermissionService,
-    info: SubAgentInfo
+    info: SubAgentInfo,
+    toolMask: ToolMask
 ) {
     const service = ctx.chatluna_agent?.skills
+    const toolCallMask = toolMask.toolCallMask ?? toolMask
     if (!service) return undefined
+    if (!applyToolMask('skill', toolCallMask)) return undefined
     if (!permission.canUseTool(info, 'skill')) return undefined
 
     const skills = permission.filterSkills(

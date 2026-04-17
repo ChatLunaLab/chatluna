@@ -141,7 +141,15 @@ export class ChatLunaAgentPermissionService {
 
     listTools(): ToolInfo[] {
         const registry = this.getRegistry()
-        const key = Object.keys(registry).sort().join('\n')
+        const key = JSON.stringify(
+            Object.values(registry)
+                .map((item) => ({
+                    name: item.name,
+                    description: item.description,
+                    meta: item.meta
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name))
+        )
         if (this._toolCache && this._toolCacheKey === key) {
             return this._toolCache
         }
@@ -290,13 +298,28 @@ export class ChatLunaAgentPermissionService {
         return buildToolMask(allNames, allow)
     }
 
-    createSubAgentToolMask(info: SubAgentInfo): ToolMask {
-        const allNames = this.listTools().map((item) => item.name)
-        const allow = allNames.filter((name) => this.canUseTool(info, name))
-        return buildToolMask(allNames, allow)
+    async createSubAgentToolMask(
+        info: SubAgentInfo,
+        session?: Session,
+        source: string = 'chatluna'
+    ): Promise<ToolMask> {
+        const tools = this.listTools()
+        const allNames = tools.map((item) => item.name)
+        const allow = tools
+            .filter(
+                (item) =>
+                    this.canUseTool(info, item.name) &&
+                    this.isSessionAllowed(session, source, item)
+            )
+            .map((item) => item.name)
+        const mask = buildToolMask(allNames, allow)
+        return {
+            ...mask,
+            toolCallMask: await this.createToolCallMask(session, mask)
+        }
     }
 
-    async createToolCallMask(session: Session, mask?: ToolMask) {
+    async createToolCallMask(session?: Session, mask?: ToolMask) {
         const allNames = this.listTools()
             .map((item) => item.name)
             .filter((name) => applyToolMask(name, mask))
