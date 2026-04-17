@@ -223,8 +223,9 @@ async function resolveSkillPrompt(
     toolMask: ToolMask
 ) {
     const service = ctx.chatluna_agent?.skills
+    const toolCallMask = toolMask.toolCallMask ?? toolMask
     if (!service) return undefined
-    if (!applyToolMask('skill', toolMask)) return undefined
+    if (!applyToolMask('skill', toolCallMask)) return undefined
     if (!permission.canUseTool(info, 'skill')) return undefined
 
     const skills = permission.filterSkills(
