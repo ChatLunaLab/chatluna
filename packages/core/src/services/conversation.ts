@@ -600,6 +600,7 @@ export class ConversationService {
             model: string
             preset: string
             chatMode: string
+            setActive?: boolean
         }
     ) {
         return runLock(this._bindingLocks, options.bindingKey, async () => {
@@ -638,10 +639,12 @@ export class ConversationService {
                 'chatluna_conversation',
                 conversation
             )
-            await this.setActiveConversation(
-                options.bindingKey,
-                conversation.id
-            )
+            if (options.setActive !== false) {
+                await this.setActiveConversation(
+                    options.bindingKey,
+                    conversation.id
+                )
+            }
             await this.ctx.root.parallel('chatluna/after-conversation-create', {
                 conversation,
                 bindingKey: options.bindingKey
@@ -671,25 +674,22 @@ export class ConversationService {
         conversationId: string,
         patch: Partial<ConversationRecord> = {}
     ) {
-        const current = await this.getConversation(conversationId)
-        if (current == null) {
-            return undefined
-        }
-
-        const updated = {
-            ...current,
+        const update: Partial<ConversationRecord> = {
             updatedAt: patch.updatedAt ?? new Date()
-        } as ConversationRecord
-
+        }
         for (const key in patch) {
             const value = patch[key as keyof ConversationRecord]
             if (value !== undefined) {
-                updated[key as keyof ConversationRecord] = value as never
+                update[key as keyof ConversationRecord] = value as never
             }
         }
 
-        await this.ctx.database.upsert('chatluna_conversation', [updated])
-        return updated
+        await this.ctx.database.set(
+            'chatluna_conversation',
+            { id: conversationId },
+            update
+        )
+        return this.getConversation(conversationId)
     }
 
     async claimAutoTitle(conversationId: string) {

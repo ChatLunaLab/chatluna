@@ -891,10 +891,14 @@ function base64ToBlob(data: string, type: string) {
 <style scoped>
 .skills-page {
     min-height: 100%;
-    width: 100%;
+    width: min(100%, 1800px);
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
+}
+
+.skills-page.compact {
+    width: min(100%, 1440px);
 }
 
 .toolbar-container {

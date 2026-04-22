@@ -9,7 +9,8 @@ import {
     SubAgentConfig,
     SubAgentItemConfig,
     ToolConfig,
-    ToolItemConfig
+    ToolItemConfig,
+    TriggerConfig
 } from '../types'
 import { DEFAULT_SKILL_DIRS } from './path'
 
@@ -360,6 +361,16 @@ export function createDefaultComputerConfig(): ComputerConfig {
     }
 }
 
+export function createDefaultTriggerConfig(): TriggerConfig {
+    return {
+        providers: {
+            cron: { enabled: true },
+            activity: { enabled: true },
+            keyword: { enabled: true }
+        }
+    }
+}
+
 export function getDefaultConfig(): AgentConfig {
     return {
         version: 4,
@@ -374,6 +385,7 @@ export function getDefaultConfig(): AgentConfig {
         },
         computer: createDefaultComputerConfig(),
         subAgent: createDefaultSubAgentConfig(),
-        tool: createDefaultToolConfig()
+        tool: createDefaultToolConfig(),
+        trigger: createDefaultTriggerConfig()
     }
 }

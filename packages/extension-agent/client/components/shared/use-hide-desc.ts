@@ -7,34 +7,26 @@ export interface PagePrefs {
     tool: boolean
     subAgent: boolean
     computer: boolean
+    trigger: boolean
 }
 
 const DESC_KEY = 'chatluna-agent-hide-desc'
 const COMPACT_KEY = 'chatluna-agent-compact-mode'
 
-function readState(key: string) {
+function readState(key: string, fallback: boolean) {
     if (typeof window === 'undefined') {
-        return false
+        return fallback
     }
 
     const raw = window.localStorage.getItem(key)
     if (!raw) {
-        return false
+        return fallback
     }
 
     try {
-        const value = JSON.parse(raw)
-        if (typeof value === 'boolean') {
-            return value
-        }
-
-        if (value && typeof value === 'object') {
-            return Object.values(value).some(Boolean)
-        }
-
-        return false
+        return JSON.parse(raw) === true
     } catch {
-        return false
+        return fallback
     }
 }
 
@@ -46,8 +38,8 @@ function writeState(key: string, value: boolean) {
     window.localStorage.setItem(key, JSON.stringify(value))
 }
 
-const hideDesc = ref(readState(DESC_KEY))
-const compactMode = ref(readState(COMPACT_KEY))
+const hideDesc = ref(readState(DESC_KEY, false))
+const compactMode = ref(readState(COMPACT_KEY, true))
 
 function usePagePref(key: string, state: Ref<boolean>) {
     return computed({

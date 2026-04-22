@@ -922,11 +922,15 @@ function canRemoveAgent(item: SubAgentInfo) {
 <style scoped>
 .sub-agent-page {
     min-height: 100%;
-    width: 100%;
+    width: min(100%, 1800px);
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
     box-sizing: border-box;
+}
+
+.sub-agent-page.compact {
+    width: min(100%, 1440px);
 }
 
 .toolbar-container {

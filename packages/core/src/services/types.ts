@@ -6,8 +6,6 @@ import {
     BindingRecord,
     ConstraintRecord,
     ConversationRecord,
-    ConversationResolution,
-    ConversationResolveMode,
     MessageRecord,
     MetaRecord,
     ResolveConversationOptions
@@ -92,6 +90,7 @@ export interface ChatEvents {
     'llm-new-token'?: (token: string) => Promise<void>
     'llm-queue-waiting'?: (size: number) => Promise<void>
     'llm-used-token-count'?: (token: number) => Promise<void>
+    'llm-usage'?: (usage: AIMessage['usage_metadata']) => Promise<void>
 
     'llm-call-tool'?: (
         tool: string,
@@ -188,6 +187,10 @@ declare module 'koishi' {
 
     interface Events {
         'chatluna/before-check-sender'(session: Session): Promise<boolean>
+        'chatluna/check-passive-trigger'(
+            session: Session,
+            content: string
+        ): Promise<boolean>
     }
 
     interface Tables {
@@ -219,10 +222,6 @@ declare module '@chatluna/shared-prompt-renderer' {
 
 export * from '@chatluna/shared-prompt-renderer'
 
-export type {
-    ConversationResolution,
-    ConversationResolveMode,
-    ResolveConversationOptions
-}
+export * from './conversation_types'
 
 export type { ToolMaskArg, ToolMaskResolver }

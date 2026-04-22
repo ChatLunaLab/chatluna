@@ -1,5 +1,5 @@
 <template>
-    <div class="computer-page">
+    <div class="computer-page" :class="{ compact: compactMode }">
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
@@ -27,6 +27,24 @@
                     </el-button>
                     <el-button :loading="reloading" @click="reloadComputer">
                         重新加载
+                    </el-button>
+                    <el-button
+                        size="small"
+                        class="hidden-mobile"
+                        :type="compactMode ? 'primary' : 'default'"
+                        plain
+                        @click="compactMode = !compactMode"
+                    >
+                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                    </el-button>
+                    <el-button
+                        size="small"
+                        class="hidden-mobile"
+                        :type="hideDesc ? 'primary' : 'default'"
+                        plain
+                        @click="hideDesc = !hideDesc"
+                    >
+                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
                     </el-button>
                 </div>
             </div>
@@ -158,7 +176,7 @@
 import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
-import { useHideDesc } from '../shared/use-hide-desc'
+import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import ConfigurationPanel from './configuration-panel.vue'
 import BackgroundJobsPanel from './background-jobs-panel.vue'
 import TerminalPanel from './terminal-panel.vue'
@@ -272,6 +290,7 @@ const props = withDefaults(
 const activeTab = ref('config')
 const draft = ref<ComputerConfig>(cloneConfig(props.config))
 const hideDesc = useHideDesc('computer')
+const compactMode = useCompactMode('computer')
 const pendingJob = ref<ComputerBackgroundJobInfo>()
 const saving = ref(false)
 const reloading = ref(false)
@@ -435,12 +454,25 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 <style scoped>
 .computer-page {
     min-height: 100%;
-    max-width: 860px;
-    width: 100%;
+    width: min(100%, 1800px);
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
     box-sizing: border-box;
+}
+
+.computer-page.compact {
+    width: min(100%, 1440px);
+}
+
+.hidden-mobile {
+    display: inline-flex;
+}
+
+@media (max-width: 768px) {
+    .hidden-mobile {
+        display: none;
+    }
 }
 
 .toolbar-container {

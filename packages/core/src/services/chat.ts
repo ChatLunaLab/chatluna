@@ -1,7 +1,4 @@
-import {
-    CallbackManager,
-    type Callbacks
-} from '@langchain/core/callbacks/manager'
+import { CallbackManager } from '@langchain/core/callbacks/manager'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -25,8 +22,7 @@ import {
     resolveAgentEmbeddings,
     resolveAgentModel,
     resolveAgentPreset,
-    resolveAgentTools,
-    ToolMask
+    resolveAgentTools
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
@@ -57,13 +53,9 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { MessageTransformer } from './message_transform'
-import {
-    ChatCallbackProviderInput,
-    ChatCallbacksProvider,
-    ChatEvents
-} from './types'
+import { ChatCallbackProviderInput, ChatCallbacksProvider } from './types'
 import { ConversationService } from './conversation'
-import { ConversationRuntime } from './conversation_runtime'
+import { type ChatOptions, ConversationRuntime } from './conversation_runtime'
 import { ConstraintRecord, ConversationRecord } from './conversation_types'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
@@ -71,14 +63,12 @@ import { ClientOptions, WebSocket } from 'ws'
 import { ClientRequestArgs } from 'http'
 import { Config } from '../config'
 import { DefaultRenderer, Renderer } from 'koishi-plugin-chatluna'
-import type { PostHandler } from '../utils/types'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { ChatLunaPromptRenderService } from './prompt_renderer'
 import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
-import { randomUUID } from 'crypto'
 import type { Notifier } from '@koishijs/plugin-notifier'
 import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { createChatPrompt } from 'koishi-plugin-chatluna/utils/chatluna'
@@ -231,26 +221,13 @@ export class ChatLunaService extends Service<Config> {
         session: Session,
         conversation: ConversationRecord,
         message: Message,
-        event: ChatEvents,
-        stream: boolean = false,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        variables: Record<string, any> = {},
-        postHandler?: PostHandler,
-        requestId: string = randomUUID(),
-        toolMask?: ToolMask,
-        callbacks?: Callbacks
-    ) {
+        options: ChatOptions = {}
+    ): Promise<Message> {
         return this._conversationRuntime.chat(
             session,
             conversation,
             message,
-            event,
-            stream,
-            variables,
-            postHandler,
-            requestId,
-            toolMask,
-            callbacks
+            options
         )
     }
 

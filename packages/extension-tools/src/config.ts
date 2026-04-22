@@ -27,8 +27,6 @@ export interface Config extends ChatLunaPlugin.Config {
     chat: boolean
     todos: boolean
     todosNotify: boolean
-    cron: boolean
-    cronScopeSelector: string[]
 
     music: boolean
 
@@ -49,8 +47,7 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
     Schema.object({
         request: Schema.boolean().default(true),
-        command: Schema.boolean().default(false),
-        cron: Schema.boolean().default(true)
+        command: Schema.boolean().default(false)
     }),
     Schema.object({
         group: Schema.boolean().default(false)

@@ -39,6 +39,7 @@ import { ChatLunaAgentPermissionService } from './permissions'
 import { ChatLunaAgentRuntimeSyncService } from './runtime_sync'
 import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
+import { ChatLunaAgentTriggerService } from './trigger'
 
 export class ChatLunaAgentService extends Service {
     public computer: ChatLunaAgentComputerService
@@ -47,6 +48,7 @@ export class ChatLunaAgentService extends Service {
     public runtimeSync: ChatLunaAgentRuntimeSyncService
     public skills: ChatLunaAgentSkillsService
     public subAgent: ChatLunaAgentSubAgentService
+    public trigger: ChatLunaAgentTriggerService
     private _toolUpdateDispose?: () => void
 
     constructor(
@@ -70,6 +72,7 @@ export class ChatLunaAgentService extends Service {
             config,
             this.permission
         )
+        this.trigger = new ChatLunaAgentTriggerService(ctx, config.trigger)
     }
 
     async start() {
@@ -88,7 +91,8 @@ export class ChatLunaAgentService extends Service {
             this.runtimeSync.start(),
             this.skills.start(),
             this.subAgent.start(),
-            this.mcp.start()
+            this.mcp.start(),
+            this.trigger.start()
         ])
         this.ctx.setTimeout(() => this.refreshConsoleData(), 20)
     }
@@ -102,6 +106,7 @@ export class ChatLunaAgentService extends Service {
         await this.runtimeSync.stop()
         await this.computer.stop()
         await this.permission.stop()
+        await this.trigger.stop()
     }
 
     async reload(cfg?: AgentConfig) {
@@ -134,7 +139,8 @@ export class ChatLunaAgentService extends Service {
             skills: this.skills.getStatus(),
             computer: this.computer.getStatus(),
             subAgent: this.subAgent.getStatus(),
-            tool: this.permission.getStatus()
+            tool: this.permission.getStatus(),
+            trigger: this.trigger.getStatus()
         }
     }
 
@@ -568,6 +574,17 @@ export class ChatLunaAgentService extends Service {
         return this.permission.getToolAvailability()
     }
 
+    async setTriggerProviderEnabled(kind: string, enabled: boolean) {
+        this.trigger.setProviderEnabled(kind, enabled)
+        await this.updateConfig('trigger', {
+            ...this.args.config.trigger,
+            providers: {
+                ...this.args.config.trigger.providers,
+                [kind]: { enabled }
+            }
+        })
+    }
+
     async getPresetNames() {
         return this.ctx.chatluna.preset.getAllPreset(false).value
     }
@@ -687,6 +704,7 @@ ${truncateOutput(input.text, limit)}`
         this.mcp.config = cfg
         this.skills.config = cfg
         this.subAgent.config = cfg
+        this.trigger.config = cfg.trigger
     }
 
     private async afterConfigUpdate(

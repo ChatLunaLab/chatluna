@@ -7,6 +7,13 @@ import { parsePresetLaneInput } from '../../utils/message_content'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('allow_reply', async (session, context) => {
+            // Trigger-driven wakeups bypass all permission checks: the trigger
+            // service has already authenticated the caller / cron / passive match.
+            if (context.options.triggerWakeup != null) {
+                context.options.reply_status = true
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
             // 禁止套娃
             if (ctx.bots[session.uid]) return ChainMiddlewareRunStatus.STOP
 
@@ -99,6 +106,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ) != null
             ) {
                 return ChainMiddlewareRunStatus.CONTINUE
+            }
+
+            if (
+                await ctx.serial(
+                    'chatluna/check-passive-trigger',
+                    session,
+                    content
+                )
+            ) {
+                return ChainMiddlewareRunStatus.STOP
             }
 
             return ChainMiddlewareRunStatus.STOP
