@@ -36,6 +36,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
+    ChatLunaBaseReranker,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -372,6 +373,49 @@ export class ChatLunaService extends Service<Config> {
                 `The model ${modelName} is not embeddings, return empty embeddings`
             )
             return emptyEmbeddings
+        })
+    }
+
+    async createReranker(
+        platformName: string,
+        modelName: string
+    ): Promise<ComputedRef<ChatLunaBaseReranker | undefined>>
+
+    async createReranker(
+        fullModelName: string
+    ): Promise<ComputedRef<ChatLunaBaseReranker | undefined>>
+
+    async createReranker(platformName: string, modelName?: string) {
+        const service = this._platformService
+
+        if (modelName == null) {
+            ;[platformName, modelName] = parseRawModelName(platformName)
+        }
+
+        const client = await service.getClient(platformName)
+
+        return computed(() => {
+            if (client.value == null) {
+                if (platformName !== '无') {
+                    this.ctx.logger.warn(
+                        `The platform ${platformName} no available`
+                    )
+                }
+                return undefined
+            }
+
+            try {
+                const model = client.value.createModel(modelName)
+
+                if (model instanceof ChatLunaBaseReranker) {
+                    return model
+                }
+            } catch (error) {
+                this.ctx.logger.warn(`The model ${modelName} not found`, error)
+            }
+
+            this.ctx.logger.warn(`The model ${modelName} is not a reranker`)
+            return undefined
         })
     }
 

@@ -1,6 +1,10 @@
 import { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager'
 import { Embeddings, EmbeddingsParams } from '@langchain/core/embeddings'
 import {
+    AsyncCaller,
+    AsyncCallerParams
+} from '@langchain/core/utils/async_caller'
+import {
     BaseChatModel,
     BaseChatModelCallOptions
 } from '@langchain/core/language_models/chat_models'
@@ -22,7 +26,10 @@ import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
     ModelRequester,
-    ModelRequestParams
+    ModelRequestParams,
+    RerankerRequester,
+    RerankerRequestParams,
+    RerankerResult
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import type { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
@@ -961,6 +968,108 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
             try {
                 const data = await Promise.race([
                     this._client.embeddings(request),
+                    timeoutPromise
+                ])
+                return data
+            } catch (e) {
+                if (e instanceof ChatLunaError) {
+                    throw e
+                }
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            } finally {
+                clearTimeout(timeoutId)
+            }
+        }
+
+        try {
+            return await this.caller.call(makeRequest)
+        } catch (e) {
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        }
+    }
+}
+
+export interface ChatLunaBaseRerankerParams extends AsyncCallerParams {
+    timeout?: number
+    maxRetries?: number
+    client: RerankerRequester
+    model?: string
+}
+
+export abstract class ChatLunaBaseReranker {
+    caller: AsyncCaller
+
+    constructor(params: AsyncCallerParams) {
+        this.caller = new AsyncCaller(params ?? {})
+    }
+
+    abstract rerank(
+        query: string,
+        documents: string[],
+        topN?: number
+    ): Promise<RerankerResult[]>
+}
+
+export class ChatLunaReranker extends ChatLunaBaseReranker {
+    modelName = 'bge-reranker-v2-m3'
+
+    timeout?: number
+
+    private _client: RerankerRequester
+
+    constructor(fields?: ChatLunaBaseRerankerParams) {
+        super(fields)
+
+        this.timeout = fields?.timeout ?? 1000 * 60
+        this.modelName = fields?.model ?? this.modelName
+        this._client = fields?.client
+    }
+
+    async rerank(
+        query: string,
+        documents: string[],
+        topN?: number
+    ): Promise<RerankerResult[]> {
+        return await this._rerankWithRetry({
+            model: this.modelName,
+            query,
+            documents,
+            topN
+        })
+    }
+
+    private async _rerankWithRetry(
+        request: RerankerRequestParams
+    ): Promise<RerankerResult[]> {
+        request.timeout = request.timeout ?? this.timeout
+
+        let timeoutError: Error | null = null
+
+        try {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+                new Error(`timeout when calling ${this.modelName} reranker`),
+                true
+            )
+        } catch (e) {
+            timeoutError = e
+        }
+
+        const makeRequest = async () => {
+            let timeoutId: NodeJS.Timeout
+
+            const timeoutPromise = new Promise<RerankerResult[]>(
+                // eslint-disable-next-line promise/param-names
+                (_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        reject(timeoutError)
+                    }, request.timeout)
+                }
+            )
+
+            try {
+                const data = await Promise.race([
+                    this._client.rerank(request),
                     timeoutPromise
                 ])
                 return data

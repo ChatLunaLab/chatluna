@@ -42,6 +42,7 @@ export interface Config {
 
     defaultEmbeddings: string
     defaultVectorStore: string
+    defaultReranker: string
 
     defaultChatMode: string
     defaultModel: string
@@ -157,7 +158,8 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         defaultEmbeddings: Schema.dynamic('embeddings').default('无'),
-        defaultVectorStore: Schema.dynamic('vector-store').default('无')
+        defaultVectorStore: Schema.dynamic('vector-store').default('无'),
+        defaultReranker: Schema.dynamic('reranker').default('无')
     }),
 
     Schema.object({

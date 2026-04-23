@@ -5,6 +5,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
+    ChatLunaBaseReranker,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
@@ -23,7 +24,7 @@ export type { FileHandlingConfig }
 
 export abstract class BasePlatformClient<
     T extends ClientConfig = ClientConfig,
-    R = ChatLunaChatModel | ChatLunaBaseEmbeddings
+    R = ChatLunaChatModel | ChatLunaBaseEmbeddings | ChatLunaBaseReranker
 > {
     private _modelPool: Record<string, R> = {}
 
@@ -162,5 +163,13 @@ export abstract class PlatformEmbeddingsClient<
 > extends BasePlatformClient<T, ChatLunaBaseEmbeddings> {}
 
 export abstract class PlatformModelAndEmbeddingsClient<
+    T extends ClientConfig = ClientConfig
+> extends BasePlatformClient<T, ChatLunaChatModel | ChatLunaBaseEmbeddings> {}
+
+export abstract class PlatformRerankerClient<
+    T extends ClientConfig = ClientConfig
+> extends BasePlatformClient<T, ChatLunaBaseReranker> {}
+
+export abstract class PlatformModelEmbeddingsAndRerankerClient<
     T extends ClientConfig = ClientConfig
 > extends BasePlatformClient<T> {}

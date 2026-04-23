@@ -51,6 +51,7 @@ $inner:
     - $desc: Model Configuration
       defaultEmbeddings: Set default embedding model.
       defaultVectorStore: Set default vector database.
+      defaultReranker: Set default reranker model.
 
     - $desc: Conversation Routing Defaults
       defaultGroupRouteMode:

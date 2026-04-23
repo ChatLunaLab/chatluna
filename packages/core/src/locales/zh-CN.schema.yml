@@ -52,6 +52,7 @@ $inner:
     - $desc: 模型选项
       defaultEmbeddings: 设置默认使用的嵌入模型。
       defaultVectorStore: 设置默认使用的向量数据库。
+      defaultReranker: 设置默认使用的重排序模型。
 
     - $desc: 会话路由默认配置
       defaultGroupRouteMode:
