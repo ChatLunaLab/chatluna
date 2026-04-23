@@ -350,12 +350,24 @@ function formatParams(task: TriggerTask) {
     }
 
     if (task.providerKind === 'activity') {
-        const threshold = task.params?.threshold ?? '—'
-        const window = task.params?.windowMs
-        if (window != null) {
-            return `${threshold} 条 / ${Math.round(Number(window) / 1000)} 秒`
+        const init = task.params?.initialScore
+        const threshold = task.params?.activeThreshold
+        if (init == null || threshold == null) {
+            return '未配置活跃度参数'
         }
-        return `阈值：${threshold}`
+        const dirParam = task.params?.direction
+        const direction =
+            dirParam === 'up'
+                ? '越聊越活'
+                : dirParam === 'down'
+                  ? '越聊越冷'
+                  : Number(init) < Number(threshold)
+                    ? '越聊越活'
+                    : '越聊越冷'
+        const half = task.params?.decayHalfLifeMs
+        const halfLabel =
+            half != null ? ` · 半衰期 ${Math.round(Number(half) / 1000)}s` : ''
+        return `${direction}：${init} → ${threshold}${halfLabel}`
     }
 
     return formatDate(task.nextFireAt)

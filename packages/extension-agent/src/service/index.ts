@@ -577,7 +577,7 @@ export class ChatLunaAgentService extends Service {
     }
 
     async setTriggerProviderEnabled(kind: string, enabled: boolean) {
-        this.trigger.setProviderEnabled(kind, enabled)
+        await this.trigger.setProviderEnabled(kind, enabled)
         await this.updateConfig('trigger', {
             ...this.args.config.trigger,
             providers: {

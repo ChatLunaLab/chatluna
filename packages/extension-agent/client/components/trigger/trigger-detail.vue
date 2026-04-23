@@ -986,9 +986,34 @@ function handleSave() {
 function formatFieldLabel(name: string, fallback: string) {
     if (name === 'expression') return 'Cron 表达式'
     if (name === 'missedRunPolicy') return '过期策略'
-    if (name === 'threshold') return '触发阈值'
-    if (name === 'windowMs') return '统计窗口（毫秒）'
+    if (name === 'initialScore') return '活跃度初始分'
+    if (name === 'activeThreshold') return '触发阈值'
+    if (name === 'direction') return '触发方向'
+    if (name === 'decayHalfLifeMs') return '衰减半衰期（毫秒）'
+    if (name === 'messageWeight') return '基础权重'
+    if (name === 'lengthBonusEnabled') return '启用长度加成'
+    if (name === 'lengthBonusCharsPerPoint') return '每多少字符 +1'
+    if (name === 'lengthBonusMax') return '长度加成上限'
+    if (name === 'mentionBonus') return '@ 提及加成'
+    if (name === 'quoteBonus') return '引用回复加成'
+    if (name === 'mediaBonus') return '媒体消息加成'
+    if (name === 'emojiOnlyPenalty') return '纯表情惩罚倍率'
+    if (name === 'boostKeywords') return '加权关键词'
+    if (name === 'boostKeywordFactor') return '关键词加成系数'
+    if (name === 'minDistinctUsers') return '最少参与人数'
+    if (name === 'distinctUserCurve') return '参与度曲线'
+    if (name === 'distinctUserGain') return '参与度系数'
+    if (name === 'sameUserPenalty') return '同人连发衰减底数'
+    if (name === 'burstIntervalMs') return '刷屏间隔（毫秒）'
+    if (name === 'burstPenalty') return '刷屏惩罚倍率'
+    if (name === 'silenceBoostMs') return '破冰静默阈值（毫秒）'
+    if (name === 'silenceBoostFactor') return '破冰加成倍率'
+    if (name === 'windowMs') return '滑动窗口（毫秒）'
+    if (name === 'windowMaxMessages') return '窗口消息上限'
+    if (name === 'holdMs') return '触发持续时长（毫秒）'
     if (name === 'cooldownMs') return '冷却时间（毫秒）'
+    if (name === 'recoveryMs') return '触发后恢复时长（毫秒）'
+    if (name === 'idleTimeoutMs') return '状态清理时限（毫秒）'
     if (name === 'keywords') return '关键词'
     if (name === 'caseSensitive') return '区分大小写'
     return fallback
@@ -998,6 +1023,16 @@ function formatEnumLabel(name: string, value: string) {
     if (name === 'missedRunPolicy') {
         if (value === 'skip') return '过期不执行'
         if (value === 'fire_once') return '过期补执行一次'
+    }
+    if (name === 'direction') {
+        if (value === 'auto') return '自动判定'
+        if (value === 'up') return '向上跨越触发'
+        if (value === 'down') return '向下跌破触发'
+    }
+    if (name === 'distinctUserCurve') {
+        if (value === 'linear') return '线性'
+        if (value === 'sqrt') return '开平方'
+        if (value === 'log') return '对数'
     }
     return value
 }

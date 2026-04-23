@@ -159,7 +159,6 @@ export interface TriggerProviderPassiveContext {
     session: Session
     task: TriggerTask
     content: string
-    activityCount: number
 }
 
 export interface TriggerProviderPassiveMatch {

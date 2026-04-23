@@ -49,7 +49,11 @@ export class ChatLunaAgentTriggerExecutor {
 
                     resolve?.(reply ?? undefined)
 
-                    if (wakeup.replyTo === 'silent' || wakeup.replyTo === 'user' || wakeup.replyTo === 'callback') {
+                    if (
+                        wakeup.replyTo === 'silent' ||
+                        wakeup.replyTo === 'user' ||
+                        wakeup.replyTo === 'callback'
+                    ) {
                         context.options.responseMessage = null
                         context.message = null
                     }

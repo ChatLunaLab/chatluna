@@ -6,7 +6,6 @@ import type {
 } from '../types'
 
 export class ChatLunaAgentTriggerListener {
-    private readonly _activity = new Map<string, number[]>()
     private readonly _bindings = new Map<string, { key: string; ts: number }>()
 
     private readonly _cooldown = new Map<number, number>()
@@ -44,7 +43,6 @@ export class ChatLunaAgentTriggerListener {
     stop() {
         this._dispose?.()
         this._dispose = undefined
-        this._activity.clear()
         this._bindings.clear()
         this._cooldown.clear()
         this._dedup.clear()
@@ -74,18 +72,6 @@ export class ChatLunaAgentTriggerListener {
         )
         if (tasks.length < 1) return false
 
-        let maxWindow = 60 * 1000
-        for (const task of tasks) {
-            const w = (task.params?.windowMs as number) ?? 0
-            if (w > maxWindow) maxWindow = w
-        }
-        const history = this._activity.get(entry.key) ?? []
-        history.push(now)
-        while (history[0] != null && history[0] < now - maxWindow) {
-            history.shift()
-        }
-        this._activity.set(entry.key, history)
-
         for (const task of tasks) {
             const provider = this.hooks.getProvider(task.providerKind)
             if (provider?.passive !== true || provider.match == null) continue
@@ -112,8 +98,7 @@ export class ChatLunaAgentTriggerListener {
                 matched = await provider.match({
                     session,
                     task,
-                    content: text,
-                    activityCount: history.length
+                    content: text
                 })
             } catch (err) {
                 this.ctx.logger.warn(err)
@@ -167,13 +152,11 @@ export class ChatLunaAgentTriggerListener {
         for (const [key, entry] of this._bindings) {
             if (entry.ts <= now - 10 * 60 * 1000) {
                 this._bindings.delete(key)
-                this._activity.delete(entry.key)
             }
         }
 
         if (this._bindings.size > 1024) {
             this._bindings.clear()
-            this._activity.clear()
         }
     }
 }

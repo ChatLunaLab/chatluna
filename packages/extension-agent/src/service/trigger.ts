@@ -59,18 +59,17 @@ interface DeferredWakeup {
  * Convenience input for `createTask` when the caller has a session.
  * Routing fields are derived from the session.
  */
-export interface CreateTaskFromSessionOptions
-    extends Omit<
-        TriggerCreateTaskInput,
-        | 'bindingKey'
-        | 'platform'
-        | 'selfId'
-        | 'userId'
-        | 'guildId'
-        | 'channelId'
-        | 'isDirect'
-        | 'createdBy'
-    > {
+export interface CreateTaskFromSessionOptions extends Omit<
+    TriggerCreateTaskInput,
+    | 'bindingKey'
+    | 'platform'
+    | 'selfId'
+    | 'userId'
+    | 'guildId'
+    | 'channelId'
+    | 'isDirect'
+    | 'createdBy'
+> {
     bindingKey?: string
     scope?: WakeupScope
     createdBy?: string
@@ -345,7 +344,7 @@ export class ChatLunaAgentTriggerService {
         return this.config.providers[kind]?.enabled !== false
     }
 
-    setProviderEnabled(kind: string, enabled: boolean) {
+    async setProviderEnabled(kind: string, enabled: boolean) {
         if (this._providers.get(kind) == null) {
             throw new Error(`Unknown trigger provider: ${kind}`)
         }
@@ -358,17 +357,17 @@ export class ChatLunaAgentTriggerService {
         if (!enabled) {
             // Remove scheduled timers for all tasks of this provider so disabled
             // providers don't continue to fire from the existing schedule.
-            void this._registry.list({ providerKind: kind }).then((tasks) => {
-                for (const task of tasks) {
-                    this._scheduler.remove(task.id)
-                }
-            })
+            for (const task of await this._registry.list({
+                providerKind: kind
+            })) {
+                this._scheduler.remove(task.id)
+            }
         } else {
-            void this._registry.list({ providerKind: kind }).then((tasks) => {
-                for (const task of tasks) {
-                    this._scheduler.sync(task)
-                }
-            })
+            for (const task of await this._registry.list({
+                providerKind: kind
+            })) {
+                this._scheduler.sync(task)
+            }
         }
 
         this._syncPrompt()
