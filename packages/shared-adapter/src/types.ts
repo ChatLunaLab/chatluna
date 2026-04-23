@@ -176,3 +176,24 @@ export type ChatCompletionResponseMessageRoleEnum =
     | 'user'
     | 'function'
     | 'tool'
+
+export interface CreateRerankRequest {
+    model: string
+    query: string
+    documents: string[]
+    top_n?: number
+    return_documents?: boolean
+}
+
+export interface RerankResultItem {
+    index: number
+    relevance_score: number
+    document?: { text: string }
+}
+
+export interface CreateRerankResponse {
+    id?: string
+    model?: string
+    results: RerankResultItem[]
+    usage?: { prompt_tokens?: number; total_tokens?: number }
+}

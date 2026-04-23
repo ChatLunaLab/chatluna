@@ -81,7 +81,8 @@ export const Config: Schema<Config> = Schema.intersect([
                 model: Schema.string(),
                 modelType: Schema.union([
                     'LLM 大语言模型',
-                    'Embeddings 嵌入模型'
+                    'Embeddings 嵌入模型',
+                    'Reranker 重排序模型'
                 ]).default('LLM 大语言模型'),
                 modelCapabilities: Schema.array(
                     Schema.union([

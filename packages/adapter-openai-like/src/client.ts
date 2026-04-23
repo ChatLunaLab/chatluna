@@ -1,9 +1,11 @@
 import { Context } from 'koishi'
-import { PlatformModelAndEmbeddingsClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
+import { PlatformModelEmbeddingsAndRerankerClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ChatLunaBaseEmbeddings,
+    ChatLunaBaseReranker,
     ChatLunaChatModel,
-    ChatLunaEmbeddings
+    ChatLunaEmbeddings,
+    ChatLunaReranker
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ModelCapabilities,
@@ -21,11 +23,12 @@ import {
     getModelMaxContextSize,
     isEmbeddingModel,
     isNonLLMModel,
+    isRerankerModel,
     supportImageInput
 } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
 
-export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
+export class OpenAIClient extends PlatformModelEmbeddingsAndRerankerClient {
     platform = 'openai'
 
     private _requester: OpenAIRequester
@@ -58,7 +61,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                         type:
                             modelType === 'Embeddings 嵌入模型'
                                 ? ModelType.embeddings
-                                : ModelType.llm,
+                                : modelType === 'Reranker 重排序模型'
+                                  ? ModelType.reranker
+                                  : ModelType.llm,
                         capabilities: modelCapabilities,
                         maxTokens: contextSize ?? 4096
                     }) as ModelInfo
@@ -94,9 +99,11 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                     (model) =>
                         ({
                             name: model,
-                            type: isEmbeddingModel(model)
-                                ? ModelType.embeddings
-                                : ModelType.llm,
+                            type: isRerankerModel(model)
+                                ? ModelType.reranker
+                                : isEmbeddingModel(model)
+                                  ? ModelType.embeddings
+                                  : ModelType.llm,
                             ...supportToolCalling(model)
                         }) as ModelInfo
                 )
@@ -120,7 +127,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
 
     protected _createModel(
         model: string
-    ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
+    ): ChatLunaChatModel | ChatLunaBaseEmbeddings | ChatLunaBaseReranker {
         const info = this._modelInfos[model]
 
         if (info == null) {
@@ -157,6 +164,15 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
                     model.includes('reasoner') ||
                     model.includes('r1') ||
                     model.includes('thinking')
+            })
+        }
+
+        if (info.type === ModelType.reranker) {
+            return new ChatLunaReranker({
+                client: this._requester,
+                model,
+                maxRetries: this._config.maxRetries,
+                timeout: this._config.timeout
             })
         }
 

@@ -77,9 +77,13 @@ export function isNonLLMModel(modelName: string): boolean {
     if (modelName.includes('gemini') && modelName.includes('image')) {
         return false
     }
-    return ['whisper', 'tts', 'dall-e', 'image', 'rerank'].some((keyword) =>
+    return ['whisper', 'tts', 'dall-e', 'image'].some((keyword) =>
         modelName.includes(keyword)
     )
+}
+
+export function isRerankerModel(modelName: string): boolean {
+    return modelName.includes('rerank')
 }
 
 export function getModelMaxContextSize(info: ModelInfo): number {
