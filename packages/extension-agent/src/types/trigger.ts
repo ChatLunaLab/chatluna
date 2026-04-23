@@ -74,16 +74,7 @@ export function parseBindingKey(bindingKey: string): {
         }
     }
     if (parts[0] === 'personal' && parts.length >= 5) {
-        return {
-            routing: {
-                platform: parts[1],
-                selfId: parts[2],
-                guildId: parts[3],
-                channelId: parts[3],
-                userId: parts[4],
-                isDirect: false
-            }
-        }
+        return { error: 'no-routing' }
     }
     return { error: 'invalid-binding-key' }
 }

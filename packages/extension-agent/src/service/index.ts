@@ -100,13 +100,13 @@ export class ChatLunaAgentService extends Service {
     async stop() {
         this._toolUpdateDispose?.()
         this._toolUpdateDispose = undefined
+        await this.trigger.stop()
         await this.subAgent.stop()
         await this.mcp.stop()
         await this.skills.stop()
         await this.runtimeSync.stop()
         await this.computer.stop()
         await this.permission.stop()
-        await this.trigger.stop()
     }
 
     async reload(cfg?: AgentConfig) {
@@ -116,6 +116,8 @@ export class ChatLunaAgentService extends Service {
         await this.skills.reload()
         await this.mcp.reload()
         await this.subAgent.reload()
+        await this.trigger.stop()
+        await this.trigger.start()
         await this.refreshConsoleData()
     }
 
@@ -730,6 +732,12 @@ ${truncateOutput(input.text, limit)}`
 
         if (section === 'subAgent') {
             await this.subAgent.reload()
+            return
+        }
+
+        if (section === 'trigger') {
+            await this.trigger.stop()
+            await this.trigger.start()
         }
     }
 

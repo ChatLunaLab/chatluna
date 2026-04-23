@@ -141,6 +141,9 @@ export class ChatLunaAgentTriggerListener {
                         this._cooldown.set(task.id, now + cooldownMs)
                     }
                 } catch (err) {
+                    if (cooldownMs > 0) {
+                        this._cooldown.set(task.id, now + cooldownMs)
+                    }
                     this.ctx.logger.warn(err)
                 } finally {
                     this._pending.delete(task.id)
@@ -162,9 +165,15 @@ export class ChatLunaAgentTriggerListener {
         }
 
         for (const [key, entry] of this._bindings) {
-            if (entry.ts <= now - 10 * 60 * 1000) this._bindings.delete(key)
+            if (entry.ts <= now - 10 * 60 * 1000) {
+                this._bindings.delete(key)
+                this._activity.delete(entry.key)
+            }
         }
 
-        if (this._bindings.size > 1024) this._bindings.clear()
+        if (this._bindings.size > 1024) {
+            this._bindings.clear()
+            this._activity.clear()
+        }
     }
 }

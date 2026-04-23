@@ -8,12 +8,11 @@ export function buildVirtualSession(
     routing: WakeupRouting,
     action: Pick<WakeupAction, 'message' | 'messageName' | 'requestId'>
 ) {
-    const now = Date.now()
     const event: Partial<Universal.Event> = {
         type: 'message',
         platform: routing.platform,
         selfId: routing.selfId,
-        timestamp: now,
+        timestamp: Date.now(),
         channel: {
             id: routing.channelId ?? routing.guildId ?? routing.userId,
             type: routing.isDirect ? 1 : 0

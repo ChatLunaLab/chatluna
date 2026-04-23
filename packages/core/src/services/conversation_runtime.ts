@@ -101,15 +101,14 @@ export class ConversationRuntime {
 
         const chatInterface = await this.ensureChatInterface(conversation)
         const abortController = new AbortController()
-        if (options.signal != null) {
-            const sig = options.signal
+        const sig = options.signal
+        let onAbort: (() => void) | undefined
+        if (sig != null) {
             if (sig.aborted) abortController.abort(sig.reason)
-            else
-                sig.addEventListener(
-                    'abort',
-                    () => abortController.abort(sig.reason),
-                    { once: true }
-                )
+            else {
+                onAbort = () => abortController.abort(sig.reason)
+                sig.addEventListener('abort', onAbort, { once: true })
+            }
         }
         const activeRequest = this.registerRequest(
             conversation.id,
@@ -235,6 +234,9 @@ export class ConversationRuntime {
             }
         } finally {
             idleDisponse()
+            if (sig != null && onAbort != null) {
+                sig.removeEventListener('abort', onAbort)
+            }
             this.completeRequest(conversation.id, requestId)
         }
     }

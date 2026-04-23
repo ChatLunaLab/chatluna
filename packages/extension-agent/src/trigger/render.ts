@@ -59,8 +59,11 @@ function renderType(schema: ZodTypeAny, indent: number): string {
     const def = schema._def
     const name = def?.typeName as string | undefined
 
-    if (name === 'ZodOptional' || name === 'ZodNullable') {
+    if (name === 'ZodOptional') {
         return renderType(def.innerType, indent)
+    }
+    if (name === 'ZodNullable') {
+        return `${renderType(def.innerType, indent)} | null`
     }
     if (name === 'ZodDefault') {
         return renderType(def.innerType, indent)
@@ -119,6 +122,5 @@ function renderType(schema: ZodTypeAny, indent: number): string {
 function isOptional(schema: ZodTypeAny): boolean {
     const name = schema._def?.typeName as string | undefined
     if (name === 'ZodOptional' || name === 'ZodDefault') return true
-    if (name === 'ZodNullable') return isOptional(schema._def.innerType)
     return false
 }

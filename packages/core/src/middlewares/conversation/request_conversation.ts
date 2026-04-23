@@ -107,8 +107,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 : undefined
 
             const shouldSend = shouldSendTriggerReply(context)
+            const stream = config.streamResponse && shouldSend
             let streamPromise: Promise<void> = Promise.resolve()
-            if (config.streamResponse && shouldSend) {
+            if (stream) {
                 const isEditMessage =
                     session.bot.editMessage != null &&
                     session.bot.platform !== 'onebot'
@@ -153,7 +154,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         inputMessage,
                         {
                             event: chatCallbacks,
-                            stream: config.streamResponse,
+                            stream,
                             variables: {
                                 prompt: getMessageContent(originContent),
                                 ...getSystemPromptVariables(
@@ -183,7 +184,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             context.options.finalResponseMessage = responseMessage
 
-            if (!config.streamResponse || !shouldSend) {
+            if (!stream) {
                 context.options.responseMessage = responseMessage
             } else {
                 context.options.responseMessage = null

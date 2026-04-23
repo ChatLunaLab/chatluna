@@ -7,7 +7,9 @@ export class ChatLunaAgentTriggerProviderRegistry {
     register(provider: TriggerProvider) {
         this._providers.set(provider.kind, provider)
         return () => {
-            this._providers.delete(provider.kind)
+            if (this._providers.get(provider.kind) === provider) {
+                this._providers.delete(provider.kind)
+            }
         }
     }
 

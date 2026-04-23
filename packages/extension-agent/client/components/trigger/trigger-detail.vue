@@ -218,6 +218,20 @@
                             placeholder="必填，例如 1234567"
                         />
                     </div>
+
+                    <div
+                        v-else
+                        class="field-card option-card"
+                    >
+                        <div class="field-label">执行者用户 ID</div>
+                        <el-input
+                            v-model="draft.userId"
+                            placeholder="必填，触发时以该用户身份唤醒"
+                        />
+                        <div class="field-help">
+                            共享作用域需要一个真实用户 ID 用于构造唤醒上下文。
+                        </div>
+                    </div>
                 </template>
 
                 <template v-else>
@@ -817,7 +831,7 @@ function matchMask(
     mask: NonNullable<TriggerTask['wakeupTemplate']['toolMask']>
 ) {
     if (mask.mode === 'all') return true
-    if (mask.tools && !mask.tools.includes(name)) return true
+    if (mask.tools) return mask.tools.includes(name)
     if (mask.mode === 'allow') return mask.allow.includes(name)
     return !mask.deny.includes(name)
 }
@@ -913,8 +927,8 @@ function handleSave() {
         return
     }
 
-    if (!isDirect && scopeMode.value === 'personal' && !draft.userId.trim()) {
-        ElMessage.warning('指定用户范围需要填写用户 ID。')
+    if (!isDirect && !draft.userId.trim()) {
+        ElMessage.warning('请填写执行者用户 ID。')
         tab.value = 'routing'
         return
     }
@@ -948,10 +962,7 @@ function handleSave() {
     const channelId = isDirect
         ? draft.userId.trim() || null
         : draft.channelId.trim() || guildId
-    const userId =
-        isDirect || scopeMode.value === 'personal'
-            ? draft.userId.trim()
-            : (draft.userId.trim() ?? '')
+    const userId = draft.userId.trim()
 
     emit('save', {
         providerKind: draft.providerKind || null,

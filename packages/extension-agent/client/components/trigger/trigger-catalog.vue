@@ -269,7 +269,8 @@ const filteredTasks = computed(() => {
                     return item.providerKind === 'keyword'
                 if (value === 'kind:activity')
                     return item.providerKind === 'activity'
-                if (value === 'kind:none') return !item.providerKind
+                if (value === 'kind:none')
+                    return !item.providerKind || item.providerKind === 'once'
                 if (value === 'state:error') return !!item.lastError
                 return true
             })
@@ -297,14 +298,15 @@ const filteredTasks = computed(() => {
 })
 
 function providerKind(task: TriggerTask) {
-    return task.providerKind ?? 'oneshot'
+    if (!task.providerKind || task.providerKind === 'once') return 'oneshot'
+    return task.providerKind
 }
 
 function providerIcon(task: TriggerTask) {
     if (task.providerKind === 'cron') return AlarmClock
     if (task.providerKind === 'keyword') return ChatDotRound
     if (task.providerKind === 'activity') return TrendCharts
-    if (!task.providerKind) return Clock
+    if (!task.providerKind || task.providerKind === 'once') return Clock
     return Bell
 }
 
@@ -313,7 +315,7 @@ function formatTitle(task: TriggerTask) {
 }
 
 function formatProvider(kind?: string | null) {
-    if (!kind) return '一次性任务'
+    if (!kind || kind === 'once') return '一次性任务'
     return props.providers.find((item) => item.kind === kind)?.name || kind
 }
 

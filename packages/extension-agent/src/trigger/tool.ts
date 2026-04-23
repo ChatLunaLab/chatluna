@@ -44,7 +44,7 @@ export class TriggerTool extends StructuredTool {
                 'Wakeup message; required when the chosen provider is marked "requires message".'
             ),
         replyTo: z.enum(['channel', 'user', 'silent']).optional(),
-        execMode: z.literal('chain').optional(),
+        execMode: z.enum(['chain', 'direct']).optional(),
         nextFireAt: z
             .string()
             .optional()

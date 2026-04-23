@@ -40,13 +40,16 @@ export class ChatLunaAgentTriggerExecutor {
                     const resolve = this._chainReplyResolvers.get(
                         wakeup.requestId
                     )
+                    if (resolve != null) {
+                        this._chainReplyResolvers.delete(wakeup.requestId)
+                    }
                     const reply =
                         context.options.responseMessage ??
                         context.options.finalResponseMessage
 
                     resolve?.(reply ?? undefined)
 
-                    if (wakeup.replyTo !== 'channel') {
+                    if (wakeup.replyTo === 'silent' || wakeup.replyTo === 'user' || wakeup.replyTo === 'callback') {
                         context.options.responseMessage = null
                         context.message = null
                     }
@@ -361,7 +364,11 @@ export class ChatLunaAgentTriggerExecutor {
                 }
             })
         } finally {
-            this._chainReplyResolvers.delete(requestId)
+            const resolver = this._chainReplyResolvers.get(requestId)
+            if (resolver != null) {
+                this._chainReplyResolvers.delete(requestId)
+                resolver(undefined)
+            }
         }
 
         return await captured

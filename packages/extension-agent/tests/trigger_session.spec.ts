@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { buildVirtualSession } from '../src/service/trigger_session'
+import { buildVirtualSession } from '../src/trigger/session'
 
 describe('buildVirtualSession', () => {
     it('builds a routed virtual session payload', () => {

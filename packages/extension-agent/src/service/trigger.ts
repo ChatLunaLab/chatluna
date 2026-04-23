@@ -59,17 +59,18 @@ interface DeferredWakeup {
  * Convenience input for `createTask` when the caller has a session.
  * Routing fields are derived from the session.
  */
-export interface CreateTaskFromSessionOptions extends Omit<
-    TriggerCreateTaskInput,
-    | 'bindingKey'
-    | 'platform'
-    | 'selfId'
-    | 'userId'
-    | 'guildId'
-    | 'channelId'
-    | 'isDirect'
-    | 'createdBy'
-> {
+export interface CreateTaskFromSessionOptions
+    extends Omit<
+        TriggerCreateTaskInput,
+        | 'bindingKey'
+        | 'platform'
+        | 'selfId'
+        | 'userId'
+        | 'guildId'
+        | 'channelId'
+        | 'isDirect'
+        | 'createdBy'
+    > {
     bindingKey?: string
     scope?: WakeupScope
     createdBy?: string
@@ -353,6 +354,23 @@ export class ChatLunaAgentTriggerService {
             ...this.config.providers,
             [kind]: { enabled }
         }
+
+        if (!enabled) {
+            // Remove scheduled timers for all tasks of this provider so disabled
+            // providers don't continue to fire from the existing schedule.
+            void this._registry.list({ providerKind: kind }).then((tasks) => {
+                for (const task of tasks) {
+                    this._scheduler.remove(task.id)
+                }
+            })
+        } else {
+            void this._registry.list({ providerKind: kind }).then((tasks) => {
+                for (const task of tasks) {
+                    this._scheduler.sync(task)
+                }
+            })
+        }
+
         this._syncPrompt()
     }
 
@@ -594,7 +612,15 @@ export class ChatLunaAgentTriggerService {
                         message: item.action.message,
                         source: item.action.source
                     })
-                    if (result.deferred == null) changed = true
+                    if (result.deferred == null) {
+                        changed = true
+                    } else {
+                        this._queueDeferred(
+                            `wakeup:${result.requestId ?? Date.now()}`,
+                            result.deferred.pendingKey,
+                            item
+                        )
+                    }
                     continue
                 }
 

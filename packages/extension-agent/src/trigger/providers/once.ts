@@ -42,11 +42,5 @@ export const onceTriggerProvider: TriggerProvider = {
                 fireAt: date.toISOString()
             }
         }
-    },
-    afterFire() {
-        return {
-            enabled: false,
-            nextFireAt: null
-        }
     }
 }

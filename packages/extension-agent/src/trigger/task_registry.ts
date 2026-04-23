@@ -48,6 +48,7 @@ export class ChatLunaAgentTriggerTaskRegistry {
     }
 
     async create(input: TriggerCreateTaskInput) {
+        this._ensureDatabase()
         const now = new Date()
         const task = await this.ctx.database.create('chatluna_trigger_task', {
             providerKind: input.providerKind ?? null,
@@ -112,6 +113,7 @@ export class ChatLunaAgentTriggerTaskRegistry {
             return this._tasks.get(id)
         }
 
+        this._ensureDatabase()
         const task = (
             await this.ctx.database.get('chatluna_trigger_task', [id])
         )[0]
@@ -186,6 +188,7 @@ export class ChatLunaAgentTriggerTaskRegistry {
             return
         }
 
+        this._ensureDatabase()
         const tasks = await this.ctx.database.get('chatluna_trigger_task', {})
         this._bindingKeys.clear()
         this._baseBindingKeys.clear()
@@ -211,6 +214,14 @@ export class ChatLunaAgentTriggerTaskRegistry {
         const baseIds = this._baseBindingKeys.get(baseKey) ?? new Set<number>()
         baseIds.add(task.id)
         this._baseBindingKeys.set(baseKey, baseIds)
+    }
+
+    private _ensureDatabase() {
+        if (this.ctx.database == null) {
+            throw new Error(
+                'Trigger task registry requires the koishi database service.'
+            )
+        }
     }
 
     private _delete(task: TriggerTask) {

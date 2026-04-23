@@ -152,6 +152,7 @@ const props = defineProps<{
 const currentView = ref<'list' | 'detail'>('list')
 const editingId = ref<number | null>(null)
 const pending = ref(false)
+let loadSeq = 0
 const providersDialog = ref(false)
 const providerPending = ref<string | null>(null)
 const compactMode = useCompactMode('trigger')
@@ -182,6 +183,7 @@ watch(
 )
 
 async function loadAll() {
+    const current = ++loadSeq
     try {
         pending.value = true
         const [nextTasks, nextProviders, nextRoutes, nextTools] =
@@ -191,14 +193,18 @@ async function loadAll() {
                 send('chatluna-agent/getTriggerRoutingChoices'),
                 send('chatluna-agent/getToolAvailability')
             ])
+        if (current !== loadSeq) return
         tasks.value = nextTasks
         providers.value = nextProviders
         routes.value = nextRoutes
         tools.value = nextTools
     } catch {
+        if (current !== loadSeq) return
         ElMessage.error('加载触发器数据失败。')
     } finally {
-        pending.value = false
+        if (current === loadSeq) {
+            pending.value = false
+        }
     }
 }
 

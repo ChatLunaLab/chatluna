@@ -71,6 +71,8 @@ export class ChatLunaAgentTriggerScheduler {
 
                 if (latest != null) {
                     await this.hooks.update(task.id, {
+                        enabled: false,
+                        nextFireAt: null,
                         lastError:
                             err instanceof Error ? err.message : String(err)
                     })

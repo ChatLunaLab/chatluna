@@ -117,13 +117,6 @@ export const Config: Schema<Config> = Schema.intersect([
         }),
         Schema.object({})
     ]),
-    Schema.union([
-        Schema.object({
-            cron: Schema.const(true).required(),
-            cronScopeSelector: Schema.array(Schema.string()).default([])
-        }),
-        Schema.object({})
-    ]),
 
     Schema.union([
         Schema.object({
