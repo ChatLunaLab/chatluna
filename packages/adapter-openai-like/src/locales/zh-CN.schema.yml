@@ -38,7 +38,11 @@ $inner:
       presencePenalty: 重复惩罚系数，数值越高，越不易重复出现已出现过至少一次的 Token（范围：-2~2，步长：0.1）。
       frequencyPenalty: 频率惩罚系数，数值越高，越不易重复出现次数较多的 Token（范围：-2~2，步长：0.1）。
       nonStreaming: 强制不启用流式返回。开启后，将总是以非流式发起请求，即便配置了 stream 参数。
+      responseApi: 是否启用 OpenAI Responses API。默认关闭，关闭时继续使用 Chat Completions API。
 
     - $desc: 其他设置
       googleSearch: 是否启用 Google 搜索。（只对支持 google 搜索的 gemini 模型 且为 new-api 的端点有效）
       googleSearchSupportModel: Google 搜索支持的模型列表。
+      responseBuiltinTools: 启用的 OpenAI Responses API 内置工具。可选网页搜索、图片生成、代码解释器和文件搜索；computer 类工具未提供。
+      responseBuiltinToolSupportModel: OpenAI Responses API 内置工具支持的模型列表。
+      responseFileSearchVectorStoreIds: 文件搜索使用的 Vector Store ID 列表。启用 file_search 时必须填写。

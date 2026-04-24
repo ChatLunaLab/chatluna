@@ -38,6 +38,207 @@ export interface ChatCompletionUsage {
     completion_tokens_details?: ChatCompletionCompletionTokensDetails
 }
 
+export interface ResponseUsage {
+    input_tokens: number
+    output_tokens: number
+    total_tokens: number
+    input_tokens_details?: {
+        cached_tokens?: number
+    }
+    output_tokens_details?: {
+        reasoning_tokens?: number
+    }
+}
+
+export type ResponseInputContent =
+    | {
+          type: 'input_text'
+          text: string
+      }
+    | {
+          type: 'input_image'
+          image_url: string
+          detail?: 'low' | 'high' | 'auto' | 'original'
+      }
+    | {
+          type: 'input_file'
+          file_url?: string
+          file_data?: string
+          file_id?: string
+          filename?: string
+      }
+
+export type ResponseInputItem =
+    | {
+          type: 'message'
+          role: 'system' | 'developer' | 'user' | 'assistant'
+          content: string | ResponseInputContent[]
+      }
+    | {
+          type: 'function_call'
+          call_id: string
+          name: string
+          arguments: string
+          status?: 'completed' | 'in_progress' | 'incomplete'
+      }
+    | {
+          type: 'function_call_output'
+          call_id: string
+          output: string | ResponseInputContent[]
+      }
+
+export type ResponseBuiltinToolName =
+    | 'web_search'
+    | 'web_search_preview'
+    | 'image_generation'
+    | 'code_interpreter'
+    | 'file_search'
+
+export type ResponseBuiltinTool =
+    | {
+          type: 'web_search' | 'web_search_2025_08_26'
+          filters?: {
+              allowed_domains?: string[] | null
+          } | null
+          search_context_size?: 'low' | 'medium' | 'high'
+          user_location?: {
+              city?: string | null
+              country?: string | null
+              region?: string | null
+              timezone?: string | null
+              type?: 'approximate'
+          } | null
+      }
+    | {
+          type: 'web_search_preview' | 'web_search_preview_2025_03_11'
+          search_content_types?: ('text' | 'image')[]
+          search_context_size?: 'low' | 'medium' | 'high'
+          user_location?: {
+              type: 'approximate'
+              city?: string | null
+              country?: string | null
+              region?: string | null
+              timezone?: string | null
+          } | null
+      }
+    | {
+          type: 'image_generation'
+          action?: 'generate' | 'edit' | 'auto'
+          background?: 'transparent' | 'opaque' | 'auto'
+          input_fidelity?: 'high' | 'low' | null
+          input_image_mask?: {
+              file_id?: string
+              image_url?: string
+          }
+          model?: string
+          moderation?: 'auto' | 'low'
+          output_compression?: number
+          output_format?: 'png' | 'webp' | 'jpeg'
+          partial_images?: number
+          quality?: 'low' | 'medium' | 'high' | 'auto'
+          size?: '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
+      }
+    | {
+          type: 'code_interpreter'
+          container:
+              | string
+              | {
+                    type: 'auto'
+                    file_ids?: string[]
+                    memory_limit?: '1g' | '4g' | '16g' | '64g' | null
+                }
+      }
+    | {
+          type: 'file_search'
+          vector_store_ids: string[]
+          filters?: Record<string, unknown> | null
+          max_num_results?: number
+          ranking_options?: {
+              ranker?: 'auto' | 'default-2024-11-15'
+              score_threshold?: number
+              hybrid_search?: {
+                  embedding_weight: number
+                  text_weight: number
+              }
+          }
+      }
+
+export type ResponseTool =
+    | {
+          type: 'function'
+          name: string
+          description?: string
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          parameters?: { [key: string]: any }
+          strict?: boolean
+      }
+    | ResponseBuiltinTool
+
+export interface ResponseObject {
+    id: string
+    object: 'response'
+    output_text?: string
+    output?: ResponseOutputItem[]
+    usage?: ResponseUsage
+    error?: { message?: string } | null
+    conversation?: { id: string } | null
+}
+
+export type ResponseOutputItem =
+    | {
+          type: 'message'
+          role?: string
+          content?: ResponseOutputContent[]
+      }
+    | {
+          type: 'function_call'
+          id?: string
+          call_id: string
+          name: string
+          arguments: string
+          status?: string
+      }
+    | {
+          type: 'image_generation_call'
+          id?: string
+          result?: string | null
+          output_format?: 'png' | 'jpeg' | 'webp'
+          status?: string
+      }
+    | {
+          type: string
+          [key: string]: unknown
+      }
+
+export type ResponseOutputContent =
+    | {
+          type: 'output_text'
+          text: string
+      }
+    | {
+          type: 'refusal'
+          refusal: string
+      }
+    | {
+          type: string
+          [key: string]: unknown
+      }
+
+export interface ResponseStreamEvent {
+    type: string
+    sequence_number?: number
+    item_id?: string
+    output_index?: number
+    content_index?: number
+    delta?: string
+    text?: string
+    name?: string
+    arguments?: string
+    item?: ResponseOutputItem
+    response?: ResponseObject
+    partial_image_b64?: string
+}
+
 export interface ChatCompletionTextPart {
     type: 'text'
     text: string

@@ -19,7 +19,15 @@ import {
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool,
-    ChatCompletionUsage
+    ChatCompletionUsage,
+    type ResponseBuiltinTool,
+    ResponseInputContent,
+    ResponseInputItem,
+    ResponseObject,
+    ResponseOutputContent,
+    ResponseOutputItem,
+    ResponseTool,
+    ResponseUsage
 } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
@@ -94,6 +102,196 @@ export function openAIUsageToUsageMetadata(
         cacheReadTokens: usage.prompt_tokens_details?.cached_tokens,
         reasoningTokens: usage.completion_tokens_details?.reasoning_tokens
     })
+}
+
+export function openAIResponseUsageToUsageMetadata(
+    usage: ResponseUsage
+): UsageMetadata {
+    return createUsageMetadata({
+        inputTokens: usage.input_tokens,
+        outputTokens: usage.output_tokens,
+        totalTokens: usage.total_tokens,
+        cacheReadTokens: usage.input_tokens_details?.cached_tokens,
+        reasoningTokens: usage.output_tokens_details?.reasoning_tokens
+    })
+}
+
+export async function langchainMessageToResponseInput(
+    messages: BaseMessage[],
+    plugin: ChatLunaPlugin,
+    model?: string,
+    supportImageInputType?: boolean
+): Promise<ResponseInputItem[]> {
+    const chatMessages = await langchainMessageToOpenAIMessage(
+        messages,
+        plugin,
+        model,
+        supportImageInputType
+    )
+    const result: ResponseInputItem[] = []
+
+    for (const msg of chatMessages) {
+        if (msg.role === 'tool') {
+            result.push({
+                type: 'function_call_output',
+                call_id: msg.tool_call_id,
+                output: responseInputContent(msg.content)
+            })
+            continue
+        }
+
+        if (msg.role === 'function') {
+            result.push({
+                type: 'message',
+                role: 'user',
+                content: responseInputContent(msg.content)
+            })
+            continue
+        }
+
+        if (msg.content != null && msg.content !== '') {
+            result.push({
+                type: 'message',
+                role:
+                    msg.role === 'system' ||
+                    msg.role === 'assistant' ||
+                    msg.role === 'user'
+                        ? msg.role
+                        : 'user',
+                content: responseInputContent(msg.content)
+            })
+        }
+
+        if (msg.role !== 'assistant' || !Array.isArray(msg.tool_calls)) {
+            continue
+        }
+
+        result.push(
+            ...msg.tool_calls.map((toolCall) => ({
+                type: 'function_call' as const,
+                call_id: toolCall.id,
+                name: toolCall.function.name,
+                arguments: toolCall.function.arguments,
+                status: 'completed' as const
+            }))
+        )
+    }
+
+    return result
+}
+
+export function responseInputContent(
+    content: ChatCompletionResponseMessage['content']
+): string | ResponseInputContent[] {
+    if (typeof content === 'string') return content
+    if (!Array.isArray(content)) return ''
+
+    return content
+        .map((part) => {
+            if (part.type === 'text') {
+                const text = part.text as string
+                return {
+                    type: 'input_text',
+                    text
+                } satisfies ResponseInputContent
+            }
+
+            if (part.type === 'image_url') {
+                const raw = part.image_url as
+                    | string
+                    | { url: string; detail?: 'low' | 'high' }
+                const imageUrl = typeof raw === 'string' ? raw : raw.url
+                const detail = typeof raw === 'string' ? undefined : raw.detail
+
+                return {
+                    type: 'input_image',
+                    image_url: imageUrl,
+                    detail: detail ?? 'auto'
+                } satisfies ResponseInputContent
+            }
+
+            if (part.type === 'file_url') {
+                const raw = part['file_url'] as
+                    | string
+                    | { url: string; filename?: string }
+                return {
+                    type: 'input_file',
+                    file_url: typeof raw === 'string' ? raw : raw.url,
+                    filename: typeof raw === 'string' ? undefined : raw.filename
+                } satisfies ResponseInputContent
+            }
+
+            return undefined
+        })
+        .filter((part) => part != null)
+}
+
+export function formatToolsToResponseTools(
+    tools: StructuredTool[],
+    includeGoogleSearch: boolean,
+    builtinTools: ResponseBuiltinTool[] = []
+): ResponseTool[] | undefined {
+    const result: ResponseTool[] = (
+        formatToolsToOpenAITools(tools, includeGoogleSearch) ?? []
+    ).map((tool) => {
+        if (tool.function.name === 'googleSearch') {
+            return {
+                type: 'web_search' as const
+            }
+        }
+
+        return {
+            type: 'function' as const,
+            name: tool.function.name,
+            description: tool.function.description,
+            parameters: tool.function.parameters
+        }
+    })
+
+    for (const tool of builtinTools) {
+        if (result.some((item) => item.type === tool.type)) continue
+        result.push(tool)
+    }
+
+    return result.length ? result : undefined
+}
+
+export function responseOutputText(response: ResponseObject): string {
+    if ((response.output_text?.length ?? 0) > 0) return response.output_text
+
+    return (response.output ?? [])
+        .flatMap((item) => {
+            if (item.type !== 'message') return []
+            return ((item.content ?? []) as ResponseOutputContent[]).map(
+                (part) => {
+                    if (part.type === 'output_text') return part.text
+                    if (part.type === 'refusal') return part.refusal
+                    return ''
+                }
+            )
+        })
+        .join('')
+}
+
+export function responseOutputToolCalls(response: ResponseObject) {
+    return (response.output ?? []).filter(
+        (
+            item
+        ): item is Extract<ResponseOutputItem, { type: 'function_call' }> =>
+            item.type === 'function_call'
+    )
+}
+
+export function responseOutputImageItems(response: ResponseObject) {
+    return (response.output ?? [])
+        .filter((item) => item.type === 'image_generation_call' && item.result)
+        .map(
+            (item) =>
+                item as Extract<
+                    ResponseOutputItem,
+                    { type: 'image_generation_call' }
+                >
+        )
 }
 
 export async function langchainMessageToOpenAIMessage(

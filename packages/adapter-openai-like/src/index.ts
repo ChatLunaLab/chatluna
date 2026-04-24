@@ -7,6 +7,7 @@ import {
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { OpenAIClient } from './client'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import type { ResponseBuiltinToolName } from '@chatluna/v1-shared-adapter'
 
 export let logger: Logger
 export const reusable = true
@@ -67,8 +68,12 @@ export interface Config extends ChatLunaPlugin.Config {
     platform: string
     frequencyPenalty: number
     nonStreaming: boolean
+    responseApi: boolean
     googleSearch: boolean
     googleSearchSupportModel: string[]
+    responseBuiltinTools: ResponseBuiltinToolName[]
+    responseBuiltinToolSupportModel: string[]
+    responseFileSearchVectorStoreIds: string[]
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -85,11 +90,16 @@ export const Config: Schema<Config> = Schema.intersect([
                 ]).default('LLM 大语言模型'),
                 modelCapabilities: Schema.array(
                     Schema.union([
+                        ModelCapabilities.TextInput,
                         ModelCapabilities.ToolCall,
-                        ModelCapabilities.ImageInput
+                        ModelCapabilities.ImageInput,
+                        ModelCapabilities.ImageGeneration
                     ])
                 )
-                    .default([ModelCapabilities.ToolCall])
+                    .default([
+                        ModelCapabilities.TextInput,
+                        ModelCapabilities.ToolCall
+                    ])
                     .role('checkbox'),
                 contextSize: Schema.number().default(128000)
             })
@@ -122,13 +132,41 @@ export const Config: Schema<Config> = Schema.intersect([
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
-        nonStreaming: Schema.boolean().default(false)
+        nonStreaming: Schema.boolean().default(false),
+        responseApi: Schema.boolean().default(false)
     }),
     Schema.object({
         googleSearch: Schema.boolean().default(false),
         googleSearchSupportModel: Schema.array(Schema.string()).default([
             'gemini-2.0'
-        ])
+        ]),
+        responseBuiltinTools: Schema.array(
+            Schema.union([
+                'web_search',
+                'web_search_preview',
+                'image_generation',
+                'code_interpreter',
+                'file_search'
+            ])
+        )
+            .default([])
+            .role('checkbox'),
+        responseBuiltinToolSupportModel: Schema.array(Schema.string()).default([
+            'gpt-4o',
+            'gpt-4o-mini',
+            'gpt-4.1',
+            'gpt-4.1-mini',
+            'gpt-4.1-nano',
+            'gpt-5',
+            'gpt-5-mini',
+            'gpt-5-nano',
+            'o3',
+            'o3-mini',
+            'o4-mini'
+        ]),
+        responseFileSearchVectorStoreIds: Schema.array(Schema.string()).default(
+            []
+        )
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
@@ -149,6 +187,9 @@ export const usage = `
 - API 请求地址：\`https://api.bltcy.ai/v1\`
 `
 
-export const inject = ['chatluna']
+export const inject = {
+    required: ['chatluna'],
+    optional: ['chatluna_storage']
+}
 
 export const name = 'chatluna-openai-like-adapter'

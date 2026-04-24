@@ -20,6 +20,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     getModelMaxContextSize,
     isEmbeddingModel,
+    isImageGenerationModel,
     isNonLLMModel,
     supportImageInput
 } from '@chatluna/v1-shared-adapter'
@@ -65,7 +66,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
             )
 
             const filteredModels = rawModels.filter(
-                (model) => !isNonLLMModel(model)
+                (model) =>
+                    !isNonLLMModel(model) || isImageGenerationModel(model)
             )
 
             const blacklist = this._config.blacklistModels
@@ -74,6 +76,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient {
 
             const supportToolCalling = (model: string) => {
                 // const lower = model.toLowerCase()
+
+                if (isImageGenerationModel(model)) {
+                    return {
+                        capabilities: [ModelCapabilities.ImageGeneration]
+                    }
+                }
 
                 return {
                     capabilities: [

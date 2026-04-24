@@ -42,7 +42,10 @@ import {
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import {
+    getMessageContent,
+    hashString
+} from 'koishi-plugin-chatluna/utils/string'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { RunnableConfig } from '@langchain/core/runnables'
@@ -592,7 +595,7 @@ export class GeminiRequester
 
                 const file = await storageService.createTempFile(
                     buffer,
-                    'image_random'
+                    `${await hashString(imagePart.inlineData.data, 8)}.${(imagePart.inlineData.mimeType ?? 'image/png').split('/')[1]}`
                 )
 
                 messagePart.text = '[image]'
