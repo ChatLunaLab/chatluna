@@ -93,7 +93,7 @@ export interface ResponseTool {
     description?: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parameters?: { [key: string]: any }
-    strict?: boolean | null
+    strict?: boolean
 }
 
 export interface ResponseObject {

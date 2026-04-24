@@ -24,6 +24,8 @@ import {
 } from '@chatluna/v1-shared-adapter'
 import { BaseMessageChunk } from '@langchain/core/messages'
 import { RunnableConfig } from '@langchain/core/runnables'
+import { hashString } from 'koishi-plugin-chatluna/utils/string'
+import type {} from 'koishi-plugin-chatluna-storage-service'
 
 export class OpenAIRequester
     extends ModelRequester
@@ -81,10 +83,7 @@ export class OpenAIRequester
     async *completionStream(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        if (
-            !this._pluginConfig.nonStreaming ||
-            this._pluginConfig.responseApi
-        ) {
+        if (!this._pluginConfig.nonStreaming) {
             yield* super.completionStream(params)
             return
         }
@@ -167,16 +166,7 @@ export class OpenAIRequester
 
     private _imageProvider(): ResponseImageProvider {
         return async (item) => {
-            const storage = (
-                this.ctx as Context & {
-                    chatluna_storage?: {
-                        createTempFile(
-                            buffer: Buffer,
-                            name: string
-                        ): Promise<{ url: string }>
-                    }
-                }
-            ).chatluna_storage
+            const storage = this.ctx.chatluna_storage
 
             if (!storage) {
                 return `data:image/png;base64,${item.result}`
@@ -184,7 +174,7 @@ export class OpenAIRequester
 
             const file = await storage.createTempFile(
                 Buffer.from(item.result as string, 'base64'),
-                'image_random'
+                `${await hashString(item.result as string, 8)}.png`
             )
 
             return file.url

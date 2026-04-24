@@ -626,6 +626,16 @@ export async function* processResponseApiStream<
                     })
                 }
 
+                yield new ChatGenerationChunk({
+                    message: new AIMessageChunk({
+                        content: '',
+                        additional_kwargs: {
+                            conversation: data.response.conversation
+                        }
+                    }),
+                    text: ''
+                })
+
                 if (usageMetadata) {
                     yield new ChatGenerationChunk({
                         generationInfo: {

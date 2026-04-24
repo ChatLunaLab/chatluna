@@ -234,8 +234,7 @@ export function formatToolsToResponseTools(
             type: 'function' as const,
             name: tool.function.name,
             description: tool.function.description,
-            parameters: tool.function.parameters,
-            strict: null
+            parameters: tool.function.parameters
         })
     )
 

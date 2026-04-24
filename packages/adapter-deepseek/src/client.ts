@@ -47,8 +47,23 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
     async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
         try {
             const rawModels = await this._requester.getModels(config)
+            const models: string[] = []
 
-            return rawModels
+            for (const model of rawModels) {
+                models.push(model)
+
+                if (!model.startsWith('deepseek-v4-')) continue
+                if (model.endsWith('-thinking')) continue
+                if (model.endsWith('-instance')) continue
+
+                models.push(
+                    `${model}-high-thinking`,
+                    `${model}-max-thinking`,
+                    `${model}-instance`
+                )
+            }
+
+            return models
                 .filter(
                     (model) =>
                         model.includes('deepseek') ||

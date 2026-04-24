@@ -21,6 +21,8 @@ import {
 } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
+import { hashString } from 'koishi-plugin-chatluna/utils/string'
+import type {} from 'koishi-plugin-chatluna-storage-service'
 
 export class OpenAIRequester
     extends ModelRequester
@@ -62,16 +64,7 @@ export class OpenAIRequester
 
     private _imageProvider(): ResponseImageProvider {
         return async (item) => {
-            const storage = (
-                this.ctx as Context & {
-                    chatluna_storage?: {
-                        createTempFile(
-                            buffer: Buffer,
-                            name: string
-                        ): Promise<{ url: string }>
-                    }
-                }
-            ).chatluna_storage
+            const storage = this.ctx.chatluna_storage
 
             if (!storage) {
                 return `data:image/png;base64,${item.result}`
@@ -79,7 +72,7 @@ export class OpenAIRequester
 
             const file = await storage.createTempFile(
                 Buffer.from(item.result as string, 'base64'),
-                'image_random'
+                `${await hashString(item.result as string, 8)}.png`
             )
 
             return file.url

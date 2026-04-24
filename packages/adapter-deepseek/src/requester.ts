@@ -46,9 +46,7 @@ export class DeepseekRequester
         const rawModel = params.model
         const disabled = rawModel.endsWith('-instance')
         const parsedModel = parseOpenAIModelNameWithReasoningEffort(
-            disabled
-                ? rawModel.slice(0, -'-instance'.length)
-                : rawModel
+            disabled ? rawModel.slice(0, -'-instance'.length) : rawModel
         )
         const model = parsedModel.model
         const requestContext = createRequestContext(
@@ -129,26 +127,7 @@ export class DeepseekRequester
             data = JSON.parse(data as string)
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const rawModels = (<Record<string, any>[]>data.data).map(
-                (model) => model.id as string
-            )
-            const models: string[] = []
-
-            for (const model of rawModels) {
-                models.push(model)
-
-                if (!model.startsWith('deepseek-v4-')) continue
-                if (model.endsWith('-thinking')) continue
-                if (model.endsWith('-instance')) continue
-
-                models.push(
-                    `${model}-high-thinking`,
-                    `${model}-max-thinking`,
-                    `${model}-instance`
-                )
-            }
-
-            return models
+            return (<Record<string, any>[]>data.data).map((model) => model.id)
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e
