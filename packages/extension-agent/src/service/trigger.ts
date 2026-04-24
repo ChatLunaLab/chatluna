@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { type Context, type Session, Universal } from 'koishi'
 import {
     countMessageTokens,
@@ -469,6 +470,7 @@ export class ChatLunaAgentTriggerService {
         const missedRunPolicy =
             task.params?.missedRunPolicy === 'fire_once' ? 'fire_once' : 'skip'
         if (overdue && missedRunPolicy === 'skip') {
+            const requestId = randomUUID()
             const provider = this._providers.get(task.providerKind)
             const next = await provider?.afterFire?.({
                 task,
@@ -479,7 +481,7 @@ export class ChatLunaAgentTriggerService {
                 lastError: null
             })
             this._scheduler.sync(updated)
-            return { ok: true, stats: { durationMs: 0 } }
+            return { ok: true, requestId, stats: { durationMs: 0 } }
         }
 
         const taskRouting: WakeupRouting | undefined =
@@ -553,7 +555,12 @@ export class ChatLunaAgentTriggerService {
                                 ? null
                                 : task.nextFireAt
                     }
-                  : { enabled: false, nextFireAt: null }
+                  : result.ok && provider?.passive === true
+                    ? {
+                          enabled: true,
+                          nextFireAt: task.nextFireAt
+                      }
+                    : { enabled: false, nextFireAt: null }
         const updated = await this._registry.update(id, {
             lastFiredAt: firedAt,
             fireCount: task.fireCount + 1,

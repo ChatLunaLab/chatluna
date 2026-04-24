@@ -667,6 +667,10 @@ export class ConversationService {
         }
 
         await this.ctx.database.upsert('chatluna_binding', [payload])
+        await this.ctx.root.parallel('chatluna/after-binding-update', {
+            binding: payload,
+            previousConversationId: prev ?? null
+        })
         return payload
     }
 
@@ -1747,6 +1751,9 @@ export class ConversationService {
         }
 
         await this.ctx.database.upsert('chatluna_constraint', [record])
+        await this.ctx.root.parallel('chatluna/after-constraint-update', {
+            constraint: record
+        })
         return (await this.getManagedConstraint(session)) ?? record
     }
 

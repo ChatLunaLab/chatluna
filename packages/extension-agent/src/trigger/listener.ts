@@ -12,6 +12,8 @@ export class ChatLunaAgentTriggerListener {
     private readonly _dedup = new Map<string, number>()
     private readonly _pending = new Set<number>()
     private _dispose?: () => void
+    private _bindingDispose?: () => void
+    private _constraintDispose?: () => void
 
     constructor(
         private readonly ctx: Context,
@@ -34,15 +36,29 @@ export class ChatLunaAgentTriggerListener {
 
     start() {
         this._dispose?.()
+        this._bindingDispose?.()
+        this._constraintDispose?.()
         this._dispose = this.ctx.on(
             'chatluna/check-passive-trigger',
             async (session, content) => await this.handle(session, content)
+        )
+        this._bindingDispose = this.ctx.on(
+            'chatluna/after-binding-update',
+            async () => this.invalidateBindings()
+        )
+        this._constraintDispose = this.ctx.on(
+            'chatluna/after-constraint-update',
+            async () => this.invalidateBindings()
         )
     }
 
     stop() {
         this._dispose?.()
         this._dispose = undefined
+        this._bindingDispose?.()
+        this._bindingDispose = undefined
+        this._constraintDispose?.()
+        this._constraintDispose = undefined
         this._bindings.clear()
         this._cooldown.clear()
         this._dedup.clear()
@@ -138,6 +154,10 @@ export class ChatLunaAgentTriggerListener {
         }
 
         return false
+    }
+
+    invalidateBindings() {
+        this._bindings.clear()
     }
 
     private _compact(now: number) {

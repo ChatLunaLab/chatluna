@@ -264,12 +264,6 @@ function pruneSamples(
     }
 }
 
-function distinctUsersInWindow(state: ActivityState): number {
-    const set = new Set<string>()
-    for (const sample of state.samples) set.add(sample.userId)
-    return set.size
-}
-
 function computeWeight(
     raw: string,
     elements: ReturnType<typeof selectElements>,
@@ -386,7 +380,7 @@ export const activityTriggerProvider: TriggerProvider = {
         const direction = resolveDirection(params)
 
         const now = Date.now()
-        if (states.size > 64) gcStates(now, params.idleTimeoutMs)
+        if (states.size > STATE_LIMIT) gcStates(now, params.idleTimeoutMs)
 
         let state = states.get(task.id)
         if (state != null && now - state.lastTouched > params.idleTimeoutMs) {
@@ -436,9 +430,10 @@ export const activityTriggerProvider: TriggerProvider = {
         }
 
         pruneSamples(state, now, params)
-        const distinct = distinctUsersInWindow(state) + 1 // 含本人
+        const users = new Set(state.samples.map((sample) => sample.userId))
+        const distinct = users.has(userId) ? users.size : users.size + 1
 
-        const elements = selectElements(session as never)
+        const elements = selectElements(session)
         const rawText = content ?? ''
         const weight = computeWeight(
             rawText,

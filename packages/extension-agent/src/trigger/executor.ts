@@ -164,7 +164,7 @@ export class ChatLunaAgentTriggerExecutor {
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
-            this.ctx.logger.warn(err)
+            this.ctx.logger.error(err)
             return {
                 ok: false,
                 requestId,
@@ -460,7 +460,7 @@ function resolveBot(
     selfId: string,
     requestId: string
 ) {
-    const bot = ctx.bots[`${platform}:${selfId}`] ?? ctx.bots[selfId]
+    const bot = ctx.bots[`${platform}:${selfId}`]
     if (bot == null) {
         return {
             result: createDeferredResult(
@@ -521,7 +521,33 @@ function createDeferredResult(
 function createAbortSignal(action: WakeupAction) {
     if (action.timeout == null) return action.signal
     if (action.signal == null) return AbortSignal.timeout(action.timeout)
-    return AbortSignal.any([action.signal, AbortSignal.timeout(action.timeout)])
+    if (typeof AbortSignal.any === 'function') {
+        return AbortSignal.any([
+            action.signal,
+            AbortSignal.timeout(action.timeout)
+        ])
+    }
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), action.timeout)
+    if (action.signal.aborted) {
+        clearTimeout(timer)
+        controller.abort(action.signal.reason)
+        return controller.signal
+    }
+
+    action.signal.addEventListener(
+        'abort',
+        () => {
+            clearTimeout(timer)
+            controller.abort(action.signal?.reason)
+        },
+        { once: true }
+    )
+    controller.signal.addEventListener('abort', () => clearTimeout(timer), {
+        once: true
+    })
+    return controller.signal
 }
 
 async function sendReply(session: Session, ctx: Context, reply: Message) {
