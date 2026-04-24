@@ -114,7 +114,12 @@ export class ChatLunaAgentTriggerService {
         this.registerProvider(activityTriggerProvider)
         this.registerProvider(keywordTriggerProvider)
         this._scheduler = new ChatLunaAgentTriggerScheduler(ctx, {
-            list: async () => await this._registry.list({ enabled: true }),
+            list: async () =>
+                (await this._registry.list({ enabled: true })).filter(
+                    (task) =>
+                        task.providerKind == null ||
+                        this.isProviderEnabled(task.providerKind)
+                ),
             get: async (id) => await this._registry.get(id),
             update: async (id, patch) => {
                 const task = await this.updateTask(id, patch)
@@ -218,7 +223,7 @@ export class ChatLunaAgentTriggerService {
                 `wakeup:${result.requestId ?? Date.now()}`,
                 result.deferred.pendingKey,
                 {
-                    action: this._normalizeForReplay(action),
+                    action: this._stripReplayFields(action),
                     mutateSchedule: false
                 }
             )
@@ -265,7 +270,7 @@ export class ChatLunaAgentTriggerService {
         sourceOrInput: Session | WakeupRouting | TriggerCreateTaskInput,
         opts?: CreateTaskFromSessionOptions
     ) {
-        const input = this._normalizeCreateInput(sourceOrInput, opts)
+        const input = this._deriveCreateInput(sourceOrInput, opts)
         const prepared = await this._prepareTaskInput(input)
         const task = await this._registry.create(prepared)
         await this._providers.get(task.providerKind)?.onTaskCreate?.({ task })
@@ -436,7 +441,7 @@ export class ChatLunaAgentTriggerService {
 
     // ---- Private helpers --------------------------------------------------
 
-    private _normalizeCreateInput(
+    private _deriveCreateInput(
         sourceOrInput: Session | WakeupRouting | TriggerCreateTaskInput,
         opts?: CreateTaskFromSessionOptions
     ): TriggerCreateTaskInput {
@@ -473,7 +478,7 @@ export class ChatLunaAgentTriggerService {
         } as TriggerCreateTaskInput
     }
 
-    private _normalizeForReplay(action: Partial<WakeupAction>) {
+    private _stripReplayFields(action: Partial<WakeupAction>) {
         const copy = { ...action }
         delete copy.signal
         delete copy.onReply
@@ -585,7 +590,7 @@ export class ChatLunaAgentTriggerService {
                 action:
                     override == null
                         ? undefined
-                        : this._normalizeForReplay(override),
+                        : this._stripReplayFields(override),
                 mutateSchedule,
                 taskId: task.id
             })
@@ -832,6 +837,12 @@ export class ChatLunaAgentTriggerService {
         let passive = 0
         for (const task of tasks) {
             if (!task.enabled) continue
+            if (
+                task.providerKind != null &&
+                !this.isProviderEnabled(task.providerKind)
+            ) {
+                continue
+            }
             enabled++
             if (task.nextFireAt != null) scheduled++
             if (this._providers.get(task.providerKind)?.passive === true) {

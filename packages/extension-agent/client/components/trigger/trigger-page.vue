@@ -39,7 +39,7 @@
                         plain
                         @click="compactMode = !compactMode"
                     >
-                        {{ compactMode ? '紧凑显示' : '宽屏模式' }}
+                        {{ compactMode ? '紧凑模式' : '宽屏模式' }}
                     </el-button>
                     <el-button
                         size="small"
@@ -112,10 +112,10 @@
                         </div>
                     </div>
                     <el-switch
-                        :model-value="provider.enabled !== false"
+                        :model-value="provider.enabled"
                         :loading="providerPending === provider.kind"
                         :disabled="providerPending === provider.kind"
-                        @change="(value) => handleProviderToggle(provider.kind, !!value)"
+                        @change="(value: boolean) => handleProviderToggle(provider.kind, value)"
                     />
                 </div>
                 <div v-if="providers.length < 1" class="providers-empty">
@@ -227,7 +227,7 @@ async function handleSave(payload: TriggerDraftPayload) {
                 createdBy: 'console'
             })
             ElMessage.success('触发任务已创建。')
-            editingId.value = created?.id ?? null
+            editingId.value = created.id
         } else {
             await send(
                 'chatluna-agent/updateTriggerTask',

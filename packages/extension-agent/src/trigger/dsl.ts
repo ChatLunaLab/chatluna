@@ -39,7 +39,11 @@ export function parseDsl(src: string): DslCall {
         return token
     }
 
-    const verb = need('IDENT').value as string
+    const verbToken = need('IDENT')
+    if (typeof verbToken.value !== 'string') {
+        throw new Error(`Expected verb identifier at ${verbToken.pos}`)
+    }
+    const verb = verbToken.value
     need('LPAREN')
 
     const positional: DslValue[] = []
@@ -50,7 +54,11 @@ export function parseDsl(src: string): DslCall {
         while (true) {
             if (peek().type === 'IDENT' && tokens[idx + 1]?.type === 'EQ') {
                 sawNamed = true
-                const key = take().value as string
+                const token = take()
+                if (typeof token.value !== 'string') {
+                    throw new Error(`Expected named argument at ${token.pos}`)
+                }
+                const key = token.value
                 take()
                 named[key] = readValue(take())
             } else {
@@ -158,9 +166,14 @@ function lex(src: string): Token[] {
             }
             continue
         }
-        if (/\d/.test(ch)) {
+        if (/\d/.test(ch) || (ch === '-' && /\d/.test(src[idx + 1] ?? ''))) {
             const pos = idx
+            if (ch === '-') idx++
             while (/\d/.test(src[idx] ?? '')) idx++
+            if (src[idx] === '.') {
+                idx++
+                while (/\d/.test(src[idx] ?? '')) idx++
+            }
             const raw = src.slice(pos, idx)
             const unit = src[idx]
             if (unit === 's' || unit === 'm' || unit === 'h' || unit === 'd') {

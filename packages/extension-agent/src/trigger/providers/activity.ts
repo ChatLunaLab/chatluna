@@ -1,6 +1,7 @@
 import { h, Session } from 'koishi'
 import { z } from 'zod'
 import type { TriggerProvider } from '../../types'
+import { logger } from '../../index'
 
 const curveEnum = z.enum(['linear', 'sqrt', 'log'])
 const directionEnum = z.enum(['auto', 'up', 'down'])
@@ -378,7 +379,12 @@ export const activityTriggerProvider: TriggerProvider = {
         if (session.isDirect || !session.guildId) return null
 
         const parsed = activitySchema.safeParse(task.params ?? {})
-        if (!parsed.success) return null
+        if (!parsed.success) {
+            logger?.warn(
+                `Invalid activity trigger params for task ${task.id}: ${parsed.error.message}`
+            )
+            return null
+        }
         const params = parsed.data
         const direction = resolveDirection(params)
 
@@ -387,11 +393,6 @@ export const activityTriggerProvider: TriggerProvider = {
         if (state != null) state.idleTimeoutMs = params.idleTimeoutMs
         gcStates(now)
         if (state != null && !states.has(task.id)) state = undefined
-
-        if (state != null && now - state.lastTouched > state.idleTimeoutMs) {
-            states.delete(task.id)
-            state = undefined
-        }
 
         if (state == null) {
             state = {
@@ -466,12 +467,7 @@ export const activityTriggerProvider: TriggerProvider = {
 
         // 3. 冷却期内压回初始分，禁止触发
         if (now < state.cooldownUntil) {
-            state.score = decayTowards(
-                state.score,
-                params.initialScore,
-                Math.max(1, params.recoveryMs / 4),
-                params.recoveryMs
-            )
+            state.score = params.initialScore
             return null
         }
 

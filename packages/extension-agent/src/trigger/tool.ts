@@ -217,9 +217,14 @@ export class TriggerTool extends StructuredTool {
             return `message is required for provider ${provider.kind}.`
         }
 
-        const useAllScope =
-            call.named.scope != null &&
-            valueToString(call.named.scope) === 'all'
+        let useAllScope = false
+        if (call.named.scope != null) {
+            const value = valueToString(call.named.scope)
+            if (value !== 'all' && value !== 'personal') {
+                return `Invalid scope: ${value}. Expected all or personal.`
+            }
+            useAllScope = value === 'all'
+        }
         const bindingKey = useAllScope
             ? getBaseBindingKey(resolved.bindingKey)
             : resolved.bindingKey
@@ -265,6 +270,14 @@ export class TriggerTool extends StructuredTool {
             execMode = value
         }
 
+        let newConversation = true
+        if (call.named.new_conv != null) {
+            if (typeof call.named.new_conv !== 'boolean') {
+                return 'Invalid new_conv: expected true or false.'
+            }
+            newConversation = call.named.new_conv
+        }
+
         const task = await this.service.createTask(session, {
             providerKind,
             name:
@@ -281,10 +294,7 @@ export class TriggerTool extends StructuredTool {
                 message,
                 replyTo,
                 execMode,
-                newConversation:
-                    typeof call.named.new_conv === 'boolean'
-                        ? call.named.new_conv
-                        : true
+                newConversation
             }
         })
 

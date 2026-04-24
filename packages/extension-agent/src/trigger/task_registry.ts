@@ -95,11 +95,13 @@ export class ChatLunaAgentTriggerTaskRegistry {
         const updated = (
             await this.ctx.database.get('chatluna_trigger_task', [id])
         )[0]
-        if (updated != null) {
-            this._delete(task)
-            this._set(updated)
+        if (updated == null) {
+            throw new Error(`Trigger task removed concurrently: ${id}`)
         }
-        return updated!
+
+        this._delete(task)
+        this._set(updated)
+        return updated
     }
 
     async remove(id: number) {
@@ -191,10 +193,10 @@ export class ChatLunaAgentTriggerTaskRegistry {
         }
 
         this._ensureDatabase()
-        const tasks = await this.ctx.database.get('chatluna_trigger_task', {})
         this._bindingKeys.clear()
         this._baseBindingKeys.clear()
         this._tasks.clear()
+        const tasks = await this.ctx.database.get('chatluna_trigger_task', {})
         for (const task of tasks) {
             this._set(task)
         }
