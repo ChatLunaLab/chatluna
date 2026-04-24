@@ -130,6 +130,7 @@ export interface PlatformModelInfo extends ModelInfo {
 }
 
 export enum ModelCapabilities {
+    TextInput = 'text_input',
     ToolCall = 'tool_call',
     ImageInput = 'image_input',
     Thinking = 'thinking',

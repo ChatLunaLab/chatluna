@@ -43,3 +43,6 @@ $inner:
     - $desc: Other settings
       googleSearch: Whether to enable Google search. (Only valid for Gemini models that support Google search and use the new-api)
       googleSearchSupportModel: List of models supported by Google search.
+      responseBuiltinTools: 'Enabled OpenAI Responses API built-in tools. Supports web search, image generation, code interpreter, and file search; computer tools are not exposed.'
+      responseBuiltinToolSupportModel: 'Models that support Responses API built-in tools.'
+      responseFileSearchVectorStoreIds: 'Vector Store IDs used by file_search. Required when file_search is enabled.'

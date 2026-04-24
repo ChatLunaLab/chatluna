@@ -6,6 +6,18 @@ import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/servic
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from '@koishijs/plugin-notifier'
 
+import { parseRawModelName } from './model'
+
+function compareSchemaName(a: string, b: string) {
+    const [aPlatform, aName] = parseRawModelName(a)
+    const [bPlatform, bName] = parseRawModelName(b)
+
+    return (
+        (aPlatform ?? '').localeCompare(bPlatform ?? '') ||
+        (aName ?? '').localeCompare(bName ?? '')
+    )
+}
+
 /**
  * Sets up the model selection schema by automatically watching for model changes
  * in the platform service and updating the 'model' schema.
@@ -139,7 +151,9 @@ export function listModelNames(
             (model) => model.platform + '/' + model.name
         )
 
-        return includeNone ? ['无'].concat(names) : names
+        return includeNone
+            ? ['无'].concat(names).sort(compareSchemaName)
+            : names.sort(compareSchemaName)
     })
 }
 
@@ -160,6 +174,7 @@ function getVectorStores(ctx: Context, service: PlatformService) {
     return computed(() =>
         ['无']
             .concat(vectorStoreNamesRef.value)
+            .sort(compareSchemaName)
             .map((name) => Schema.const(name).description(name))
     )
 }
@@ -167,8 +182,9 @@ function getVectorStores(ctx: Context, service: PlatformService) {
 function getChatChainNames(service: PlatformService) {
     const chains = service.chatChains
     return computed(() =>
-        chains.value.map((info) =>
-            Schema.const(info.name).i18n(info.description)
-        )
+        chains.value
+            .slice()
+            .sort((a, b) => compareSchemaName(a.name, b.name))
+            .map((info) => Schema.const(info.name).i18n(info.description))
     )
 }

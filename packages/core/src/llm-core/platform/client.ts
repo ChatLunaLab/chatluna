@@ -9,6 +9,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     FileHandlingConfig,
+    ModelCapabilities,
     ModelInfo,
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
@@ -107,6 +108,16 @@ export abstract class BasePlatformClient<
             this._modelInfos = {}
 
             for (const model of models) {
+                model.capabilities = model.capabilities.includes(
+                    ModelCapabilities.ImageGeneration
+                )
+                    ? [ModelCapabilities.ImageGeneration]
+                    : Array.from(
+                          new Set([
+                              ...model.capabilities,
+                              ModelCapabilities.TextInput
+                          ])
+                      )
                 this._modelInfos[model.name] = model
             }
         } catch (e) {

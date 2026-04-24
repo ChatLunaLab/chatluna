@@ -83,6 +83,12 @@ export function isNonLLMModel(modelName: string): boolean {
     )
 }
 
+export function isImageGenerationModel(modelName: string): boolean {
+    return isNonLLMModel(modelName) && ['dall-e', 'image'].some((keyword) =>
+        modelName.includes(keyword)
+    )
+}
+
 export function getModelMaxContextSize(info: ModelInfo): number {
     const maxTokens = info.maxTokens
 

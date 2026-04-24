@@ -20,6 +20,7 @@ import {
     getModels,
     responseApiCompletion,
     responseApiCompletionStream,
+    type ResponseBuiltinTool,
     ResponseImageProvider
 } from '@chatluna/v1-shared-adapter'
 import { BaseMessageChunk } from '@langchain/core/messages'
@@ -60,10 +61,14 @@ export class OpenAIRequester
             return responseApiCompletion(
                 requestContext,
                 params,
-                this._pluginConfig.googleSearch &&
-                    this._pluginConfig.googleSearchSupportModel.includes(
-                        params.model
-                    ),
+                {
+                    googleSearch:
+                        this._pluginConfig.googleSearch &&
+                        this._pluginConfig.googleSearchSupportModel.includes(
+                            params.model
+                        ),
+                    builtinTools: this._responseBuiltinTools(params)
+                },
                 true,
                 this._imageProvider()
             )
@@ -113,10 +118,14 @@ export class OpenAIRequester
             yield* responseApiCompletionStream(
                 requestContext,
                 params,
-                this._pluginConfig.googleSearch &&
-                    this._pluginConfig.googleSearchSupportModel.includes(
-                        params.model
-                    ),
+                {
+                    googleSearch:
+                        this._pluginConfig.googleSearch &&
+                        this._pluginConfig.googleSearchSupportModel.includes(
+                            params.model
+                        ),
+                    builtinTools: this._responseBuiltinTools(params)
+                },
                 true,
                 this._imageProvider()
             )
@@ -160,6 +169,48 @@ export class OpenAIRequester
         return await getModels(requestContext, config)
     }
 
+    private _responseBuiltinTools(
+        params: ModelRequestParams
+    ): ResponseBuiltinTool[] {
+        if (
+            !this._pluginConfig.responseBuiltinToolSupportModel.includes(
+                params.model
+            )
+        ) {
+            return []
+        }
+
+        const result: ResponseBuiltinTool[] = []
+
+        for (const type of this._pluginConfig.responseBuiltinTools) {
+            if (type === 'file_search') {
+                if (
+                    this._pluginConfig.responseFileSearchVectorStoreIds.length >
+                    0
+                ) {
+                    result.push({
+                        type,
+                        vector_store_ids:
+                            this._pluginConfig.responseFileSearchVectorStoreIds
+                    })
+                }
+                continue
+            }
+
+            if (type === 'code_interpreter') {
+                result.push({
+                    type,
+                    container: { type: 'auto' }
+                })
+                continue
+            }
+
+            result.push({ type })
+        }
+
+        return result
+    }
+
     get logger() {
         return logger
     }
@@ -167,14 +218,22 @@ export class OpenAIRequester
     private _imageProvider(): ResponseImageProvider {
         return async (item) => {
             const storage = this.ctx.chatluna_storage
+            const format =
+                item.output_format === 'png' ||
+                item.output_format === 'jpeg' ||
+                item.output_format === 'webp'
+                    ? item.output_format
+                    : 'png'
+            const ext = format === 'jpeg' ? 'jpg' : format
+            const mime = format === 'jpeg' ? 'image/jpeg' : `image/${format}`
 
             if (!storage) {
-                return `data:image/png;base64,${item.result}`
+                return `data:${mime};base64,${item.result}`
             }
 
             const file = await storage.createTempFile(
                 Buffer.from(item.result as string, 'base64'),
-                `${await hashString(item.result as string, 8)}.png`
+                `${await hashString(item.result as string, 8)}.${ext}`
             )
 
             return file.url

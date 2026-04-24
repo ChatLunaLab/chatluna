@@ -14,6 +14,7 @@ import {
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse,
+    type ResponseBuiltinTool,
     ResponseObject,
     ResponseOutputItem,
     ResponseStreamEvent
@@ -58,6 +59,11 @@ interface RequestContext<
 export type ResponseImageProvider = (
     item: Extract<ResponseOutputItem, { type: 'image_generation_call' }>
 ) => Promise<string>
+
+export interface ResponseToolOptions {
+    googleSearch?: boolean
+    builtinTools?: ResponseBuiltinTool[]
+}
 
 export async function buildChatCompletionParams(
     params: ModelRequestParams,
@@ -128,7 +134,7 @@ export async function buildChatCompletionParams(
 export async function buildResponseParams(
     params: ModelRequestParams,
     plugin: ChatLunaPlugin,
-    enableGoogleSearch: boolean,
+    opts: ResponseToolOptions = {},
     supportImageInput?: boolean
 ) {
     const parsedModel = parseOpenAIModelNameWithReasoningEffort(params.model)
@@ -143,10 +149,13 @@ export async function buildResponseParams(
             supportImageInput
         ),
         tools:
-            enableGoogleSearch || params.tools != null
+            opts.googleSearch ||
+            (opts.builtinTools?.length ?? 0) > 0 ||
+            params.tools != null
                 ? formatToolsToResponseTools(
                       params.tools ?? [],
-                      enableGoogleSearch
+                      opts.googleSearch ?? false,
+                      opts.builtinTools
                   )
                 : undefined,
         max_output_tokens: normalizedModel.includes('vision')
@@ -779,7 +788,7 @@ export async function* responseApiCompletionStream<
 >(
     requestContext: RequestContext<T, R>,
     params: ModelRequestParams,
-    enableGoogleSearch?: boolean,
+    opts: ResponseToolOptions = {},
     supportImageInput?: boolean,
     imageProvider?: ResponseImageProvider
 ): AsyncGenerator<ChatGenerationChunk> {
@@ -787,7 +796,7 @@ export async function* responseApiCompletionStream<
     const request = await buildResponseParams(
         params,
         requestContext.plugin,
-        enableGoogleSearch ?? false,
+        opts,
         supportImageInput ?? true
     )
 
@@ -820,7 +829,7 @@ export async function responseApiCompletion<
 >(
     requestContext: RequestContext<T, R>,
     params: ModelRequestParams,
-    enableGoogleSearch?: boolean,
+    opts: ResponseToolOptions = {},
     supportImageInput?: boolean,
     imageProvider?: ResponseImageProvider
 ): Promise<ChatGenerationChunk> {
@@ -828,7 +837,7 @@ export async function responseApiCompletion<
     const request = await buildResponseParams(
         params,
         requestContext.plugin,
-        enableGoogleSearch ?? false,
+        opts,
         supportImageInput ?? true
     )
 

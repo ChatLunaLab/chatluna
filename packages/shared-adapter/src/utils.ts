@@ -20,6 +20,7 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     ChatCompletionTool,
     ChatCompletionUsage,
+    type ResponseBuiltinTool,
     ResponseInputContent,
     ResponseInputItem,
     ResponseObject,
@@ -227,18 +228,32 @@ export function responseInputContent(
 
 export function formatToolsToResponseTools(
     tools: StructuredTool[],
-    includeGoogleSearch: boolean
+    includeGoogleSearch: boolean,
+    builtinTools: ResponseBuiltinTool[] = []
 ): ResponseTool[] | undefined {
-    const result = formatToolsToOpenAITools(tools, includeGoogleSearch)?.map(
-        (tool) => ({
+    const result: ResponseTool[] = (
+        formatToolsToOpenAITools(tools, includeGoogleSearch) ?? []
+    ).map((tool) => {
+        if (tool.function.name === 'googleSearch') {
+            return {
+                type: 'web_search' as const
+            }
+        }
+
+        return {
             type: 'function' as const,
             name: tool.function.name,
             description: tool.function.description,
             parameters: tool.function.parameters
-        })
-    )
+        }
+    })
 
-    return result?.length ? result : undefined
+    for (const tool of builtinTools) {
+        if (result.some((item) => item.type === tool.type)) continue
+        result.push(tool)
+    }
+
+    return result.length ? result : undefined
 }
 
 export function responseOutputText(response: ResponseObject): string {

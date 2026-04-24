@@ -43,3 +43,6 @@ $inner:
     - $desc: 其他设置
       googleSearch: 是否启用 Google 搜索。（只对支持 google 搜索的 gemini 模型 且为 new-api 的端点有效）
       googleSearchSupportModel: Google 搜索支持的模型列表。
+      responseBuiltinTools: 启用的 OpenAI Responses API 内置工具。可选网页搜索、图片生成、代码解释器和文件搜索；computer 类工具未提供。
+      responseBuiltinToolSupportModel: OpenAI Responses API 内置工具支持的模型列表。
+      responseFileSearchVectorStoreIds: 文件搜索使用的 Vector Store ID 列表。启用 file_search 时必须填写。
