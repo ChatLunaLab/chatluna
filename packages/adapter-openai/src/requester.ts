@@ -9,13 +9,15 @@ import {
     ClientConfig,
     ClientConfigPool
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import { logger } from '.'
+import { Config, logger } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import {
     completionStream,
     createEmbeddings,
-    createRequestContext
+    createRequestContext,
+    responseApiCompletionStream,
+    ResponseImageProvider
 } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
@@ -27,7 +29,7 @@ export class OpenAIRequester
     constructor(
         ctx: Context,
         _configPool: ClientConfigPool<ClientConfig>,
-        _pluginConfig: ChatLunaPlugin.Config,
+        public _pluginConfig: Config,
         _plugin: ChatLunaPlugin
     ) {
         super(ctx, _configPool, _pluginConfig, _plugin)
@@ -44,7 +46,44 @@ export class OpenAIRequester
             this
         )
 
+        if (this._pluginConfig.responseApi) {
+            yield* responseApiCompletionStream(
+                requestContext,
+                params,
+                false,
+                true,
+                this._imageProvider()
+            )
+            return
+        }
+
         yield* completionStream(requestContext, params)
+    }
+
+    private _imageProvider(): ResponseImageProvider {
+        return async (item) => {
+            const storage = (
+                this.ctx as Context & {
+                    chatluna_storage?: {
+                        createTempFile(
+                            buffer: Buffer,
+                            name: string
+                        ): Promise<{ url: string }>
+                    }
+                }
+            ).chatluna_storage
+
+            if (!storage) {
+                return `data:image/png;base64,${item.result}`
+            }
+
+            const file = await storage.createTempFile(
+                Buffer.from(item.result as string, 'base64'),
+                'image_random'
+            )
+
+            return file.url
+        }
     }
 
     async embeddings(

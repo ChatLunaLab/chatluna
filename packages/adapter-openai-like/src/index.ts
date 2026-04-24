@@ -67,6 +67,7 @@ export interface Config extends ChatLunaPlugin.Config {
     platform: string
     frequencyPenalty: number
     nonStreaming: boolean
+    responseApi: boolean
     googleSearch: boolean
     googleSearchSupportModel: string[]
 }
@@ -122,7 +123,8 @@ export const Config: Schema<Config> = Schema.intersect([
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
-        nonStreaming: Schema.boolean().default(false)
+        nonStreaming: Schema.boolean().default(false),
+        responseApi: Schema.boolean().default(false)
     }),
     Schema.object({
         googleSearch: Schema.boolean().default(false),
@@ -149,6 +151,9 @@ export const usage = `
 - API 请求地址：\`https://api.bltcy.ai/v1\`
 `
 
-export const inject = ['chatluna']
+export const inject = {
+    required: ['chatluna'],
+    optional: ['chatluna_storage']
+}
 
 export const name = 'chatluna-openai-like-adapter'

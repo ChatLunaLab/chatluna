@@ -13,14 +13,23 @@ import { SSEEvent, sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 import {
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
-    CreateEmbeddingResponse
+    CreateEmbeddingResponse,
+    ResponseObject,
+    ResponseOutputItem,
+    ResponseStreamEvent
 } from './types'
 import {
     convertDeltaToMessageChunk,
     convertMessageToMessageChunk,
     formatToolsToOpenAITools,
+    formatToolsToResponseTools,
     langchainMessageToOpenAIMessage,
-    openAIUsageToUsageMetadata
+    langchainMessageToResponseInput,
+    openAIResponseUsageToUsageMetadata,
+    openAIUsageToUsageMetadata,
+    responseOutputImageItems,
+    responseOutputText,
+    responseOutputToolCalls
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
@@ -45,6 +54,10 @@ interface RequestContext<
     plugin: ChatLunaPlugin
     modelRequester: ModelRequester<T, R>
 }
+
+export type ResponseImageProvider = (
+    item: Extract<ResponseOutputItem, { type: 'image_generation_call' }>
+) => Promise<string>
 
 export async function buildChatCompletionParams(
     params: ModelRequestParams,
@@ -109,6 +122,52 @@ export async function buildChatCompletionParams(
         delete base.n
         delete base.top_p
     }
+    return deepAssign({}, base, params.overrideRequestParams ?? {})
+}
+
+export async function buildResponseParams(
+    params: ModelRequestParams,
+    plugin: ChatLunaPlugin,
+    enableGoogleSearch: boolean,
+    supportImageInput?: boolean
+) {
+    const parsedModel = parseOpenAIModelNameWithReasoningEffort(params.model)
+    const normalizedModel = parsedModel.model
+
+    const base = {
+        model: normalizedModel,
+        input: await langchainMessageToResponseInput(
+            params.input,
+            plugin,
+            normalizedModel,
+            supportImageInput
+        ),
+        tools:
+            enableGoogleSearch || params.tools != null
+                ? formatToolsToResponseTools(
+                      params.tools ?? [],
+                      enableGoogleSearch
+                  )
+                : undefined,
+        max_output_tokens: normalizedModel.includes('vision')
+            ? undefined
+            : params.maxTokens,
+        temperature: params.temperature === 0 ? undefined : params.temperature,
+        top_p: params.topP,
+        prompt_cache_key: params.id,
+        reasoning:
+            parsedModel.reasoningEffort == null ||
+            parsedModel.reasoningEffort === 'none'
+                ? undefined
+                : { effort: parsedModel.reasoningEffort },
+        stream: true,
+        stream_options: {
+            include_obfuscation: false
+        },
+        store: false,
+        parallel_tool_calls: true
+    }
+
     return deepAssign({}, base, params.overrideRequestParams ?? {})
 }
 
@@ -370,6 +429,245 @@ export async function processResponse<
     }
 }
 
+export async function responseToChatGeneration(
+    response: ResponseObject,
+    imageProvider?: ResponseImageProvider
+) {
+    if (response.error) {
+        throw new ChatLunaError(
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            new Error(response.error.message ?? JSON.stringify(response.error))
+        )
+    }
+
+    const text = responseOutputText(response)
+    const toolCalls = responseOutputToolCalls(response)
+    const images = imageProvider
+        ? await Promise.all(
+              responseOutputImageItems(response).map((item) =>
+                  imageProvider(item)
+              )
+          )
+        : []
+    const usageMetadata = response.usage
+        ? openAIResponseUsageToUsageMetadata(response.usage)
+        : undefined
+    const message = new AIMessageChunk({
+        content:
+            images.length > 0
+                ? [
+                      ...(text.length > 0
+                          ? [{ type: 'text' as const, text }]
+                          : []),
+                      ...images.map((image) => ({
+                          type: 'image_url' as const,
+                          image_url: image
+                      }))
+                  ]
+                : text,
+        tool_call_chunks: toolCalls.map((call, index) => ({
+            name: call.name,
+            args: call.arguments,
+            id: call.call_id,
+            index
+        })),
+        usage_metadata: usageMetadata,
+        additional_kwargs: {
+            conversation: response.conversation
+        }
+    })
+
+    return new ChatGenerationChunk({
+        generationInfo:
+            usageMetadata == null
+                ? undefined
+                : {
+                      usage_metadata: usageMetadata
+                  },
+        message,
+        text
+    })
+}
+
+export async function processResponseApiResponse(
+    response: Response,
+    imageProvider?: ResponseImageProvider
+) {
+    if (response.status !== 200) {
+        throw new ChatLunaError(
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            new Error(
+                'Error when calling responses, Status: ' +
+                    response.status +
+                    ' ' +
+                    response.statusText +
+                    ', Response: ' +
+                    (await response.text())
+            )
+        )
+    }
+
+    const responseText = await response.text()
+
+    try {
+        return await responseToChatGeneration(
+            JSON.parse(responseText) as ResponseObject,
+            imageProvider
+        )
+    } catch (e) {
+        if (e instanceof ChatLunaError) throw e
+        throw new ChatLunaError(
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            new Error(
+                'Error when calling responses, Error: ' +
+                    e +
+                    ', Response: ' +
+                    responseText
+            )
+        )
+    }
+}
+
+// eslint-disable-next-line generator-star-spacing
+export async function* processResponseApiStream<
+    T extends ClientConfig,
+    R extends ChatLunaPlugin.Config
+>(
+    requestContext: RequestContext<T, R>,
+    iterator: AsyncGenerator<SSEEvent, string, unknown>,
+    imageProvider?: ResponseImageProvider
+) {
+    const args = new Map<number, string>()
+    const calls = new Map<
+        number,
+        { name?: string; callId?: string; itemId?: string }
+    >()
+    let errorCount = 0
+
+    for await (const event of iterator) {
+        const chunk = event.data
+        if (chunk === '[DONE]') break
+        if (chunk === '' || chunk == null || chunk === 'undefined') continue
+
+        try {
+            const data = JSON.parse(chunk) as ResponseStreamEvent
+
+            if (data.type === 'response.output_text.delta' && data.delta) {
+                yield new ChatGenerationChunk({
+                    message: new AIMessageChunk(data.delta),
+                    text: data.delta
+                })
+                continue
+            }
+
+            if (
+                data.type === 'response.output_item.added' &&
+                data.item?.type === 'function_call'
+            ) {
+                const item = data.item as Extract<
+                    ResponseOutputItem,
+                    { type: 'function_call' }
+                >
+                calls.set(data.output_index ?? calls.size, {
+                    name: item.name,
+                    callId: item.call_id,
+                    itemId: item.id
+                })
+                continue
+            }
+
+            if (data.type === 'response.function_call_arguments.delta') {
+                const index = data.output_index ?? 0
+                args.set(index, (args.get(index) ?? '') + (data.delta ?? ''))
+                continue
+            }
+
+            if (data.type === 'response.function_call_arguments.done') {
+                const index = data.output_index ?? 0
+                const call = calls.get(index)
+                yield new ChatGenerationChunk({
+                    message: new AIMessageChunk({
+                        content: '',
+                        tool_call_chunks: [
+                            {
+                                name: data.name ?? call?.name,
+                                args: data.arguments ?? args.get(index) ?? '',
+                                id: call?.callId ?? data.item_id,
+                                index
+                            }
+                        ]
+                    }),
+                    text: ''
+                })
+                continue
+            }
+
+            if (data.type === 'response.completed' && data.response) {
+                const usageMetadata = data.response.usage
+                    ? openAIResponseUsageToUsageMetadata(data.response.usage)
+                    : undefined
+                const images = imageProvider
+                    ? await Promise.all(
+                          responseOutputImageItems(data.response).map((item) =>
+                              imageProvider(item)
+                          )
+                      )
+                    : []
+
+                if (images.length > 0) {
+                    yield new ChatGenerationChunk({
+                        message: new AIMessageChunk({
+                            content: images.map((image) => ({
+                                type: 'image_url' as const,
+                                image_url: image
+                            }))
+                        }),
+                        text: ''
+                    })
+                }
+
+                if (usageMetadata) {
+                    yield new ChatGenerationChunk({
+                        generationInfo: {
+                            usage_metadata: usageMetadata
+                        },
+                        message: new AIMessageChunk({
+                            content: '',
+                            usage_metadata: usageMetadata,
+                            additional_kwargs: {
+                                conversation: data.response.conversation
+                            }
+                        }),
+                        text: ''
+                    })
+                }
+                continue
+            }
+
+            if (
+                data.type === 'response.failed' ||
+                data.type === 'response.incomplete' ||
+                data.type === 'response.error'
+            ) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_FAILED,
+                    new Error(chunk)
+                )
+            }
+        } catch (e) {
+            if (e instanceof ChatLunaError) throw e
+            if (errorCount > 5) {
+                requestContext.modelRequester.logger.error(
+                    'error with responses chunk',
+                    chunk
+                )
+                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            }
+            errorCount++
+        }
+    }
+}
+
 // eslint-disable-next-line generator-star-spacing
 export async function* completionStream<
     T extends ClientConfig,
@@ -461,6 +759,88 @@ export async function completion<
         } else {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         }
+    }
+}
+
+// eslint-disable-next-line generator-star-spacing
+export async function* responseApiCompletionStream<
+    T extends ClientConfig,
+    R extends ChatLunaPlugin.Config
+>(
+    requestContext: RequestContext<T, R>,
+    params: ModelRequestParams,
+    enableGoogleSearch?: boolean,
+    supportImageInput?: boolean,
+    imageProvider?: ResponseImageProvider
+): AsyncGenerator<ChatGenerationChunk> {
+    const { modelRequester } = requestContext
+    const request = await buildResponseParams(
+        params,
+        requestContext.plugin,
+        enableGoogleSearch ?? false,
+        supportImageInput ?? true
+    )
+
+    try {
+        const response = await modelRequester.post('responses', request, {
+            signal: params.signal
+        })
+
+        yield* processResponseApiStream(
+            requestContext,
+            sseIterable(response),
+            imageProvider
+        )
+    } catch (e) {
+        if (requestContext.ctx.chatluna.currentConfig.isLog) {
+            await trackLogToLocal(
+                'Request',
+                JSON.stringify(request),
+                requestContext.ctx.logger('')
+            )
+        }
+        if (e instanceof ChatLunaError) throw e
+        throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+    }
+}
+
+export async function responseApiCompletion<
+    T extends ClientConfig,
+    R extends ChatLunaPlugin.Config
+>(
+    requestContext: RequestContext<T, R>,
+    params: ModelRequestParams,
+    enableGoogleSearch?: boolean,
+    supportImageInput?: boolean,
+    imageProvider?: ResponseImageProvider
+): Promise<ChatGenerationChunk> {
+    const { modelRequester } = requestContext
+    const request = await buildResponseParams(
+        params,
+        requestContext.plugin,
+        enableGoogleSearch ?? false,
+        supportImageInput ?? true
+    )
+
+    delete request.stream
+    delete request.stream_options
+
+    try {
+        const response = await modelRequester.post('responses', request, {
+            signal: params.signal
+        })
+
+        return await processResponseApiResponse(response, imageProvider)
+    } catch (e) {
+        if (requestContext.ctx.chatluna.currentConfig.isLog) {
+            await trackLogToLocal(
+                'Request',
+                JSON.stringify(request),
+                requestContext.ctx.logger('')
+            )
+        }
+        if (e instanceof ChatLunaError) throw e
+        throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
     }
 }
 

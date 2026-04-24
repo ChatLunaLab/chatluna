@@ -7,6 +7,7 @@ export type OpenAIReasoningEffort =
     | 'low'
     | 'medium'
     | 'high'
+    | 'max'
     | 'xhigh'
 
 export const reasoningEffortModelSuffixes = [
@@ -34,7 +35,7 @@ export function parseOpenAIModelNameWithReasoningEffort(modelName: string): {
     let reasoningEffort: OpenAIReasoningEffort | undefined
 
     const explicitMatch = model.match(
-        /-(none|minimal|low|medium|high|xhigh|tiny)-thinking$/
+        /-(none|minimal|low|medium|high|max|xhigh|tiny)-thinking$/
     )
 
     if (explicitMatch?.[1]) {

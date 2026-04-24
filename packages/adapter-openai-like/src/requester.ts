@@ -17,7 +17,10 @@ import {
     completionStream,
     createEmbeddings,
     createRequestContext,
-    getModels
+    getModels,
+    responseApiCompletion,
+    responseApiCompletionStream,
+    ResponseImageProvider
 } from '@chatluna/v1-shared-adapter'
 import { BaseMessageChunk } from '@langchain/core/messages'
 import { RunnableConfig } from '@langchain/core/runnables'
@@ -36,7 +39,10 @@ export class OpenAIRequester
     }
 
     async completion(params: ModelRequestParams): Promise<ChatGeneration> {
-        if (!this._pluginConfig.nonStreaming) {
+        if (
+            !this._pluginConfig.nonStreaming &&
+            !this._pluginConfig.responseApi
+        ) {
             return super.completion(params)
         }
 
@@ -47,6 +53,19 @@ export class OpenAIRequester
             this._plugin,
             this
         )
+
+        if (this._pluginConfig.responseApi) {
+            return responseApiCompletion(
+                requestContext,
+                params,
+                this._pluginConfig.googleSearch &&
+                    this._pluginConfig.googleSearchSupportModel.includes(
+                        params.model
+                    ),
+                true,
+                this._imageProvider()
+            )
+        }
 
         return completion(
             requestContext,
@@ -62,7 +81,10 @@ export class OpenAIRequester
     async *completionStream(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
-        if (!this._pluginConfig.nonStreaming) {
+        if (
+            !this._pluginConfig.nonStreaming ||
+            this._pluginConfig.responseApi
+        ) {
             yield* super.completionStream(params)
             return
         }
@@ -87,6 +109,20 @@ export class OpenAIRequester
             this._plugin,
             this
         )
+
+        if (this._pluginConfig.responseApi) {
+            yield* responseApiCompletionStream(
+                requestContext,
+                params,
+                this._pluginConfig.googleSearch &&
+                    this._pluginConfig.googleSearchSupportModel.includes(
+                        params.model
+                    ),
+                true,
+                this._imageProvider()
+            )
+            return
+        }
 
         yield* completionStream(
             requestContext,
@@ -127,6 +163,32 @@ export class OpenAIRequester
 
     get logger() {
         return logger
+    }
+
+    private _imageProvider(): ResponseImageProvider {
+        return async (item) => {
+            const storage = (
+                this.ctx as Context & {
+                    chatluna_storage?: {
+                        createTempFile(
+                            buffer: Buffer,
+                            name: string
+                        ): Promise<{ url: string }>
+                    }
+                }
+            ).chatluna_storage
+
+            if (!storage) {
+                return `data:image/png;base64,${item.result}`
+            }
+
+            const file = await storage.createTempFile(
+                Buffer.from(item.result as string, 'base64'),
+                'image_random'
+            )
+
+            return file.url
+        }
     }
 
     public buildHeaders() {

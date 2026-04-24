@@ -99,7 +99,11 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
                 llmType: 'deepseek',
-                isThinkModel: model.includes('reasoner')
+                isThinkModel:
+                    model.includes('reasoner') ||
+                    model.includes('thinking') ||
+                    (model.startsWith('deepseek-v4-') &&
+                        !model.endsWith('-instance'))
             })
         }
 

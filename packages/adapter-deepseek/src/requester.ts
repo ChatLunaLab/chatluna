@@ -13,12 +13,19 @@ import { logger } from '.'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import {
+    buildChatCompletionParams,
     completionStream,
     createEmbeddings,
-    createRequestContext
+    createRequestContext,
+    parseOpenAIModelNameWithReasoningEffort,
+    processStreamResponse
 } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
-import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
+import { sseIterable } from 'koishi-plugin-chatluna/utils/sse'
 
 export class DeepseekRequester
     extends ModelRequester
@@ -36,6 +43,14 @@ export class DeepseekRequester
     async *completionStreamInternal(
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
+        const rawModel = params.model
+        const disabled = rawModel.endsWith('-instance')
+        const parsedModel = parseOpenAIModelNameWithReasoningEffort(
+            disabled
+                ? rawModel.slice(0, -'-instance'.length)
+                : rawModel
+        )
+        const model = parsedModel.model
         const requestContext = createRequestContext(
             this.ctx,
             this._config.value,
@@ -44,8 +59,47 @@ export class DeepseekRequester
             this
         )
 
-        // Deepseek specific streaming with reasoning content support
-        yield* completionStream(requestContext, params)
+        if (!model.startsWith('deepseek-v4-')) {
+            yield* completionStream(requestContext, params)
+            return
+        }
+
+        const request = (await buildChatCompletionParams(
+            { ...params, model: disabled ? model : rawModel },
+            this._plugin,
+            false,
+            true
+        )) as Awaited<ReturnType<typeof buildChatCompletionParams>> & {
+            thinking?: {
+                type: 'enabled' | 'disabled'
+            }
+        }
+
+        request.thinking = {
+            type: disabled ? 'disabled' : 'enabled'
+        }
+
+        if (disabled) {
+            delete request.reasoning_effort
+        } else {
+            delete request.temperature
+            delete request.presence_penalty
+            delete request.frequency_penalty
+            delete request.top_p
+        }
+
+        try {
+            const response = await this.post('chat/completions', request, {
+                signal: params.signal
+            })
+
+            yield* processStreamResponse(requestContext, sseIterable(response))
+        } catch (e) {
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        }
     }
 
     async embeddings(
@@ -75,7 +129,26 @@ export class DeepseekRequester
             data = JSON.parse(data as string)
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (<Record<string, any>[]>data.data).map((model) => model.id)
+            const rawModels = (<Record<string, any>[]>data.data).map(
+                (model) => model.id as string
+            )
+            const models: string[] = []
+
+            for (const model of rawModels) {
+                models.push(model)
+
+                if (!model.startsWith('deepseek-v4-')) continue
+                if (model.endsWith('-thinking')) continue
+                if (model.endsWith('-instance')) continue
+
+                models.push(
+                    `${model}-high-thinking`,
+                    `${model}-max-thinking`,
+                    `${model}-instance`
+                )
+            }
+
+            return models
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e

@@ -41,6 +41,7 @@ export interface Config extends ChatLunaPlugin.Config {
     temperature: number
     presencePenalty: number
     frequencyPenalty: number
+    responseApi: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -65,7 +66,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
-        frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0)
+        frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
+        responseApi: Schema.boolean().default(false)
     })
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
@@ -87,6 +89,9 @@ export const usage = `
 - API 请求地址：\`https://api.bltcy.ai/v1\`
 `
 
-export const inject = ['chatluna']
+export const inject = {
+    required: ['chatluna'],
+    optional: ['chatluna_storage']
+}
 
 export const name = 'chatluna-openai-adapter'
