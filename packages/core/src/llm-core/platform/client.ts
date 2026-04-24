@@ -120,6 +120,8 @@ export abstract class BasePlatformClient<
                       )
                 this._modelInfos[model.name] = model
             }
+
+            return models
         } catch (e) {
             if (
                 e instanceof ChatLunaError &&
