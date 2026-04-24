@@ -124,6 +124,7 @@ export interface WakeupAction extends WakeupTemplate {
 
 export interface WakeupResult {
     ok: boolean
+    skipped?: boolean
     deferred?: {
         reason: 'bot-offline' | 'bot-not-found'
         pendingKey: string

@@ -528,6 +528,12 @@ export class ChatLunaAgentTriggerService {
         if (overdue && missedRunPolicy === 'skip') {
             const requestId = randomUUID()
             const provider = this._providers.get(task.providerKind)
+            const result: WakeupResult = {
+                ok: true,
+                skipped: true,
+                requestId,
+                stats: { durationMs: 0 }
+            }
             const next = await provider?.afterFire?.({
                 task,
                 currentDate: new Date()
@@ -537,7 +543,8 @@ export class ChatLunaAgentTriggerService {
                 lastError: null
             })
             this._scheduler.sync(updated)
-            return { ok: true, requestId, stats: { durationMs: 0 } }
+            await provider?.onTaskFire?.({ task: updated, result })
+            return result
         }
 
         const taskRouting: WakeupRouting | undefined =
