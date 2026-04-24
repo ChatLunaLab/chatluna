@@ -186,6 +186,7 @@ interface ActivityState {
     consecutiveBy: { userId: string | null; count: number }
     crossSince: number | null
     cooldownUntil: number
+    idleTimeoutMs: number
     lastTouched: number
 }
 
@@ -232,9 +233,9 @@ function curveGain(
     return value * gain
 }
 
-function gcStates(now: number, idleTimeoutMs: number) {
+function gcStates(now: number) {
     for (const [id, state] of states) {
-        if (now - state.lastTouched > idleTimeoutMs) {
+        if (now - state.lastTouched > state.idleTimeoutMs) {
             states.delete(id)
         }
     }
@@ -382,10 +383,12 @@ export const activityTriggerProvider: TriggerProvider = {
         const direction = resolveDirection(params)
 
         const now = Date.now()
-        gcStates(now, params.idleTimeoutMs)
-
         let state = states.get(task.id)
-        if (state != null && now - state.lastTouched > params.idleTimeoutMs) {
+        if (state != null) state.idleTimeoutMs = params.idleTimeoutMs
+        gcStates(now)
+        if (state != null && !states.has(task.id)) state = undefined
+
+        if (state != null && now - state.lastTouched > state.idleTimeoutMs) {
             states.delete(task.id)
             state = undefined
         }
@@ -399,6 +402,7 @@ export const activityTriggerProvider: TriggerProvider = {
                 consecutiveBy: { userId: null, count: 0 },
                 crossSince: null,
                 cooldownUntil: 0,
+                idleTimeoutMs: params.idleTimeoutMs,
                 lastTouched: now
             }
             states.set(task.id, state)

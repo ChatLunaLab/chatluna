@@ -1,8 +1,12 @@
 import { StructuredTool } from '@langchain/core/tools'
 import { z } from 'zod'
-import { getBaseBindingKey } from 'koishi-plugin-chatluna/services/chat'
+import {
+    getBaseBindingKey,
+    getPresetLane
+} from 'koishi-plugin-chatluna/services/chat'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type { ChatLunaAgentTriggerService } from '../service/trigger'
+import type { TriggerTask } from '../types'
 import {
     type DslCall,
     type DslValue,
@@ -69,15 +73,13 @@ export class TriggerTool extends StructuredTool {
 
         if (call.verb === 'get') {
             if (call.positional.length < 1) return 'taskId is required for get.'
-            const tasks = []
-            for (const id of call.positional.map(valueToNumber)) {
-                const task = await this.service.getTask(id)
-                if (task == null || !ownsTask(task)) {
-                    return `Trigger task ${id} not found.`
-                }
-                tasks.push(formatTask(task))
-            }
-            return JSON.stringify(tasks.length === 1 ? tasks[0] : tasks)
+            const tasks = await this._getOwnedTasks(
+                call.positional.map(valueToNumber),
+                ownsTask
+            )
+            if (typeof tasks === 'string') return tasks
+            const result = tasks.map(formatTask)
+            return JSON.stringify(result.length === 1 ? result[0] : result)
         }
 
         if (call.verb === 'enable') {
@@ -120,13 +122,15 @@ export class TriggerTool extends StructuredTool {
             if (call.positional.length < 1) {
                 return 'taskId is required for fire.'
             }
+            const tasks = await this._getOwnedTasks(
+                call.positional.map(valueToNumber),
+                ownsTask
+            )
+            if (typeof tasks === 'string') return tasks
+
             const results = []
-            for (const id of call.positional.map(valueToNumber)) {
-                const task = await this.service.getTask(id)
-                if (task == null || !ownsTask(task)) {
-                    return `Trigger task ${id} not found.`
-                }
-                results.push(await this.service.fire(id, session))
+            for (const task of tasks) {
+                results.push(await this.service.fire(task.id, session))
             }
             return JSON.stringify(results.length === 1 ? results[0] : results)
         }
@@ -136,11 +140,10 @@ export class TriggerTool extends StructuredTool {
                 return 'taskId is required for remove.'
             }
             const ids = call.positional.map(valueToNumber)
+            const tasks = await this._getOwnedTasks(ids, ownsTask)
+            if (typeof tasks === 'string') return tasks
+
             for (const id of ids) {
-                const task = await this.service.getTask(id)
-                if (task == null || !ownsTask(task)) {
-                    return `Trigger task ${id} not found.`
-                }
                 await this.service.removeTask(id)
             }
             return `Trigger task ${ids.join(', ')} removed.`
@@ -222,9 +225,7 @@ export class TriggerTool extends StructuredTool {
             : resolved.bindingKey
         const presetLane = useAllScope
             ? null
-            : resolved.fixedPreset ||
-              resolved.activePresetLane ||
-              resolved.defaultPreset
+            : (resolved.activePresetLane ?? getPresetLane(resolved.bindingKey))
         const params: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(call.named)) {
             if (
@@ -246,6 +247,24 @@ export class TriggerTool extends StructuredTool {
             ] = rawValue(value)
         }
 
+        let replyTo: 'channel' | 'user' | 'silent' | undefined
+        if (call.named.reply != null) {
+            const value = valueToString(call.named.reply)
+            if (value !== 'channel' && value !== 'user' && value !== 'silent') {
+                return `Invalid reply: ${value}. Expected channel, user, or silent.`
+            }
+            replyTo = value
+        }
+
+        let execMode: 'chain' | 'direct' | undefined
+        if (call.named.mode != null) {
+            const value = valueToString(call.named.mode)
+            if (value !== 'chain' && value !== 'direct') {
+                return `Invalid mode: ${value}. Expected chain or direct.`
+            }
+            execMode = value
+        }
+
         const task = await this.service.createTask(session, {
             providerKind,
             name:
@@ -260,19 +279,8 @@ export class TriggerTool extends StructuredTool {
             source: 'agent',
             wakeupTemplate: {
                 message,
-                replyTo:
-                    call.named.reply == null
-                        ? undefined
-                        : (valueToString(call.named.reply) as
-                              | 'channel'
-                              | 'user'
-                              | 'silent'),
-                execMode:
-                    call.named.mode == null
-                        ? undefined
-                        : (valueToString(call.named.mode) as
-                              | 'chain'
-                              | 'direct'),
+                replyTo,
+                execMode,
                 newConversation:
                     typeof call.named.new_conv === 'boolean'
                         ? call.named.new_conv
@@ -288,11 +296,10 @@ export class TriggerTool extends StructuredTool {
         enabled: boolean,
         ownsTask: (task: { bindingKey: string; createdBy: string }) => boolean
     ) {
+        const tasks = await this._getOwnedTasks(ids, ownsTask)
+        if (typeof tasks === 'string') return tasks
+
         for (const id of ids) {
-            const task = await this.service.getTask(id)
-            if (task == null || !ownsTask(task)) {
-                return `Trigger task ${id} not found.`
-            }
             await this.service.setEnabled(id, enabled)
         }
         return `Trigger task ${ids.join(', ')} ${enabled ? 'enabled' : 'disabled'}.`
@@ -308,15 +315,29 @@ export class TriggerTool extends StructuredTool {
         }
         if (Number.isNaN(after.valueOf())) return 'Invalid snooze date.'
 
-        const tasks = []
+        const tasks = await this._getOwnedTasks(ids, ownsTask)
+        if (typeof tasks === 'string') return tasks
+
+        const result = []
+        for (const id of ids) {
+            result.push(formatTask(await this.service.snoozeTask(id, after)))
+        }
+        return JSON.stringify(result.length === 1 ? result[0] : result)
+    }
+
+    private async _getOwnedTasks(
+        ids: number[],
+        ownsTask: (task: { bindingKey: string; createdBy: string }) => boolean
+    ) {
+        const tasks: TriggerTask[] = []
         for (const id of ids) {
             const task = await this.service.getTask(id)
             if (task == null || !ownsTask(task)) {
                 return `Trigger task ${id} not found.`
             }
-            tasks.push(formatTask(await this.service.snoozeTask(id, after)))
+            tasks.push(task)
         }
-        return JSON.stringify(tasks.length === 1 ? tasks[0] : tasks)
+        return tasks
     }
 }
 

@@ -88,8 +88,17 @@ export class ChatLunaAgentTriggerExecutor {
                 ])
             }
 
+            if (
+                action.newConversation === true &&
+                action.conversationId != null
+            ) {
+                this.ctx.logger.debug(
+                    'Ignore conversationId because newConversation takes priority.'
+                )
+            }
+
             const resolved =
-                action.newConversation && action.conversationId == null
+                action.newConversation === true
                     ? await this._createFreshConversation(routed, action)
                     : await this.ctx.chatluna.conversation.resolveConversation(
                           routed.session,

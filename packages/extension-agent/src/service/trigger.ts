@@ -418,8 +418,14 @@ export class ChatLunaAgentTriggerService {
     }
 
     listRoutingChoices(): TriggerRoutingChoice[] {
+        const seen = new Set<string>()
         return Object.values(this.ctx.bots)
-            .filter((bot, idx, list) => list.indexOf(bot) === idx)
+            .filter((bot) => {
+                const key = `${bot.platform}:${bot.selfId}`
+                if (seen.has(key)) return false
+                seen.add(key)
+                return true
+            })
             .map((bot) => ({
                 label: bot.sid,
                 platform: bot.platform,
@@ -467,18 +473,20 @@ export class ChatLunaAgentTriggerService {
         } as TriggerCreateTaskInput
     }
 
-    private _normalizeForReplay(
-        action: WakeupAction
-    ): Partial<WakeupAction> | undefined {
-        const target = action.target
-        if (target == null) return action
+    private _normalizeForReplay(action: Partial<WakeupAction>) {
+        const copy = { ...action }
+        delete copy.signal
+        delete copy.onReply
+
+        const target = copy.target
+        if (target == null) return copy
         if (this._isSession(target)) {
             return {
-                ...action,
+                ...copy,
                 target: routingFromSession(target as Session)
             }
         }
-        return action
+        return copy
     }
 
     private _isSession(target: WakeupTarget): target is Session {
@@ -574,7 +582,10 @@ export class ChatLunaAgentTriggerService {
 
         if (result.deferred != null) {
             this._queueDeferred(`task:${task.id}`, result.deferred.pendingKey, {
-                action: override == null ? undefined : { ...override },
+                action:
+                    override == null
+                        ? undefined
+                        : this._normalizeForReplay(override),
                 mutateSchedule,
                 taskId: task.id
             })
@@ -596,25 +607,53 @@ export class ChatLunaAgentTriggerService {
         const latest = await this._registry.get(id)
         if (latest == null) return result
 
+        const keepEnabled = RETRYABLE_FIRE_CODES.has(result.error?.code ?? '')
+        const err = result.error?.message ?? 'Unknown error'
+
         if (latest.updatedAt.valueOf() > task.updatedAt.valueOf()) {
+            const latestProvider = this._providers.get(latest.providerKind)
+            const next =
+                latestProvider?.afterFire != null
+                    ? await latestProvider.afterFire({
+                          task: latest,
+                          firedAt,
+                          currentDate: overdue ? firedAt : undefined
+                      })
+                    : keepEnabled
+                      ? {
+                            enabled: true,
+                            nextFireAt:
+                                latest.nextFireAt != null &&
+                                latest.nextFireAt.valueOf() <= firedAt.valueOf()
+                                    ? null
+                                    : latest.nextFireAt
+                        }
+                      : result.ok && latestProvider?.passive === true
+                        ? {
+                              enabled: true,
+                              nextFireAt: latest.nextFireAt
+                          }
+                        : { enabled: false, nextFireAt: null }
+            const schedule = mutateSchedule && next != null ? next : {}
             const updated = await this._registry.update(id, {
                 lastFiredAt: firedAt,
-                fireCount: task.fireCount + 1,
-                ...(persistConversationId != null
-                    ? { conversationId: persistConversationId }
+                fireCount: latest.fireCount + 1,
+                ...(latest.wakeupTemplate.newConversation === true &&
+                latest.conversationId == null &&
+                result.ok &&
+                result.conversation != null
+                    ? { conversationId: result.conversation.id }
                     : {}),
-                lastError: result.ok
-                    ? null
-                    : (result.error?.message ?? 'Unknown error')
+                ...schedule,
+                lastError: result.ok ? null : err
             })
-            await provider?.onTaskFire?.({ task: updated, result })
+            await latestProvider?.onTaskFire?.({ task: updated, result })
             if (mutateSchedule) {
                 this._scheduler.sync(updated)
             }
             return result
         }
 
-        const keepEnabled = RETRYABLE_FIRE_CODES.has(result.error?.code ?? '')
         const next =
             provider?.afterFire != null
                 ? await provider.afterFire({
@@ -637,16 +676,15 @@ export class ChatLunaAgentTriggerService {
                           nextFireAt: task.nextFireAt
                       }
                     : { enabled: false, nextFireAt: null }
+        const schedule = mutateSchedule && next != null ? next : {}
         const updated = await this._registry.update(id, {
             lastFiredAt: firedAt,
             fireCount: task.fireCount + 1,
             ...(persistConversationId != null
                 ? { conversationId: persistConversationId }
                 : {}),
-            ...(mutateSchedule ? (next ?? {}) : {}),
-            lastError: result.ok
-                ? null
-                : (result.error?.message ?? 'Unknown error')
+            ...schedule,
+            lastError: result.ok ? null : err
         })
         await provider?.onTaskFire?.({ task: updated, result })
         if (mutateSchedule) {
