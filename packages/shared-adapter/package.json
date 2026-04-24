@@ -1,7 +1,7 @@
 {
     "name": "@chatluna/v1-shared-adapter",
     "description": "chatluna shared adapter",
-    "version": "1.0.32",
+    "version": "1.0.33",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
