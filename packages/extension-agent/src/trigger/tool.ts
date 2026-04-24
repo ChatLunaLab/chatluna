@@ -3,70 +3,26 @@ import { z } from 'zod'
 import { getBaseBindingKey } from 'koishi-plugin-chatluna/services/chat'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type { ChatLunaAgentTriggerService } from '../service/trigger'
+import {
+    type DslCall,
+    type DslValue,
+    parseDsl,
+    valueToDurationMs,
+    valueToNumber,
+    valueToString
+} from './dsl'
 
 export class TriggerTool extends StructuredTool {
     name = 'trigger'
 
     description =
-        'Manage scheduled or passive trigger tasks for the current chat (create/list/enable/disable/cancel/fire). ' +
-        'See <trigger_tool> and <trigger_providers> in the system prompt for actions, providers, and per-provider params.'
+        'Manage scheduled or passive trigger tasks for the current chat. ' +
+        'Input is a single DSL statement in cmd. See <trigger_tool> and <trigger_providers>.'
 
     schema = z.object({
-        action: z
-            .enum([
-                'list',
-                'create',
-                'enable',
-                'disable',
-                'cancel',
-                'remove',
-                'fire'
-            ])
-            .describe(
-                'Operation to perform. See <trigger_tool> in system prompt.'
-            ),
-        taskId: z
-            .number()
-            .int()
-            .optional()
-            .describe('Required for enable/disable/cancel/remove/fire.'),
-        providerKind: z
+        cmd: z
             .string()
-            .optional()
-            .describe(
-                'Required for create. One of the providers listed in <trigger_providers>.'
-            ),
-        name: z.string().optional(),
-        message: z
-            .string()
-            .optional()
-            .describe(
-                'Wakeup message; required when the chosen provider is marked "requires message".'
-            ),
-        replyTo: z.enum(['channel', 'user', 'silent']).optional(),
-        execMode: z.enum(['chain', 'direct']).optional(),
-        nextFireAt: z
-            .string()
-            .optional()
-            .describe('ISO date string for one-shot tasks.'),
-        presetScope: z
-            .enum(['current', 'all'])
-            .optional()
-            .describe(
-                'Bind the task to the current preset lane (default) or to all presets of this chat.'
-            ),
-        newConversation: z
-            .boolean()
-            .optional()
-            .describe(
-                'When true, the first fire creates a fresh conversation (not set as active); subsequent fires reuse it.'
-            ),
-        params: z
-            .record(z.any())
-            .optional()
-            .describe(
-                'Provider-specific params. See <trigger_providers> in the system prompt for the type signature of each provider.'
-            )
+            .describe('Single trigger DSL statement. See <trigger_tool>.')
     })
 
     constructor(private readonly service: ChatLunaAgentTriggerService) {
@@ -78,7 +34,20 @@ export class TriggerTool extends StructuredTool {
         _,
         config: ChatLunaToolRunnable
     ) {
+        let call: DslCall
+        try {
+            call = parseDsl(input.cmd)
+        } catch (err) {
+            return err instanceof Error ? err.message : String(err)
+        }
+
         const session = config.configurable.session
+        const requestId = (
+            config.configurable as {
+                agentContext?: { requestId?: string }
+            }
+        ).agentContext?.requestId
+        const runningTaskId = this.service.getRunningTaskId(requestId)
         const resolved =
             await this.service.ctx.chatluna.conversation.resolveConstraint(
                 session
@@ -89,99 +58,165 @@ export class TriggerTool extends StructuredTool {
                 task.bindingKey === baseKey) &&
             task.createdBy === session.userId
 
-        if (input.action === 'list') {
+        if (call.verb === 'list') {
             const tasks = (await this.service.listTasks()).filter(ownsTask)
             if (tasks.length < 1) {
                 return 'No trigger tasks found for this chat.'
             }
 
-            return JSON.stringify(
-                tasks.map((task) => ({
-                    id: task.id,
-                    name: task.name,
-                    providerKind: task.providerKind,
-                    enabled: task.enabled,
-                    nextFireAt: task.nextFireAt,
-                    params: task.params
-                }))
+            return JSON.stringify(tasks.map(formatTask))
+        }
+
+        if (call.verb === 'get') {
+            if (call.positional.length < 1) return 'taskId is required for get.'
+            const tasks = []
+            for (const id of call.positional.map(valueToNumber)) {
+                const task = await this.service.getTask(id)
+                if (task == null || !ownsTask(task)) {
+                    return `Trigger task ${id} not found.`
+                }
+                tasks.push(formatTask(task))
+            }
+            return JSON.stringify(tasks.length === 1 ? tasks[0] : tasks)
+        }
+
+        if (call.verb === 'enable') {
+            if (
+                runningTaskId != null &&
+                !this.service.canMutateRunningTask(requestId)
+            ) {
+                return 'ignored: manual fire mode'
+            }
+            if (call.positional.length < 1) {
+                return 'taskId is required for enable.'
+            }
+            return await this._setEnabled(
+                call.positional.map(valueToNumber),
+                true,
+                ownsTask
             )
         }
 
-        if (input.action === 'enable') {
-            if (input.taskId == null) {
-                return 'taskId is required for enable.'
+        if (call.verb === 'disable') {
+            if (
+                runningTaskId != null &&
+                !this.service.canMutateRunningTask(requestId)
+            ) {
+                return 'ignored: manual fire mode'
             }
-
-            const task = await this.service.getTask(input.taskId)
-            if (task == null || !ownsTask(task)) {
-                return `Trigger task ${input.taskId} not found.`
+            const ids =
+                call.positional.length > 0
+                    ? call.positional.map(valueToNumber)
+                    : runningTaskId == null
+                      ? []
+                      : [runningTaskId]
+            if (ids.length < 1) {
+                return 'taskId is required for disable outside a trigger run.'
             }
-
-            await this.service.setEnabled(input.taskId, true)
-            return `Trigger task ${input.taskId} enabled.`
+            return await this._setEnabled(ids, false, ownsTask)
         }
 
-        if (input.action === 'disable') {
-            if (input.taskId == null) {
-                return 'taskId is required for disable.'
-            }
-
-            const task = await this.service.getTask(input.taskId)
-            if (task == null || !ownsTask(task)) {
-                return `Trigger task ${input.taskId} not found.`
-            }
-
-            await this.service.setEnabled(input.taskId, false)
-            return `Trigger task ${input.taskId} disabled.`
-        }
-
-        if (input.action === 'cancel' || input.action === 'remove') {
-            if (input.taskId == null) {
-                return 'taskId is required for cancel.'
-            }
-
-            const task = await this.service.getTask(input.taskId)
-            if (task == null || !ownsTask(task)) {
-                return `Trigger task ${input.taskId} not found.`
-            }
-
-            await this.service.removeTask(input.taskId)
-            return `Trigger task ${input.taskId} removed.`
-        }
-
-        if (input.action === 'fire') {
-            if (input.taskId == null) {
+        if (call.verb === 'fire') {
+            if (call.positional.length < 1) {
                 return 'taskId is required for fire.'
             }
-
-            const task = await this.service.getTask(input.taskId)
-            if (task == null || !ownsTask(task)) {
-                return `Trigger task ${input.taskId} not found.`
+            const results = []
+            for (const id of call.positional.map(valueToNumber)) {
+                const task = await this.service.getTask(id)
+                if (task == null || !ownsTask(task)) {
+                    return `Trigger task ${id} not found.`
+                }
+                results.push(await this.service.fire(id, session))
             }
-
-            const result = await this.service.fire(input.taskId)
-            return JSON.stringify(result)
+            return JSON.stringify(results.length === 1 ? results[0] : results)
         }
 
-        if (input.providerKind == null) {
-            return 'providerKind is required for create. See <trigger_providers> in the system prompt.'
+        if (call.verb === 'cancel' || call.verb === 'remove') {
+            if (call.positional.length < 1) {
+                return 'taskId is required for remove.'
+            }
+            const ids = call.positional.map(valueToNumber)
+            for (const id of ids) {
+                const task = await this.service.getTask(id)
+                if (task == null || !ownsTask(task)) {
+                    return `Trigger task ${id} not found.`
+                }
+                await this.service.removeTask(id)
+            }
+            return `Trigger task ${ids.join(', ')} removed.`
         }
 
+        if (call.verb === 'snooze') {
+            if (
+                runningTaskId != null &&
+                !this.service.canMutateRunningTask(requestId)
+            ) {
+                return 'ignored: manual fire mode'
+            }
+            if (call.positional.length < 1)
+                return 'duration is required for snooze.'
+            return await this._snooze(
+                call.positional.length > 1
+                    ? call.positional.slice(1).map(valueToNumber)
+                    : runningTaskId == null
+                      ? []
+                      : [runningTaskId],
+                new Date(Date.now() + valueToDurationMs(call.positional[0])),
+                ownsTask
+            )
+        }
+
+        if (call.verb === 'snooze_until') {
+            if (
+                runningTaskId != null &&
+                !this.service.canMutateRunningTask(requestId)
+            ) {
+                return 'ignored: manual fire mode'
+            }
+            if (call.positional.length < 1) {
+                return 'ISO date is required for snooze_until.'
+            }
+            return await this._snooze(
+                call.positional.length > 1
+                    ? call.positional.slice(1).map(valueToNumber)
+                    : runningTaskId == null
+                      ? []
+                      : [runningTaskId],
+                new Date(valueToString(call.positional[0])),
+                ownsTask
+            )
+        }
+
+        if (call.verb !== 'create') {
+            return `Unknown trigger command: ${call.verb}.`
+        }
+
+        if (call.positional.length < 1) {
+            return 'provider kind is required for create.'
+        }
+
+        const providerKind = valueToString(call.positional[0])
         const provider = this.service
             .getProviders()
-            .find((p) => p.kind === input.providerKind)
+            .find((p) => p.kind === providerKind)
         if (provider == null) {
-            return `Unknown providerKind: ${input.providerKind}. See <trigger_providers> in the system prompt.`
+            return `Unknown providerKind: ${providerKind}. See <trigger_providers> in the system prompt.`
         }
 
+        const message =
+            call.named.message == null
+                ? undefined
+                : valueToString(call.named.message)
         if (
             provider.needsMessage &&
-            (input.message == null || input.message.trim().length < 1)
+            (message == null || message.trim().length < 1)
         ) {
             return `message is required for provider ${provider.kind}.`
         }
 
-        const useAllScope = input.presetScope === 'all'
+        const useAllScope =
+            call.named.scope != null &&
+            valueToString(call.named.scope) === 'all'
         const bindingKey = useAllScope
             ? getBaseBindingKey(resolved.bindingKey)
             : resolved.bindingKey
@@ -190,30 +225,121 @@ export class TriggerTool extends StructuredTool {
             : resolved.fixedPreset ||
               resolved.activePresetLane ||
               resolved.defaultPreset
+        const params: Record<string, unknown> = {}
+        for (const [key, value] of Object.entries(call.named)) {
+            if (
+                key === 'message' ||
+                key === 'reply' ||
+                key === 'mode' ||
+                key === 'name' ||
+                key === 'scope' ||
+                key === 'new_conv'
+            ) {
+                continue
+            }
+            params[
+                key === 'missed'
+                    ? 'missedRunPolicy'
+                    : key === 'fire_at'
+                      ? 'fireAt'
+                      : key
+            ] = rawValue(value)
+        }
 
         const task = await this.service.createTask(session, {
-            providerKind: input.providerKind,
-            name: input.name,
+            providerKind,
+            name:
+                call.named.name == null
+                    ? undefined
+                    : valueToString(call.named.name),
             presetLane,
             scope: useAllScope ? 'shared' : 'personal',
             bindingKey,
-            nextFireAt: input.nextFireAt,
-            params: input.params,
+            params,
             createdBy: session.userId,
             source: 'agent',
             wakeupTemplate: {
-                message: input.message,
-                replyTo: input.replyTo,
-                execMode: input.execMode,
-                newConversation: input.newConversation
+                message,
+                replyTo:
+                    call.named.reply == null
+                        ? undefined
+                        : (valueToString(call.named.reply) as
+                              | 'channel'
+                              | 'user'
+                              | 'silent'),
+                execMode:
+                    call.named.mode == null
+                        ? undefined
+                        : (valueToString(call.named.mode) as
+                              | 'chain'
+                              | 'direct'),
+                newConversation:
+                    typeof call.named.new_conv === 'boolean'
+                        ? call.named.new_conv
+                        : true
             }
         })
 
-        return JSON.stringify({
-            id: task.id,
-            providerKind: task.providerKind,
-            nextFireAt: task.nextFireAt,
-            params: task.params
-        })
+        return JSON.stringify(formatTask(task))
     }
+
+    private async _setEnabled(
+        ids: number[],
+        enabled: boolean,
+        ownsTask: (task: { bindingKey: string; createdBy: string }) => boolean
+    ) {
+        for (const id of ids) {
+            const task = await this.service.getTask(id)
+            if (task == null || !ownsTask(task)) {
+                return `Trigger task ${id} not found.`
+            }
+            await this.service.setEnabled(id, enabled)
+        }
+        return `Trigger task ${ids.join(', ')} ${enabled ? 'enabled' : 'disabled'}.`
+    }
+
+    private async _snooze(
+        ids: number[],
+        after: Date,
+        ownsTask: (task: { bindingKey: string; createdBy: string }) => boolean
+    ) {
+        if (ids.length < 1) {
+            return 'taskId is required for snooze outside a trigger run.'
+        }
+        if (Number.isNaN(after.valueOf())) return 'Invalid snooze date.'
+
+        const tasks = []
+        for (const id of ids) {
+            const task = await this.service.getTask(id)
+            if (task == null || !ownsTask(task)) {
+                return `Trigger task ${id} not found.`
+            }
+            tasks.push(formatTask(await this.service.snoozeTask(id, after)))
+        }
+        return JSON.stringify(tasks.length === 1 ? tasks[0] : tasks)
+    }
+}
+
+function formatTask(task: {
+    id: number
+    name?: string | null
+    providerKind: string | null
+    enabled: boolean
+    nextFireAt?: Date | null
+    params?: Record<string, unknown> | null
+}) {
+    return {
+        id: task.id,
+        name: task.name,
+        providerKind: task.providerKind,
+        enabled: task.enabled,
+        nextFireAt: task.nextFireAt,
+        params: task.params
+    }
+}
+
+function rawValue(value: DslValue): unknown {
+    if (typeof value !== 'object') return value
+    if (value.kind === 'duration') return value.ms
+    return value.name
 }

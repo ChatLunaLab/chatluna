@@ -12,6 +12,7 @@ export interface WakeupRouting {
     platform: string
     selfId: string
     userId: string
+    username?: string
     guildId?: string
     channelId?: string
     isDirect: boolean
@@ -26,6 +27,7 @@ export function routingFromSession(s: Session): WakeupRouting {
         platform: s.platform,
         selfId: s.selfId,
         userId: s.userId,
+        username: s.username,
         guildId: s.guildId ?? undefined,
         channelId: s.channelId ?? undefined,
         isDirect: s.isDirect
@@ -174,6 +176,11 @@ export interface TriggerProviderAfterFireContext {
     firedAt?: Date
 }
 
+export interface TriggerProviderRescheduleContext {
+    task: TriggerTask
+    after: Date
+}
+
 export interface TriggerProviderLifecycleContext {
     task: TriggerTask
 }
@@ -216,6 +223,9 @@ export interface TriggerProvider {
     afterFire?: (
         ctx: TriggerProviderAfterFireContext
     ) => Awaitable<Partial<TriggerTask> | void>
+    reschedule?: (
+        ctx: TriggerProviderRescheduleContext
+    ) => Awaitable<Partial<TriggerTask>>
     onTaskCreate?: (ctx: TriggerProviderLifecycleContext) => Awaitable<void>
     onTaskRemove?: (ctx: TriggerProviderLifecycleContext) => Awaitable<void>
     onTaskFire?: (ctx: TriggerProviderFireResultContext) => Awaitable<void>
@@ -258,6 +268,7 @@ export interface TriggerTask {
     selfId: string
     platform: string
     userId: string
+    username?: string | null
     guildId?: string | null
     channelId?: string | null
     isDirect: boolean
@@ -283,6 +294,7 @@ export interface TriggerCreateTaskInput {
     selfId: string
     platform: string
     userId: string
+    username?: string | null
     guildId?: string | null
     channelId?: string | null
     isDirect: boolean

@@ -22,7 +22,8 @@ export function getDefaultToolAuthority(name?: string) {
         name === 'file_read' ||
         name === 'file_write' ||
         name === 'glob' ||
-        name === 'grep'
+        name === 'grep' ||
+        name === 'trigger'
     ) {
         return 3
     }

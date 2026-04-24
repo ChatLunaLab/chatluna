@@ -2,7 +2,7 @@
 
 import { SystemMessage } from '@langchain/core/messages'
 import { z, type ZodTypeAny } from 'zod'
-import type { TriggerProvider } from '../types'
+import type { TriggerProvider, TriggerTask } from '../types'
 
 export function renderTriggerProviders(providers: TriggerProvider[]) {
     const lines: string[] = []
@@ -11,19 +11,26 @@ export function renderTriggerProviders(providers: TriggerProvider[]) {
         '<trigger_tool>',
         'Use the trigger tool to manage scheduled or passive trigger tasks for the current chat and current user.',
         '',
-        'Actions (pass via the `action` field):',
-        '  list                            list your trigger tasks for this chat',
-        '  create + providerKind + params  create a provider-backed task',
-        '  enable  + taskId                enable one of your tasks',
-        '  disable + taskId                disable one of your tasks',
-        '  cancel  + taskId                remove one of your tasks (alias of remove)',
-        '  remove  + taskId                remove one of your tasks',
-        '  fire    + taskId                run one immediately without changing its schedule',
+        'Call it with one field: cmd = a single DSL statement.',
+        'Syntax: verb(positional, ..., key=value, ...). Strings use double quotes.',
+        '',
+        'Examples:',
+        '  list()',
+        '  get(42)',
+        '  create(cron, message="Check updates", reply=channel, mode=chain, expression="*/10 8-9 * * *", missed=skip)',
+        '  create(once, message="Good morning", reply=channel, fire_at="2026-04-25T08:00:00+08:00")',
+        '  disable(42)',
+        '  disable(42, 43)',
+        '  enable(42)',
+        '  remove(42)',
+        '  fire(42)',
+        '  snooze(2h)',
+        '  snooze_until("2026-04-25T08:00:00+08:00")',
         '',
         'Common create fields:',
-        '  name?, message?, replyTo? ("channel" | "user" | "silent"),',
-        '  execMode? ("chain"), nextFireAt? (ISO string),',
-        '  params (provider-specific, see <trigger_providers>).',
+        '  name=, message=, reply=channel|user|silent, mode=chain|direct,',
+        '  scope=current|all, new_conv=true|false.',
+        'Provider params are named args. Aliases: missed=skip|fire_once, fire_at=ISO.',
         '`message` is required when the chosen provider is marked "requires message" below.',
         '</trigger_tool>'
     )
@@ -46,6 +53,32 @@ export function renderTriggerProviders(providers: TriggerProvider[]) {
         }
         lines.push('</trigger_providers>')
     }
+
+    return new SystemMessage(lines.join('\n'))
+}
+
+export function renderTriggerSelfControl(task: TriggerTask, now: Date) {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const lines = [
+        '<trigger_self_control>',
+        `This run was triggered by task #${task.id}.`,
+        `  provider: ${task.providerKind}`,
+        ...(task.params?.expression != null
+            ? [`  expression: ${task.params.expression}`]
+            : []),
+        `  now: ${now.toISOString()} (${zone})`,
+        '',
+        'To control this task, call tool "trigger". Omit taskId to target this task:',
+        '  snooze(<duration>)                 e.g. snooze(2h)',
+        '  snooze_until("<ISO>")              e.g. snooze_until("2026-04-25T08:00:00+08:00")',
+        '  disable()',
+        '',
+        'You decide when the next fire should happen.',
+        'If this cron task should resume only at a later cron occurrence, compute that ISO and call snooze_until("<ISO>").',
+        '',
+        'Only call when you actually want to change the schedule.',
+        '</trigger_self_control>'
+    ]
 
     return new SystemMessage(lines.join('\n'))
 }

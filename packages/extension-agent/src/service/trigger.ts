@@ -29,7 +29,10 @@ import { ChatLunaAgentTriggerProviderRegistry } from '../trigger/provider_regist
 import { ChatLunaAgentTriggerScheduler } from '../trigger/scheduler'
 import { ChatLunaAgentTriggerTaskRegistry } from '../trigger/task_registry'
 import { TriggerTool } from '../trigger/tool'
-import { renderTriggerProviders } from '../trigger/render'
+import {
+    renderTriggerProviders,
+    renderTriggerSelfControl
+} from '../trigger/render'
 import { activityTriggerProvider } from '../trigger/providers/activity'
 import { cronTriggerProvider } from '../trigger/providers/cron'
 import { keywordTriggerProvider } from '../trigger/providers/keyword'
@@ -56,6 +59,11 @@ interface DeferredWakeup {
     taskId?: number
 }
 
+interface RunningTask {
+    taskId: number
+    mutateSchedule: boolean
+}
+
 /**
  * Convenience input for `createTask` when the caller has a session.
  * Routing fields are derived from the session.
@@ -66,6 +74,7 @@ export interface CreateTaskFromSessionOptions extends Omit<
     | 'platform'
     | 'selfId'
     | 'userId'
+    | 'username'
     | 'guildId'
     | 'channelId'
     | 'isDirect'
@@ -82,6 +91,7 @@ export class ChatLunaAgentTriggerService {
     private readonly _listener: ChatLunaAgentTriggerListener
     private readonly _providers = new ChatLunaAgentTriggerProviderRegistry()
     private readonly _registry: ChatLunaAgentTriggerTaskRegistry
+    private readonly _runningTasks = new Map<string, RunningTask>()
     private readonly _scheduler: ChatLunaAgentTriggerScheduler
     private _botDispose?: () => void
     private _toolDispose?: () => void
@@ -285,8 +295,12 @@ export class ChatLunaAgentTriggerService {
         return await this._registry.list()
     }
 
-    async fire(id: number) {
-        const result = await this._fireTask(id, undefined, false)
+    async fire(id: number, session?: Session) {
+        const result = await this._fireTask(
+            id,
+            session == null ? undefined : { target: session },
+            false
+        )
         await this._afterMutate()
         return result
     }
@@ -309,6 +323,35 @@ export class ChatLunaAgentTriggerService {
 
     async setEnabled(id: number, enabled: boolean) {
         return await this.updateTask(id, { enabled })
+    }
+
+    getRunningTaskId(requestId: string | undefined) {
+        if (requestId == null) return undefined
+        return this._runningTasks.get(requestId)?.taskId
+    }
+
+    canMutateRunningTask(requestId: string | undefined) {
+        if (requestId == null) return false
+        return this._runningTasks.get(requestId)?.mutateSchedule === true
+    }
+
+    async snoozeTask(id: number, after: Date) {
+        const task = await this._registry.get(id)
+        if (task == null) {
+            throw new Error(`Trigger task not found: ${id}`)
+        }
+
+        const next = (await this._providers
+            .get(task.providerKind)
+            ?.reschedule?.({
+                task,
+                after
+            })) ?? { enabled: true, nextFireAt: after }
+        const updated = await this._registry.update(id, next)
+        this._deleteDeferred(id)
+        this._scheduler.sync(updated)
+        await this._afterMutate()
+        return updated
     }
 
     getStatus(): TriggerStatus {
@@ -490,6 +533,7 @@ export class ChatLunaAgentTriggerService {
                       platform: task.platform,
                       selfId: task.selfId,
                       userId: task.userId,
+                      username: task.username ?? undefined,
                       guildId: task.guildId ?? undefined,
                       channelId: task.channelId ?? undefined,
                       isDirect: task.isDirect
@@ -502,10 +546,12 @@ export class ChatLunaAgentTriggerService {
                 : task.bindingKey != null
                   ? { bindingKey: task.bindingKey }
                   : undefined)
+        const requestId = override?.requestId ?? randomUUID()
         const merged: WakeupAction = {
             ...task.wakeupTemplate,
             ...override,
             target,
+            requestId,
             conversationId: override?.conversationId ?? task.conversationId,
             presetLane: override?.presetLane ?? task.presetLane,
             source: override?.source ?? {
@@ -515,7 +561,16 @@ export class ChatLunaAgentTriggerService {
             }
         }
 
-        const result = await this._executor.wakeup(merged)
+        if (merged.source.kind === 'task' && merged.source.taskId != null) {
+            this._runningTasks.set(requestId, {
+                taskId: merged.source.taskId,
+                mutateSchedule
+            })
+        }
+
+        const result = await this._executor.wakeup(merged).finally(() => {
+            this._runningTasks.delete(requestId)
+        })
 
         if (result.deferred != null) {
             this._queueDeferred(`task:${task.id}`, result.deferred.pendingKey, {
@@ -538,6 +593,27 @@ export class ChatLunaAgentTriggerService {
             result.conversation != null
                 ? result.conversation.id
                 : undefined
+        const latest = await this._registry.get(id)
+        if (latest == null) return result
+
+        if (latest.updatedAt.valueOf() > task.updatedAt.valueOf()) {
+            const updated = await this._registry.update(id, {
+                lastFiredAt: firedAt,
+                fireCount: task.fireCount + 1,
+                ...(persistConversationId != null
+                    ? { conversationId: persistConversationId }
+                    : {}),
+                lastError: result.ok
+                    ? null
+                    : (result.error?.message ?? 'Unknown error')
+            })
+            await provider?.onTaskFire?.({ task: updated, result })
+            if (mutateSchedule) {
+                this._scheduler.sync(updated)
+            }
+            return result
+        }
+
         const keepEnabled = RETRYABLE_FIRE_CODES.has(result.error?.code ?? '')
         const next =
             provider?.afterFire != null
@@ -688,6 +764,23 @@ export class ChatLunaAgentTriggerService {
                     msg,
                     runtime.tokenCounter
                 )
+
+                const requestId = (
+                    runtime.configurable as {
+                        agentContext?: { requestId?: string }
+                    }
+                ).agentContext?.requestId
+                const id = this.getRunningTaskId(requestId)
+                const task = id == null ? undefined : await this.getTask(id)
+                if (task != null) {
+                    const self = renderTriggerSelfControl(task, new Date())
+                    runtime.result.push(self)
+                    runtime.usedTokens += await countMessageTokens(
+                        self,
+                        runtime.tokenCounter
+                    )
+                }
+
                 return next()
             },
             10
@@ -733,6 +826,11 @@ export class ChatLunaAgentTriggerService {
         const merged: TriggerCreateTaskInput = {
             ...input,
             ...patch,
+            wakeupTemplate: {
+                newConversation: true,
+                ...input.wakeupTemplate,
+                ...(patch?.wakeupTemplate ?? {})
+            },
             params: { ...(input.params ?? {}), ...(patch?.params ?? {}) }
         }
 

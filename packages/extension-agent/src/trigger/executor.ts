@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { UsageMetadata } from '@langchain/core/messages'
-import { type Context, h, type Session, Universal } from 'koishi'
+import { type Context, h, type Session, Universal, type User } from 'koishi'
 import {
     ChainMiddlewareRunStatus,
     type TriggerWakeupContext
@@ -75,6 +75,17 @@ export class ChatLunaAgentTriggerExecutor {
             const routed = await this._resolveTarget(action, requestId)
             if ('result' in routed) {
                 return routed.result
+            }
+
+            if (this.ctx.database != null) {
+                await (routed.session as Session<User.Field>).observeUser([
+                    'id',
+                    'name',
+                    'flag',
+                    'authority',
+                    'permissions',
+                    'locales'
+                ])
             }
 
             const resolved =

@@ -20,7 +20,7 @@ export function buildVirtualSession(
         guild: routing.guildId == null ? undefined : { id: routing.guildId },
         user: {
             id: routing.userId,
-            name: action.messageName ?? 'trigger'
+            name: routing.username ?? action.messageName ?? 'trigger'
         },
         message: {
             id: action.requestId,

@@ -14,7 +14,9 @@
       "Read(//g/projects/koishi_projects/koishi-new/external/chatluna-character/src/plugins/**)",
       "WebFetch(domain:localhost)",
       "Bash(gh pr view:*)",
-      "Bash(gh pr diff:*)"
+      "Bash(gh pr diff:*)",
+      "Bash(gh api *)",
+      "Bash(node -e ' *)"
     ]
   }
 }

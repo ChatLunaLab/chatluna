@@ -62,5 +62,24 @@ export const cronTriggerProvider: TriggerProvider = {
                     .getTime()
             )
         }
+    },
+    reschedule({ task, after }) {
+        const expression = (
+            task.params?.expression as string | undefined
+        )?.trim()
+        if (!expression) {
+            throw new Error('Cron expression is required')
+        }
+
+        return {
+            enabled: true,
+            nextFireAt: new Date(
+                CronExpressionParser.parse(expression, {
+                    currentDate: after
+                })
+                    .next()
+                    .getTime()
+            )
+        }
     }
 }
