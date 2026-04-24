@@ -552,6 +552,7 @@ export async function* processResponseApiStream<
         { name?: string; callId?: string; itemId?: string }
     >()
     let errorCount = 0
+    let sentConversation = false
 
     for await (const event of iterator) {
         const chunk = event.data
@@ -635,15 +636,18 @@ export async function* processResponseApiStream<
                     })
                 }
 
-                yield new ChatGenerationChunk({
-                    message: new AIMessageChunk({
-                        content: '',
-                        additional_kwargs: {
-                            conversation: data.response.conversation
-                        }
-                    }),
-                    text: ''
-                })
+                if (!sentConversation) {
+                    sentConversation = true
+                    yield new ChatGenerationChunk({
+                        message: new AIMessageChunk({
+                            content: '',
+                            additional_kwargs: {
+                                conversation: data.response.conversation
+                            }
+                        }),
+                        text: ''
+                    })
+                }
 
                 if (usageMetadata) {
                     yield new ChatGenerationChunk({
@@ -652,10 +656,7 @@ export async function* processResponseApiStream<
                         },
                         message: new AIMessageChunk({
                             content: '',
-                            usage_metadata: usageMetadata,
-                            additional_kwargs: {
-                                conversation: data.response.conversation
-                            }
+                            usage_metadata: usageMetadata
                         }),
                         text: ''
                     })

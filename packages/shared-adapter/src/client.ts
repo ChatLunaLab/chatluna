@@ -84,8 +84,9 @@ export function isNonLLMModel(modelName: string): boolean {
 }
 
 export function isImageGenerationModel(modelName: string): boolean {
-    return isNonLLMModel(modelName) && ['dall-e', 'image'].some((keyword) =>
-        modelName.includes(keyword)
+    return (
+        isNonLLMModel(modelName) &&
+        ['dall-e', 'image'].some((keyword) => modelName.includes(keyword))
     )
 }
 
