@@ -233,14 +233,16 @@ function curveGain(
 }
 
 function gcStates(now: number, idleTimeoutMs: number) {
-    if (states.size <= STATE_LIMIT) {
-        for (const [id, state] of states) {
-            if (now - state.lastTouched > idleTimeoutMs) {
-                states.delete(id)
-            }
+    for (const [id, state] of states) {
+        if (now - state.lastTouched > idleTimeoutMs) {
+            states.delete(id)
         }
+    }
+
+    if (states.size <= STATE_LIMIT) {
         return
     }
+
     const sorted = [...states.entries()].sort(
         (a, b) => a[1].lastTouched - b[1].lastTouched
     )
@@ -380,7 +382,7 @@ export const activityTriggerProvider: TriggerProvider = {
         const direction = resolveDirection(params)
 
         const now = Date.now()
-        if (states.size > STATE_LIMIT) gcStates(now, params.idleTimeoutMs)
+        gcStates(now, params.idleTimeoutMs)
 
         let state = states.get(task.id)
         if (state != null && now - state.lastTouched > params.idleTimeoutMs) {
