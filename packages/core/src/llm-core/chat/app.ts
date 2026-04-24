@@ -28,6 +28,8 @@ import type { CompressContextResult } from './infinite_context'
 import { InfiniteContextManager } from './infinite_context'
 import type {
     ArchiveRecord,
+    BindingRecord,
+    ConstraintRecord,
     ConversationRecord
 } from '../../services/conversation_types'
 
@@ -545,6 +547,13 @@ declare module 'koishi' {
             bindingKey: string
             conversation: ConversationRecord
             previousConversation?: ConversationRecord | null
+        }) => Promise<void>
+        'chatluna/after-binding-update': (payload: {
+            binding: BindingRecord
+            previousConversationId?: string | null
+        }) => Promise<void>
+        'chatluna/after-constraint-update': (payload: {
+            constraint: ConstraintRecord
         }) => Promise<void>
         'chatluna/before-conversation-archive': (payload: {
             conversation: ConversationRecord

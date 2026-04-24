@@ -10,6 +10,8 @@ import type { ConversationResolution } from '../services/conversation_types'
 import { lifecycleNames } from '../middlewares/system/lifecycle'
 import { formatDuration } from '../utils/time'
 import type { QQBot } from '@koishijs/plugin-adapter-qq'
+import type { UsageMetadata } from '@langchain/core/messages'
+import type { ToolMask } from '../llm-core/agent'
 
 let logger: Logger
 
@@ -1161,8 +1163,25 @@ export interface ChainMiddlewareContext {
     send: (message: h[][] | h[] | h | string) => Promise<void>
 }
 
+export interface TriggerWakeupContext {
+    requestId: string
+    replyTo?: 'channel' | 'user' | 'silent' | 'callback'
+    source: {
+        kind: string
+        taskId?: number
+        providerKind?: string
+        detail?: unknown
+    }
+    chatMode?: string
+    signal?: AbortSignal
+    toolMask?: ToolMask
+    variables?: Record<string, unknown>
+    state?: { tokens?: UsageMetadata }
+}
+
 export interface ChainMiddlewareContextOptions {
     conversation?: ConversationResolution
+    triggerWakeup?: TriggerWakeupContext
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any
 }

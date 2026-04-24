@@ -74,6 +74,17 @@
                             @save="(value) => saveSection('tool', value)"
                         />
                     </KeepAlive>
+
+                    <div
+                        v-if="activeTab === 'trigger'"
+                        key="trigger"
+                        class="view-container"
+                    >
+                        <trigger-page
+                            :status="triggerStatus"
+                            :loading="loading"
+                        />
+                    </div>
                 </div>
             </el-scrollbar>
         </div>
@@ -92,6 +103,7 @@ import SkillsPage from '../skills/skills-page.vue'
 import ComputerPage from '../computer/computer-page.vue'
 import ToolPage from '../tool/tool-page.vue'
 import SubAgentPage from '../sub-agent/sub-agent-page.vue'
+import TriggerPage from '../trigger/trigger-page.vue'
 import type { AgentConfig } from '../../../src/types'
 
 const activeTab = ref('mcp')
@@ -109,6 +121,7 @@ const skillsStatus = computed(() => data.value?.status?.skills)
 const computerStatus = computed(() => data.value?.status?.computer)
 const subAgentStatus = computed(() => data.value?.status?.subAgent)
 const toolStatus = computed(() => data.value?.status?.tool)
+const triggerStatus = computed(() => data.value?.status?.trigger)
 const loading = computed(() => pending.value || !data.value)
 
 const refreshData = async () => {
@@ -137,7 +150,12 @@ const handleTabChange = (tab: string) => {
 }
 
 watch(activeTab, async (tab) => {
-    if (tab === 'skills' || tab === 'subAgent' || tab === 'tool') {
+    if (
+        tab === 'skills' ||
+        tab === 'subAgent' ||
+        tab === 'tool' ||
+        tab === 'trigger'
+    ) {
         await refreshData()
     }
 })
@@ -233,28 +251,52 @@ const saveSection = async (
 }
 
 :deep(.el-tag.el-tag--primary),
-:deep(.el-tag:not(.el-tag--success):not(.el-tag--info):not(.el-tag--warning):not(.el-tag--danger)) {
-    border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%) !important;
+:deep(
+    .el-tag:not(.el-tag--success):not(.el-tag--info):not(.el-tag--warning):not(
+            .el-tag--danger
+        )
+) {
+    border-color: color-mix(
+        in srgb,
+        var(--k-color-primary),
+        transparent 40%
+    ) !important;
     color: var(--k-color-primary) !important;
 }
 
 :deep(.el-tag.el-tag--success) {
-    border-color: color-mix(in srgb, var(--el-color-success), transparent 40%) !important;
+    border-color: color-mix(
+        in srgb,
+        var(--el-color-success),
+        transparent 40%
+    ) !important;
     color: var(--el-color-success) !important;
 }
 
 :deep(.el-tag.el-tag--warning) {
-    border-color: color-mix(in srgb, var(--el-color-warning), transparent 40%) !important;
+    border-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 40%
+    ) !important;
     color: var(--el-color-warning) !important;
 }
 
 :deep(.el-tag.el-tag--danger) {
-    border-color: color-mix(in srgb, var(--el-color-danger), transparent 40%) !important;
+    border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 40%
+    ) !important;
     color: var(--el-color-danger) !important;
 }
 
 :deep(.el-tag.el-tag--info) {
-    border-color: color-mix(in srgb, var(--k-text-light), transparent 50%) !important;
+    border-color: color-mix(
+        in srgb,
+        var(--k-text-light),
+        transparent 50%
+    ) !important;
     color: var(--k-text-light) !important;
 }
 
@@ -262,7 +304,8 @@ const saveSection = async (
     padding: 14px 16px;
     border-radius: 12px;
     background: color-mix(in srgb, var(--el-color-warning), transparent 92%);
-    border: 1px solid color-mix(in srgb, var(--el-color-warning), transparent 60%);
+    border: 1px solid
+        color-mix(in srgb, var(--el-color-warning), transparent 60%);
     margin-bottom: 20px;
     color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 40%);
 }

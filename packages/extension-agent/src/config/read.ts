@@ -67,6 +67,14 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
                         ]
                     )
                 )
+            },
+            trigger: {
+                ...base.trigger,
+                ...(cfg.trigger ?? {}),
+                providers: {
+                    ...(base.trigger?.providers ?? {}),
+                    ...(cfg.trigger?.providers ?? {})
+                }
             }
         }
     } catch {

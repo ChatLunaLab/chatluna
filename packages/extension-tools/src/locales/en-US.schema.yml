@@ -13,7 +13,6 @@ $inner:
       fs: 'Enable fs plugin (file read/write interface)'
       command: 'Enable command assistance (execute Koishi bot commands)'
       codeSandbox: 'Enable Python code execution (requires API key)'
-      cron: 'Enable scheduled reminders. '
     - $desc: 'Extended Services Features'
       group: 'Enable group management plugin'
       knowledge: 'Enable knowledge base plugin calls'
@@ -44,10 +43,6 @@ $inner:
             $desc: 'Member IDs allowed to use group management functions'
         groupWhitelist:
             $desc: 'Group ID whitelist for using group management functions. Available in all groups when empty.'
-
-    - - $desc: 'Cron Task Plugin Configuration'
-        cronScopeSelector:
-            $desc: 'Member IDs allowed to create command-type scheduled tasks. When empty, everyone can create reminder tasks but cannot create command tasks.'
 
     - - $desc: 'Music Generation Plugin Configuration'
         musicSelector: 'Keywords to trigger music generation tool. Always selected when empty.'

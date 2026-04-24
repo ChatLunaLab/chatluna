@@ -22,6 +22,7 @@
 import { computed } from 'vue'
 
 import {
+    AlarmClock,
     Connection,
     MagicStick,
     Monitor,
@@ -39,10 +40,11 @@ defineEmits<{
 
 const items = [
     { key: 'mcp', label: 'MCP', icon: Connection },
-    { key: 'skills', label: 'Skills', icon: MagicStick },
-    { key: 'computer', label: 'Computer', icon: Monitor },
-    { key: 'subAgent', label: 'Sub Agent', icon: UserFilled },
-    { key: 'tool', label: 'Tool', icon: Tools }
+    { key: 'skills', label: '技能', icon: MagicStick },
+    { key: 'computer', label: '电脑', icon: Monitor },
+    { key: 'subAgent', label: '子代理', icon: UserFilled },
+    { key: 'tool', label: '工具', icon: Tools },
+    { key: 'trigger', label: '触发器', icon: AlarmClock }
 ]
 
 const active = computed(() =>
@@ -106,7 +108,9 @@ const active = computed(() =>
     cursor: pointer;
     color: var(--k-text-light);
     overflow: hidden;
-    transition: color 0.2s ease, background-color 0.2s ease;
+    transition:
+        color 0.2s ease,
+        background-color 0.2s ease;
     white-space: nowrap;
     position: relative;
     z-index: 1;

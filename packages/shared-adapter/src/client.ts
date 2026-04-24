@@ -164,7 +164,8 @@ const imageModelMatchers = [
     'glm-*v',
     'kimi-k2.5',
     'step3',
-    'grok-4'
+    'grok-4',
+    'mimo-v2.5*'
 ].map((pattern) => createGlobMatcher(pattern))
 
 export function supportImageInput(modelName: string) {

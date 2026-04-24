@@ -285,11 +285,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return false
             }
 
-            // For GIF images, warn and let image-service handle it
+            // For GIF images, warn and let multimodal-service handle it
             if (ext === 'image/gif') {
                 if (!isInstalledImageService) {
                     logger.warn(
-                        `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
+                        `Detected GIF image, which is not supported by most models. Please install chatluna-multimodal-service plugin to parse GIF animations.`
                     )
                 }
                 return false
@@ -734,7 +734,7 @@ async function oldImageRead(
         if (ext === 'image/gif') {
             if (!isInstalledImageService) {
                 logger.warn(
-                    `Detected GIF image, which is not supported by most models. Please install chatluna-image-service plugin to parse GIF animations.`
+                    `Detected GIF image, which is not supported by most models. Please install chatluna-multimodal-service plugin to parse GIF animations.`
                 )
             }
             return false

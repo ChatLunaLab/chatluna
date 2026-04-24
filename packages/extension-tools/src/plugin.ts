@@ -3,7 +3,6 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config } from '.'
 // import start
 import { apply as command } from './plugins/command'
-import { apply as cron } from './plugins/cron'
 import { apply as group } from './plugins/group'
 import { apply as music } from './plugins/music'
 import { apply as request } from './plugins/request'
@@ -23,7 +22,7 @@ export async function plugin(
 
     const middlewares: Plugin[] =
         // middleware start
-        [command, cron, group, music, request, think, todos] // middleware end
+        [command, group, music, request, think, todos] // middleware end
 
     for (const middleware of middlewares) {
         await middleware(ctx, config, plugin)

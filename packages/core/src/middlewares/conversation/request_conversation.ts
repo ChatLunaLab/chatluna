@@ -29,7 +29,8 @@ import {
 import {
     BaseMessageChunk,
     MessageContent,
-    MessageContentComplex
+    MessageContentComplex,
+    UsageMetadata
 } from '@langchain/core/messages'
 import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
 
@@ -40,6 +41,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('request_conversation', async (session, context) => {
             const { inputMessage } = context.options
+            const wakeup = context.options.triggerWakeup
             const resolved =
                 await ctx.chatluna.conversation.ensureActiveConversation(
                     session,
@@ -52,9 +54,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         useRoutePresetLane: false
                     }
                 )
-            const conversation = resolved.conversation
+            const base = resolved.conversation
+            const conversation =
+                wakeup?.chatMode == null || wakeup.chatMode === base.chatMode
+                    ? base
+                    : { ...base, chatMode: wakeup.chatMode }
 
-            context.options.conversation = resolved
+            if (conversation !== base) {
+                await ctx.chatluna.clearCache(base)
+            }
+
+            context.options.conversation = {
+                ...resolved,
+                conversation
+            }
 
             const presetTemplate = ctx.chatluna.preset.getPreset(
                 conversation.preset
@@ -93,8 +106,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                   )
                 : undefined
 
+            const shouldSend = shouldSendTriggerReply(context)
+            const stream = config.streamResponse && shouldSend
             let streamPromise: Promise<void> = Promise.resolve()
-            if (config.streamResponse) {
+            if (stream) {
                 const isEditMessage =
                     session.bot.editMessage != null &&
                     session.bot.platform !== 'onebot'
@@ -137,18 +152,23 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         session,
                         conversation,
                         inputMessage,
-                        chatCallbacks,
-                        config.streamResponse,
                         {
-                            prompt: getMessageContent(originContent),
-                            ...getSystemPromptVariables(
-                                session,
-                                config,
-                                conversation
-                            )
-                        },
-                        postHandler,
-                        requestId
+                            event: chatCallbacks,
+                            stream,
+                            variables: {
+                                prompt: getMessageContent(originContent),
+                                ...getSystemPromptVariables(
+                                    session,
+                                    config,
+                                    conversation
+                                ),
+                                ...wakeup?.variables
+                            },
+                            postHandler,
+                            requestId,
+                            toolMask: wakeup?.toolMask,
+                            signal: wakeup?.signal
+                        }
                     ),
                     streamPromise
                 ])
@@ -162,7 +182,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
             }
 
-            if (!config.streamResponse) {
+            context.options.finalResponseMessage = responseMessage
+
+            if (!stream) {
                 context.options.responseMessage = responseMessage
             } else {
                 context.options.responseMessage = null
@@ -186,7 +208,15 @@ function createChatCallbacks(
     return {
         'llm-new-chunk': createChunkHandler(context, bufferText),
         'llm-queue-waiting': createQueueWaitingHandler(context),
+        'llm-usage': createUsageHandler(context),
         'llm-call-tool': createToolCallHandler(context, config)
+    }
+}
+
+function createUsageHandler(context: ChainMiddlewareContext) {
+    return async (usage: UsageMetadata) => {
+        const state = context.options.triggerWakeup?.state
+        if (state != null) state.tokens = usage
     }
 }
 
@@ -418,6 +448,10 @@ async function sendRenderedMessage(
     message: Message,
     config: Config
 ) {
+    if (!shouldSendTriggerReply(context)) {
+        return
+    }
+
     const { content } = message
     if (
         content == null ||
@@ -436,6 +470,13 @@ async function sendRenderedMessage(
     await context.send(renderedMessage)
 }
 
+function shouldSendTriggerReply(context: ChainMiddlewareContext) {
+    return (
+        context.options.triggerWakeup?.replyTo == null ||
+        context.options.triggerWakeup.replyTo === 'channel'
+    )
+}
+
 declare module '../../chains/chain' {
     interface ChainMiddlewareName {
         request_conversation: never
@@ -443,6 +484,7 @@ declare module '../../chains/chain' {
 
     interface ChainMiddlewareContextOptions {
         responseMessage?: Message
+        finalResponseMessage?: Message
         inputMessage?: Message
         queueCount?: number
     }

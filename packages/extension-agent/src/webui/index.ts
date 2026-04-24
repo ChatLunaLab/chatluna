@@ -110,6 +110,12 @@ function createEmptyStatus(ctx: Context): AgentStatus {
             mainEnabled: 0,
             subAgentEnabled: 0,
             catalog: {}
+        },
+        trigger: {
+            total: 0,
+            enabled: 0,
+            scheduled: 0,
+            passive: 0
         }
     }
 }
@@ -376,6 +382,127 @@ function registerToolListeners(ctx: Context, agent: AgentRef) {
     )
 }
 
+function registerTriggerListeners(ctx: Context, agent: AgentRef) {
+    const withBot = async <T>(
+        platform: string,
+        selfId: string,
+        fn: (bot: NonNullable<Context['bots'][string]>) => Promise<T>,
+        fallback: T
+    ): Promise<T> => {
+        const bot = ctx.bots[`${platform}:${selfId}`] ?? ctx.bots[selfId]
+        if (bot == null) return fallback
+        try {
+            return await fn(bot)
+        } catch (err) {
+            ctx.logger.warn(err)
+            return fallback
+        }
+    }
+
+    ctx.console.addListener('chatluna-agent/listTriggerTasks', async () =>
+        agent().trigger.listTasks()
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/createTriggerTask',
+        async (input) => await agent().trigger.createTask(input)
+    )
+
+    ctx.console.addListener('chatluna-agent/getTriggerProviders', async () =>
+        agent().trigger.listProviders()
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/getTriggerRoutingChoices',
+        async () => agent().trigger.listRoutingChoices()
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/triggerWakeup',
+        async (input) => await agent().trigger.adhocWakeup(input)
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/updateTriggerTask',
+        async (id, patch) => await agent().trigger.updateTask(id, patch)
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/removeTriggerTask',
+        ok(async (id: number) => {
+            await agent().trigger.removeTask(id)
+        })
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/fireTriggerTask',
+        async (id) => await agent().trigger.fire(id)
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/setTriggerTaskEnabled',
+        ok(async (id: number, enabled: boolean) => {
+            await agent().trigger.setEnabled(id, enabled)
+        })
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/setTriggerProviderEnabled',
+        ok(async (kind: string, enabled: boolean) => {
+            await agent().setTriggerProviderEnabled(kind, enabled)
+        })
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/getTriggerTargets',
+        async (platform: string, selfId: string) =>
+            await withBot(
+                platform,
+                selfId,
+                async (bot) => {
+                    const [guildList, friendList] = await Promise.all([
+                        bot.getGuildList?.().catch(() => undefined),
+                        bot.getFriendList?.().catch(() => undefined)
+                    ])
+                    return {
+                        guilds:
+                            guildList?.data.map((g) => ({
+                                id: g.id,
+                                name: g.name,
+                                avatar: g.avatar
+                            })) ?? [],
+                        friends:
+                            friendList?.data.map((u) => ({
+                                id: u.id,
+                                name: u.name,
+                                avatar: u.avatar
+                            })) ?? []
+                    }
+                },
+                { guilds: [], friends: [] }
+            )
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/getTriggerChannels',
+        async (platform: string, selfId: string, guildId: string) =>
+            await withBot(
+                platform,
+                selfId,
+                async (bot) => {
+                    if (bot.getChannelList == null) return []
+                    const list = await bot.getChannelList(guildId)
+                    return list.data.map((c) => ({
+                        id: c.id,
+                        name: c.name,
+                        type: c.type
+                    }))
+                },
+                []
+            )
+    )
+}
+
 function registerMcpListeners(ctx: Context, agent: AgentRef) {
     ctx.console.addListener('chatluna-agent/getMcpStatus', async () =>
         agent().mcp.getStatus()
@@ -448,4 +575,5 @@ export function apply(ctx: Context) {
     registerComputerListeners(ctx, agent)
     registerSubAgentListeners(ctx, agent)
     registerToolListeners(ctx, agent)
+    registerTriggerListeners(ctx, agent)
 }

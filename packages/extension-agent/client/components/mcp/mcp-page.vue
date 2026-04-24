@@ -23,7 +23,7 @@
                         plain
                         @click="compactMode = !compactMode"
                     >
-                        {{ compactMode ? '宽屏模式' : '紧凑显示' }}
+                        {{ compactMode ? '紧凑模式' : '宽屏模式' }}
                     </el-button>
                     <el-button
                         size="small"
