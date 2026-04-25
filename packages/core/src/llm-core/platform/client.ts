@@ -48,7 +48,16 @@ export abstract class BasePlatformClient<
 
         let retryCount = 0
 
-        const maxRetries = this.config?.maxRetries ?? 1
+        const cfg =
+            this.configPool.findAvailableConfig() ??
+            this.configPool.getConfigs()[0]
+
+        if (cfg == null) {
+            unlock()
+            return false
+        }
+
+        const maxRetries = cfg.value.maxRetries ?? 5
 
         while (retryCount < (maxRetries ?? 1)) {
             try {
@@ -65,7 +74,13 @@ export abstract class BasePlatformClient<
                 }
 
                 if (retryCount === maxRetries - 1) {
-                    const oldConfig = this.configPool.getConfig(true)
+                    const oldConfig = this.configPool.findAvailableConfig()
+
+                    if (oldConfig == null) {
+                        this.ctx.logger.error(e)
+                        unlock()
+                        return false
+                    }
 
                     // refresh
                     this.configPool.getConfig(false)
@@ -74,7 +89,7 @@ export abstract class BasePlatformClient<
 
                     this.ctx.logger.error(e)
 
-                    if (this.configPool.findAvailableConfig() !== null) {
+                    if (this.configPool.findAvailableConfig() != null) {
                         retryCount = 0
                         continue
                     }
