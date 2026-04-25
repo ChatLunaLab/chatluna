@@ -1,7 +1,8 @@
-import { Context } from 'koishi'
+import { Context, sleep } from 'koishi'
 import {
     ClientConfig,
-    ClientConfigPool
+    ClientConfigPool,
+    ClientConfigWrapper
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
@@ -48,10 +49,22 @@ export abstract class BasePlatformClient<
 
         let retryCount = 0
 
-        const maxRetries = this.config?.maxRetries ?? 1
+        const cfg =
+            this.configPool.findAvailableConfig() ??
+            this.configPool.getConfigs()[0]
+
+        if (cfg == null) {
+            unlock()
+            return false
+        }
+
+        const maxRetries = cfg.value.maxRetries ?? 5
 
         while (retryCount < (maxRetries ?? 1)) {
+            let oldConfig: ClientConfigWrapper<T> | undefined
+
             try {
+                oldConfig = this.configPool.getConfig(true)
                 await this.init(config)
                 unlock()
                 return true
@@ -64,8 +77,20 @@ export abstract class BasePlatformClient<
                     throw e
                 }
 
+                if (
+                    e instanceof ChatLunaError &&
+                    e.errorCode === ChatLunaErrorCode.NOT_AVAILABLE_CONFIG
+                ) {
+                    unlock()
+                    return false
+                }
+
                 if (retryCount === maxRetries - 1) {
-                    const oldConfig = this.configPool.getConfig(true)
+                    if (oldConfig == null) {
+                        this.ctx.logger.error(e)
+                        unlock()
+                        return false
+                    }
 
                     // refresh
                     this.configPool.getConfig(false)
@@ -74,7 +99,7 @@ export abstract class BasePlatformClient<
 
                     this.ctx.logger.error(e)
 
-                    if (this.configPool.findAvailableConfig() !== null) {
+                    if (this.configPool.findAvailableConfig() != null) {
                         retryCount = 0
                         continue
                     }
@@ -84,6 +109,7 @@ export abstract class BasePlatformClient<
                 }
             }
 
+            await sleep(1000 * 2 ** retryCount)
             retryCount++
         }
 
