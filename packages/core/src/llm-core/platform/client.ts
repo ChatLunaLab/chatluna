@@ -1,7 +1,8 @@
-import { Context } from 'koishi'
+import { Context, sleep } from 'koishi'
 import {
     ClientConfig,
-    ClientConfigPool
+    ClientConfigPool,
+    ClientConfigWrapper
 } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
     ChatLunaBaseEmbeddings,
@@ -60,7 +61,10 @@ export abstract class BasePlatformClient<
         const maxRetries = cfg.value.maxRetries ?? 5
 
         while (retryCount < (maxRetries ?? 1)) {
+            let oldConfig: ClientConfigWrapper<T> | undefined
+
             try {
+                oldConfig = this.configPool.getConfig(true)
                 await this.init(config)
                 unlock()
                 return true
@@ -73,9 +77,15 @@ export abstract class BasePlatformClient<
                     throw e
                 }
 
-                if (retryCount === maxRetries - 1) {
-                    const oldConfig = this.configPool.findAvailableConfig()
+                if (
+                    e instanceof ChatLunaError &&
+                    e.errorCode === ChatLunaErrorCode.NOT_AVAILABLE_CONFIG
+                ) {
+                    unlock()
+                    return false
+                }
 
+                if (retryCount === maxRetries - 1) {
                     if (oldConfig == null) {
                         this.ctx.logger.error(e)
                         unlock()
@@ -99,6 +109,7 @@ export abstract class BasePlatformClient<
                 }
             }
 
+            await sleep(1000 * 2 ** retryCount)
             retryCount++
         }
 
