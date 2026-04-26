@@ -1,14 +1,18 @@
 /** @module computer/materialize */
 
-import { readFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 import path, { posix } from 'path'
+import { Context } from 'koishi'
 import {
     listSkillResources,
     REMOTE_SKILLS_ROOT,
     ScannedSkill
 } from '../skills/scan'
+import { getConfigPath } from '../config/path'
 import { quoteShellPath } from '../utils/shell'
 import { ComputerSessionApi } from './types'
+
+export const AGENTCLI_SKILL_NAME = 'agentcli'
 
 export class SkillMaterializer {
     private _items = new Map<string, Map<string, string>>()
@@ -29,9 +33,16 @@ export class SkillMaterializer {
         return getRemoteSkillDir(skill.name)
     }
 
-    async materialize(skill: ScannedSkill, session: ComputerSessionApi) {
+    async materialize(
+        skill: ScannedSkill,
+        session: ComputerSessionApi,
+        ctx?: Context
+    ) {
         const root = this.getPath(skill, session)
         if (session.backend === 'local') {
+            if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
+                await syncAgentcliConfigLocal(ctx, root)
+            }
             return root
         }
 
@@ -59,6 +70,10 @@ export class SkillMaterializer {
                 posix.join(root, normalizeRemotePath(file)),
                 data
             )
+        }
+
+        if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
+            await pushAgentcliConfigToSandbox(ctx, root, session)
         }
 
         const map =
@@ -111,4 +126,37 @@ async function resetRemoteSkillDir(root: string, session: ComputerSessionApi) {
 
 function normalizeRemotePath(value: string) {
     return value.replaceAll('\\', '/')
+}
+
+function getAgentcliConfigPath(root: string, sandbox: boolean) {
+    return sandbox
+        ? posix.join(root, 'config.json')
+        : path.join(root, 'config.json')
+}
+
+async function readHostConfigBytes(ctx: Context) {
+    const configPath = getConfigPath(ctx)
+    try {
+        return await readFile(configPath)
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            return Buffer.from('{}\n', 'utf-8')
+        }
+
+        throw err
+    }
+}
+
+async function syncAgentcliConfigLocal(ctx: Context, root: string) {
+    const data = await readHostConfigBytes(ctx)
+    await writeFile(getAgentcliConfigPath(root, false), data)
+}
+
+async function pushAgentcliConfigToSandbox(
+    ctx: Context,
+    root: string,
+    session: ComputerSessionApi
+) {
+    const data = await readHostConfigBytes(ctx)
+    await session.writeFile(getAgentcliConfigPath(root, true), data)
 }

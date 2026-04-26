@@ -6,7 +6,8 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { ChatLunaAgentService } from './service'
 import { readConfig } from './config/read'
 import * as webui from './webui'
-import * as commands from './commands/mcp'
+import * as mcpCommands from './commands/mcp'
+import * as agentCommands from './commands/agent'
 
 export * from './types'
 
@@ -25,7 +26,8 @@ export async function apply(ctx: Context, config: Config) {
     })
 
     ctx.plugin(webui)
-    ctx.plugin(commands)
+    ctx.plugin(mcpCommands)
+    ctx.plugin(agentCommands)
 }
 
 export const Config: Schema<Config> = Schema.intersect([ChatLunaPlugin.Config])

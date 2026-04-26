@@ -3,6 +3,7 @@
 import { cp, mkdir, readdir, rm, stat } from 'fs/promises'
 import { join } from 'path'
 import { Context } from 'koishi'
+import { AGENTCLI_SKILL_NAME } from '../computer/materialize'
 import { getSkillsRootPath } from '../config/path'
 
 export async function syncBundledSkills(ctx: Context) {
@@ -33,14 +34,17 @@ export async function syncBundledSkills(ctx: Context) {
         }
 
         const to = join(dest, entry.name)
+        const force = entry.name === AGENTCLI_SKILL_NAME
         const current = await stat(join(to, 'SKILL.md')).catch(() => undefined)
 
-        if (current?.isFile()) {
+        if (current?.isFile() && !force) {
             continue
         }
 
         await rm(to, { recursive: true, force: true })
         await cp(from, to, { recursive: true })
-        ctx.logger.info(`Copied bundled skill '${entry.name}' to ${to}`)
+        ctx.logger.info(
+            `${force && current?.isFile() ? 'Overwrote' : 'Copied'} bundled skill '${entry.name}' to ${to}`
+        )
     }
 }

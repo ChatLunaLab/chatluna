@@ -376,7 +376,11 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
         const skillDir =
             session != null
-                ? await computer?.materializer.materialize(skill, session)
+                ? await computer?.materializer.materialize(
+                      skill,
+                      session,
+                      this.ctx
+                  )
                 : undefined
         const resources =
             session != null && skill.remote
@@ -428,7 +432,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 }
 
                 const dir = await computer.materializer
-                    .materialize(skill, session)
+                    .materialize(skill, session, this.ctx)
                     .catch(() => getRemoteSkillDir(item.name))
 
                 return {
