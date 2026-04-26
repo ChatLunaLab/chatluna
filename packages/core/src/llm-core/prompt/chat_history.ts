@@ -119,17 +119,15 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
 
 /**
  * Split a flat message list into conversation rounds. Marked ChatLuna user
- * messages start rounds; old unmarked history falls back to human messages.
+ * messages start rounds; old unmarked human messages still start rounds.
  */
 function buildConversationRounds(messages: BaseMessage[]): BaseMessage[][] {
-    const hasUser = messages.some((message) => isChatLunaUserMessage(message))
     const rounds: BaseMessage[][] = []
     let current: BaseMessage[] = []
 
     for (const message of messages) {
-        const isStart = hasUser
-            ? isChatLunaUserMessage(message)
-            : message.getType() === 'human'
+        const isStart =
+            isChatLunaUserMessage(message) || message.getType() === 'human'
 
         if (isStart) {
             if (current.length > 0) {

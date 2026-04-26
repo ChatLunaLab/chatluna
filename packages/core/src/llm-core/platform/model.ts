@@ -636,16 +636,13 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         }
 
         const buildConversationRounds = (items: BaseMessage[]) => {
-            const hasUser = items.some((message) =>
-                isChatLunaUserMessage(message)
-            )
             const rounds: BaseMessage[][] = []
             let current: BaseMessage[] = []
 
             for (const message of items) {
-                const isStart = hasUser
-                    ? isChatLunaUserMessage(message)
-                    : message.getType() === 'human'
+                const isStart =
+                    isChatLunaUserMessage(message) ||
+                    message.getType() === 'human'
 
                 if (isStart) {
                     if (current.length > 0) {
