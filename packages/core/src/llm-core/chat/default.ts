@@ -9,6 +9,7 @@ import {
     chatChainSchema,
     embeddingsSchema,
     modelSchema,
+    rerankerSchema,
     vectorStoreSchema
 } from 'koishi-plugin-chatluna/utils/schema'
 
@@ -16,6 +17,7 @@ export async function defaultFactory(ctx: Context, service: PlatformService) {
     modelSchema(ctx, true)
     vectorStoreSchema(ctx)
     embeddingsSchema(ctx)
+    rerankerSchema(ctx)
     chatChainSchema(ctx)
 
     ctx.on('chatluna/model-removed', async (_service, platform) => {

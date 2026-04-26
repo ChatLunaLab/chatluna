@@ -3,7 +3,10 @@ import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
     ModelRequester,
-    ModelRequestParams
+    ModelRequestParams,
+    RerankerRequester,
+    RerankerRequestParams,
+    RerankerResult
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
     ClientConfig,
@@ -17,6 +20,7 @@ import {
     completionStream,
     createEmbeddings,
     createRequestContext,
+    createRerank,
     getModels,
     responseApiCompletion,
     responseApiCompletionStream,
@@ -30,7 +34,7 @@ import type {} from 'koishi-plugin-chatluna-storage-service'
 
 export class OpenAIRequester
     extends ModelRequester
-    implements EmbeddingsRequester
+    implements EmbeddingsRequester, RerankerRequester
 {
     constructor(
         ctx: Context,
@@ -155,6 +159,18 @@ export class OpenAIRequester
         )
 
         return await createEmbeddings(requestContext, params)
+    }
+
+    async rerank(params: RerankerRequestParams): Promise<RerankerResult[]> {
+        const requestContext = createRequestContext(
+            this.ctx,
+            this._config.value,
+            this._pluginConfig,
+            this._plugin,
+            this
+        )
+
+        return await createRerank(requestContext, params)
     }
 
     async getModels(config?: RunnableConfig): Promise<string[]> {

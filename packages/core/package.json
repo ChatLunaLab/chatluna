@@ -72,6 +72,11 @@
             "import": "./lib/llm-core/platform/model.mjs",
             "require": "./lib/llm-core/platform/model.cjs"
         },
+        "./llm-core/platform/rerank": {
+            "types": "./lib/llm-core/platform/rerank.d.ts",
+            "import": "./lib/llm-core/platform/rerank.mjs",
+            "require": "./lib/llm-core/platform/rerank.cjs"
+        },
         "./llm-core/platform/service": {
             "types": "./lib/llm-core/platform/service.d.ts",
             "import": "./lib/llm-core/platform/service.mjs",

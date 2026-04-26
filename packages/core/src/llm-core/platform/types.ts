@@ -143,7 +143,8 @@ export enum ModelCapabilities {
 export enum ModelType {
     all,
     llm,
-    embeddings
+    embeddings,
+    reranker
 }
 
 export type ChatLunaToolRunnable = ToolRunnableConfig & {
