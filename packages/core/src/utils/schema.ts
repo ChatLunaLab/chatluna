@@ -92,6 +92,33 @@ export function embeddingsSchema(ctx: Context) {
 }
 
 /**
+ * Sets up the reranker model selection schema by automatically watching for reranker model changes
+ * in the platform service and updating the 'reranker' schema.
+ * Registers all available reranker model names to the {@link SchemaService} for use in configuration UI.
+ * @param ctx - Koishi context object
+ */
+export function rerankerSchema(ctx: Context) {
+    const modelNames = getModelSchemas(
+        ctx.chatluna.platform,
+        ModelType.reranker
+    )
+
+    const watcher = watch(
+        modelNames,
+        (modelNames: Schema<string, string>[]) => {
+            ctx.schema.set('reranker', Schema.union(modelNames))
+        },
+        {
+            immediate: true
+        }
+    )
+
+    const stop = () => watcher.stop()
+
+    ctx.effect(() => stop)
+}
+
+/**
  * Sets up the chat chain mode selection schema by automatically watching for chat chain changes
  * in the platform service and updating the 'chat-mode' schema.
  * Registers all available chat chain names and descriptions to the {@link SchemaService} for use in configuration UI.

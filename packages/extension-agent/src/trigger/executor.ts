@@ -414,6 +414,7 @@ export class ChatLunaAgentTriggerExecutor {
             },
             {
                 event: {
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     'llm-usage': async (usage) => {
                         state.tokens = usage
                     }

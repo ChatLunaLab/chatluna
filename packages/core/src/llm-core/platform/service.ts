@@ -3,7 +3,9 @@ import {
     BasePlatformClient,
     PlatformEmbeddingsClient,
     PlatformModelAndEmbeddingsClient,
-    PlatformModelClient
+    PlatformModelClient,
+    PlatformModelEmbeddingsAndRerankerClient,
+    PlatformRerankerClient
 } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
     ChatLunaChainInfo,
@@ -105,13 +107,19 @@ export class PlatformService {
 
         delete this._platformClients[platform]
 
-        if (client instanceof PlatformModelClient) {
-            this.ctx.emit('chatluna/model-removed', this, platform, client)
-        } else if (client instanceof PlatformEmbeddingsClient) {
+        if (client instanceof PlatformModelEmbeddingsAndRerankerClient) {
             this.ctx.emit('chatluna/embeddings-removed', this, platform, client)
+            this.ctx.emit('chatluna/model-removed', this, platform, client)
+            this.ctx.emit('chatluna/reranker-removed', this, platform, client)
         } else if (client instanceof PlatformModelAndEmbeddingsClient) {
             this.ctx.emit('chatluna/embeddings-removed', this, platform, client)
             this.ctx.emit('chatluna/model-removed', this, platform, client)
+        } else if (client instanceof PlatformModelClient) {
+            this.ctx.emit('chatluna/model-removed', this, platform, client)
+        } else if (client instanceof PlatformEmbeddingsClient) {
+            this.ctx.emit('chatluna/embeddings-removed', this, platform, client)
+        } else if (client instanceof PlatformRerankerClient) {
+            this.ctx.emit('chatluna/reranker-removed', this, platform, client)
         }
 
         delete this._createClientFunctions[platform]
@@ -357,13 +365,19 @@ export class PlatformService {
             )
         )
 
-        if (client instanceof PlatformModelClient) {
-            this.ctx.emit('chatluna/model-added', this, platform, client)
-        } else if (client instanceof PlatformEmbeddingsClient) {
+        if (client instanceof PlatformModelEmbeddingsAndRerankerClient) {
             this.ctx.emit('chatluna/embeddings-added', this, platform, client)
+            this.ctx.emit('chatluna/model-added', this, platform, client)
+            this.ctx.emit('chatluna/reranker-added', this, platform, client)
         } else if (client instanceof PlatformModelAndEmbeddingsClient) {
             this.ctx.emit('chatluna/embeddings-added', this, platform, client)
             this.ctx.emit('chatluna/model-added', this, platform, client)
+        } else if (client instanceof PlatformModelClient) {
+            this.ctx.emit('chatluna/model-added', this, platform, client)
+        } else if (client instanceof PlatformEmbeddingsClient) {
+            this.ctx.emit('chatluna/embeddings-added', this, platform, client)
+        } else if (client instanceof PlatformRerankerClient) {
+            this.ctx.emit('chatluna/reranker-added', this, platform, client)
         }
     }
 
@@ -471,6 +485,16 @@ declare module 'koishi' {
             service: PlatformService,
             platform: PlatformClientNames,
             client: BasePlatformClient | BasePlatformClient[]
+        ) => void
+        'chatluna/reranker-added': (
+            service: PlatformService,
+            platform: PlatformClientNames,
+            client: BasePlatformClient | BasePlatformClient[]
+        ) => void
+        'chatluna/reranker-removed': (
+            service: PlatformService,
+            platform: PlatformClientNames,
+            client: BasePlatformClient
         ) => void
         'chatluna/tool-updated': (service: PlatformService) => void
     }

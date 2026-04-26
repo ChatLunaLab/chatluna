@@ -2,7 +2,9 @@ import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequestParams,
     ModelRequester,
-    ModelRequestParams
+    ModelRequestParams,
+    RerankerRequestParams,
+    RerankerResult
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
@@ -14,10 +16,12 @@ import {
     ChatCompletionResponse,
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse,
+    CreateRerankResponse,
     type ResponseBuiltinTool,
     ResponseObject,
     ResponseOutputItem,
     ResponseStreamEvent
+    CreateRerankResponse
 } from './types'
 import {
     convertDeltaToMessageChunk,
@@ -889,6 +893,54 @@ export async function createEmbeddings<
         }
 
         throw new Error(`Call Embedding Error: ${JSON.stringify(data)}`)
+    } catch (e) {
+        if (e instanceof ChatLunaError) {
+            throw e
+        }
+
+        throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+    }
+}
+
+export async function createRerank<
+    T extends ClientConfig,
+    R extends ChatLunaPlugin.Config
+>(
+    requestContext: RequestContext<T, R>,
+    params: RerankerRequestParams,
+    rerankUrl: string = 'rerank'
+): Promise<RerankerResult[]> {
+    const { modelRequester } = requestContext
+
+    try {
+        const response = await modelRequester.post(
+            rerankUrl,
+            {
+                model: params.model,
+                query: params.query,
+                documents: params.documents,
+                top_n: params.topN,
+                max_chunks_per_doc: params.maxChunksPerDoc,
+                return_documents: false
+            },
+            {
+                signal: params.signal
+            }
+        )
+
+        const data = (await response.json()) as CreateRerankResponse
+
+        if (data.results == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error(`Call Rerank Error: ${JSON.stringify(data)}`)
+            )
+        }
+
+        return data.results.map((item) => ({
+            index: item.index,
+            relevanceScore: item.relevance_score
+        }))
     } catch (e) {
         if (e instanceof ChatLunaError) {
             throw e

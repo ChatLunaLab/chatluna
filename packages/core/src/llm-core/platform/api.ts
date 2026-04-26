@@ -239,3 +239,19 @@ export abstract class ModelRequester<
 export interface EmbeddingsRequester {
     embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]>
 }
+
+export interface RerankerRequestParams extends BaseRequestParams {
+    query: string
+    documents: string[]
+    topN?: number
+    maxChunksPerDoc?: number
+}
+
+export interface RerankerResult {
+    index: number
+    relevanceScore: number
+}
+
+export interface RerankerRequester {
+    rerank(params: RerankerRequestParams): Promise<RerankerResult[]>
+}
