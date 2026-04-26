@@ -21,7 +21,6 @@ import {
     ResponseObject,
     ResponseOutputItem,
     ResponseStreamEvent
-    CreateRerankResponse
 } from './types'
 import {
     convertDeltaToMessageChunk,
