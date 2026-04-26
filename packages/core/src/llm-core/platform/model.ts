@@ -42,6 +42,7 @@ import { chunkArray } from 'koishi-plugin-chatluna/llm-core/utils/chunk'
 import { encodingForModel } from '../utils/tiktoken'
 import { formatFunctionDefinitions } from '../utils/function_def'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
 import { logger } from 'koishi-plugin-chatluna'
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
@@ -639,7 +640,11 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             let current: BaseMessage[] = []
 
             for (const message of items) {
-                if (message.getType() === 'human') {
+                const isStart =
+                    isChatLunaUserMessage(message) ||
+                    message.getType() === 'human'
+
+                if (isStart) {
                     if (current.length > 0) {
                         rounds.push(current)
                     }
@@ -795,7 +800,29 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     async getNumTokens(text: string, modelName: string = this.modelName) {
         // fallback to approximate calculation if tiktoken is not available
-        let numTokens = Math.ceil(text.length / 4)
+        let rawCount = 0
+        for (const char of text) {
+            rawCount += char.charCodeAt(0) <= 0x7f ? 0.25 : 2 / 3
+        }
+        let numTokens = Math.ceil(rawCount)
+
+        if (
+            ![
+                'gpt-',
+                'o1',
+                'o3',
+                'o4',
+                'chatgpt-',
+                'text-',
+                'davinci',
+                'babbage',
+                'curie',
+                'ada',
+                'code-'
+            ].some((prefix) => modelName.startsWith(prefix))
+        ) {
+            return numTokens
+        }
 
         if (!this.__encoding) {
             try {

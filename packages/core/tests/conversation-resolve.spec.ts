@@ -1080,6 +1080,85 @@ it('message_delay uses the resolved conversation only', async () => {
     }
 })
 
+it('message_delay keeps collected messages in send order', async () => {
+    const { app, ctx } = await createMemoryService()
+
+    try {
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+
+        applyMessageDelay(
+            ctx as never,
+            {
+                messageQueue: true,
+                messageQueueDelay: 0.01
+            } as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const conversation = createConversation({
+            id: 'message-delay-order'
+        })
+        const contexts = [1, 2, 3].map((num) => ({
+            options: {
+                inputMessage: {
+                    content: String(num),
+                    name: 'tester'
+                },
+                conversation: {
+                    conversation
+                }
+            }
+        }))
+
+        const p3 = run!(
+            { ...createSession(), timestamp: 3 } as any,
+            contexts[2]
+        )
+        const p2 = run!(
+            { ...createSession(), timestamp: 2 } as any,
+            contexts[1]
+        )
+        const p1 = run!(
+            { ...createSession(), timestamp: 1 } as any,
+            contexts[0]
+        )
+        const statuses = await Promise.all([p1, p2, p3])
+        const content = contexts[0].options.inputMessage.content as {
+            text?: string
+        }[]
+
+        assert.deepEqual(statuses, [
+            ChainMiddlewareRunStatus.CONTINUE,
+            ChainMiddlewareRunStatus.STOP,
+            ChainMiddlewareRunStatus.STOP
+        ])
+        assert.equal(
+            content.map((part) => part.text ?? '').join(''),
+            '1\n2\n3'
+        )
+        ctx.emit('chatluna/after-chat', 'message-delay-order')
+    } finally {
+        await app.stop()
+    }
+})
+
 it('chat_time_limit_save uses the resolved conversation only', async () => {
     const { app, ctx } = await createMemoryService()
 

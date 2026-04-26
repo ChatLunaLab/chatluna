@@ -58,7 +58,7 @@ export async function getEncoding(
     }
 
     const url =
-        globalProxyAddress.length > 0
+        (globalProxyAddress?.length ?? 0) > 0
             ? `https://tiktoken.pages.dev/js/${encoding}.json`
             : `https://jsd.onmicrosoft.cn/npm/tiktoken@latest/encoders/${encoding}.json`
 

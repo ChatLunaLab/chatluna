@@ -1,9 +1,32 @@
 import type {
+    BaseMessage,
     MessageContent,
     MessageContentComplex,
     MessageContentImageUrl,
     MessageContentText
 } from '@langchain/core/messages'
+
+type ChatLunaMessageMeta = {
+    source?: 'user'
+}
+
+export function markChatLunaUserMessage(msg: BaseMessage) {
+    msg.response_metadata = {
+        ...(msg.response_metadata ?? {}),
+        chatluna: {
+            ...((msg.response_metadata?.chatluna as ChatLunaMessageMeta) ?? {}),
+            source: 'user'
+        }
+    }
+}
+
+export function isChatLunaUserMessage(msg: BaseMessage) {
+    const meta = msg.response_metadata?.chatluna as
+        | ChatLunaMessageMeta
+        | undefined
+
+    return meta?.source === 'user'
+}
 
 type MessageContentUrlPart =
     | MessageContentImageUrl

@@ -35,6 +35,7 @@ import {
     getMimeTypeFromSource,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
+import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { normalizeOpenAIModelName, supportImageInput } from './client'
@@ -463,18 +464,26 @@ export function processInterleavedThinkMessages(
         return convertedMessages
     }
 
-    // Find the start of the last turn by locating the last user message
-    // According to DeepSeek docs: a turn starts with a user message
+    // Find the start of the last turn by locating the last ChatLuna user message.
     let lastTurnStartIndex = -1
     for (let i = originalMessages.length - 1; i >= 0; i--) {
         const message = originalMessages[i]
-        if (message.getType() === 'human') {
+        if (isChatLunaUserMessage(message)) {
             lastTurnStartIndex = i
             break
         }
     }
 
-    // If no user message found, treat all messages as the last turn
+    if (lastTurnStartIndex === -1) {
+        for (let i = originalMessages.length - 1; i >= 0; i--) {
+            const message = originalMessages[i]
+            if (message.getType() === 'human') {
+                lastTurnStartIndex = i
+                break
+            }
+        }
+    }
+
     if (lastTurnStartIndex === -1) {
         lastTurnStartIndex = 0
     }

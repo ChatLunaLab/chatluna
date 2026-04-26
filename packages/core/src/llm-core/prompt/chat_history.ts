@@ -6,6 +6,7 @@ import {
 } from './context_manager'
 import { countMessagesTokens, countMessageTokens } from './system_prompts'
 import { logger } from 'koishi-plugin-chatluna'
+import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
 
 // ---------------------------------------------------------------------------
 // chat_history pipeline middleware
@@ -117,16 +118,18 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
 }
 
 /**
- * Split a flat message list into conversation rounds.
- * A round starts with a human message and includes all following non-human
- * messages until the next human message.
+ * Split a flat message list into conversation rounds. Marked ChatLuna user
+ * messages start rounds; old unmarked human messages still start rounds.
  */
 function buildConversationRounds(messages: BaseMessage[]): BaseMessage[][] {
     const rounds: BaseMessage[][] = []
     let current: BaseMessage[] = []
 
     for (const message of messages) {
-        if (message.getType() === 'human') {
+        const isStart =
+            isChatLunaUserMessage(message) || message.getType() === 'human'
+
+        if (isStart) {
             if (current.length > 0) {
                 rounds.push(current)
             }
