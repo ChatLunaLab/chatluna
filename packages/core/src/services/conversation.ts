@@ -55,6 +55,7 @@ import {
     ConversationArchivePayload,
     ListConversationsOptions
 } from './types'
+import type { ConversationRuntime } from './conversation_runtime'
 
 function matchTargetConversation(
     target: string,
@@ -121,7 +122,8 @@ export class ConversationService {
 
     constructor(
         private readonly ctx: Context,
-        private readonly config: Config
+        private readonly config: Config,
+        private readonly runtime: ConversationRuntime
     ) {}
 
     async getConversation(id: string) {
@@ -1118,7 +1120,7 @@ export class ConversationService {
             throw new Error('Conversation not found.')
         }
 
-        return this.ctx.chatluna.conversationRuntime.withConversationSync(
+        return this.runtime.withConversationSync(
             conversation,
             async () => {
                 const current = await this.getConversation(conversationId)
@@ -1226,7 +1228,7 @@ export class ConversationService {
                 const updatedConversation = await this.getConversation(
                     current.id
                 )
-                await this.ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+                await this.runtime.clearConversationInterfaceLocked(
                     updatedConversation ?? current
                 )
                 await this.ctx.root.parallel(
@@ -1282,7 +1284,7 @@ export class ConversationService {
             throw new Error('Conversation restore is disabled by constraint.')
         }
 
-        return this.ctx.chatluna.conversationRuntime.withConversationSync(
+        return this.runtime.withConversationSync(
             conversation,
             async () => {
                 const current = await this.getConversation(conversation.id)
@@ -1375,7 +1377,7 @@ export class ConversationService {
                         updatedConversation.bindingKey,
                         updatedConversation.id
                     )
-                    await this.ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+                    await this.runtime.clearConversationInterfaceLocked(
                         updatedConversation
                     )
                     await this.ctx.root.parallel(
@@ -1479,7 +1481,7 @@ export class ConversationService {
             throw new Error('Conversation delete is locked by constraint.')
         }
 
-        return this.ctx.chatluna.conversationRuntime.withConversationSync(
+        return this.runtime.withConversationSync(
             conversation,
             async () => {
                 const current = await this.getConversation(conversation.id)
@@ -1506,7 +1508,7 @@ export class ConversationService {
                     conversationId: current.id
                 })
                 await this.removeAcl(current.id)
-                await this.ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+                await this.runtime.clearConversationInterfaceLocked(
                     updated ?? current
                 )
                 await this.ctx.root.parallel(
@@ -1588,9 +1590,7 @@ export class ConversationService {
             throw new Error('Conversation not found.')
         }
 
-        await this.ctx.chatluna.conversationRuntime.clearConversationInterface(
-            updated
-        )
+        await this.runtime.clearConversationInterface(updated)
         return updated
     }
 

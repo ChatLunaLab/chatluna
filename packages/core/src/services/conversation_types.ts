@@ -69,6 +69,7 @@ export interface MessageRecord {
 export interface ChatLunaMessageMeta {
     recordId?: string
     createdAt?: string
+    source?: 'user'
 }
 
 export interface BindingRecord {

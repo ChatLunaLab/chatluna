@@ -21,10 +21,15 @@ interface MessageTurnStarter {
 
 interface MessageTurn {
     userName: string
-    messages: Message[]
+    messages: QueuedMessage[]
     starter?: MessageTurnStarter
     timeout?: Disposable
     state: 'collecting' | 'waiting' | 'processing'
+}
+
+interface QueuedMessage {
+    message: Message
+    timestamp: number
 }
 
 interface ConversationQueue {
@@ -105,7 +110,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             }
 
-            turn.messages.push(inputMessage)
+            turn.messages.push({
+                message: inputMessage,
+                timestamp: session.timestamp
+            })
 
             const statusPromise = awaitTurnStart(turn, context)
 
@@ -283,7 +291,11 @@ function startHeadTurn(
 
     conversation.inFlight = true
     head.state = 'processing'
-    starter.context.options.inputMessage = mergeMessages(head.messages)
+    starter.context.options.inputMessage = mergeMessages(
+        head.messages
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map((msg) => msg.message)
+    )
     head.messages = []
     starter.resolve(ChainMiddlewareRunStatus.CONTINUE)
 }

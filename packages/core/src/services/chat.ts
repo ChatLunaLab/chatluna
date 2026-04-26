@@ -105,8 +105,12 @@ export class ChatLunaService extends Service<Config> {
         this._renderer = new DefaultRenderer(ctx, config)
         this._promptRenderer = new ChatLunaPromptRenderService()
         this._contextManager = new ChatLunaContextManagerService(ctx)
-        this._conversation = new ConversationService(ctx, config)
         this._conversationRuntime = new ConversationRuntime(this)
+        this._conversation = new ConversationService(
+            ctx,
+            config,
+            this._conversationRuntime
+        )
 
         this._createTempDir()
         this._defineDatabase()

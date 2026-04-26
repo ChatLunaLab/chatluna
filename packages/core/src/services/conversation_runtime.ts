@@ -11,6 +11,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import type { ClientConfig } from '../llm-core/platform/config'
+import { markChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
 import { parseRawModelName } from '../utils/model'
 import { ConversationRecord } from './conversation_types'
 import { Message } from '../types'
@@ -154,6 +155,7 @@ export class ConversationRuntime {
                     preset: conversation.preset
                 }
             })
+            markChatLunaUserMessage(humanMessage)
 
             const mask =
                 options.toolMask ??
