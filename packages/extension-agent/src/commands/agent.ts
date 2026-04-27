@@ -27,7 +27,8 @@ export function apply(ctx: Context) {
                 : 'agentcli sync: no changes'
             return `${header}\n${result.message}`
         } catch (err) {
-            return `agentcli sync failed: ${getErrorMessage(err)}`
+            const msg = getErrorMessage(err) || String(err) || 'unknown error'
+            return `agentcli sync failed: ${msg}`
         }
     })
 }

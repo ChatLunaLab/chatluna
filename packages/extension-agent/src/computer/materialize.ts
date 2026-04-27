@@ -1,6 +1,6 @@
 /** @module computer/materialize */
 
-import { readFile, writeFile } from 'fs/promises'
+import { access, readFile, writeFile } from 'fs/promises'
 import path, { posix } from 'path'
 import { Context } from 'koishi'
 import {
@@ -16,9 +16,11 @@ export const AGENTCLI_SKILL_NAME = 'agentcli'
 
 export class SkillMaterializer {
     private _items = new Map<string, Map<string, string>>()
+    private _sandboxAgentcliPushed = new Set<string>()
 
     clear() {
         this._items.clear()
+        this._sandboxAgentcliPushed.clear()
     }
 
     getPath(skill: ScannedSkill, session: ComputerSessionApi) {
@@ -41,7 +43,10 @@ export class SkillMaterializer {
         const root = this.getPath(skill, session)
         if (session.backend === 'local') {
             if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
-                await syncAgentcliConfigLocal(ctx, root)
+                const target = path.join(root, 'config.json')
+                if (!(await fileExists(target))) {
+                    await writeFile(target, await readHostConfigBytes(ctx))
+                }
             }
             return root
         }
@@ -73,7 +78,14 @@ export class SkillMaterializer {
         }
 
         if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
-            await pushAgentcliConfigToSandbox(ctx, root, session)
+            const key = `${session.sessionId}:${skill.id}`
+            if (!this._sandboxAgentcliPushed.has(key)) {
+                await session.writeFile(
+                    posix.join(root, 'config.json'),
+                    await readHostConfigBytes(ctx)
+                )
+                this._sandboxAgentcliPushed.add(key)
+            }
         }
 
         const map =
@@ -128,10 +140,13 @@ function normalizeRemotePath(value: string) {
     return value.replaceAll('\\', '/')
 }
 
-function getAgentcliConfigPath(root: string, sandbox: boolean) {
-    return sandbox
-        ? posix.join(root, 'config.json')
-        : path.join(root, 'config.json')
+async function fileExists(p: string) {
+    try {
+        await access(p)
+        return true
+    } catch {
+        return false
+    }
 }
 
 async function readHostConfigBytes(ctx: Context) {
@@ -145,18 +160,4 @@ async function readHostConfigBytes(ctx: Context) {
 
         throw err
     }
-}
-
-async function syncAgentcliConfigLocal(ctx: Context, root: string) {
-    const data = await readHostConfigBytes(ctx)
-    await writeFile(getAgentcliConfigPath(root, false), data)
-}
-
-async function pushAgentcliConfigToSandbox(
-    ctx: Context,
-    root: string,
-    session: ComputerSessionApi
-) {
-    const data = await readHostConfigBytes(ctx)
-    await session.writeFile(getAgentcliConfigPath(root, true), data)
 }

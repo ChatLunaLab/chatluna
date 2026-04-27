@@ -1,6 +1,6 @@
 /** @module skills/builtin */
 
-import { cp, mkdir, readdir, rm, stat } from 'fs/promises'
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { Context } from 'koishi'
 import { AGENTCLI_SKILL_NAME } from '../computer/materialize'
@@ -41,10 +41,27 @@ export async function syncBundledSkills(ctx: Context) {
             continue
         }
 
+        let preservedConfig: Buffer | undefined
+        if (force && current?.isFile()) {
+            const configPath = join(to, 'config.json')
+            preservedConfig = await readFile(configPath).catch(() => undefined)
+            if (preservedConfig) {
+                await writeFile(
+                    join(to, 'config.json.bak'),
+                    preservedConfig
+                ).catch(() => {})
+            }
+        }
+
         await rm(to, { recursive: true, force: true })
         await cp(from, to, { recursive: true })
+
+        if (preservedConfig) {
+            await writeFile(join(to, 'config.json'), preservedConfig)
+        }
+
         ctx.logger.info(
-            `${force && current?.isFile() ? 'Overwrote' : 'Copied'} bundled skill '${entry.name}' to ${to}`
+            `${force && current?.isFile() ? 'Refreshed' : 'Copied'} bundled skill '${entry.name}' to ${to}${preservedConfig ? ' (preserved config.json)' : ''}`
         )
     }
 }

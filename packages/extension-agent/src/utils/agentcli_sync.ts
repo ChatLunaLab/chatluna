@@ -26,14 +26,14 @@ export async function syncAgentcliConfig(
     const candidates = collectAgentcliCandidates(agent)
     const messages: string[] = []
     const sources: string[] = []
-    let chosen: { content: string; source: string } | undefined
+    let chosen: { content: string; parsed: unknown; source: string } | undefined
 
     for (const candidate of candidates) {
         let content: string
         try {
             content = await candidate.read()
         } catch (err) {
-            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            if (isMissingFileError(err)) {
                 continue
             }
 
@@ -55,14 +55,14 @@ export async function syncAgentcliConfig(
             continue
         }
 
-        if (JSON.stringify(parsed) === JSON.stringify(agent.args.config)) {
+        if (canonicalJson(parsed) === canonicalJson(agent.args.config)) {
             messages.push(`skip ${candidate.label}: matches host`)
             continue
         }
 
         if (!chosen) {
-            chosen = { content, source: candidate.label }
-        } else if (chosen.content !== content) {
+            chosen = { content, parsed, source: candidate.label }
+        } else if (canonicalJson(chosen.parsed) !== canonicalJson(parsed)) {
             throw new Error(
                 `Conflicting agentcli working copies (${chosen.source} vs ${candidate.label}). Resolve manually before sync.`
             )
@@ -129,4 +129,30 @@ function collectAgentcliCandidates(
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value != null && !Array.isArray(value)
+}
+
+function canonicalJson(value: unknown): string {
+    return JSON.stringify(sortKeys(value))
+}
+
+function sortKeys(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(sortKeys)
+    if (!isPlainObject(value)) return value
+    const out: Record<string, unknown> = {}
+    for (const k of Object.keys(value).sort()) {
+        out[k] = sortKeys(value[k])
+    }
+    return out
+}
+
+function isMissingFileError(err: unknown): boolean {
+    if (!err) return false
+    const code = (err as NodeJS.ErrnoException).code
+    if (code === 'ENOENT') return true
+    const msg = ((err as Error).message ?? '').toLowerCase()
+    return (
+        msg.includes('no such file') ||
+        msg.includes('not found') ||
+        msg.includes('does not exist')
+    )
 }

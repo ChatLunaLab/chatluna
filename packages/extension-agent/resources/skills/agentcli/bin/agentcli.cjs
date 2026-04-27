@@ -12,11 +12,14 @@
 'use strict'
 
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 
 const SKILL_DIR = path.resolve(__dirname, '..')
 const CONFIG_PATH = path.join(SKILL_DIR, 'config.json')
 const BACKUP_PATH = path.join(SKILL_DIR, 'config.json.bak')
+const SANDBOX_SKILLS_ROOT = path.join(os.homedir(), '.chatluna', 'skills')
+const SANDBOX_SUBAGENTS_ROOT = path.join(os.homedir(), '.chatluna', 'agents')
 
 function main(argv) {
     if (argv.length === 0 || argv[0] === '--help' || argv[0] === 'help') {
@@ -53,7 +56,7 @@ function loadConfig() {
     } catch (err) {
         if (err.code !== 'ENOENT') throw err
     }
-    const parsed = JSON.parse(raw || '{}')
+    const parsed = JSON.parse(raw.trim() || '{}')
     return ensureShape(parsed)
 }
 
@@ -63,7 +66,9 @@ function saveConfig(cfg) {
     } catch (err) {
         if (err.code !== 'ENOENT') throw err
     }
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2) + '\n', 'utf8')
+    const tmp = CONFIG_PATH + '.tmp'
+    fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2) + '\n', 'utf8')
+    fs.renameSync(tmp, CONFIG_PATH)
 }
 
 function ensureShape(cfg) {
@@ -78,10 +83,10 @@ function ensureShape(cfg) {
     cfg.subAgent.builtin = cfg.subAgent.builtin || {}
     cfg.subAgent.presetAgents = cfg.subAgent.presetAgents || {}
     cfg.subAgent.defaults = cfg.subAgent.defaults || {
-        skills: emptyRule('all'),
-        mcp: emptyRule('all'),
-        tools: emptyRule('all'),
-        computer: emptyRule('all')
+        skills: emptyRule('allow'),
+        mcp: emptyRule('inherit'),
+        tools: emptyRule('inherit'),
+        computer: emptyRule('allow')
     }
     cfg.mcp = cfg.mcp || {}
     cfg.mcp.mcpServers = cfg.mcp.mcpServers || {}
@@ -140,10 +145,80 @@ function printOverview(cfg) {
 }
 
 function listSkills(cfg) {
-    return Object.entries(cfg.skills.items).map(
-        ([id, item]) =>
-            `${id}\tenabled=${!!item.enabled}\tmode=${item.mode || 'description'}`
+    const seen = new Map()
+    for (const [id, item] of Object.entries(cfg.skills.items)) {
+        seen.set(id, {
+            enabled: !!item.enabled,
+            mode: item.mode || 'description',
+            source: 'config'
+        })
+    }
+    for (const name of scanSkillDirs(cfg)) {
+        if (!seen.has(name)) {
+            seen.set(name, { enabled: true, mode: 'description', source: 'fs' })
+        }
+    }
+    return Array.from(seen.entries()).map(
+        ([id, info]) =>
+            `${id}\tenabled=${info.enabled}\tmode=${info.mode}\tsource=${info.source}`
     )
+}
+
+function scanSkillDirs(cfg) {
+    const out = new Set()
+    const dirs = [SANDBOX_SKILLS_ROOT, ...(cfg.skills.dirs || [])]
+    for (const dir of dirs) {
+        const resolved = expandHome(dir)
+        let entries
+        try {
+            entries = fs.readdirSync(resolved, { withFileTypes: true })
+        } catch (err) {
+            if (err.code !== 'ENOENT') continue
+            continue
+        }
+        for (const entry of entries) {
+            if (!entry.isDirectory()) continue
+            try {
+                if (
+                    fs
+                        .statSync(path.join(resolved, entry.name, 'SKILL.md'))
+                        .isFile()
+                )
+                    out.add(entry.name)
+            } catch (_) {
+                // ignore
+            }
+        }
+    }
+    return Array.from(out)
+}
+
+function scanSubAgentDirs(cfg) {
+    const out = new Set()
+    const dirs = [SANDBOX_SUBAGENTS_ROOT, ...(cfg.subAgent.dirs || [])]
+    for (const dir of dirs) {
+        const resolved = expandHome(dir)
+        let entries
+        try {
+            entries = fs.readdirSync(resolved, { withFileTypes: true })
+        } catch (_) {
+            continue
+        }
+        for (const entry of entries) {
+            if (entry.isFile() && entry.name.endsWith('.md')) {
+                out.add(entry.name.replace(/\.md$/, ''))
+            }
+        }
+    }
+    return Array.from(out)
+}
+
+function expandHome(p) {
+    if (!p) return p
+    if (p === '~') return os.homedir()
+    if (p.startsWith('~/') || p.startsWith('~\\'))
+        return path.join(os.homedir(), p.slice(2))
+    return p
 }
 
 function listSubAgents(cfg) {
@@ -152,10 +227,19 @@ function listSubAgents(cfg) {
         out.push(
             `builtin:${name}\tenabled=${!!cfg.subAgent.builtin[name].enabled}`
         )
-    for (const id of Object.keys(cfg.subAgent.items))
+    const seenMd = new Set()
+    for (const id of Object.keys(cfg.subAgent.items)) {
+        const item = cfg.subAgent.items[id]
+        seenMd.add(item.name || id)
         out.push(
-            `markdown:${cfg.subAgent.items[id].name}\tid=${id}\tenabled=${!!cfg.subAgent.items[id].enabled}`
+            `markdown:${item.name || id}\tid=${id}\tenabled=${!!item.enabled}\tsource=config`
         )
+    }
+    for (const name of scanSubAgentDirs(cfg)) {
+        if (!seenMd.has(name)) {
+            out.push(`markdown:${name}\tsource=fs`)
+        }
+    }
     for (const name of Object.keys(cfg.subAgent.presetAgents))
         out.push(
             `preset:${name}\tenabled=${!!cfg.subAgent.presetAgents[name].enabled}`
@@ -184,7 +268,13 @@ function printSkill(cfg, idOrName) {
     if (!idOrName) throw new Error('Usage: show skill <name|id>')
     const entry = findSkillEntry(cfg, idOrName)
     process.stdout.write(`skill ${entry.id}\n`)
-    process.stdout.write(JSON.stringify(entry.item, null, 2) + '\n')
+    if (entry.item) {
+        process.stdout.write(JSON.stringify(entry.item, null, 2) + '\n')
+    } else {
+        process.stdout.write(
+            '(no override; using defaults from sandbox skill dirs)\n'
+        )
+    }
 }
 
 function printSubAgent(cfg, sel) {
@@ -244,9 +334,15 @@ function mutateEnable(cfg, args, enabled) {
                 `Usage: ${enabled ? 'enable' : 'disable'} skill <name|id...>`
             )
         for (const n of names) {
-            const entry = findSkillEntry(cfg, n)
+            const entry = ensureSkillEntry(cfg, n)
             entry.item.enabled = enabled
-            entry.item.mode = enabled ? entry.item.mode || 'description' : 'off'
+            if (enabled) {
+                if (!entry.item.mode || entry.item.mode === 'off') {
+                    entry.item.mode = 'description'
+                }
+            } else {
+                entry.item.mode = 'off'
+            }
         }
         return true
     }
@@ -381,10 +477,10 @@ function setSubAgentRule(cfg, args) {
     for (const sel of names) {
         const found = findSubAgent(cfg, sel)
         found.item.permissions = found.item.permissions || {
-            tools: emptyRule('all'),
-            skills: emptyRule('all'),
-            mcp: emptyRule('all'),
-            computer: emptyRule('all')
+            tools: emptyRule('inherit'),
+            skills: emptyRule('inherit'),
+            mcp: emptyRule('inherit'),
+            computer: emptyRule('inherit')
         }
         found.item.permissions[field] = rule
     }
@@ -417,6 +513,9 @@ function mutateSaveMcpServer(cfg, args) {
     if (args[4] !== 'json' || !args[5])
         throw new Error('Usage: save mcp server <name> json <json>')
     const json = JSON.parse(args[5])
+    if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+        throw new Error('MCP server config must be a JSON object')
+    }
     cfg.mcp.mcpServers[name] = json
     return true
 }
@@ -428,14 +527,20 @@ function findSkillEntry(cfg, key) {
     for (const [id, item] of Object.entries(cfg.skills.items)) {
         if (item.name === key) return { id, item }
     }
-    if (!cfg.skills.items[key]) {
-        cfg.skills.items[key] = {
-            enabled: true,
-            mode: 'description'
-        }
-        return { id: key, item: cfg.skills.items[key] }
+    const scanned = scanSkillDirs(cfg)
+    if (scanned.includes(key)) {
+        return { id: key, item: undefined }
     }
     throw new Error(`Skill not found: ${key}`)
+}
+
+function ensureSkillEntry(cfg, key) {
+    if (cfg.skills.items[key]) return { id: key, item: cfg.skills.items[key] }
+    for (const [id, item] of Object.entries(cfg.skills.items)) {
+        if (item.name === key) return { id, item }
+    }
+    cfg.skills.items[key] = { enabled: true, mode: 'description' }
+    return { id: key, item: cfg.skills.items[key] }
 }
 
 function findSubAgent(cfg, selector) {

@@ -71,9 +71,8 @@ Each write rewrites `config.json` in place and keeps a `config.json.bak`.
 1. Run `node bin/agentcli.cjs show overview` to understand the current state.
 2. For each change, run the matching write command. Verify with another
    `show ...` after the edit.
-3. When the edits are ready, ask the user to run `chatluna.agent sync` (or
-   `chatluna.agent sync config`). That validates the working copy and
-   atomically replaces the live config.
+3. When the edits are ready, ask the user to run `chatluna.agent sync`. That
+   validates the working copy and atomically replaces the live config.
 4. Authoring new skill or sub-agent files still requires loading
    `skill-creator` or `sub-agent-creator` first. Place those files under the
    sandbox skill / sub-agent directories shown by `show overview`. The same
