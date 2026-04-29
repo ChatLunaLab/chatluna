@@ -1,3 +1,4 @@
+import type {} from 'koishi-plugin-chatluna-agent'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
@@ -15,19 +16,6 @@ import {
 import micromatch from 'micromatch'
 import z from 'zod'
 import { Config } from '..'
-
-type Agent = {
-    computer: {
-        getToolSession: (cfg?: ChatLunaToolRunnable) => Promise<unknown>
-    }
-    truncateTextOutput: (input: {
-        name: string
-        text: string
-        limit: number
-        session?: unknown
-        outputDir: string
-    }) => Promise<string>
-}
 
 const TURNDOWN = turndownService
 
@@ -388,13 +376,12 @@ async function formatOutput(
     limit: number,
     runConfig?: ChatLunaToolRunnable
 ) {
-    const agent = (ctx as Context & { chatluna_agent?: Agent }).chatluna_agent
-    const session = await agent?.computer
+    const session = await ctx.chatluna_agent?.computer
         .getToolSession(runConfig)
         .catch(() => undefined)
 
-    if (agent) {
-        return await agent.truncateTextOutput({
+    if (ctx.chatluna_agent) {
+        return await ctx.chatluna_agent.truncateTextOutput({
             name,
             text,
             limit,
