@@ -24,6 +24,7 @@ jobs:
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
+                  restore-keys: yarn-lock-
             - name: Restore Cache
               uses: actions/cache@v5
               with:
