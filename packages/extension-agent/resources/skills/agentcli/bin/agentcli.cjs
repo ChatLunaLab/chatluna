@@ -32,9 +32,8 @@ function main(argv) {
         return 0
     }
 
-    const cfg = loadConfig()
-
     try {
+        const cfg = loadConfig()
         const head = argv[0]
         if (head === 'show') return runShow(cfg, argv.slice(1))
 
@@ -173,8 +172,8 @@ function scanSkillDirs(cfg) {
         try {
             entries = fs.readdirSync(resolved, { withFileTypes: true })
         } catch (err) {
-            if (err.code !== 'ENOENT') continue
-            continue
+            if (err && err.code === 'ENOENT') continue
+            throw err
         }
         for (const entry of entries) {
             if (!entry.isDirectory()) continue

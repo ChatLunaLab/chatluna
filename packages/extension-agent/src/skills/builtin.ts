@@ -42,14 +42,13 @@ export async function syncBundledSkills(ctx: Context) {
         }
 
         let preservedConfig: Buffer | undefined
+        let backupPath: string | undefined
         if (force && current?.isFile()) {
             const configPath = join(to, 'config.json')
             preservedConfig = await readFile(configPath).catch(() => undefined)
             if (preservedConfig) {
-                await writeFile(
-                    join(to, 'config.json.bak'),
-                    preservedConfig
-                ).catch(() => {})
+                backupPath = join(dest, `${entry.name}.config.json.bak`)
+                await writeFile(backupPath, preservedConfig).catch(() => {})
             }
         }
 
@@ -58,6 +57,9 @@ export async function syncBundledSkills(ctx: Context) {
 
         if (preservedConfig) {
             await writeFile(join(to, 'config.json'), preservedConfig)
+            if (backupPath) {
+                await rm(backupPath, { force: true })
+            }
         }
 
         ctx.logger.info(
