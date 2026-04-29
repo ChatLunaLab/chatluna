@@ -493,6 +493,10 @@ export class ChatLunaAgentComputerService {
             .map((item) => item.type)
     }
 
+    listSessionInfos() {
+        return this._sessions.list()
+    }
+
     async createTerminal(
         clientId: string,
         input: {
@@ -678,7 +682,11 @@ export class ChatLunaAgentComputerService {
             throw new Error(`Skill not found: ${name}`)
         }
 
-        const root = await this.materializer.materialize(skill, session)
+        const root = await this.materializer.materialize(
+            skill,
+            session,
+            this.ctx
+        )
         const target =
             parts.length > 0 ? `${root}/${parts.join('/')}` : `${root}/SKILL.md`
         return await session.readFile(target, offset, limit)

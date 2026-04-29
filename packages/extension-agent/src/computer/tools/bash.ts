@@ -4,7 +4,6 @@ import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platf
 import z from 'zod'
 import { formatExecuteResult } from '../backends/types'
 import type { ComputerBackgroundJobInfo } from '../../types'
-import { parseAgentCliCommand } from '../../cli/parser'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
@@ -22,14 +21,13 @@ Rules:
 - Default to foreground execution. In 99% of cases you should NOT use background=true.
 - Use background=true only when it is truly necessary for a long-lived process that must keep running after the tool returns, such as starting a server.
 - Builds, tests, scripts, package installs, one-off migrations, and most long commands should still run in the foreground, even if they take a while.
-- Do not use this tool for agentcli commands; there is a dedicated agentcli tool
+- Long-lived services can be started as managed background jobs and later queried with action=list/status or stopped with action=kill
 
 When to use:
 - File listing, searching (ls, find, grep, rg, fd)
 - Running build tools, tests, scripts
 - Renaming, moving, copying files
-- Any shell operation not covered by the dedicated file tools
-- Long-lived services can be started as managed background jobs and later queried with action=list/status or stopped with action=kill`
+- Any shell operation not covered by the dedicated file tools`
 
     schema = z
         .object({
@@ -107,13 +105,6 @@ When to use:
         const action = input.action ?? (input.jobId ? 'status' : 'run')
 
         try {
-            if (action === 'run' && parseAgentCliCommand(input.command ?? '')) {
-                return this.formatResult(
-                    false,
-                    'Use the dedicated agentcli tool for commands that start with `agentcli`.'
-                )
-            }
-
             const computer = await this.getSession(toolConfig)
 
             if (action === 'list') {

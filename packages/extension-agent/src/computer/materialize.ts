@@ -1,20 +1,26 @@
 /** @module computer/materialize */
 
-import { readFile } from 'fs/promises'
+import { access, readFile, writeFile } from 'fs/promises'
 import path, { posix } from 'path'
+import { Context } from 'koishi'
 import {
     listSkillResources,
     REMOTE_SKILLS_ROOT,
     ScannedSkill
 } from '../skills/scan'
+import { getConfigPath } from '../config/path'
 import { quoteShellPath } from '../utils/shell'
 import { ComputerSessionApi } from './types'
 
+export const AGENTCLI_SKILL_NAME = 'agentcli'
+
 export class SkillMaterializer {
     private _items = new Map<string, Map<string, string>>()
+    private _sandboxAgentcliPushed = new Set<string>()
 
     clear() {
         this._items.clear()
+        this._sandboxAgentcliPushed.clear()
     }
 
     getPath(skill: ScannedSkill, session: ComputerSessionApi) {
@@ -29,9 +35,19 @@ export class SkillMaterializer {
         return getRemoteSkillDir(skill.name)
     }
 
-    async materialize(skill: ScannedSkill, session: ComputerSessionApi) {
+    async materialize(
+        skill: ScannedSkill,
+        session: ComputerSessionApi,
+        ctx?: Context
+    ) {
         const root = this.getPath(skill, session)
         if (session.backend === 'local') {
+            if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
+                const target = path.join(root, 'config.json')
+                if (!(await fileExists(target))) {
+                    await writeFile(target, await readHostConfigBytes(ctx))
+                }
+            }
             return root
         }
 
@@ -59,6 +75,17 @@ export class SkillMaterializer {
                 posix.join(root, normalizeRemotePath(file)),
                 data
             )
+        }
+
+        if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
+            const key = `${session.sessionId}:${skill.id}`
+            if (!this._sandboxAgentcliPushed.has(key)) {
+                await session.writeFile(
+                    posix.join(root, 'config.json'),
+                    await readHostConfigBytes(ctx)
+                )
+                this._sandboxAgentcliPushed.add(key)
+            }
         }
 
         const map =
@@ -111,4 +138,26 @@ async function resetRemoteSkillDir(root: string, session: ComputerSessionApi) {
 
 function normalizeRemotePath(value: string) {
     return value.replaceAll('\\', '/')
+}
+
+async function fileExists(p: string) {
+    try {
+        await access(p)
+        return true
+    } catch {
+        return false
+    }
+}
+
+async function readHostConfigBytes(ctx: Context) {
+    const configPath = getConfigPath(ctx)
+    try {
+        return await readFile(configPath)
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            return Buffer.from('{}\n', 'utf-8')
+        }
+
+        throw err
+    }
 }

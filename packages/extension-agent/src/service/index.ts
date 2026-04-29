@@ -12,6 +12,10 @@ import { getSubAgentsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import { writeConfig } from '../config/write'
 import {
+    type AgentcliSyncResult,
+    syncAgentcliConfig
+} from '../utils/agentcli_sync'
+import {
     createSubAgentMarkdown,
     getSubAgentFileName
 } from '../sub-agent/markdown'
@@ -36,7 +40,7 @@ import { getErrorMessage } from '../utils/shell'
 import { ChatLunaAgentComputerService } from './computer'
 import { ChatLunaAgentMcpService } from './mcp'
 import { ChatLunaAgentPermissionService } from './permissions'
-import { ChatLunaAgentRuntimeSyncService } from './runtime_sync'
+import { ChatLunaAgentRuntimeSyncService } from '../utils/runtime_sync'
 import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 import { ChatLunaAgentTriggerService } from './trigger'
@@ -701,6 +705,10 @@ ${truncateOutput(input.text, limit)}`
                 parts
             )
         }
+    }
+
+    async syncAgentcliConfig(): Promise<AgentcliSyncResult> {
+        return await syncAgentcliConfig(this)
     }
 
     private _setConfig(cfg: AgentConfig) {

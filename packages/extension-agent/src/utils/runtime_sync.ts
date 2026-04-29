@@ -1,4 +1,4 @@
-/** @module service/runtime_sync */
+/** @module utils/runtime_sync */
 
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname, join, posix } from 'path'
@@ -6,6 +6,7 @@ import { CallbackManager } from '@langchain/core/callbacks/manager'
 import { type AgentRunContext } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatCallbacksProvider } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
+import { logger } from '..'
 import { getRemoteSkillsRoot } from '../computer/materialize'
 import type { ComputerSessionApi } from '../computer/types'
 import {
@@ -14,9 +15,9 @@ import {
     getSubAgentsRootPath
 } from '../config/path'
 import { REMOTE_SUBAGENTS_ROOT } from '../sub-agent/scan'
-import type { ChatLunaAgentService } from './index'
-import { resolveTildeDir } from '../utils/path'
-import { quoteShellPath } from '../utils/shell'
+import type { ChatLunaAgentService } from '../service'
+import { resolveTildeDir } from './path'
+import { quoteShellPath } from './shell'
 
 interface RuntimeSyncFile {
     kind: 'skill' | 'subagent'
@@ -203,8 +204,12 @@ async function collectSyncFiles(
     localRoots: string[]
 ) {
     const files: RuntimeSyncFile[] = []
+    const remoteFiles = await listRemoteFiles(session, remoteRoot)
+    logger?.debug(
+        `collectSyncFiles kind=${kind} backend=${session.backend} remoteRoot=${remoteRoot} files=${remoteFiles.length} localRoots=${localRoots.length}`
+    )
 
-    for (const file of await listRemoteFiles(session, remoteRoot)) {
+    for (const file of remoteFiles) {
         const sourcePath = posix.join(remoteRoot, file)
         const content = await session.readFile(sourcePath)
 
@@ -231,6 +236,10 @@ async function collectSyncFiles(
             })
         }
     }
+
+    logger?.debug(
+        `collectSyncFiles kind=${kind} pending=${files.length} (${files.map((f) => f.targetPath).join(', ') || 'none'})`
+    )
 
     return files
 }
