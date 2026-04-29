@@ -9,27 +9,30 @@ jobs:
 
         steps:
             - name: Check out
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: Set up Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: 24
+            - name: Enable Corepack
+              run: corepack enable
             - id: cache
               name: Yarn Cache Dir
-              run: echo "value=$(yarn cache dir)" >> $GITHUB_OUTPUT
+              run: echo "value=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
             - name: Restore Lockfile
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
+                  restore-keys: yarn-lock-
             - name: Restore Cache
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: ${{ steps.cache.outputs.value }}
-                  key: yarn-cache-node-20-${{ hashFiles('**/package.json') }}
-                  restore-keys: yarn-cache-node-20-
+                  key: yarn-cache-node-24-${{ hashFiles('**/package.json') }}
+                  restore-keys: yarn-cache-node-24-
             - name: Install
-              run: yarn
+              run: yarn --no-immutable
 
         outputs:
             cache-dir: ${{ steps.cache.outputs.value }}
@@ -41,22 +44,24 @@ jobs:
 
         steps:
             - name: Check out
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: Set up Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
-                  node-version: 20
+                  node-version: 24
+            - name: Enable Corepack
+              run: corepack enable
             - name: Restore Lockfile
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
             - name: Restore Cache
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
-                  key: yarn-cache-node-20-${{ hashFiles('**/package.json') }}
-                  restore-keys: yarn-cache-node-20-
+                  key: yarn-cache-node-24-${{ hashFiles('**/package.json') }}
+                  restore-keys: yarn-cache-node-24-
             - name: Install
               run: yarn
             - name: Build Clean
@@ -72,22 +77,24 @@ jobs:
 
         steps:
             - name: Check out
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: Set up Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
-                  node-version: 20
+                  node-version: 24
+            - name: Enable Corepack
+              run: corepack enable
             - name: Restore Lockfile
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: yarn.lock
                   key: yarn-lock-${{ github.sha }}
             - name: Restore Cache
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: ${{ needs.prepare.outputs.cache-dir }}
-                  key: yarn-cache-node-20-${{ hashFiles('**/package.json') }}
-                  restore-keys: yarn-cache-node-20-
+                  key: yarn-cache-node-24-${{ hashFiles('**/package.json') }}
+                  restore-keys: yarn-cache-node-24-
             - name: Install
               run: yarn
             - name: Lint
