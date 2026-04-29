@@ -31,7 +31,7 @@ jobs:
                   key: yarn-cache-node-24-${{ hashFiles('**/package.json') }}
                   restore-keys: yarn-cache-node-24-
             - name: Install
-              run: yarn
+              run: yarn --no-immutable
 
         outputs:
             cache-dir: ${{ steps.cache.outputs.value }}
