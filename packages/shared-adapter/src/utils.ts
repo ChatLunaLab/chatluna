@@ -464,6 +464,12 @@ export function processInterleavedThinkMessages(
         return convertedMessages
     }
 
+    const hasToolCallRound = convertedMessages.some(
+        (message) =>
+            message.role === 'assistant' &&
+            (message.tool_calls?.length ?? 0) > 0
+    )
+
     // Find the start of the last turn by locating the last ChatLuna user message.
     let lastTurnStartIndex = -1
     for (let i = originalMessages.length - 1; i >= 0; i--) {
@@ -490,8 +496,7 @@ export function processInterleavedThinkMessages(
 
     // For messages in the last turn, add reasoning_content from additional_kwargs
     return convertedMessages.map((message, index) => {
-        // Only process messages in the last turn (from lastTurnStartIndex onwards)
-        if (index >= lastTurnStartIndex) {
+        if (hasToolCallRound || index >= lastTurnStartIndex) {
             const originalMessage = originalMessages[index]
             const reasoningContent = originalMessage?.additional_kwargs
                 ?.reasoning_content as string | undefined

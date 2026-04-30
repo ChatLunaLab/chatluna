@@ -179,6 +179,7 @@ export type AgentAction = {
     toolCallId?: string
     log: string
     content?: MessageContent
+    reasoningContent?: string
 }
 
 export type AgentFinish = {

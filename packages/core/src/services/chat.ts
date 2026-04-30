@@ -260,23 +260,28 @@ export class ChatLunaService extends Service<Config> {
 
     async createChatInterface(conversation: ConversationRecord) {
         const config = this.currentConfig
-        const chatInterface = new ChatInterface(this.ctx.root, {
-            chatMode: conversation.chatMode,
-            autoTitle: conversation.autoTitle ?? true,
-            botName: config.botNames[0],
-            preset: this.preset.getPreset(conversation.preset),
-            model: conversation.model,
-            conversationId: conversation.id,
-            embeddings:
-                config.defaultEmbeddings && config.defaultEmbeddings.length > 0
-                    ? config.defaultEmbeddings
-                    : undefined,
-            vectorStoreName:
-                config.defaultVectorStore &&
-                config.defaultVectorStore.length > 0
-                    ? config.defaultVectorStore
-                    : undefined
-        })
+        const chatInterface = new ChatInterface(
+            this.ctx,
+            {
+                chatMode: conversation.chatMode,
+                autoTitle: conversation.autoTitle ?? true,
+                botName: config.botNames[0],
+                preset: this.preset.getPreset(conversation.preset),
+                model: conversation.model,
+                conversationId: conversation.id,
+                embeddings:
+                    config.defaultEmbeddings &&
+                    config.defaultEmbeddings.length > 0
+                        ? config.defaultEmbeddings
+                        : undefined,
+                vectorStoreName:
+                    config.defaultVectorStore &&
+                    config.defaultVectorStore.length > 0
+                        ? config.defaultVectorStore
+                        : undefined
+            },
+            this
+        )
 
         return chatInterface
     }

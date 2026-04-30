@@ -9,7 +9,7 @@ export function renderTriggerProviders(providers: TriggerProvider[]) {
 
     lines.push(
         '<trigger_tool>',
-        'Use the trigger tool to manage scheduled or passive trigger tasks for the current chat and current user.',
+        'Use the trigger tool to manage all scheduled or passive trigger tasks.',
         '',
         'Call it with one field: cmd = a single DSL statement.',
         'Syntax: verb(positional, ..., key=value, ...). Strings use double quotes.',
@@ -18,6 +18,7 @@ export function renderTriggerProviders(providers: TriggerProvider[]) {
         '  list()',
         '  get(42)',
         '  create(cron, message="Check updates", reply=channel, mode=chain, expression="*/10 8-9 * * *", missed=skip)',
+        '  create(cron, guild_id="123456", message="Check updates", scope=all, reply=channel, expression="0 9 * * *")',
         '  create(once, message="Good morning", reply=channel, fire_at="2026-04-25T08:00:00+08:00")',
         '  disable(42)',
         '  disable(42, 43)',
@@ -29,7 +30,10 @@ export function renderTriggerProviders(providers: TriggerProvider[]) {
         '',
         'Common create fields:',
         '  name=, message=, reply=channel|user|silent, mode=chain|direct,',
-        '  scope=current|all, new_conv=true|false.',
+        '  scope=all|personal, new_conv=true|false.',
+        'Target override fields for create:',
+        '  platform=, self_id=, user_id=, username=, guild_id=, channel_id=, direct=true|false.',
+        '  Omitted target fields default to the current chat. When guild_id or channel_id is set, direct defaults to false.',
         'Provider params are named args. Aliases: missed=skip|fire_once, fire_at=ISO.',
         '`message` is required when the chosen provider is marked "requires message" below.',
         '</trigger_tool>'

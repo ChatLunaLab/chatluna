@@ -32,6 +32,7 @@ import type {
     ConstraintRecord,
     ConversationRecord
 } from '../../services/conversation_types'
+import type { ChatLunaService } from '../../services/chat'
 
 export class ChatInterface {
     private _input: ChatInterfaceInput
@@ -46,7 +47,8 @@ export class ChatInterface {
 
     constructor(
         public ctx: Context,
-        input: ChatInterfaceInput
+        input: ChatInterfaceInput,
+        private readonly chatluna: ChatLunaService
     ) {
         this._input = input
         ctx.on('dispose', () => this.dispose())
@@ -156,14 +158,14 @@ export class ChatInterface {
         }
 
         try {
-            if (this.ctx.chatluna.currentConfig.infiniteContext) {
+            if (this.chatluna.currentConfig.infiniteContext) {
                 const manager = this._ensureInfiniteContextManager()
                 const result = await manager?.compressIfNeeded(wrapper)
                 if (result?.messages) {
                     await this._chatHistory.replaceMessages(result.messages)
                 }
                 if (result?.compressed) {
-                    await this.ctx.chatluna.conversation.recordCompression(
+                    await this.chatluna.conversation.recordCompression(
                         this._input.conversationId,
                         result
                     )
@@ -218,7 +220,7 @@ export class ChatInterface {
         if (messageContent.trim().length > 0) {
             await saveUser()
             let saveMessage = responseMessage
-            if (!this.ctx.chatluna.currentConfig.rawOnCensor) {
+            if (!this.chatluna.currentConfig.rawOnCensor) {
                 saveMessage = displayResponse
             }
 
@@ -242,7 +244,7 @@ export class ChatInterface {
 
         if (this._input.autoTitle !== false) {
             autoSummarizeTitle(
-                this.ctx,
+                this.chatluna,
                 arg.conversationId,
                 wrapper,
                 arg.message,
@@ -282,12 +284,12 @@ export class ChatInterface {
             return
         }
 
-        const service = this.ctx.chatluna.platform
+        const service = this.chatluna.platform
         const [llmPlatform, llmModelName] = parseRawModelName(this._input.model)
 
         let llm: ComputedRef<ChatLunaChatModel>
 
-        let modelInfo: ComputedRef<ModelInfo>
+        let modelInfo: ComputedRef<ModelInfo | undefined>
         let historyMemory: BufferMemory
 
         try {
@@ -307,8 +309,7 @@ export class ChatInterface {
 
         try {
             ;[llm, modelInfo] = await initModel(
-                this.ctx,
-                service,
+                this.chatluna,
                 llmPlatform,
                 llmModelName
             )
@@ -399,7 +400,7 @@ export class ChatInterface {
             await this._chatHistory.replaceMessages(result.messages)
         }
         if (result.compressed) {
-            await this.ctx.chatluna.conversation.recordCompression(
+            await this.chatluna.conversation.recordCompression(
                 this._input.conversationId,
                 result
             )
@@ -415,7 +416,8 @@ export class ChatInterface {
         this._chatHistory = new KoishiChatMessageHistory(
             this.ctx,
             this._input.conversationId,
-            10000
+            10000,
+            this.chatluna
         )
 
         await this._chatHistory.loadConversation()
@@ -452,8 +454,7 @@ export class ChatInterface {
                 chatHistory: this._chatHistory,
                 conversationId: this._input.conversationId,
                 preset: this._input.preset,
-                threshold:
-                    this.ctx.chatluna.currentConfig.infiniteContextThreshold
+                threshold: this.chatluna.currentConfig.infiniteContextThreshold
             })
         }
 
@@ -462,14 +463,13 @@ export class ChatInterface {
 }
 
 async function autoSummarizeTitle(
-    ctx: Context,
+    chatluna: ChatLunaService,
     conversationId: string,
     wrapper: ChatLunaLLMChainWrapper,
     humanMsg: HumanMessage,
     aiMsg: AIMessage
 ) {
-    const claimed =
-        await ctx.chatluna.conversation.claimAutoTitle(conversationId)
+    const claimed = await chatluna.conversation.claimAutoTitle(conversationId)
     if (!claimed) {
         return
     }
@@ -490,12 +490,12 @@ async function autoSummarizeTitle(
         const result = await wrapper.model.invoke([new HumanMessage(prompt)])
         const title = getMessageContent(result.content).trim().slice(0, 20)
 
-        await ctx.chatluna.conversation.touchConversation(conversationId, {
+        await chatluna.conversation.touchConversation(conversationId, {
             title
         })
     } catch (error) {
         logger.error(error)
-        await ctx.chatluna.conversation.touchConversation(conversationId, {
+        await chatluna.conversation.touchConversation(conversationId, {
             autoTitle: true
         })
         throw error
