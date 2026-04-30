@@ -21,6 +21,7 @@ import type {
     ChatLunaMessageMeta,
     MessageRecord
 } from '../../../services/conversation_types'
+import type { ChatLunaService } from '../../../services/chat'
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -38,7 +39,8 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
     constructor(
         ctx: Context,
         conversationId: string,
-        private _maxMessagesCount: number
+        private _maxMessagesCount: number,
+        private readonly chatluna: ChatLunaService
     ) {
         super()
 
@@ -382,9 +384,9 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 id: this.conversationId,
                 bindingKey: this.conversationId,
                 title: 'Conversation',
-                model: this._ctx.chatluna.config.defaultModel,
-                preset: this._ctx.chatluna.config.defaultPreset,
-                chatMode: this._ctx.chatluna.config.defaultChatMode,
+                model: this.chatluna.config.defaultModel,
+                preset: this.chatluna.config.defaultPreset,
+                chatMode: this.chatluna.config.defaultChatMode,
                 createdBy: 'system',
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -532,9 +534,15 @@ async function serializeMessage(
 }
 
 function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
+    const reasoning = steps[0]?.action.reasoningContent
+
     return [
         new AIMessage({
             content: '',
+            additional_kwargs:
+                reasoning != null && reasoning.length > 0
+                    ? { reasoning_content: reasoning }
+                    : {},
             tool_calls: steps.map((step) => ({
                 id: step.action.toolCallId,
                 name: step.action.tool,

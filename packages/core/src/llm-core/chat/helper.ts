@@ -1,7 +1,6 @@
 import { Embeddings } from '@langchain/core/embeddings'
 import { AIMessage } from '@langchain/core/messages'
 import { computed, ComputedRef } from '@vue/reactivity'
-import { Context } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import {
@@ -20,6 +19,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import type { ChatLunaService } from '../../services/chat'
 
 export function createDisplayResponse(responseMessage: AIMessage) {
     const msg = new AIMessage({
@@ -84,19 +84,16 @@ export async function initEmbeddings(
 }
 
 export async function initModel(
-    ctx: Context,
-    service: PlatformService,
+    chatluna: ChatLunaService,
     llmPlatform: string,
     llmModelName: string
 ): Promise<
     [ComputedRef<ChatLunaChatModel>, ComputedRef<ModelInfo | undefined>]
 > {
+    const service = chatluna.platform
     const llmInfo = service.findModel(llmPlatform, llmModelName)
 
-    const llmModel = await ctx.chatluna.createChatModel(
-        llmPlatform,
-        llmModelName
-    )
+    const llmModel = await chatluna.createChatModel(llmPlatform, llmModelName)
 
     if (llmModel.value instanceof ChatLunaChatModel) {
         return [llmModel, llmInfo]

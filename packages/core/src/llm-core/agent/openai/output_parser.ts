@@ -179,7 +179,12 @@ export class OpenAIToolsAgentOutputParser extends BaseOutputParser<
                                 ? content
                                 : `Invoking "${toolCall.name}" with ${JSON.stringify(toolCall.args) ?? '{}'}`,
                         messageLog: i === 0 ? [message] : [],
-                        content: i === 0 ? message.content : undefined
+                        content: i === 0 ? message.content : undefined,
+                        reasoningContent:
+                            i === 0
+                                ? (message.additional_kwargs
+                                      ?.reasoning_content as string | undefined)
+                                : undefined
                     }
                 })
             } catch (error) {
@@ -205,7 +210,12 @@ export class OpenAIToolsAgentOutputParser extends BaseOutputParser<
                                 ? content
                                 : `Invoking "${toolCall.function.name}" with ${toolCall.function.arguments ?? '{}'}`,
                         messageLog: i === 0 ? [message] : [],
-                        content: i === 0 ? message.content : undefined
+                        content: i === 0 ? message.content : undefined,
+                        reasoningContent:
+                            i === 0
+                                ? (message.additional_kwargs
+                                      ?.reasoning_content as string | undefined)
+                                : undefined
                     }
                 })
             } catch (error) {
