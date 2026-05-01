@@ -333,7 +333,7 @@ async function processUserPrompt(
 }
 
 function sortContentByType(content: MessageContentComplex[]) {
-    return content.sort((a, b) => {
+    return [...content].sort((a, b) => {
         if (a.type === b.type) return 0
         if (a.type === 'text') return -1
         if (b.type === 'text') return 1
