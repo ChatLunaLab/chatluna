@@ -195,6 +195,7 @@ export async function* processStreamResponse<
     let errorCount = 0
     const reasoningState = {
         content: '',
+        seen: false,
         startedAt: Date.now(),
         endedAt: undefined as number | undefined
     }
@@ -274,12 +275,17 @@ export async function* processStreamResponse<
                 reasoningState.endedAt = Date.now()
             }
 
-            if (
-                reasoningState.endedAt == null &&
-                !hasResult &&
-                delta.reasoning_content
-            ) {
-                reasoningState.content += delta.reasoning_content
+            // DeepSeek-V4 thinking mode may emit reasoning_content === "".
+            // Track field presence so we can echo it back verbatim later.
+            if (Object.hasOwn(delta, 'reasoning_content')) {
+                reasoningState.seen = true
+                if (
+                    reasoningState.endedAt == null &&
+                    !hasResult &&
+                    typeof delta.reasoning_content === 'string'
+                ) {
+                    reasoningState.content += delta.reasoning_content
+                }
             }
 
             const messageChunk = convertDeltaToMessageChunk(
@@ -338,7 +344,7 @@ export async function* processStreamResponse<
         }
     }
 
-    if (reasoningState.content.length > 0) {
+    if (reasoningState.seen || reasoningState.content.length > 0) {
         const reasoningTime =
             (reasoningState.endedAt ?? Date.now()) - reasoningState.startedAt
 
@@ -346,6 +352,8 @@ export async function* processStreamResponse<
             message: new AIMessageChunk({
                 content: '',
                 additional_kwargs: {
+                    // Always emit the field (possibly "") so DeepSeek-V4
+                    // thinking mode receives reasoning_content back verbatim.
                     reasoning_content: reasoningState.content,
                     ...(reasoningTime != null
                         ? { reasoning_time: reasoningTime }

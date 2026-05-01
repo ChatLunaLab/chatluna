@@ -62,7 +62,7 @@ export async function syncBundledSkills(ctx: Context) {
             }
         }
 
-        ctx.logger.info(
+        ctx.logger[force && current?.isFile() ? 'debug' : 'info'](
             `${force && current?.isFile() ? 'Refreshed' : 'Copied'} bundled skill '${entry.name}' to ${to}${preservedConfig ? ' (preserved config.json)' : ''}`
         )
     }
