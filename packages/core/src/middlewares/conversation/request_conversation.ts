@@ -333,15 +333,12 @@ async function processUserPrompt(
 }
 
 function sortContentByType(content: MessageContentComplex[]) {
-    return content.sort((a, b) =>
-        a.type === 'text'
-            ? -1
-            : b.type === 'text'
-              ? 1
-              : a.type < b.type
-                ? -1
-                : 1
-    )
+    return content.sort((a, b) => {
+        if (a.type === b.type) return 0
+        if (a.type === 'text') return -1
+        if (b.type === 'text') return 1
+        return a.type < b.type ? -1 : 1
+    })
 }
 
 async function setupRegularMessageStream(
