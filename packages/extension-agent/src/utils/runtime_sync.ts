@@ -119,6 +119,7 @@ export class ChatLunaAgentRuntimeSyncService {
         const current = this._states.get(key)
         if (current) {
             current.count += 1
+            current.context = context
             return
         }
 
@@ -158,20 +159,20 @@ export class ChatLunaAgentRuntimeSyncService {
             return
         }
 
-        this._states.delete(key)
         if (!state.dirty) {
+            this._states.delete(key)
             return
         }
 
         const agent = this.getAgent()
 
         try {
-            const session = await agent.computer
-                .getAgentSession(state.context)
-                .catch(() => undefined)
+            const session = await agent.computer.getAgentSession(state.context)
             if (session && session.backend !== 'local') {
                 await syncRuntimeSession(agent, session)
             }
+
+            this._states.delete(key)
         } catch (err) {
             this.ctx.logger.warn('Failed to flush runtime sync files', err)
         }
