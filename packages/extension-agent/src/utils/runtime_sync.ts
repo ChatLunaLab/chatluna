@@ -3,7 +3,11 @@
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname, join, posix } from 'path'
 import { CallbackManager } from '@langchain/core/callbacks/manager'
-import { type AgentRunContext } from 'koishi-plugin-chatluna/llm-core/agent'
+import {
+    type AgentCallbackEvent,
+    type AgentRunContext,
+    CHATLUNA_AGENT_EVENT
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatCallbacksProvider } from 'koishi-plugin-chatluna/services/chat'
 import { Context } from 'koishi'
 import { logger } from '..'
@@ -23,11 +27,6 @@ interface RuntimeSyncFile {
     kind: 'skill' | 'subagent'
     targetPath: string
     content: string
-}
-
-interface RuntimeSyncState {
-    count: number
-    context: AgentRunContext
 }
 
 export class ChatLunaAgentRuntimeSyncService {
@@ -92,6 +91,19 @@ export class ChatLunaAgentRuntimeSyncService {
                     }
 
                     await this.finishRun(String(runId))
+                },
+                handleCustomEvent: async (name, data, runId) => {
+                    if (name !== CHATLUNA_AGENT_EVENT || !runId) {
+                        return
+                    }
+
+                    if (
+                        isRuntimeSyncToolCall(
+                            (data as AgentCallbackEvent).event
+                        )
+                    ) {
+                        this.markDirty(String(runId))
+                    }
                 }
             })
         }
@@ -107,13 +119,27 @@ export class ChatLunaAgentRuntimeSyncService {
         const current = this._states.get(key)
         if (current) {
             current.count += 1
+            current.context = context
             return
         }
 
         this._states.set(key, {
             count: 1,
-            context
+            context,
+            dirty: false
         })
+    }
+
+    private markDirty(runId: string) {
+        const key = this._runs.get(runId)
+        if (!key) {
+            return
+        }
+
+        const state = this._states.get(key)
+        if (state) {
+            state.dirty = true
+        }
     }
 
     private async finishRun(runId: string) {
@@ -133,20 +159,39 @@ export class ChatLunaAgentRuntimeSyncService {
             return
         }
 
-        this._states.delete(key)
+        if (!state.dirty) {
+            this._states.delete(key)
+            return
+        }
+
         const agent = this.getAgent()
 
         try {
-            const session = await agent.computer
-                .getAgentSession(state.context)
-                .catch(() => undefined)
+            const session = await agent.computer.getAgentSession(state.context)
             if (session && session.backend !== 'local') {
                 await syncRuntimeSession(agent, session)
             }
+
+            this._states.delete(key)
         } catch (err) {
             this.ctx.logger.warn('Failed to flush runtime sync files', err)
         }
     }
+}
+
+interface RuntimeSyncState {
+    count: number
+    context: AgentRunContext
+    dirty: boolean
+}
+
+function isRuntimeSyncToolCall(event: AgentCallbackEvent['event']) {
+    return (
+        event.type === 'tool-call' &&
+        event.actions.some((item) =>
+            ['bash', 'file_write', 'file_edit'].includes(item.tool)
+        )
+    )
 }
 
 async function syncRuntimeSession(

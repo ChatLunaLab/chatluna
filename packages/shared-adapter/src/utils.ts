@@ -501,7 +501,9 @@ export function processInterleavedThinkMessages(
             const reasoningContent = originalMessage?.additional_kwargs
                 ?.reasoning_content as string | undefined
 
-            if (reasoningContent) {
+            // DeepSeek-V4 thinking mode requires the original reasoning_content
+            // (including empty string) to be passed back. Keep "" as-is.
+            if (reasoningContent != null) {
                 return {
                     ...message,
                     reasoning_content: reasoningContent
@@ -784,7 +786,7 @@ export function convertMessageToMessageChunk(
     message: ChatCompletionResponseMessage
 ) {
     const content = message.content ?? ''
-    const reasoningContent = message.reasoning_content ?? ''
+    const reasoningContent = message.reasoning_content
 
     const role = (
         (message.role?.length ?? 0) > 0 ? message.role : 'assistant'
@@ -798,7 +800,8 @@ export function convertMessageToMessageChunk(
         reasoning_content?: string
     } = {}
 
-    if (reasoningContent.length > 0) {
+    // Preserve empty reasoning_content for DeepSeek-V4 thinking mode.
+    if (reasoningContent != null) {
         additionalKwargs.reasoning_content = reasoningContent
     }
 
@@ -853,7 +856,7 @@ export function convertDeltaToMessageChunk(
         (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
     ).toLowerCase()
     const content = delta.content ?? ''
-    const reasoningContent = delta.reasoning_content ?? ''
+    const reasoningContent = delta.reasoning_content as string | undefined
 
     let additionalKwargs: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
@@ -868,7 +871,8 @@ export function convertDeltaToMessageChunk(
         additionalKwargs = {}
     }
 
-    if (reasoningContent.length > 0) {
+    // Preserve empty reasoning_content for DeepSeek-V4 thinking mode.
+    if (reasoningContent != null) {
         additionalKwargs.reasoning_content = reasoningContent
     }
 
