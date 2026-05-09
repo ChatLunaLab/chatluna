@@ -500,6 +500,10 @@ async function autoSummarizeTitle(
         })
         const title = getMessageContent(result.content).trim().slice(0, 20)
 
+        if (!title) {
+            return
+        }
+
         await chatluna.conversation.touchConversation(conversationId, {
             title,
             autoTitle: false
