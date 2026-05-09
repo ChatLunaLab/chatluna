@@ -552,6 +552,7 @@ chatluna:
             broken: '已损坏'
         messages:
             unavailable: '当前会话对应的模型 {0} 不可用，请联系管理员配置 API。'
+            preset_unavailable: '当前会话对应的预设 {0} 不可用，请联系管理员配置预设。'
             new_success: '已创建会话：{0}'
             new_forbidden: '当前路由已禁止创建新会话。'
             admin_required: '当前路由要求管理员权限才能管理会话。'

@@ -33,8 +33,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ctx.chatluna.preset.getPreset(presetName, false).value !=
                         null
 
+                if (!presetExists) {
+                    await context.send(
+                        session.text(
+                            'chatluna.conversation.messages.preset_unavailable',
+                            [presetName]
+                        )
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
                 if (
-                    !presetExists ||
                     modelName.trim().length < 1 ||
                     modelName === '无' ||
                     modelName === 'empty'
