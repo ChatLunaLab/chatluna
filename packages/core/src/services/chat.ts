@@ -333,15 +333,37 @@ export class ChatLunaService extends Service<Config> {
             ;[platformName, modelName] = parseRawModelName(platformName)
         }
 
+        if (
+            platformName == null ||
+            modelName == null ||
+            modelName.length < 1 ||
+            modelName === '无'
+        ) {
+            return computed(() => emptyEmbeddings)
+        }
+
         const client = await service.getClient(platformName)
+        const info = service.findModel(platformName, modelName)
 
         return computed(() => {
+            if (info.value == null) {
+                this.ctx.logger.warn(
+                    `The embeddings model ${modelName} not found, return empty embeddings`
+                )
+                return emptyEmbeddings
+            }
+
+            if (info.value.type !== ModelType.embeddings) {
+                this.ctx.logger.warn(
+                    `The model ${modelName} is not embeddings, return empty embeddings`
+                )
+                return emptyEmbeddings
+            }
+
             if (client.value == null) {
-                if (platformName !== '无') {
-                    this.ctx.logger.warn(
-                        `The platform ${platformName} no available`
-                    )
-                }
+                this.ctx.logger.warn(
+                    `The platform ${platformName} no available, return empty embeddings`
+                )
                 return emptyEmbeddings
             }
 
@@ -353,6 +375,7 @@ export class ChatLunaService extends Service<Config> {
                 }
             } catch (error) {
                 this.ctx.logger.warn(`The model ${modelName} not found`, error)
+                return emptyEmbeddings
             }
 
             this.ctx.logger.warn(
