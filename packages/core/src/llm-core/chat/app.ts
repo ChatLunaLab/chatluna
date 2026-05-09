@@ -487,11 +487,22 @@ async function autoSummarizeTitle(
         `Assistant: ${aiContent}`
 
     try {
-        const result = await wrapper.model.invoke([new HumanMessage(prompt)])
+        const result = await wrapper.model.invoke([new HumanMessage(prompt)], {
+            configurable: {
+                id: conversationId
+            },
+            id: conversationId,
+            variables_hide: {
+                built: {
+                    conversationId
+                }
+            }
+        })
         const title = getMessageContent(result.content).trim().slice(0, 20)
 
         await chatluna.conversation.touchConversation(conversationId, {
-            title
+            title,
+            autoTitle: false
         })
     } catch (error) {
         logger.error(error)

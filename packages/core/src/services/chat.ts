@@ -264,7 +264,7 @@ export class ChatLunaService extends Service<Config> {
             this.ctx,
             {
                 chatMode: conversation.chatMode,
-                autoTitle: conversation.autoTitle ?? true,
+                autoTitle: conversation.autoTitle === true,
                 botName: config.botNames[0],
                 preset: this.preset.getPreset(conversation.preset),
                 model: conversation.model,
