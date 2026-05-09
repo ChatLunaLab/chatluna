@@ -300,9 +300,9 @@ export function createDefaultSubAgentConfig(): SubAgentConfig {
         },
         presetAgents: {},
         defaults: {
-            skills: createPermissionRule('allow'),
-            mcp: createPermissionRule('inherit'),
-            tools: createPermissionRule('inherit'),
+            skills: createPermissionRule('deny'),
+            mcp: createPermissionRule('deny'),
+            tools: createPermissionRule('deny'),
             computer: createPermissionRule('allow')
         }
     }
