@@ -553,6 +553,7 @@ chatluna:
             broken: 'broken'
         messages:
             unavailable: 'The model {0} for this conversation is unavailable. Please contact an administrator to configure the API.'
+            preset_unavailable: 'The preset {0} for this conversation is unavailable. Please contact an administrator to configure the preset.'
             new_success: 'Created conversation: {0}'
             new_forbidden: 'Creating new conversations is disabled in the current route.'
             admin_required: 'Conversation management requires administrator permission in the current route.'

@@ -419,15 +419,12 @@ export class ChatLunaAgentPermissionService {
             return false
         }
 
-        if (
-            !matchRule(
-                name,
-                this.mergeRule(
-                    info.permissions.tools,
-                    this.config.subAgent.defaults.tools
-                )
-            )
-        ) {
+        const rule = this.mergeRule(
+            info.permissions.tools,
+            this.config.subAgent.defaults.tools
+        )
+
+        if (!matchRule(name, rule)) {
             return false
         }
 

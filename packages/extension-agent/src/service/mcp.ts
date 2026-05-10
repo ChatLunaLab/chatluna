@@ -396,6 +396,7 @@ export class ChatLunaAgentMcpService {
         const serverCfg = this.config.mcp.mcpServers[serverName]
         if (!serverCfg) return
 
+        this.ctx.chatluna_agent?.permission.invalidateCache()
         this._disposeTools(serverName)
 
         const names = new Set<string>()
@@ -483,6 +484,8 @@ export class ChatLunaAgentMcpService {
                 delete this._tools[toolName]
             }
         }
+
+        this.ctx.chatluna_agent?.permission.invalidateCache()
     }
 
     private async _drop(name: string, clearTools = true) {
@@ -506,6 +509,8 @@ export class ChatLunaAgentMcpService {
                 }
             }
         }
+
+        this.ctx.chatluna_agent?.permission.invalidateCache()
     }
 
     private async _remove(name: string) {

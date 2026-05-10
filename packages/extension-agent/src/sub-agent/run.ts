@@ -179,10 +179,10 @@ function createTools(
     permission: ChatLunaAgentPermissionService,
     info: SubAgentInfo
 ): ComputedRef<ChatLunaTool[]> {
+    const tools = ctx.chatluna.platform.getTools()
+
     return computed(() =>
-        permission
-            .listTools()
-            .map((item) => item.name)
+        tools.value
             .filter((name) => permission.canUseTool(info, name))
             .map((name) => ctx.chatluna.platform.getTool(name))
     )

@@ -6,13 +6,18 @@ import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory
 import {
     PlatformEmbeddingsClient,
     PlatformModelAndEmbeddingsClient,
-    PlatformModelClient
+    PlatformModelClient,
+    PlatformModelEmbeddingsAndRerankerClient
 } from 'koishi-plugin-chatluna/llm-core/platform/client'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+import {
+    ChatLunaBaseEmbeddings,
+    ChatLunaChatModel
+} from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import {
     ModelCapabilities,
-    ModelInfo
+    ModelInfo,
+    ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import {
@@ -48,37 +53,70 @@ export async function initEmbeddings(
         return computed(() => emptyEmbeddings)
     }
 
+    if (platform == null || modelName == null) {
+        logger.warn(
+            `Embeddings model ${model} is invalid, falling back to empty embeddings`
+        )
+        return computed(() => emptyEmbeddings)
+    }
+
     const clientRef = await service.getClient(platform)
+    const info = service.findModel(platform, modelName)
 
     return computed<Embeddings>(() => {
         const client = clientRef.value
 
         logger.info(`Init embeddings for %c`, model)
 
-        if (client == null || client instanceof PlatformModelClient) {
+        if (info.value == null) {
             logger.warn(
-                `Platform ${platform} is not supported, falling back to fake embeddings`
+                `Embeddings model ${modelName} not found, falling back to empty embeddings`
             )
             return emptyEmbeddings
         }
 
-        if (client instanceof PlatformEmbeddingsClient) {
-            return client.createModel(modelName)
+        if (info.value.type !== ModelType.embeddings) {
+            logger.warn(
+                `Model ${modelName} is not an embeddings model, falling back to empty embeddings`
+            )
+            return emptyEmbeddings
         }
 
-        if (client instanceof PlatformModelAndEmbeddingsClient) {
-            const ref = client.createModel(modelName)
+        if (client == null || client instanceof PlatformModelClient) {
+            logger.warn(
+                `Platform ${platform} is not supported, falling back to empty embeddings`
+            )
+            return emptyEmbeddings
+        }
 
-            if (ref instanceof ChatLunaChatModel) {
+        if (
+            client instanceof PlatformEmbeddingsClient ||
+            client instanceof PlatformModelAndEmbeddingsClient ||
+            client instanceof PlatformModelEmbeddingsAndRerankerClient
+        ) {
+            try {
+                const ref = client.createModel(modelName)
+
+                if (ref instanceof ChatLunaBaseEmbeddings) {
+                    return ref
+                }
+
                 logger.warn(
-                    `Model ${modelName} is not an embeddings model, falling back to fake embeddings`
+                    `Model ${modelName} is not an embeddings model, falling back to empty embeddings`
+                )
+                return emptyEmbeddings
+            } catch (error) {
+                logger.warn(
+                    `Embeddings model ${modelName} not found, falling back to empty embeddings`,
+                    error
                 )
                 return emptyEmbeddings
             }
-
-            return ref
         }
 
+        logger.warn(
+            `Platform ${platform} is not supported, falling back to empty embeddings`
+        )
         return emptyEmbeddings
     })
 }
