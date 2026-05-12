@@ -605,6 +605,8 @@ export class ConversationService {
             setActive?: boolean
         }
     ) {
+        this.checkChatMode(options.chatMode)
+
         return runLock(this._bindingLocks, options.bindingKey, async () => {
             const now = new Date()
             const conversation: ConversationRecord = {
@@ -1561,6 +1563,8 @@ export class ConversationService {
             throw new Error('Conversation update is locked by constraint.')
         }
 
+        this.checkChatMode(options.chatMode)
+
         const updated = await this.touchConversation(conversation.id, {
             model: options.model,
             preset: options.preset,
@@ -1690,6 +1694,9 @@ export class ConversationService {
         session: Session,
         patch: Partial<ConstraintRecord>
     ) {
+        this.checkChatMode(patch.defaultChatMode)
+        this.checkChatMode(patch.fixedChatMode)
+
         const current = await this.getManagedConstraint(session)
         const now = new Date()
         const route = session.isDirect
@@ -1744,6 +1751,17 @@ export class ConversationService {
         }
 
         return this.config.defaultGroupRouteMode ?? 'shared'
+    }
+
+    private checkChatMode(mode?: string | null) {
+        if (
+            mode != null &&
+            !this.ctx.chatluna.platform.chatChains.value.some(
+                (chain) => chain.name === mode
+            )
+        ) {
+            throw new Error(`Chat mode ${mode} not found.`)
+        }
     }
 
     private async allocateConversationSeq(bindingKey: string) {

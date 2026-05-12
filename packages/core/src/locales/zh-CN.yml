@@ -567,6 +567,7 @@ chatluna:
             fixed_model: '当前路由已将模型固定为 {0}。'
             fixed_preset: '当前路由已将预设固定为 {0}。'
             fixed_chat_mode: '当前路由已将聊天模式固定为 {0}。'
+            invalid_chat_mode: '聊天模式 {0} 不可用，请检查输入是否正确。'
             switch_success: '已切换到：{0}'
             switch_failed: '切换会话失败：{0}'
             list_header: '当前路由下的会话列表：'
