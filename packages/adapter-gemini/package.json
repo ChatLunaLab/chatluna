@@ -63,7 +63,7 @@
     ],
     "dependencies": {
         "@anatine/zod-openapi": "^2.2.8",
-        "@chatluna/v1-shared-adapter": "^1.0.36",
+        "@chatluna/v1-shared-adapter": "^1.0.37",
         "@langchain/core": "^0.3.80",
         "openapi3-ts": "^4.5.0",
         "zod": "3.25.76",
