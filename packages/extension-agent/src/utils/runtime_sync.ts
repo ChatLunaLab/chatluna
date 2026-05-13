@@ -250,9 +250,11 @@ async function collectSyncFiles(
 ) {
     const files: RuntimeSyncFile[] = []
     const remoteFiles = await listRemoteFiles(session, remoteRoot)
-    logger?.debug(
-        `collectSyncFiles kind=${kind} backend=${session.backend} remoteRoot=${remoteRoot} files=${remoteFiles.length} localRoots=${localRoots.length}`
-    )
+    if (remoteFiles.length > 0) {
+        logger?.debug(
+            `collectSyncFiles kind=${kind} backend=${session.backend} remoteRoot=${remoteRoot} files=${remoteFiles.length} localRoots=${localRoots.length}`
+        )
+    }
 
     for (const file of remoteFiles) {
         const sourcePath = posix.join(remoteRoot, file)
@@ -282,9 +284,11 @@ async function collectSyncFiles(
         }
     }
 
-    logger?.debug(
-        `collectSyncFiles kind=${kind} pending=${files.length} (${files.map((f) => f.targetPath).join(', ') || 'none'})`
-    )
+    if (files.length > 0) {
+        logger?.debug(
+            `collectSyncFiles kind=${kind} pending=${files.length} (${files.map((f) => f.targetPath).join(', ')})`
+        )
+    }
 
     return files
 }

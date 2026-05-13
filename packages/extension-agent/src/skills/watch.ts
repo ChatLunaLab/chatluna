@@ -36,11 +36,6 @@ export async function watchSkillFiles(
         clearTimeout(timer)
         timer = setTimeout(async () => {
             timer = undefined
-            if (reloading) {
-                pending = true
-                return
-            }
-
             reloading = true
             try {
                 await reload()
