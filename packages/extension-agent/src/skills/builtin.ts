@@ -1,7 +1,7 @@
 /** @module skills/builtin */
 
-import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'fs/promises'
-import { join } from 'path'
+import { copyFile, mkdir, readdir, readFile, rm, stat } from 'fs/promises'
+import { dirname, join, relative } from 'path'
 import { Context } from 'koishi'
 import { AGENTCLI_SKILL_NAME } from '../computer/materialize'
 import { getSkillsRootPath } from '../config/path'
@@ -41,29 +41,65 @@ export async function syncBundledSkills(ctx: Context) {
             continue
         }
 
-        let preservedConfig: Buffer | undefined
-        let backupPath: string | undefined
-        if (force && current?.isFile()) {
-            const configPath = join(to, 'config.json')
-            preservedConfig = await readFile(configPath).catch(() => undefined)
-            if (preservedConfig) {
-                backupPath = join(dest, `${entry.name}.config.json.bak`)
-                await writeFile(backupPath, preservedConfig).catch(() => {})
-            }
-        }
+        const synced = await syncSkillDir(from, to, force && current?.isFile())
 
-        await rm(to, { recursive: true, force: true })
-        await cp(from, to, { recursive: true })
-
-        if (preservedConfig) {
-            await writeFile(join(to, 'config.json'), preservedConfig)
-            if (backupPath) {
-                await rm(backupPath, { force: true })
-            }
-        }
+        if (!synced && force && current?.isFile()) continue
 
         ctx.logger[force && current?.isFile() ? 'debug' : 'info'](
-            `${force && current?.isFile() ? 'Refreshed' : 'Copied'} bundled skill '${entry.name}' to ${to}${preservedConfig ? ' (preserved config.json)' : ''}`
+            `${force && current?.isFile() ? 'Refreshed' : 'Copied'} bundled skill '${entry.name}' to ${to}`
         )
     }
+}
+
+async function syncSkillDir(from: string, to: string, preserveConfig: boolean) {
+    const files = await collectFiles(from)
+    const current = await collectFiles(to).catch(() => [])
+    const source = new Set(files)
+    let changed = false
+
+    for (const file of files) {
+        if (preserveConfig && file === 'config.json') continue
+
+        const src = join(from, file)
+        const dest = join(to, file)
+        const data = await readFile(src)
+        const old = await readFile(dest).catch(() => undefined)
+        if (old?.equals(data)) continue
+
+        await mkdir(dirname(dest), { recursive: true })
+        await copyFile(src, dest)
+        changed = true
+    }
+
+    for (const file of current) {
+        if (source.has(file)) continue
+        if (preserveConfig && file === 'config.json') continue
+
+        await rm(join(to, file), { force: true })
+        changed = true
+    }
+
+    return changed
+}
+
+async function collectFiles(dir: string) {
+    const files: string[] = []
+    const dirs = [dir]
+
+    while (dirs.length) {
+        const current = dirs.shift()!
+        const entries = await readdir(current, { withFileTypes: true })
+
+        for (const entry of entries) {
+            const path = join(current, entry.name)
+            if (entry.isDirectory()) {
+                dirs.push(path)
+                continue
+            }
+
+            if (entry.isFile()) files.push(relative(dir, path))
+        }
+    }
+
+    return files.sort((a, b) => a.localeCompare(b))
 }
