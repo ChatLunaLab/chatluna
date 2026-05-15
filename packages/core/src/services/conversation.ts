@@ -283,18 +283,17 @@ export class ConversationService {
             ))
                 ? conversation
                 : null
+        const effectiveModel = this.pickModel(constraint, allowedConversation)
 
         return {
             bindingKey,
             presetLane: getPresetLane(bindingKey),
             binding: binding ?? null,
-            conversation: allowedConversation,
-            effectiveModel: this.pickModel(
-                constraint.fixedModel,
-                allowedConversation?.model,
-                constraint.defaultModel,
-                this.config.defaultModel
-            ),
+            conversation:
+                allowedConversation != null && effectiveModel != null
+                    ? { ...allowedConversation, model: effectiveModel }
+                    : allowedConversation,
+            effectiveModel,
             effectivePreset:
                 constraint.fixedPreset ??
                 allowedConversation?.preset ??
@@ -328,7 +327,7 @@ export class ConversationService {
             return {
                 ...target,
                 mode,
-                conversation,
+                conversation: target.conversation ?? conversation,
                 conversationId: conversation.id
             }
         }
@@ -364,15 +363,18 @@ export class ConversationService {
                         current.bindingKey
                     ))
                 ) {
+                    const effectiveModel = this.pickModel(
+                        current.constraint,
+                        conversation
+                    )
+
                     current = {
                         ...current,
-                        conversation,
-                        effectiveModel: this.pickModel(
-                            current.constraint.fixedModel,
-                            conversation.model,
-                            current.constraint.defaultModel,
-                            this.config.defaultModel
-                        ),
+                        conversation:
+                            effectiveModel != null
+                                ? { ...conversation, model: effectiveModel }
+                                : conversation,
+                        effectiveModel,
                         effectivePreset:
                             current.constraint.fixedPreset ??
                             conversation.preset,
@@ -399,18 +401,20 @@ export class ConversationService {
                             conversationId: current.conversation.id
                         }
                     )
+                    const effectiveModel = this.pickModel(
+                        current.constraint,
+                        conversation
+                    )
 
                     return {
                         ...current,
                         mode,
-                        conversation,
+                        conversation:
+                            effectiveModel != null
+                                ? { ...conversation, model: effectiveModel }
+                                : conversation,
                         conversationId: conversation.id,
-                        effectiveModel: this.pickModel(
-                            current.constraint.fixedModel,
-                            conversation.model,
-                            current.constraint.defaultModel,
-                            this.config.defaultModel
-                        ),
+                        effectiveModel,
                         effectivePreset: conversation.preset,
                         effectiveChatMode: conversation.chatMode
                     }
@@ -1908,8 +1912,16 @@ export class ConversationService {
         return target
     }
 
-    private pickModel(...models: (string | null | undefined)[]) {
-        for (const model of models) {
+    pickModel(
+        constraint: ResolvedConstraint,
+        conversation?: ConversationRecord | null
+    ) {
+        for (const model of [
+            constraint.fixedModel,
+            conversation?.model,
+            constraint.defaultModel,
+            this.config.defaultModel
+        ]) {
             if (
                 model == null ||
                 model.trim().length < 1 ||

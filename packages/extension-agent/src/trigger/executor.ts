@@ -208,10 +208,12 @@ export class ChatLunaAgentTriggerExecutor {
             constraint.fixedPreset ??
             constraint.defaultPreset ??
             this.ctx.chatluna.config.defaultPreset
-        const model =
-            constraint.fixedModel ??
-            constraint.defaultModel ??
-            this.ctx.chatluna.config.defaultModel
+        const model = this.ctx.chatluna.conversation.pickModel(constraint)
+
+        if (model == null) {
+            throw new Error('No available model found.')
+        }
+
         const chatMode =
             constraint.fixedChatMode ??
             constraint.defaultChatMode ??

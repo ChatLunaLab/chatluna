@@ -128,7 +128,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     session.text('chatluna.conversation.default_title'),
                 model:
                     createModel ??
-                    resolved.effectiveModel ??
+                    ctx.chatluna.conversation.pickModel(
+                        resolved.constraint,
+                        resolved.conversation
+                    ) ??
                     config.defaultModel,
                 preset:
                     createPreset ??
@@ -223,6 +226,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const pagination = new Pagination<ConversationListEntry>({
             formatItem: (item) =>
                 formatConversationLine(
+                    ctx,
                     session,
                     item.conversation,
                     resolved,
@@ -265,7 +269,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         context.message = [
             session.text('chatluna.conversation.messages.current_header'),
-            formatConversationLine(session, resolved.conversation, resolved)
+            formatConversationLine(
+                ctx,
+                session,
+                resolved.conversation,
+                resolved
+            )
         ].join('\n')
         return ChainMiddlewareRunStatus.STOP
     })
@@ -998,6 +1007,7 @@ function formatConversationError(
 }
 
 function formatConversationLine(
+    ctx: Context,
     session: Session,
     conversation: ConversationRecord,
     resolved: ResolvedConversationContext,
@@ -1010,10 +1020,10 @@ function formatConversationLine(
         resolved.binding?.activeConversationId
     )
     const effectiveModel =
-        resolved.constraint.fixedModel ??
-        conversation.model ??
-        resolved.constraint.defaultModel ??
-        '-'
+        ctx.chatluna.conversation.pickModel(
+            resolved.constraint,
+            conversation
+        ) ?? '-'
     const effectivePreset =
         resolved.constraint.fixedPreset ??
         conversation.preset ??

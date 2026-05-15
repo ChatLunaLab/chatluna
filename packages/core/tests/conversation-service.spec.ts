@@ -156,11 +156,10 @@ it('ConversationService skips unavailable models before using config default', a
         }
     })
 
-    const resolved = await service.resolveConversation(createSession(), {
-        mode: 'context'
-    })
+    const resolved = await service.ensureActiveConversation(createSession())
 
     assert.equal(resolved.effectiveModel, 'test-platform/test-model')
+    assert.equal(resolved.conversation.model, 'test-platform/test-model')
 })
 
 it('ConversationService resolveConversation uses explicit binding key constraints', async () => {
