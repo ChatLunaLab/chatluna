@@ -118,34 +118,6 @@ function matchTargetConversation(
     )
 }
 
-function hasModel(ctx: Context, model?: string | null) {
-    if (
-        model == null ||
-        model.trim().length < 1 ||
-        model === '无' ||
-        model === 'empty'
-    ) {
-        return false
-    }
-
-    const [platform, name] = parseRawModelName(model)
-
-    if (platform == null || name == null) {
-        return false
-    }
-
-    const models = ctx.chatluna.platform.listPlatformModels(
-        platform,
-        ModelType.llm
-    ).value
-
-    return models.length > 0 && models.some((m) => m.name === name)
-}
-
-function pickModel(ctx: Context, models: (string | null | undefined)[]) {
-    return models.find((model) => hasModel(ctx, model)) ?? null
-}
-
 export class ConversationService {
     private readonly _bindingLocks = new Map<string, ObjectLock>()
     private readonly _titleLocks = new Map<string, ObjectLock>()
@@ -317,12 +289,12 @@ export class ConversationService {
             presetLane: getPresetLane(bindingKey),
             binding: binding ?? null,
             conversation: allowedConversation,
-            effectiveModel: pickModel(this.ctx, [
+            effectiveModel: this.pickModel(
                 constraint.fixedModel,
                 allowedConversation?.model,
                 constraint.defaultModel,
                 this.config.defaultModel
-            ]),
+            ),
             effectivePreset:
                 constraint.fixedPreset ??
                 allowedConversation?.preset ??
@@ -395,12 +367,12 @@ export class ConversationService {
                     current = {
                         ...current,
                         conversation,
-                        effectiveModel: pickModel(this.ctx, [
+                        effectiveModel: this.pickModel(
                             current.constraint.fixedModel,
                             conversation.model,
                             current.constraint.defaultModel,
                             this.config.defaultModel
-                        ]),
+                        ),
                         effectivePreset:
                             current.constraint.fixedPreset ??
                             conversation.preset,
@@ -433,12 +405,12 @@ export class ConversationService {
                         mode,
                         conversation,
                         conversationId: conversation.id,
-                        effectiveModel: pickModel(this.ctx, [
+                        effectiveModel: this.pickModel(
                             current.constraint.fixedModel,
                             conversation.model,
                             current.constraint.defaultModel,
                             this.config.defaultModel
-                        ]),
+                        ),
                         effectivePreset: conversation.preset,
                         effectiveChatMode: conversation.chatMode
                     }
@@ -1934,6 +1906,40 @@ export class ConversationService {
         const target = path.resolve(this.ctx.baseDir, 'data/chatluna', name)
         await fs.mkdir(target, { recursive: true })
         return target
+    }
+
+    private pickModel(...models: (string | null | undefined)[]) {
+        for (const model of models) {
+            if (
+                model == null ||
+                model.trim().length < 1 ||
+                model === '无' ||
+                model === 'empty'
+            ) {
+                continue
+            }
+
+            const [platform, name] = parseRawModelName(model)
+
+            if (platform == null || name == null) {
+                continue
+            }
+
+            const platformModels =
+                this.ctx.chatluna.platform.listPlatformModels(
+                    platform,
+                    ModelType.llm
+                ).value
+
+            if (
+                platformModels.length > 0 &&
+                platformModels.some((m) => m.name === name)
+            ) {
+                return model
+            }
+        }
+
+        return null
     }
 }
 
