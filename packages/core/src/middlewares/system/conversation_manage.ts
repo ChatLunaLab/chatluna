@@ -979,6 +979,14 @@ function formatConversationError(
         ])
     }
 
+    const invalidMode = error.message.match(/^Chat mode (.+) not found\.$/)
+    if (invalidMode) {
+        return session.text(
+            'chatluna.conversation.messages.invalid_chat_mode',
+            [invalidMode[1]]
+        )
+    }
+
     if (action != null) {
         return session.text('chatluna.conversation.messages.action_failed', [
             session.text(`chatluna.conversation.action.${action}`),

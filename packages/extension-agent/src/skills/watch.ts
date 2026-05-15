@@ -24,16 +24,29 @@ export async function watchSkillFiles(
     const watchers: FSWatcher[] = []
     let timer: NodeJS.Timeout | undefined
     let closed = false
+    let reloading = false
+    let pending = false
 
     const schedule = () => {
         if (closed) return
+        if (reloading) {
+            pending = true
+            return
+        }
         clearTimeout(timer)
         timer = setTimeout(async () => {
             timer = undefined
+            reloading = true
             try {
                 await reload()
             } catch (err) {
                 ctx.logger.error('Failed to hot reload skills', err)
+            } finally {
+                reloading = false
+                if (pending) {
+                    pending = false
+                    schedule()
+                }
             }
         }, 100)
     }

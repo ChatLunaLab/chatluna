@@ -571,6 +571,7 @@ export class ChatLunaAgentTriggerService {
             ...task.wakeupTemplate,
             ...override,
             target,
+            bindingKey: override?.bindingKey ?? task.bindingKey,
             requestId,
             conversationId: override?.conversationId ?? task.conversationId,
             presetLane: override?.presetLane ?? task.presetLane,
@@ -924,11 +925,19 @@ export class ChatLunaAgentTriggerService {
         }
         const next = await provider.prepare?.({ input: merged, task })
 
-        return {
+        const result: Partial<TriggerTask> = {
             ...patch,
             ...next,
             params: { ...(patch.params ?? {}), ...(next?.params ?? {}) }
         }
+
+        if (patch.bindingKey != null && patch.bindingKey !== task.bindingKey) {
+            result.conversationId = null
+        } else if (patch.conversationId !== undefined) {
+            result.conversationId = patch.conversationId
+        }
+
+        return result
     }
 }
 

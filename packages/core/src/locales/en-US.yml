@@ -568,6 +568,7 @@ chatluna:
             fixed_model: 'The current route fixes the model to {0}.'
             fixed_preset: 'The current route fixes the preset to {0}.'
             fixed_chat_mode: 'The current route fixes the chat mode to {0}.'
+            invalid_chat_mode: 'Chat mode {0} is unavailable. Check the input and try again.'
             switch_success: 'Switched to: {0}'
             switch_failed: 'Failed to switch conversation: {0}'
             list_header: 'Conversations in the current route:'

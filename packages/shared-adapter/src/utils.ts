@@ -885,7 +885,7 @@ export function convertDeltaToMessageChunk(
                 const toolCall = {
                     name: rawToolCall.function?.name,
                     args: rawToolCall.function?.arguments,
-                    id: rawToolCall.id,
+                    id: rawToolCall.id === '' ? undefined : rawToolCall.id,
                     index: rawToolCall.index
                 }
 
