@@ -219,7 +219,8 @@ async function rollbackConversation(
         inputMessage = await ctx.chatluna.messageTransformer.transform(
             session,
             transformMessageContentToElements(humanContent),
-            resolved.effectiveModel ?? current.model,
+            ctx.chatluna.conversation.pickModel(resolved.constraint, current) ??
+                current.model,
             undefined,
             {
                 quote: false,

@@ -124,7 +124,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
 
         return {
-            model: resolved.effectiveModel ?? conversation.model,
+            model:
+                ctx.chatluna.conversation.pickModel(
+                    resolved.constraint,
+                    conversation
+                ) ?? conversation.model,
             conversationId: conversation.id
         }
     }

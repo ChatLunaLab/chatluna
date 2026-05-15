@@ -123,6 +123,45 @@ it('ConversationService defaults resolveConversation mode to context and sets nu
     assert.equal(resolved.conversationId, null)
 })
 
+it('ConversationService skips unavailable models before using config default', async () => {
+    const conversation = createConversation({
+        model: 'missing-platform/old-model'
+    })
+    const { service } = await createService({
+        tables: {
+            chatluna_conversation: [conversation as unknown as TableRow],
+            chatluna_binding: [
+                {
+                    bindingKey: conversation.bindingKey,
+                    activeConversationId: conversation.id,
+                    lastConversationId: null,
+                    updatedAt: new Date()
+                }
+            ],
+            chatluna_constraint: [
+                {
+                    id: 1,
+                    name: 'unavailable-models',
+                    enabled: true,
+                    priority: 10,
+                    createdBy: 'admin',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    users: null,
+                    excludeUsers: null,
+                    fixedModel: 'missing-platform/fixed-model',
+                    defaultModel: 'missing-platform/default-model'
+                } as unknown as TableRow
+            ]
+        }
+    })
+
+    const resolved = await service.ensureActiveConversation(createSession())
+
+    assert.equal(resolved.effectiveModel, 'test-platform/test-model')
+    assert.equal(resolved.conversation.model, 'test-platform/test-model')
+})
+
 it('ConversationService resolveConversation uses explicit binding key constraints', async () => {
     const remote = createConversation({
         id: 'conversation-remote-binding',

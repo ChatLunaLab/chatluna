@@ -141,7 +141,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await ctx.chatluna.messageTransformer.transform(
                     session,
                     message,
-                    resolved.effectiveModel ?? '',
+                    ctx.chatluna.conversation.pickModel(
+                        resolved.constraint,
+                        resolved.conversation
+                    ) ?? '',
                     undefined,
                     {
                         quote: false,

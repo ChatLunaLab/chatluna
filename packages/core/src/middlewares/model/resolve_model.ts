@@ -20,10 +20,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             try {
                 const modelName =
-                    resolved.effectiveModel ??
-                    resolved.conversation?.model ??
-                    config.defaultModel ??
-                    'empty'
+                    ctx.chatluna.conversation.pickModel(
+                        resolved.constraint,
+                        resolved.conversation
+                    ) ?? 'empty'
                 const presetName =
                     resolved.effectivePreset ??
                     resolved.conversation?.preset ??

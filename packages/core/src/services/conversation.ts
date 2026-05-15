@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
 import type { Context, Session } from 'koishi'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import type { Config } from '../config'
 import {
     deserializeConversation,
@@ -281,17 +283,17 @@ export class ConversationService {
             ))
                 ? conversation
                 : null
+        const effectiveModel = this.pickModel(constraint, allowedConversation)
 
         return {
             bindingKey,
             presetLane: getPresetLane(bindingKey),
             binding: binding ?? null,
-            conversation: allowedConversation,
-            effectiveModel:
-                constraint.fixedModel ??
-                allowedConversation?.model ??
-                constraint.defaultModel ??
-                this.config.defaultModel,
+            conversation:
+                allowedConversation != null && effectiveModel != null
+                    ? { ...allowedConversation, model: effectiveModel }
+                    : allowedConversation,
+            effectiveModel,
             effectivePreset:
                 constraint.fixedPreset ??
                 allowedConversation?.preset ??
@@ -325,7 +327,7 @@ export class ConversationService {
             return {
                 ...target,
                 mode,
-                conversation,
+                conversation: target.conversation ?? conversation,
                 conversationId: conversation.id
             }
         }
@@ -361,11 +363,18 @@ export class ConversationService {
                         current.bindingKey
                     ))
                 ) {
+                    const effectiveModel = this.pickModel(
+                        current.constraint,
+                        conversation
+                    )
+
                     current = {
                         ...current,
-                        conversation,
-                        effectiveModel:
-                            current.constraint.fixedModel ?? conversation.model,
+                        conversation:
+                            effectiveModel != null
+                                ? { ...conversation, model: effectiveModel }
+                                : conversation,
+                        effectiveModel,
                         effectivePreset:
                             current.constraint.fixedPreset ??
                             conversation.preset,
@@ -392,13 +401,20 @@ export class ConversationService {
                             conversationId: current.conversation.id
                         }
                     )
+                    const effectiveModel = this.pickModel(
+                        current.constraint,
+                        conversation
+                    )
 
                     return {
                         ...current,
                         mode,
-                        conversation,
+                        conversation:
+                            effectiveModel != null
+                                ? { ...conversation, model: effectiveModel }
+                                : conversation,
                         conversationId: conversation.id,
-                        effectiveModel: conversation.model,
+                        effectiveModel,
                         effectivePreset: conversation.preset,
                         effectiveChatMode: conversation.chatMode
                     }
@@ -1894,6 +1910,48 @@ export class ConversationService {
         const target = path.resolve(this.ctx.baseDir, 'data/chatluna', name)
         await fs.mkdir(target, { recursive: true })
         return target
+    }
+
+    pickModel(
+        constraint: ResolvedConstraint,
+        conversation?: ConversationRecord | null
+    ) {
+        for (const model of [
+            constraint.fixedModel,
+            conversation?.model,
+            constraint.defaultModel,
+            this.config.defaultModel
+        ]) {
+            if (
+                model == null ||
+                model.trim().length < 1 ||
+                model === '无' ||
+                model === 'empty'
+            ) {
+                continue
+            }
+
+            const [platform, name] = parseRawModelName(model)
+
+            if (platform == null || name == null) {
+                continue
+            }
+
+            const platformModels =
+                this.ctx.chatluna.platform.listPlatformModels(
+                    platform,
+                    ModelType.llm
+                ).value
+
+            if (
+                platformModels.length > 0 &&
+                platformModels.some((m) => m.name === name)
+            ) {
+                return model
+            }
+        }
+
+        return null
     }
 }
 
