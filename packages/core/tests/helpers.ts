@@ -12,6 +12,7 @@ import {
 } from '../src/services/conversation_types'
 import { ChatLunaService } from '../src/services/chat'
 import { ConversationService } from '../src/services/conversation'
+import { ModelType } from '../src/llm-core/platform/types'
 
 export async function expectRejected(
     promise: Promise<unknown>,
@@ -312,6 +313,24 @@ export async function createService(
             }
         },
         chatluna: {
+            platform: {
+                chatChains: {
+                    value: [{ name: 'plugin' }]
+                },
+                listPlatformModels: (platform: string) => ({
+                    value:
+                        platform === 'test-platform'
+                            ? [
+                                  {
+                                      name: 'test-model',
+                                      type: ModelType.llm,
+                                      maxTokens: 4096,
+                                      capabilities: []
+                                  }
+                              ]
+                            : []
+                })
+            },
             conversation: {
                 getArchive: async (id: string) =>
                     database.tables.chatluna_archive.find(
@@ -364,6 +383,18 @@ export async function createMemoryService(
     app.plugin(memory)
     app.plugin(ChatLunaService, createConfig(options.config))
     await app.start()
+    ;(
+        app.chatluna.platform as unknown as {
+            _models: Record<string, unknown[]>
+        }
+    )._models['test-platform'] = [
+        {
+            name: 'test-model',
+            type: ModelType.llm,
+            maxTokens: 4096,
+            capabilities: []
+        }
+    ]
 
     for (const [table, rows] of Object.entries(options.tables ?? {})) {
         for (const row of rows ?? []) {

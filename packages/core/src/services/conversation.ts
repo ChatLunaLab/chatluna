@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
 import type { Context, Session } from 'koishi'
+import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import type { Config } from '../config'
 import {
     deserializeConversation,
@@ -114,6 +116,34 @@ function matchTargetConversation(
             c.title.toLocaleLowerCase().includes(normalized)
         )
     )
+}
+
+function hasModel(ctx: Context, model?: string | null) {
+    if (
+        model == null ||
+        model.trim().length < 1 ||
+        model === '无' ||
+        model === 'empty'
+    ) {
+        return false
+    }
+
+    const [platform, name] = parseRawModelName(model)
+
+    if (platform == null || name == null) {
+        return false
+    }
+
+    const models = ctx.chatluna.platform.listPlatformModels(
+        platform,
+        ModelType.llm
+    ).value
+
+    return models.length > 0 && models.some((m) => m.name === name)
+}
+
+function pickModel(ctx: Context, models: (string | null | undefined)[]) {
+    return models.find((model) => hasModel(ctx, model)) ?? null
 }
 
 export class ConversationService {
@@ -287,11 +317,12 @@ export class ConversationService {
             presetLane: getPresetLane(bindingKey),
             binding: binding ?? null,
             conversation: allowedConversation,
-            effectiveModel:
-                constraint.fixedModel ??
-                allowedConversation?.model ??
-                constraint.defaultModel ??
-                this.config.defaultModel,
+            effectiveModel: pickModel(this.ctx, [
+                constraint.fixedModel,
+                allowedConversation?.model,
+                constraint.defaultModel,
+                this.config.defaultModel
+            ]),
             effectivePreset:
                 constraint.fixedPreset ??
                 allowedConversation?.preset ??
@@ -364,8 +395,12 @@ export class ConversationService {
                     current = {
                         ...current,
                         conversation,
-                        effectiveModel:
-                            current.constraint.fixedModel ?? conversation.model,
+                        effectiveModel: pickModel(this.ctx, [
+                            current.constraint.fixedModel,
+                            conversation.model,
+                            current.constraint.defaultModel,
+                            this.config.defaultModel
+                        ]),
                         effectivePreset:
                             current.constraint.fixedPreset ??
                             conversation.preset,
@@ -398,7 +433,12 @@ export class ConversationService {
                         mode,
                         conversation,
                         conversationId: conversation.id,
-                        effectiveModel: conversation.model,
+                        effectiveModel: pickModel(this.ctx, [
+                            current.constraint.fixedModel,
+                            conversation.model,
+                            current.constraint.defaultModel,
+                            this.config.defaultModel
+                        ]),
                         effectivePreset: conversation.preset,
                         effectiveChatMode: conversation.chatMode
                     }

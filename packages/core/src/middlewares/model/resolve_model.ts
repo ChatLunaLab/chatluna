@@ -20,10 +20,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             try {
                 const modelName =
-                    resolved.effectiveModel ??
-                    resolved.conversation?.model ??
-                    config.defaultModel ??
-                    'empty'
+                    resolved.effectiveModel ?? config.defaultModel ?? 'empty'
                 const presetName =
                     resolved.effectivePreset ??
                     resolved.conversation?.preset ??
