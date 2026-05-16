@@ -153,6 +153,9 @@ export async function createModel(ctx: Context, model: string) {
     return ctx.chatluna.createChatModel(platform, modelName)
 }
 
-export const inject = ['chatluna', 'puppeteer']
+export const inject = {
+    required: ['chatluna', 'puppeteer'],
+    optional: ['chatluna_agent']
+}
 
 export const name = 'chatluna-search-service'

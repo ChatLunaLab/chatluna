@@ -1,3 +1,4 @@
+import type {} from 'koishi-plugin-chatluna-agent'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { StructuredTool } from '@langchain/core/tools'
@@ -402,6 +403,26 @@ class BrowserScreenshotTool extends StructuredTool {
             type: format,
             fullPage: input.uid ? undefined : input.fullPage
         })
+
+        const session = await this.manager.ctx.chatluna_agent?.computer
+            .getToolSession(cfg)
+            .catch(() => undefined)
+        if (session) {
+            const base =
+                session.cwd || session.getScopePath() || process.cwd()
+            const root = /^[A-Za-z]:[\\/]?$/.test(base)
+                ? `${base[0]}:/`
+                : base === '/'
+                  ? '/'
+                  : base.replace(/[\\/]+$/, '')
+            const sep = root.endsWith('/') ? '' : '/'
+            const file = input.filePath
+                ? input.filePath
+                : `${root}${sep}.tmp-chatluna-screenshot-${Date.now()}.${format}`
+            await session.writeFile(file, data)
+            return `Screenshot saved to: ${file}`
+        }
+
         const file = input.filePath
             ? resolve(input.filePath)
             : join(
