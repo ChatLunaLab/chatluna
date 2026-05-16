@@ -1,3 +1,5 @@
+import { SearchAction } from '../types'
+
 /**
  * 预处理内容，移除可能的 markdown 代码块标记
  */
@@ -17,10 +19,9 @@ export function preprocessContent(content: string): string {
 /**
  * 尝试解析 JSON，失败时返回 null
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function tryParseJSON(content: string): any {
+export function tryParseJSON<T>(content: string): T | null {
     try {
-        return JSON.parse(content)
+        return JSON.parse(content) as T
     } catch (e) {
         return null
     }
@@ -85,4 +86,28 @@ export function removeProperty<T extends object, K extends keyof T>(
     }
 
     return result as Omit<T, K>
+}
+
+export function parseSearchAction(content: string): SearchAction {
+    const action = preprocessContent(content)
+    const parsed = tryParseJSON<SearchAction>(action)
+
+    if (parsed) return parsed
+
+    const fixed = tryParseJSON<SearchAction>(attemptToFixJSON(action))
+
+    if (fixed) return fixed
+
+    if (action.includes('[skip]')) {
+        return {
+            action: 'skip',
+            thought: 'skip the search'
+        }
+    }
+
+    return {
+        action: 'search',
+        thought: action,
+        content: [action]
+    }
 }

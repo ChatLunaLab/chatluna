@@ -67,12 +67,7 @@ export interface ChatCompletionRequestMessageToolCall {
 }
 
 export interface ChatCompletionTool {
-    type:
-        | 'function'
-        | 'web_search'
-        | 'retrieval'
-        | 'code_interpreter'
-        | 'web_browser'
+    type: 'function' | 'web_search' | 'retrieval' | 'code_interpreter'
     function?: {
         name: string
         description: string

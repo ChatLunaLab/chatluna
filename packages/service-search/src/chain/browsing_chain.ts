@@ -23,12 +23,14 @@ import {
     PresetTemplate
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
-import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import {
+    ChatLunaTool,
+    ChatLunaToolRunnable
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { applyToolMask, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import { Session } from 'koishi'
 import { SearchAction, SummaryType } from '../types'
-import { attemptToFixJSON, preprocessContent } from '../utils/parse'
-import { PuppeteerBrowserTool } from '../tools/puppeteerBrowserTool'
+import { parseSearchAction } from '../utils/parse'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -36,6 +38,7 @@ import {
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaPromptRenderService } from 'koishi-plugin-chatluna/services/chat'
 import { ComputedRef, Ref } from 'koishi-plugin-chatluna'
+import { BrowserManager } from '../tools/browser/manager'
 
 // github.com/langchain-ai/weblangchain/blob/main/nextjs/app/api/chat/stream_log/route.ts#L81
 
@@ -56,6 +59,7 @@ export interface ChatLunaBrowsingChainInput {
     contextualCompressionPrompt?: string
     searchFailedPrompt: string
     variableService: ChatLunaPromptRenderService
+    browserManager: BrowserManager
 }
 
 export class ChatLunaBrowsingChain
@@ -86,7 +90,7 @@ export class ChatLunaBrowsingChain
 
     summaryModel: Ref<ChatLunaChatModel>
 
-    contextualCompressionPrompt: string
+    contextualCompressionPrompt?: string
 
     variableService: ChatLunaPromptRenderService
 
@@ -95,6 +99,8 @@ export class ChatLunaBrowsingChain
     searchPrompt: string
 
     searchFailedPrompt: string
+
+    browserManager: BrowserManager
 
     private _toolMask?: ToolMask
 
@@ -109,7 +115,12 @@ export class ChatLunaBrowsingChain
         summaryType,
         thoughtMessage,
         searchPrompt,
+        preset,
+        newQuestionPrompt,
+        variableService,
+        browserManager,
         summaryModel,
+        contextualCompressionPrompt,
         contextualCompressionChain
     }: ChatLunaBrowsingChainInput & {
         chain: ChatLunaLLMChain
@@ -120,17 +131,21 @@ export class ChatLunaBrowsingChain
     }) {
         super()
         this.botName = botName
+        this.preset = preset
 
         this.embeddings = embeddings
         this.summaryType = summaryType
-
-        // use memory
 
         this.formatQuestionChain = formatQuestionChain
 
         this.historyMemory = historyMemory
         this.thoughtMessage = thoughtMessage
         this.searchFailedPrompt = searchFailedPrompt
+        this.newQuestionPrompt = newQuestionPrompt
+        this.variableService = variableService
+        this.browserManager = browserManager
+        this.searchPrompt = searchPrompt
+        this.contextualCompressionPrompt = contextualCompressionPrompt
 
         this.responsePrompt = PromptTemplate.fromTemplate(searchPrompt)
         this.chain = chain
@@ -156,6 +171,7 @@ export class ChatLunaBrowsingChain
             searchFailedPrompt,
             variableService,
             contextManager,
+            browserManager,
             contextualCompressionPrompt
         }: ChatLunaBrowsingChainInput & {
             contextManager: ChatLunaContextManagerService
@@ -188,6 +204,7 @@ export class ChatLunaBrowsingChain
 
         return new ChatLunaBrowsingChain({
             variableService,
+            browserManager,
             botName,
             formatQuestionChain,
             embeddings,
@@ -201,11 +218,14 @@ export class ChatLunaBrowsingChain
             chain,
             tools,
             summaryType,
+            contextualCompressionPrompt,
             contextualCompressionChain
         })
     }
 
-    private async _selectTool(name: string): Promise<StructuredTool> {
+    private async _selectTool<T extends StructuredTool = StructuredTool>(
+        name: string
+    ): Promise<T> {
         const chatLunaTool = this.tools.value.find(
             (tool) => tool.name === name && applyToolMask(name, this._toolMask)
         )
@@ -216,7 +236,7 @@ export class ChatLunaBrowsingChain
 
         return chatLunaTool.tool.createTool({
             embeddings: this.embeddings
-        })
+        }) as T
     }
 
     async call({
@@ -258,7 +278,7 @@ export class ChatLunaBrowsingChain
                         chatHistory.slice(-6)
                     ),
                     time: new Date().toLocaleString(),
-                    question: message.content,
+                    question: getMessageContent(message.content),
                     temperature: 0,
                     signal
                 },
@@ -268,7 +288,7 @@ export class ChatLunaBrowsingChain
             )
         )['text'] as string
 
-        const searchAction = this.parseSearchAction(newQuestion)
+        const searchAction = parseSearchAction(newQuestion)
 
         logger?.debug(`action: ${JSON.stringify(searchAction)}`)
 
@@ -281,6 +301,7 @@ export class ChatLunaBrowsingChain
                 chatHistory,
                 session,
                 events,
+                conversationId,
                 signal
             )
         }
@@ -320,55 +341,15 @@ export class ChatLunaBrowsingChain
         }
     }
 
-    private parseSearchAction(action: string): SearchAction {
-        action = preprocessContent(action)
-
-        try {
-            return JSON.parse(action) as SearchAction
-        } catch (e) {
-            action = attemptToFixJSON(action)
-
-            try {
-                return JSON.parse(action) as SearchAction
-            } catch (e) {
-                logger?.error(`parse search action failed: ${e}`)
-            }
-        }
-
-        if (action.includes('[skip]')) {
-            return {
-                action: 'skip',
-                thought: 'skip the search'
-            }
-        }
-
-        return {
-            action: 'search',
-            thought: action,
-            content: [action]
-        }
-    }
-
     private async _search(
         action: SearchAction,
         message: HumanMessage,
         chatHistory: BaseMessage[],
         session: Session,
         events: ChatLunaLLMCallArg['events'],
+        conversationId: string,
         signal: AbortSignal
     ) {
-        const searchTool = await this._selectTool('web_search')
-
-        const webBrowserTool = (await this._selectTool(
-            'web_browser'
-        )) as PuppeteerBrowserTool
-
-        const searchResults: {
-            title: string
-            description: string
-            url: string
-        }[] = []
-
         if (!Array.isArray(action.content)) {
             logger?.error(
                 `search action content is not an array: ${JSON.stringify(action)}`
@@ -382,169 +363,163 @@ export class ChatLunaBrowsingChain
             )
         }
 
-        const searchByQuestion = async (
-            question: string,
-            signal: AbortSignal
-        ) => {
-            // Use the rephrased question for search
-            const rawSearchResults = await Promise.race([
-                searchTool
-                    .invoke(question, {
-                        configurable: {
-                            model: this.model
-                        }
-                    })
-                    .then((text) => text as string),
-                new Promise<never>((resolve, reject) => {
-                    signal?.addEventListener('abort', (event) => {
-                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
-                    })
+        const results =
+            action.action === 'url'
+                ? await this._browseUrls(
+                      action.content,
+                      session,
+                      conversationId,
+                      signal
+                  )
+                : await this._searchQuestions(
+                      action.content,
+                      session,
+                      conversationId,
+                      signal
+                  )
+
+        return await this._appendSearchPrompt(
+            action,
+            message,
+            chatHistory,
+            results,
+            events,
+            signal
+        )
+    }
+
+    private async _searchQuestions(
+        questions: string[],
+        session: Session,
+        conversationId: string,
+        signal: AbortSignal
+    ) {
+        const tool = await this._selectTool('web_search')
+        const results = await raceAbort(
+            Promise.all(
+                questions.map(async (question) => {
+                    const raw = await tool
+                        .invoke(question, {
+                            configurable: {
+                                model: this.model,
+                                session,
+                                conversationId
+                            }
+                        })
+                        .then((text) => text as string)
+                    const parsed = JSON.parse(raw) as SearchResultLike[]
+
+                    if (this.thoughtMessage) {
+                        await session.send(
+                            `Find ${parsed.length} search results about ${question}.`
+                        )
+                    }
+
+                    return parsed
                 })
-            ])
+            ),
+            signal
+        )
 
-            const parsedSearchResults =
-                (JSON.parse(rawSearchResults) as unknown as {
-                    title: string
-                    description: string
-                    url: string
-                }[]) ?? []
+        return results.flat()
+    }
 
-            if (this.thoughtMessage) {
-                await session.send(
-                    `Find ${parsedSearchResults.length} search results about ${question}.`
+    private async _browseUrls(
+        urls: string[],
+        session: Session,
+        conversationId: string,
+        signal: AbortSignal
+    ) {
+        const runConfig = {
+            configurable: {
+                model: this.model,
+                session,
+                conversationId
+            }
+        } as ChatLunaToolRunnable
+
+        return await raceAbort(
+            Promise.all(
+                urls.map(async (url) => {
+                    const text = await this.browserManager.readText(
+                        { url },
+                        runConfig
+                    )
+
+                    if (this.thoughtMessage) {
+                        await session.send(`Open ${url} and read the content.`)
+                    }
+
+                    return {
+                        title: url,
+                        description: text,
+                        url
+                    }
+                })
+            ),
+            signal
+        )
+    }
+
+    private async _appendSearchPrompt(
+        action: SearchAction,
+        message: HumanMessage,
+        chatHistory: BaseMessage[],
+        results: SearchResultLike[],
+        events: ChatLunaLLMCallArg['events'],
+        signal: AbortSignal
+    ) {
+        let context = formatSearchResults(results)
+
+        if (context.length < 1) {
+            if (this.searchFailedPrompt?.length > 0) {
+                chatHistory.push(
+                    new SystemMessage(
+                        this.searchFailedPrompt.replaceAll(
+                            '{question}',
+                            getMessageContent(message.content)
+                        )
+                    )
                 )
             }
-
-            searchResults.push(...parsedSearchResults)
+            return ''
         }
 
-        const searchByUrl = async (url: string, signal: AbortSignal) => {
-            const text = await Promise.race([
-                webBrowserTool
-                    .invoke(
+        if (this.contextualCompressionChain) {
+            try {
+                context = (
+                    await callChatLunaChain(
+                        this.contextualCompressionChain,
                         {
-                            action: 'text',
-                            url
+                            action: JSON.stringify(action),
+                            context,
+                            temperature: 0,
+                            signal
                         },
                         {
-                            configurable: {
-                                model: this.model
-                            }
+                            'llm-used-token-count':
+                                events['llm-used-token-count']
                         }
                     )
-                    .then((text) => text as string),
-                new Promise<never>((resolve, reject) => {
-                    signal?.addEventListener('abort', (event) => {
-                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
-                    })
-                })
-            ])
-
-            if (this.thoughtMessage) {
-                await session.send(`Open ${url} and read the content.`)
+                )['text'] as string
+            } catch (e) {
+                logger?.error(`contextual compression failed: ${e}`)
             }
-
-            searchResults.push({
-                title: url,
-                description: text,
-                url
-            })
         }
 
-        if (action.action === 'url') {
-            await Promise.race([
-                Promise.all(
-                    action.content.map((url) => searchByUrl(url, signal))
-                ),
-                new Promise((resolve, reject) => {
-                    signal?.addEventListener('abort', (event) => {
-                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
-                    })
-                })
-            ])
-        } else if (action.action === 'search') {
-            await Promise.race([
-                Promise.all(
-                    action.content.map((question) =>
-                        searchByQuestion(question, signal)
-                    )
-                ),
-                new Promise((resolve, reject) => {
-                    signal?.addEventListener('abort', (event) => {
-                        reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
-                    })
-                })
-            ])
-        }
-
-        // format questions
-
-        const formattedSearchResults = searchResults.map((result) => {
-            // sort like json style
-            // title: xx, xx: xx like
-            let resultString = ''
-
-            for (const key in result) {
-                resultString += `${key}: ${result[key]}, `
-            }
-
-            resultString = resultString.slice(0, -2)
-
-            return resultString
+        const prompt = await this.responsePrompt.format({
+            question: getMessageContent(message.content),
+            context
         })
 
-        let responsePrompt = ''
-        if (formattedSearchResults?.length > 0) {
-            let formattedSearchResult = formattedSearchResults.join('\n\n')
-
-            if (this.contextualCompressionChain) {
-                try {
-                    formattedSearchResult = (
-                        await callChatLunaChain(
-                            this.contextualCompressionChain,
-                            {
-                                action: JSON.stringify(action),
-                                context: formattedSearchResult,
-                                temperature: 0,
-                                signal
-                            },
-                            {
-                                'llm-used-token-count':
-                                    events['llm-used-token-count']
-                            }
-                        )
-                    )['text'] as string
-                } catch (e) {
-                    logger?.error(`contextual compression failed: ${e}`)
-                }
-            }
-
-            responsePrompt = await this.responsePrompt.format({
-                question: message.content,
-                context: formattedSearchResult
-            })
-
-            chatHistory.push(new SystemMessage(responsePrompt))
-
-            chatHistory.push(
-                new AIMessage(
-                    "OK. I understand. I will respond to the your's question using the same language as your input. What's the your's question?"
-                )
+        chatHistory.push(new SystemMessage(prompt))
+        chatHistory.push(
+            new AIMessage(
+                "OK. I understand. I will respond to the your's question using the same language as your input. What's the your's question?"
             )
-        } else if (this.searchFailedPrompt?.length > 0) {
-            chatHistory.push(
-                new SystemMessage(
-                    this.searchFailedPrompt.replaceAll(
-                        '{question}',
-                        getMessageContent(message.content)
-                    )
-                )
-            )
-        }
+        )
 
-        await webBrowserTool.closeBrowser()
-
-        return responsePrompt
+        return prompt
     }
 
     get model() {
@@ -561,4 +536,32 @@ const formatChatHistoryAsString = (history: BaseMessage[]) => {
 interface ChatLunaToolWrapper {
     name: string
     tool: ChatLunaTool
+}
+
+interface SearchResultLike {
+    title: string
+    description: string
+    url: string
+}
+
+function formatSearchResults(results: SearchResultLike[]) {
+    return results
+        .map((result) =>
+            Object.entries(result)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(', ')
+        )
+        .join('\n\n')
+}
+
+function raceAbort<T>(promise: Promise<T>, signal: AbortSignal) {
+    return new Promise<T>((resolve, reject) => {
+        const onAbort = () =>
+            reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
+
+        signal?.addEventListener('abort', onAbort, { once: true })
+        promise.then(resolve, reject).finally(() => {
+            signal?.removeEventListener('abort', onAbort)
+        })
+    })
 }

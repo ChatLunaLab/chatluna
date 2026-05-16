@@ -110,7 +110,8 @@ export class ChatLunaService extends Service<Config> {
         this._conversation = new ConversationService(
             ctx,
             config,
-            this._conversationRuntime
+            this._conversationRuntime,
+            this._platformService
         )
 
         this._createTempDir()

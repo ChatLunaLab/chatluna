@@ -6,8 +6,10 @@ $inner:
       topK: 'Number of reference results (2-50)'
       enhancedSummary: 'Enable enhanced summary'
       fastEnhancedSummary: 'Enable fast enhanced summary. This will not call the model and directly return the search results. (Requires a larger context model)'
-      puppeteerTimeout: 'Puppeteer operation timeout (ms)'
-      puppeteerIdleTimeout: 'Puppeteer idle timeout (ms)'
+      browserTimeout: 'Browser operation timeout (ms)'
+      browserIdleTimeout: 'Browser idle timeout (ms)'
+      browserMaxPages: 'Maximum browser pages per conversation'
+      browserOutputLimit: 'Maximum browser tool output length before saving to file'
       contextualCompression: 'Enable contextual compression. Will compress the search results based on the selected summary model.'
       summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'
       summaryType:

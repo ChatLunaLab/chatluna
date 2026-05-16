@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
 import type { Context, Session } from 'koishi'
+import type { PlatformService } from 'koishi-plugin-chatluna/llm-core/platform/service'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import type { Config } from '../config'
@@ -59,65 +60,6 @@ import {
 } from './types'
 import type { ConversationRuntime } from './conversation_runtime'
 
-function matchTargetConversation(
-    target: string,
-    normalized: string,
-    conversations: ConversationRecord[],
-    entries?: ConversationListEntry[]
-) {
-    const pick = (matches: ConversationRecord[]) => {
-        const active = matches.filter((c) => c.status !== 'archived')
-
-        if (active.length === 1) {
-            return active[0]
-        }
-
-        if (active.length > 1) {
-            throw new ConversationResolutionError('ambiguous_target')
-        }
-
-        if (matches.length === 1) {
-            return matches[0]
-        }
-
-        if (matches.length > 1) {
-            throw new ConversationResolutionError('ambiguous_target')
-        }
-
-        return null
-    }
-
-    const byId = conversations.find((c) => c.id === target)
-    if (byId != null) {
-        return byId
-    }
-
-    if (entries != null && /^\d+$/.test(target)) {
-        const seq = Number(target)
-        const bySeq = entries
-            .filter((item) => item.displaySeq === seq)
-            .map((item) => item.conversation)
-        const match = pick(bySeq)
-
-        if (match != null) {
-            return match
-        }
-    }
-
-    const exact = pick(
-        conversations.filter((c) => c.title.toLocaleLowerCase() === normalized)
-    )
-    if (exact != null) {
-        return exact
-    }
-
-    return pick(
-        conversations.filter((c) =>
-            c.title.toLocaleLowerCase().includes(normalized)
-        )
-    )
-}
-
 export class ConversationService {
     private readonly _bindingLocks = new Map<string, ObjectLock>()
     private readonly _titleLocks = new Map<string, ObjectLock>()
@@ -125,7 +67,8 @@ export class ConversationService {
     constructor(
         private readonly ctx: Context,
         private readonly config: Config,
-        private readonly runtime: ConversationRuntime
+        private readonly runtime: ConversationRuntime,
+        private readonly platform: PlatformService
     ) {}
 
     async getConversation(id: string) {
@@ -1772,9 +1715,7 @@ export class ConversationService {
     private checkChatMode(mode?: string | null) {
         if (
             mode != null &&
-            !this.ctx.chatluna.platform.chatChains.value.some(
-                (chain) => chain.name === mode
-            )
+            !this.platform.chatChains.value.some((chain) => chain.name === mode)
         ) {
             throw new Error(`Chat mode ${mode} not found.`)
         }
@@ -1937,11 +1878,10 @@ export class ConversationService {
                 continue
             }
 
-            const platformModels =
-                this.ctx.chatluna.platform.listPlatformModels(
-                    platform,
-                    ModelType.llm
-                ).value
+            const platformModels = this.platform.listPlatformModels(
+                platform,
+                ModelType.llm
+            ).value
 
             if (
                 platformModels.length > 0 &&
@@ -2271,4 +2211,63 @@ async function runLock<T>(
             locks.delete(key)
         }
     }
+}
+
+function matchTargetConversation(
+    target: string,
+    normalized: string,
+    conversations: ConversationRecord[],
+    entries?: ConversationListEntry[]
+) {
+    const pick = (matches: ConversationRecord[]) => {
+        const active = matches.filter((c) => c.status !== 'archived')
+
+        if (active.length === 1) {
+            return active[0]
+        }
+
+        if (active.length > 1) {
+            throw new ConversationResolutionError('ambiguous_target')
+        }
+
+        if (matches.length === 1) {
+            return matches[0]
+        }
+
+        if (matches.length > 1) {
+            throw new ConversationResolutionError('ambiguous_target')
+        }
+
+        return null
+    }
+
+    const byId = conversations.find((c) => c.id === target)
+    if (byId != null) {
+        return byId
+    }
+
+    if (entries != null && /^\d+$/.test(target)) {
+        const seq = Number(target)
+        const bySeq = entries
+            .filter((item) => item.displaySeq === seq)
+            .map((item) => item.conversation)
+        const match = pick(bySeq)
+
+        if (match != null) {
+            return match
+        }
+    }
+
+    const exact = pick(
+        conversations.filter((c) => c.title.toLocaleLowerCase() === normalized)
+    )
+    if (exact != null) {
+        return exact
+    }
+
+    return pick(
+        conversations.filter((c) =>
+            c.title.toLocaleLowerCase().includes(normalized)
+        )
+    )
 }

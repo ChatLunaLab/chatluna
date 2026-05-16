@@ -1,5 +1,5 @@
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { Context } from 'vm'
+import { Context } from 'koishi'
 import { Config } from '.'
 import { SearchManager } from './provide'
 // import start
@@ -18,13 +18,6 @@ export async function providerPlugin(
     plugin: ChatLunaPlugin,
     manager: SearchManager
 ) {
-    type Plugin = (
-        ctx: Context,
-        config: Config,
-        plugin: ChatLunaPlugin,
-        manager: SearchManager
-    ) => PromiseLike<void> | void
-
     const middlewares: Plugin[] =
         // middleware start
         [
@@ -42,3 +35,10 @@ export async function providerPlugin(
         await middleware(ctx, config, plugin, manager)
     }
 }
+
+type Plugin = (
+    ctx: Context,
+    config: Config,
+    plugin: ChatLunaPlugin,
+    manager: SearchManager
+) => PromiseLike<void> | void

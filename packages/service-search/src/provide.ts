@@ -65,6 +65,8 @@ export class SearchManager {
               )
             : Array.from(this.providers.values())
 
+        if (providers.length < 1) return []
+
         if (providers.length === 1) {
             // 一个源就不用分了，直接返回
             try {
@@ -82,7 +84,7 @@ export class SearchManager {
 
         const signalLimit =
             this.config.multiSourceMode === 'average'
-                ? Math.round(limit / providers.length)
+                ? Math.max(1, Math.round(limit / providers.length))
                 : limit
 
         const searchPromises = providers.map(async (provider) => {
@@ -99,7 +101,7 @@ export class SearchManager {
 
         await Promise.all(searchPromises)
 
-        if (searchPromises.length > limit) {
+        if (searchResults.length > limit) {
             return this._reRankResults(query, searchResults, limit)
         }
 

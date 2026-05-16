@@ -324,7 +324,14 @@ function applyOpencodeFrontmatter(
         applyPermissionMode(item.bash, ['bash'], permissions.tools)
         applyPermissionMode(
             item.webfetch,
-            ['web_search', 'web_browser'],
+            [
+                'web_search',
+                'browser_open',
+                'browser_read_text',
+                'browser_get_html',
+                'browser_get_links',
+                'browser_summarize'
+            ],
             permissions.tools
         )
         applyPermissionMode(item.task, ['task'], permissions.tools)
@@ -452,7 +459,16 @@ function mapCompatToolName(name: string) {
     if (lower === 'bash') return ['bash']
     if (lower === 'grep') return ['grep']
     if (lower === 'glob') return ['glob']
-    if (lower === 'webfetch') return ['web_search', 'web_browser']
+    if (lower === 'webfetch') {
+        return [
+            'web_search',
+            'browser_open',
+            'browser_read_text',
+            'browser_get_html',
+            'browser_get_links',
+            'browser_summarize'
+        ]
+    }
     if (lower === 'task' || lower === 'agent' || lower.startsWith('agent(')) {
         return ['task']
     }
