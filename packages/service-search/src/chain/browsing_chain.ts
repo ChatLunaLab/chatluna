@@ -277,7 +277,7 @@ export class ChatLunaBrowsingChain
                     chat_history: formatChatHistoryAsString(
                         chatHistory.slice(-6)
                     ),
-                    time: new Date().toLocaleString(),
+                    time: new Date().toISOString(),
                     question: getMessageContent(message.content),
                     temperature: 0,
                     signal
@@ -396,7 +396,7 @@ export class ChatLunaBrowsingChain
     ) {
         const tool = await this._selectTool('web_search')
         const results = await raceAbort(
-            Promise.all(
+            Promise.allSettled(
                 questions.map(async (question) => {
                     const raw = await tool
                         .invoke(question, {
@@ -421,7 +421,9 @@ export class ChatLunaBrowsingChain
             signal
         )
 
-        return results.flat()
+        return results.flatMap((result) =>
+            result.status === 'fulfilled' ? result.value : []
+        )
     }
 
     private async _browseUrls(
@@ -438,8 +440,8 @@ export class ChatLunaBrowsingChain
             }
         } as ChatLunaToolRunnable
 
-        return await raceAbort(
-            Promise.all(
+        const results = await raceAbort(
+            Promise.allSettled(
                 urls.map(async (url) => {
                     const text = await this.browserManager.readText(
                         { url },
@@ -458,6 +460,10 @@ export class ChatLunaBrowsingChain
                 })
             ),
             signal
+        )
+
+        return results.flatMap((result) =>
+            result.status === 'fulfilled' ? [result.value] : []
         )
     }
 
@@ -515,7 +521,7 @@ export class ChatLunaBrowsingChain
         chatHistory.push(new SystemMessage(prompt))
         chatHistory.push(
             new AIMessage(
-                "OK. I understand. I will respond to the your's question using the same language as your input. What's the your's question?"
+                "OK. I understand. I will respond to your question using the same language as your input. What's your question?"
             )
         )
 
@@ -555,6 +561,10 @@ function formatSearchResults(results: SearchResultLike[]) {
 }
 
 function raceAbort<T>(promise: Promise<T>, signal: AbortSignal) {
+    if (signal?.aborted) {
+        return Promise.reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))
+    }
+
     return new Promise<T>((resolve, reject) => {
         const onAbort = () =>
             reject(new ChatLunaError(ChatLunaErrorCode.ABORTED))

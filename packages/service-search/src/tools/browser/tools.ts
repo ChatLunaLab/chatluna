@@ -1,6 +1,6 @@
 import type {} from 'koishi-plugin-chatluna-agent'
 import { mkdir, writeFile } from 'fs/promises'
-import { dirname, join, resolve } from 'path'
+import { resolve, sep } from 'path'
 import { StructuredTool } from '@langchain/core/tools'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { ComputedRef } from 'koishi-plugin-chatluna'
@@ -30,6 +30,16 @@ const INPUT_META = {
 const DEBUG_META = {
     ...PAGE_META,
     tags: ['browser', 'web', 'debug']
+}
+
+const EVALUATE_META = {
+    ...DEBUG_META,
+    defaultAvailability: {
+        enabled: false,
+        main: false,
+        chatluna: false,
+        characterScope: 'none' as const
+    }
 }
 
 const openSchema = z.object({
@@ -111,18 +121,19 @@ export function registerBrowserTools(
             createTool: () => item,
             selector: () => true,
             meta:
-                item.name.includes('click') ||
-                item.name.includes('fill') ||
-                item.name.includes('type') ||
-                item.name.includes('key') ||
-                item.name.includes('upload') ||
-                item.name.includes('hover')
-                    ? INPUT_META
-                    : item.name.includes('evaluate') ||
-                        item.name.includes('console') ||
-                        item.name.includes('network')
-                      ? DEBUG_META
-                      : PAGE_META
+                item.name === 'browser_evaluate'
+                    ? EVALUATE_META
+                    : item.name.includes('click') ||
+                        item.name.includes('fill') ||
+                        item.name.includes('type') ||
+                        item.name.includes('key') ||
+                        item.name.includes('upload') ||
+                        item.name.includes('hover')
+                      ? INPUT_META
+                      : item.name.includes('console') ||
+                          item.name.includes('network')
+                        ? DEBUG_META
+                        : PAGE_META
         })
     }
 }
@@ -207,14 +218,24 @@ class BrowserNavigateTool extends StructuredTool {
     description =
         'Navigate the selected browser page by URL, back, forward, or reload.'
 
-    schema = pageIdSchema.extend({
-        action: z.enum(['url', 'back', 'forward', 'reload']),
-        url: z.string().optional().describe('Required when action is url.'),
-        waitUntil: z
-            .enum(['load', 'domcontentloaded', 'networkidle0', 'networkidle2'])
-            .optional(),
-        timeout: z.number().optional()
-    })
+    schema = pageIdSchema
+        .extend({
+            action: z.enum(['url', 'back', 'forward', 'reload']),
+            url: z.string().optional().describe('Required when action is url.'),
+            waitUntil: z
+                .enum([
+                    'load',
+                    'domcontentloaded',
+                    'networkidle0',
+                    'networkidle2'
+                ])
+                .optional(),
+            timeout: z.number().optional()
+        })
+        .refine((input) => input.action !== 'url' || !!input.url, {
+            message: 'url is required when action is url',
+            path: ['url']
+        })
 
     constructor(private manager: BrowserManager) {
         super()
@@ -225,7 +246,9 @@ class BrowserNavigateTool extends StructuredTool {
         _,
         cfg: ChatLunaToolRunnable
     ) {
-        if (!input.action) throw new Error('action is required')
+        if (input.action === 'url' && !input.url) {
+            throw new Error('url is required when action is url')
+        }
         const page = await this.manager.navigate(
             Object.assign({}, input, { action: input.action }),
             cfg
@@ -399,42 +422,53 @@ class BrowserScreenshotTool extends StructuredTool {
             ? await this.manager.getElement(page, input.uid)
             : page.page
         const format = input.format ?? 'png'
-        const data = await target.screenshot({
-            type: format,
-            fullPage: input.uid ? undefined : input.fullPage
-        })
-
-        const session = await this.manager.ctx.chatluna_agent?.computer
-            .getToolSession(cfg)
-            .catch(() => undefined)
-        if (session) {
-            const base =
-                session.cwd || session.getScopePath() || process.cwd()
-            const root = /^[A-Za-z]:[\\/]?$/.test(base)
-                ? `${base[0]}:/`
-                : base === '/'
-                  ? '/'
-                  : base.replace(/[\\/]+$/, '')
-            const sep = root.endsWith('/') ? '' : '/'
-            const file = input.filePath
-                ? input.filePath
-                : `${root}${sep}.tmp-chatluna-screenshot-${Date.now()}.${format}`
-            await session.writeFile(file, data)
-            return `Screenshot saved to: ${file}`
+        const rawName = input.filePath
+            ? input.filePath.split(/[\\/]/).pop()
+            : `screenshot-${Date.now()}.${format}`
+        if (!rawName || rawName === '.' || rawName === '..') {
+            throw new Error('invalid screenshot file name')
         }
+        const name = rawName.replace(/[^A-Za-z0-9._-]/g, '_')
 
-        const file = input.filePath
-            ? resolve(input.filePath)
-            : join(
-                  resolve(
-                      this.manager.ctx.baseDir,
-                      'data/chatluna/browser-output'
-                  ),
-                  `screenshot-${Date.now()}.${format}`
-              )
-        await mkdir(dirname(file), { recursive: true })
-        await writeFile(file, data)
-        return `Screenshot saved to: ${file}`
+        try {
+            const data = await target.screenshot({
+                type: format,
+                fullPage: input.uid ? undefined : input.fullPage
+            })
+
+            const session = await this.manager.ctx.chatluna_agent?.computer
+                .getToolSession(cfg)
+                .catch(() => undefined)
+            if (session) {
+                const base =
+                    session.cwd || session.getScopePath() || process.cwd()
+                const root = /^[A-Za-z]:[\\/]?$/.test(base)
+                    ? `${base[0]}:/`
+                    : base === '/'
+                      ? '/'
+                      : base.replace(/[\\/]+$/, '')
+                const slash = root.endsWith('/') ? '' : '/'
+                const file = `${root}${slash}.chatluna-browser-output/${name}`
+                await session.writeFile(file, data)
+                return `Screenshot saved to: ${file}`
+            }
+
+            const dir = resolve(
+                this.manager.ctx.baseDir,
+                'data/chatluna/browser-output'
+            )
+            const file = resolve(dir, name)
+            if (!file.startsWith(dir + sep)) {
+                throw new Error('invalid screenshot file name')
+            }
+            await mkdir(dir, { recursive: true })
+            await writeFile(file, data)
+            return `Screenshot saved to: ${file}`
+        } finally {
+            if (input.uid) {
+                await (target as ElementHandle<Element>).dispose()
+            }
+        }
     }
 }
 
@@ -607,9 +641,19 @@ class BrowserUploadFileTool extends StructuredTool {
         const page = this.manager.getPage(cfg, input.pageId)
         const el = await this.manager.getElement(page, input.uid)
         try {
-            await (el as ElementHandle<HTMLInputElement>).uploadFile(
-                input.filePath
+            const dir = resolve(
+                this.manager.ctx.baseDir,
+                'data/chatluna/browser-upload'
             )
+            const name = input.filePath.split(/[\\/]/).pop()
+            if (!name || name === '.' || name === '..') {
+                throw new Error('invalid upload file name')
+            }
+            const file = resolve(dir, name)
+            if (!file.startsWith(dir + sep)) {
+                throw new Error('invalid upload file name')
+            }
+            await (el as ElementHandle<HTMLInputElement>).uploadFile(file)
         } finally {
             await el.dispose()
         }

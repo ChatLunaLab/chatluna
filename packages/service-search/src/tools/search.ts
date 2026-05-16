@@ -80,13 +80,23 @@ export class SearchTool extends Tool {
             })) as Document[]
         }
 
-        const docs = await Promise.all(
-            results.map((result) =>
-                this.createDocuments(result, query, llm, runConfig)
-            )
-        )
+        const docs: Document[] = []
+        for (const result of results) {
+            try {
+                docs.push(
+                    ...(await this.createDocuments(
+                        result,
+                        query,
+                        llm,
+                        runConfig
+                    ))
+                )
+            } catch (err) {
+                logger.error(err)
+            }
+        }
 
-        return docs.flat()
+        return docs
     }
 
     private async createDocuments(
@@ -129,14 +139,22 @@ export class SearchTool extends Tool {
             return result.description
         }
 
-        const text =
-            this.summaryType === SummaryType.Quality
-                ? await this.browser.summarize(
-                      { url: result.url, focus: query },
-                      llm,
-                      runConfig
-                  )
-                : await this.browser.readText({ url: result.url }, runConfig)
+        const text = await (async () => {
+            try {
+                return this.summaryType === SummaryType.Quality
+                    ? await this.browser.summarize(
+                          { url: result.url, focus: query },
+                          llm,
+                          runConfig
+                      )
+                    : await this.browser.readText(
+                          { url: result.url },
+                          runConfig
+                      )
+            } catch {
+                return result.description
+            }
+        })()
 
         if (isBrowserError(text)) return result.description
 

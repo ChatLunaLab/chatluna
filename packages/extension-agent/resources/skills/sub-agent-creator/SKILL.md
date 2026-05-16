@@ -36,8 +36,8 @@ subagents` so the local ChatLuna path is updated.
     - Read-only agents usually need `file_read`, `glob`, and `grep`.
     - Focused coding agents usually need `file_read`, `file_edit`, `file_write`,
       `glob`, `grep`, and sometimes `bash`.
-    - Web research agents may need `web_search`, `browser_read_text`, and
-      `browser_summarize`.
+    - Web research agents may need `browser_open`, `web_search`,
+      `browser_read_text`, and `browser_summarize`.
     - Keep computer access denied unless the task truly needs desktop control.
 
 3. Choose model and turn budget.

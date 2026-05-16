@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, readdir, rm, stat, writeFile } from 'fs/promises'
 import { join, resolve } from 'path'
 import { Context, Disposable, Time } from 'koishi'
 import type {
@@ -376,6 +376,13 @@ export class BrowserManager {
             `${input.name}-${Date.now()}-${randomUUID()}.txt`
         )
         await mkdir(dir, { recursive: true })
+        for (const item of await readdir(dir).catch(() => [])) {
+            const old = join(dir, item)
+            const info = await stat(old).catch(() => undefined)
+            if (info?.isFile() && Date.now() - info.mtimeMs > Time.day) {
+                await rm(old, { force: true })
+            }
+        }
         await writeFile(file, input.text, 'utf-8')
         return [
             `Output too large (${input.text.length} chars). Truncated preview below.`,
@@ -407,8 +414,13 @@ export class BrowserManager {
         while (session.pages.size > this.config.browserMaxPages) {
             const id = session.pages.keys().next().value
             const page = session.pages.get(id)
-            await page?.close()
-            session.pages.delete(id)
+            try {
+                await page?.close()
+            } catch (err) {
+                this.ctx.logger.error(err)
+            } finally {
+                session.pages.delete(id)
+            }
         }
     }
 
@@ -444,7 +456,7 @@ function assignSnapshotIds(
     nextId: () => string
 ): BrowserSnapshotNode {
     const uid = nextId()
-    const node = Object.assign({}, raw, {
+    const node = Object.assign(Object.create(Object.getPrototypeOf(raw)), raw, {
         uid,
         children: (raw.children ?? []).map((child) =>
             assignSnapshotIds(child, nodes, nextId)

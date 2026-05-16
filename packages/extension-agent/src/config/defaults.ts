@@ -378,10 +378,10 @@ export function createDefaultToolConfig(): ToolConfig {
                 group: 'browser',
                 tags: ['browser', 'web', 'debug'],
                 defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
+                    enabled: false,
+                    main: false,
+                    chatluna: false,
+                    characterScope: 'none'
                 }
             }),
             browser_console: createToolMetaOverride({
