@@ -615,10 +615,15 @@ class BrowserPressKeyTool extends StructuredTool {
         const page = this.manager.getPage(cfg, input.pageId)
         const keys = input.key.split('+')
         const key = keys.pop()
-        for (const item of keys) await page.page.keyboard.down(item as KeyInput)
-        await page.page.keyboard.press(key as KeyInput)
-        for (const item of keys.reverse()) {
-            await page.page.keyboard.up(item as KeyInput)
+        try {
+            for (const item of keys) {
+                await page.page.keyboard.down(item as KeyInput)
+            }
+            await page.page.keyboard.press(key as KeyInput)
+        } finally {
+            for (const item of [...keys].reverse()) {
+                await page.page.keyboard.up(item as KeyInput)
+            }
         }
         return `Pressed key: ${input.key}`
     }

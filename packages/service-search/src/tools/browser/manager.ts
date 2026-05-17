@@ -323,9 +323,20 @@ export class BrowserManager {
         model: ChatLunaChatModel,
         runConfig?: ChatLunaToolRunnable
     ) {
-        const text = await this.readText(
-            Object.assign({}, input, { maxLength: undefined }),
-            runConfig
+        const page = input.url
+            ? await this.open(
+                  {
+                      url: input.url,
+                      waitUntil: input.waitUntil,
+                      timeout: input.timeout
+                  },
+                  runConfig
+              )
+            : this.getPage(runConfig, input.pageId)
+        const text = await page.page.evaluate(
+            (selector, includeLinks) => readBrowserText(selector, includeLinks),
+            input.selector,
+            input.includeLinks ?? false
         )
         const summary = await model.invoke(
             createSummaryPrompt(text, input.focus),
