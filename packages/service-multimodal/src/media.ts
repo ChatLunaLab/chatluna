@@ -11,7 +11,10 @@ export function detectAudioMimeType(
     ) {
         return 'audio/silk'
     }
-    if (header.startsWith('ID3') || buffer[0] === 0xff) {
+    if (
+        header.startsWith('ID3') ||
+        (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0)
+    ) {
         return 'audio/mpeg'
     }
     if (

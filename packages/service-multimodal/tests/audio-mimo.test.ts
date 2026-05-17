@@ -147,3 +147,23 @@ test('detects AMR audio even when storage declares it as MP3', () => {
         'audio/mpeg'
     )
 })
+
+test('does not misidentify JPEG as audio/mpeg', () => {
+    // JPEG starts with FF D8 FF E0 (JFIF) — 0xD8 & 0xE0 = 0xC0, not an MP3 sync
+    const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46])
+    assert.equal(
+        detectAudioMimeType(jpegHeader, 'image/jpeg'),
+        'image/jpeg'
+    )
+    assert.equal(detectAudioMimeType(jpegHeader, null), null)
+})
+
+test('still detects valid MP3 frame sync', () => {
+    // MP3: FF FB (MPEG1 Layer3) — 0xFB & 0xE0 = 0xE0, valid sync
+    const mp3Header = Buffer.from([0xff, 0xfb, 0x90, 0x00])
+    assert.equal(detectAudioMimeType(mp3Header, null), 'audio/mpeg')
+
+    // MP3: FF F3 (MPEG2 Layer3)
+    const mp3v2Header = Buffer.from([0xff, 0xf3, 0x90, 0x00])
+    assert.equal(detectAudioMimeType(mp3v2Header, null), 'audio/mpeg')
+})
