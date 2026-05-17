@@ -11,6 +11,7 @@ import {
     processImageWithModel,
     readImage
 } from '../utils'
+import { modelCanReadImage } from '../audio'
 
 export async function apply(
     ctx: Context,
@@ -29,10 +30,7 @@ export async function apply(
                     ? ctx.chatluna.platform.findModel(model)
                     : undefined
             const modelSupportsImageInput =
-                parsedModelInfo?.value != null &&
-                parsedModelInfo.value.capabilities.includes(
-                    ModelCapabilities.ImageInput
-                )
+                modelCanReadImage(parsedModelInfo, model)
 
             let imageData: Awaited<ReturnType<typeof readImage>>
             const url = (element.attrs.url ?? element.attrs.src) as string

@@ -3,6 +3,7 @@ import { StructuredTool } from '@langchain/core/tools'
 import { HumanMessage, MessageContentComplex } from '@langchain/core/messages'
 import { Context } from 'koishi'
 import { ComputedRef, Message } from 'koishi-plugin-chatluna'
+import type {} from 'koishi-plugin-ffmpeg-path'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ChatLunaToolRunnable,
@@ -12,7 +13,6 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     isMessageContentAudio,
     isMessageContentVideo,
-    type MessageContentAudio,
     type MessageContentVideo
 } from 'koishi-plugin-chatluna/utils/langchain'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
@@ -23,6 +23,18 @@ import {
     parseGifToFrames,
     processImageWithModel
 } from '../utils'
+import {
+    buildAudioContent,
+    buildImageContent,
+    isMimoAudioMime,
+    isMimoImageMime,
+    MIMO_BASE64_AUDIO_BYTES,
+    MIMO_BASE64_IMAGE_BYTES,
+    modelCanReadAudio,
+    modelCanReadImage
+} from '../audio'
+import { detectAudioMimeType } from '../media'
+import { readFilesInputSchema } from '../read_files_schema'
 import z from 'zod'
 
 // ---------------------------------------------------------------------------
@@ -97,6 +109,28 @@ function normalizeMimeType(raw: string | null): string | null {
     return mimeType || null
 }
 
+function getHeaderValue(headers: unknown, name: string): string | null {
+    if (headers == null) return null
+
+    if (
+        typeof (headers as { get?: unknown }).get === 'function'
+    ) {
+        const value = (headers as { get(name: string): string | null }).get(
+            name
+        )
+        return typeof value === 'string' ? value : null
+    }
+
+    const record = headers as Record<string, unknown>
+    const value = record[name] ?? record[name.toLowerCase()]
+    if (typeof value === 'string') return value
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0]
+    }
+
+    return null
+}
+
 function inferMimeTypeFromPath(path: string): string | null {
     const sanitizedPath = path.toLowerCase().split(/[?#]/, 1)[0]
     const fileName = sanitizedPath.split(/[/\\]/).pop() ?? sanitizedPath
@@ -121,6 +155,37 @@ function inferMimeTypeFromUrl(url: string): string | null {
     return null
 }
 
+async function convertAudioBufferToMp3(
+    ctx: Context,
+    buffer: Buffer
+): Promise<Buffer | null> {
+    const ffmpeg = ctx.ffmpeg
+    if (!ffmpeg) {
+        return null
+    }
+
+    try {
+        return await ffmpeg
+            .builder()
+            .input(buffer)
+            .outputOption(
+                '-vn',
+                '-acodec',
+                'libmp3lame',
+                '-q:a',
+                '4',
+                '-f',
+                'mp3'
+            )
+            .run('buffer')
+    } catch (error) {
+        logger.warn(
+            `read_files audio transcoding to mp3 failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+        return null
+    }
+}
+
 /**
  * Check whether the model natively supports a given MIME type based on its
  * capabilities and `FileHandlingConfig`.
@@ -133,9 +198,15 @@ function modelSupportsNativeMimeType(
 
     let capabilitySupportsMime = false
     if (IMAGE_MIME_TYPES.has(mimeType)) {
-        capabilitySupportsMime = caps.includes(ModelCapabilities.ImageInput)
+        capabilitySupportsMime = modelCanReadImage(
+            { value: model.modelInfo },
+            model.modelInfo.name
+        )
     } else if (mimeType.startsWith('audio/')) {
-        capabilitySupportsMime = caps.includes(ModelCapabilities.AudioInput)
+        capabilitySupportsMime = modelCanReadAudio(
+            { value: model.modelInfo },
+            model.modelInfo.name
+        )
     } else if (mimeType.startsWith('video/')) {
         capabilitySupportsMime = caps.includes(ModelCapabilities.VideoInput)
     } else if (
@@ -207,7 +278,8 @@ function buildMultimodalMessage(
         base64Data: string
         sourceUrl: string
     }[],
-    insertPrompt: string
+    insertPrompt: string,
+    model?: string
 ): HumanMessage {
     const content: MessageContentComplex[] = []
 
@@ -215,22 +287,13 @@ function buildMultimodalMessage(
         const { mimeType, base64Data } = part
 
         if (IMAGE_MIME_TYPES.has(mimeType)) {
-            content.push({
-                type: 'image_url',
-                image_url: {
-                    url: `data:${mimeType};base64,${base64Data}`
-                }
-            })
+            content.push(buildImageContent(base64Data, mimeType))
         } else if (mimeType.startsWith('audio/')) {
-            const audioContent: MessageContentAudio = {
-                type: 'audio_url',
-                audio_url: {
-                    url: `data:${mimeType};base64,${base64Data}`,
-                    mimeType
-                }
-            }
+            const audioContent = buildAudioContent(model, base64Data, mimeType)
 
             if (isMessageContentAudio(audioContent as MessageContentComplex)) {
+                content.push(audioContent as MessageContentComplex)
+            } else if (audioContent.type === 'input_audio') {
                 content.push(audioContent as MessageContentComplex)
             }
         } else if (mimeType.startsWith('video/')) {
@@ -274,25 +337,7 @@ export class ReadFilesTool extends StructuredTool {
     name = 'read_files'
     description: string
 
-    schema = z.object({
-        files: z
-            .union([
-                z.object({
-                    url: z.string().url()
-                }),
-                z
-                    .array(
-                        z.object({
-                            url: z.string().url()
-                        })
-                    )
-                    .min(1)
-                    .max(10)
-            ])
-            .describe(
-                'One file or a list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
-            )
-    })
+    schema = readFilesInputSchema
 
     constructor(
         private readonly ctx: Context,
@@ -383,23 +428,21 @@ export class ReadFilesTool extends StructuredTool {
                 const buffer = Buffer.from(httpResponse.data)
 
                 // Resolve MIME type from response headers or URL
-                const headers = httpResponse.headers as unknown as
-                    | Record<string, unknown>
-                    | undefined
-                const rawCt =
-                    headers?.['content-type'] ?? headers?.['Content-Type']
-                let responseMimeType: string | null = null
-                if (typeof rawCt === 'string') {
-                    responseMimeType = normalizeMimeType(rawCt)
-                } else if (
-                    Array.isArray(rawCt) &&
-                    typeof rawCt[0] === 'string'
-                ) {
-                    responseMimeType = normalizeMimeType(rawCt[0])
-                }
+                const responseMimeType = normalizeMimeType(
+                    getHeaderValue(httpResponse.headers, 'content-type')
+                )
 
-                const mimeType =
+                const declaredMimeType =
                     responseMimeType ?? inferMimeTypeFromUrl(sourceUrl)
+                const detectedAudioMimeType = detectAudioMimeType(
+                    buffer,
+                    declaredMimeType
+                )
+                const mimeType =
+                    declaredMimeType?.startsWith('audio/') ||
+                    detectedAudioMimeType?.startsWith('audio/')
+                        ? detectedAudioMimeType
+                        : declaredMimeType
 
                 if (!mimeType) {
                     pushError(
@@ -418,23 +461,60 @@ export class ReadFilesTool extends StructuredTool {
 
                 // Check if the model supports this MIME type natively
                 const isImage = IMAGE_MIME_TYPES.has(mimeType)
+                const isAudio = mimeType.startsWith('audio/')
                 const modelSupports =
                     model != null &&
-                    modelSupportsNativeMimeType(model, mimeType)
+                    (isAudio
+                        ? modelCanReadAudio(
+                              { value: model.modelInfo },
+                              model.modelInfo.name
+                          )
+                        : modelSupportsNativeMimeType(model, mimeType))
 
                 if (modelSupports && !isImage) {
                     // Non-image file that the model supports natively -> inline inject
-                    const maxFileSize =
-                        fileConfig?.maxFileSizeBytesOverrides?.[mimeType] ??
-                        fileConfig?.maxFileSizeBytes ??
-                        DEFAULT_MAX_FILE_SIZE_BYTES
+                    let nativeBuffer: Buffer = buffer
+                    let nativeMimeType = mimeType
 
-                    const encodedSize = getBase64EncodedSize(buffer.byteLength)
+                    if (isAudio && !isMimoAudioMime(mimeType)) {
+                        const converted = await convertAudioBufferToMp3(
+                            this.ctx,
+                            buffer
+                        )
+
+                        if (!converted) {
+                            pushError(
+                                `Unsupported audio MIME type "${mimeType}" and ffmpeg conversion to MP3 failed.`,
+                                mimeType
+                            )
+                            continue
+                        }
+
+                        nativeBuffer = converted
+                        nativeMimeType = 'audio/mpeg'
+                        logger.debug(
+                            `Transcoded read_files audio from ${mimeType} to audio/mpeg for multimodal input`
+                        )
+                    }
+
+                    const maxFileSize =
+                        isMimoAudioMime(nativeMimeType) &&
+                        modelCanReadAudio(undefined, model?.modelInfo.name)
+                            ? MIMO_BASE64_AUDIO_BYTES
+                            : (fileConfig?.maxFileSizeBytesOverrides?.[
+                                  nativeMimeType
+                              ] ??
+                              fileConfig?.maxFileSizeBytes ??
+                              DEFAULT_MAX_FILE_SIZE_BYTES)
+
+                    const encodedSize = getBase64EncodedSize(
+                        nativeBuffer.byteLength
+                    )
 
                     if (encodedSize > maxFileSize) {
                         pushError(
-                            `File too large (${encodedSize} bytes after base64), max ${maxFileSize} bytes for ${mimeType}`,
-                            mimeType
+                            `File too large (${encodedSize} bytes after base64), max ${maxFileSize} bytes for ${nativeMimeType}`,
+                            nativeMimeType
                         )
                         continue
                     }
@@ -442,21 +522,21 @@ export class ReadFilesTool extends StructuredTool {
                     if (totalBase64Bytes + encodedSize > maxTotalSize) {
                         pushError(
                             `Total inline upload size too large (${totalBase64Bytes + encodedSize} bytes), max ${maxTotalSize} bytes per request`,
-                            mimeType
+                            nativeMimeType
                         )
                         continue
                     }
 
                     totalBase64Bytes += encodedSize
                     nativeParts.push({
-                        mimeType,
-                        base64Data: buffer.toString('base64'),
+                        mimeType: nativeMimeType,
+                        base64Data: nativeBuffer.toString('base64'),
                         sourceUrl
                     })
 
                     response.files.push({
                         sourceUrl,
-                        mimeType,
+                        mimeType: nativeMimeType,
                         status: 'ok'
                     })
                     response.successCount++
@@ -464,9 +544,14 @@ export class ReadFilesTool extends StructuredTool {
                     // Image that the model supports natively -> inject directly
                     // Unified per-file size check before any branching
                     const maxFileSize =
-                        fileConfig?.maxFileSizeBytesOverrides?.[mimeType] ??
-                        fileConfig?.maxFileSizeBytes ??
-                        DEFAULT_MAX_FILE_SIZE_BYTES
+                        isMimoImageMime(mimeType) &&
+                        modelCanReadImage(undefined, model?.modelInfo.name)
+                            ? MIMO_BASE64_IMAGE_BYTES
+                            : (fileConfig?.maxFileSizeBytesOverrides?.[
+                                  mimeType
+                              ] ??
+                              fileConfig?.maxFileSizeBytes ??
+                              DEFAULT_MAX_FILE_SIZE_BYTES)
 
                     const encodedSize = getBase64EncodedSize(buffer.byteLength)
 
@@ -592,7 +677,8 @@ export class ReadFilesTool extends StructuredTool {
         if (nativeParts.length > 0 && conversationId) {
             const message = buildMultimodalMessage(
                 nativeParts,
-                this.config.fileInsertPrompt
+                this.config.fileInsertPrompt,
+                model?.modelInfo.name
             )
 
             this.ctx.chatluna.contextManager.inject({

@@ -2,10 +2,15 @@ import { MessageContentComplex } from '@langchain/core/messages'
 import { Context, h, Session } from 'koishi'
 import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
 import { Message } from 'koishi-plugin-chatluna'
-import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import type {} from 'koishi-plugin-ffmpeg-path'
 import { Config, logger } from '..'
+import {
+    buildAudioContent,
+    isMimoAudioModel,
+    MIMO_BASE64_AUDIO_BYTES,
+    modelCanReadAudio
+} from '../audio'
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -24,12 +29,7 @@ export function apply(ctx: Context, config: Config) {
                     ? ctx.chatluna.platform.findModel(model)
                     : undefined
 
-                // If the model doesn't accept audio input, keep fallback path unchanged.
-                if (
-                    modelInfo?.value?.capabilities?.includes(
-                        ModelCapabilities.AudioInput
-                    ) === false
-                ) {
+                if (!modelCanReadAudio(modelInfo, model)) {
                     return false
                 }
 
@@ -66,24 +66,41 @@ export function apply(ctx: Context, config: Config) {
                 element.attrs['file'] = displayFileName
                 element.attrs['filename'] = displayFileName
 
-                const audioUrl = ctx.chatluna_storage
-                    ? (element.attrs['chatluna_file_url'] = (
-                          await ctx.chatluna_storage.createTempFile(
-                              buffer,
-                              displayFileName
-                          )
-                      ).url)
-                    : ((element.attrs['chatluna_file_url'] = sourceUrl),
-                      `data:audio/mpeg;base64,${buffer.toString('base64')}`)
+                const base64 = buffer.toString('base64')
+
+                if (
+                    isMimoAudioModel(model) &&
+                    Buffer.byteLength(base64) > MIMO_BASE64_AUDIO_BYTES
+                ) {
+                    logger.warn(
+                        `Skip oversized MiMo audio after base64 encoding: ${Buffer.byteLength(base64)} bytes > ${MIMO_BASE64_AUDIO_BYTES} bytes`
+                    )
+                    return false
+                }
+
+                const audioUrl =
+                    !isMimoAudioModel(model) && ctx.chatluna_storage
+                        ? (element.attrs['chatluna_file_url'] = (
+                              await ctx.chatluna_storage.createTempFile(
+                                  buffer,
+                                  displayFileName
+                              )
+                          ).url)
+                        : ((element.attrs['chatluna_file_url'] = sourceUrl),
+                          `data:audio/mpeg;base64,${base64}`)
 
                 ensureContentArray(message, `[voice:${displayFileName}]`)
-                ;(message.content as MessageContentComplex[]).push({
-                    type: 'audio_url',
-                    audio_url: {
-                        url: audioUrl,
-                        mimeType: 'audio/mpeg'
-                    }
-                } as unknown as MessageContentComplex)
+                ;(message.content as MessageContentComplex[]).push(
+                    isMimoAudioModel(model)
+                        ? buildAudioContent(model, base64, 'audio/mpeg')
+                        : ({
+                              type: 'audio_url',
+                              audio_url: {
+                                  url: audioUrl,
+                                  mimeType: 'audio/mpeg'
+                              }
+                          } as unknown as MessageContentComplex)
+                )
 
                 logger.debug(
                     `Transcoded unsupported audio to mp3 for multimodal input: ${displayFileName}`
