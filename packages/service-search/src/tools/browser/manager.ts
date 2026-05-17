@@ -181,21 +181,29 @@ export class BrowserManager {
 
     async open(input: BrowserOpenOptions, runConfig?: ChatLunaToolRunnable) {
         const session = this.getSession(runConfig)
-        const current = session.selectedPageId
-            ? session.pages.get(session.selectedPageId)
-            : undefined
-        const page =
-            input.newPage || !current
-                ? await this.createPage(session, input.background)
-                : current
+        const prev = session.selectedPageId
+        const current = prev ? session.pages.get(prev) : undefined
+        const created = input.newPage || !current
+        const page = created
+            ? await this.createPage(session, input.background)
+            : current
 
-        await page.page.goto(input.url, {
-            waitUntil: input.waitUntil ?? 'domcontentloaded',
-            timeout: input.timeout ?? this.config.browserTimeout
-        })
-        session.selectedPageId = page.id
-        await this.trimPages(session)
-        return page
+        try {
+            await page.page.goto(input.url, {
+                waitUntil: input.waitUntil ?? 'domcontentloaded',
+                timeout: input.timeout ?? this.config.browserTimeout
+            })
+            session.selectedPageId = page.id
+            await this.trimPages(session)
+            return page
+        } catch (err) {
+            if (created) {
+                await page.close().catch(() => undefined)
+                session.pages.delete(page.id)
+                session.selectedPageId = prev
+            }
+            throw err
+        }
     }
 
     async navigate(
@@ -557,8 +565,8 @@ function readBrowserText(selector?: string, includeLinks = false) {
 }
 
 function readBrowserLinks() {
-    const current = location.href
-    const host = location.hostname
+    const current = new URL(location.href)
+    const host = current.hostname
     const result: Record<string, { text: string; url: string }[]> = {
         sameSite: [],
         external: []
@@ -566,8 +574,15 @@ function readBrowserLinks() {
     for (const a of Array.from(document.querySelectorAll('a[href]'))) {
         const text = a.textContent?.replace(/\s+/g, ' ').trim()
         if (!text) continue
-        const url = new URL(a.getAttribute('href')!, current)
-        if (url.href === current || url.hash) continue
+        const url = new URL(a.getAttribute('href')!, current.href)
+        if (
+            url.hash &&
+            url.origin === current.origin &&
+            url.pathname === current.pathname &&
+            url.search === current.search
+        ) {
+            continue
+        }
         const item = { text, url: url.href }
         if (url.hostname === host) result.sameSite.push(item)
         else result.external.push(item)

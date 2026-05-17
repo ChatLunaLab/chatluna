@@ -423,12 +423,16 @@ class BrowserScreenshotTool extends StructuredTool {
             : page.page
         const format = input.format ?? 'png'
         const rawName = input.filePath
-            ? input.filePath.split(/[\\/]/).pop()
-            : `screenshot-${Date.now()}.${format}`
+            ? input.filePath
+                  .split(/[\\/]/)
+                  .pop()
+                  ?.replace(/\.[^.]+$/, '')
+            : `screenshot-${Date.now()}`
         if (!rawName || rawName === '.' || rawName === '..') {
             throw new Error('invalid screenshot file name')
         }
-        const name = rawName.replace(/[^A-Za-z0-9._-]/g, '_')
+        const ext = format === 'jpeg' ? 'jpg' : format
+        const name = `${rawName.replace(/[^A-Za-z0-9._-]/g, '_')}.${ext}`
 
         try {
             const data = await target.screenshot({
