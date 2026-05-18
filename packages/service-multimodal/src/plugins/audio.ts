@@ -1,109 +1,93 @@
 import { MessageContentComplex } from '@langchain/core/messages'
 import { Context, h, Session } from 'koishi'
 import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
-import { Message } from 'koishi-plugin-chatluna'
-import type {} from 'koishi-plugin-chatluna-storage-service'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import type {} from 'koishi-plugin-ffmpeg-path'
 import { Config, logger } from '..'
 import {
-    buildAudioContent,
-    isMimoAudioModel,
-    MIMO_BASE64_AUDIO_BYTES,
-    modelCanReadAudio
-} from '../audio'
+    BROWSER_UA,
+    convertAudioToMp3,
+    detectAudioMimeType,
+    ensureContentArray
+} from '../utils'
 
-const CHATLUNA_DOWNLOAD_USER_AGENT =
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-const MAX_AUDIO_BYTES = 25 * 1024 * 1024
+// MIMEs commonly accepted by OpenAI / Gemini / MiMo audio inputs. Anything
+// else (Silk, AMR, ...) is transcoded to MP3.
+const NATIVE_AUDIO_MIMES = new Set([
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/flac',
+    'audio/ogg',
+    'audio/mp4',
+    'audio/aac',
+    'audio/webm'
+])
 
+const MIME_TO_EXT: Record<string, string> = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/flac': 'flac',
+    'audio/ogg': 'ogg',
+    'audio/mp4': 'm4a'
+}
+
+/**
+ * Intercept voice/audio elements: download, transcode unfriendly formats
+ * (Silk/AMR/...) to MP3, then inject as a Base64 `audio_url` content part.
+ * OpenAI-compatible adapters convert the result to `input_audio` downstream.
+ */
 export function apply(ctx: Context, config: Config) {
-    if (!config.enableAudioFfmpegConversion) {
-        return
-    }
+    if (!config.enableAudioFfmpegConversion) return
 
     ctx.effect(() =>
         ctx.chatluna.messageTransformer.intercept(
             'audio',
             async (session, element, message, model) => {
-                const modelInfo = model
-                    ? ctx.chatluna.platform.findModel(model)
-                    : undefined
+                if (!modelAcceptsAudio(ctx, model)) return false
 
-                if (!modelCanReadAudio(modelInfo, model)) {
-                    return false
-                }
+                const sourceUrl = await resolveAudioSourceUrl(session, element)
+                if (!sourceUrl) return false
 
-                const sourceUrl = await resolveAudioSourceUrl(
-                    ctx,
-                    session,
-                    element
+                const buffer = await downloadAudio(ctx, sourceUrl)
+                if (!buffer) return false
+
+                const detected = detectAudioMimeType(
+                    buffer,
+                    element.attrs['mime'] as string | null
                 )
-                if (!sourceUrl) {
-                    return false
+
+                let outBuffer = buffer
+                let outMime = detected ?? 'audio/mpeg'
+
+                if (!detected || !NATIVE_AUDIO_MIMES.has(detected)) {
+                    const converted = await convertAudioToMp3(ctx, buffer)
+                    if (!converted) {
+                        logger.warn(
+                            `Skip audio: format ${detected ?? 'unknown'} not natively supported and ffmpeg conversion failed.`
+                        )
+                        return false
+                    }
+                    outBuffer = converted
+                    outMime = 'audio/mpeg'
                 }
 
-                const fileName =
-                    element.attrs['file'] ??
-                    element.attrs['name'] ??
-                    element.attrs['filename']
+                const dataUrl = `data:${outMime};base64,${outBuffer.toString('base64')}`
+                const ext = MIME_TO_EXT[outMime] ?? 'mp3'
+                const fileName = `${stripExtension(audioName(element))}.${ext}`
+                element.attrs['file'] = fileName
+                element.attrs['filename'] = fileName
+                element.attrs['chatluna_file_url'] = sourceUrl
 
-                const fileData = await readFile(ctx, sourceUrl)
-                if (!fileData.buffer) {
-                    return false
-                }
-
-                const converted = await tryConvertAudioToMp3(
-                    ctx,
-                    fileData.buffer,
-                    fileName
-                )
-                if (!converted) {
-                    logger.warn(`Failed to convert audio to MP3: ${sourceUrl}`)
-                    return false
-                }
-
-                const { fileName: displayFileName, buffer } = converted
-                element.attrs['file'] = displayFileName
-                element.attrs['filename'] = displayFileName
-
-                const base64 = buffer.toString('base64')
-
-                if (
-                    isMimoAudioModel(model) &&
-                    Buffer.byteLength(base64) > MIMO_BASE64_AUDIO_BYTES
-                ) {
-                    logger.warn(
-                        `Skip oversized MiMo audio after base64 encoding: ${Buffer.byteLength(base64)} bytes > ${MIMO_BASE64_AUDIO_BYTES} bytes`
-                    )
-                    return false
-                }
-
-                const audioUrl =
-                    !isMimoAudioModel(model) && ctx.chatluna_storage
-                        ? (element.attrs['chatluna_file_url'] = (
-                              await ctx.chatluna_storage.createTempFile(
-                                  buffer,
-                                  displayFileName
-                              )
-                          ).url)
-                        : ((element.attrs['chatluna_file_url'] = sourceUrl),
-                          `data:audio/mpeg;base64,${base64}`)
-
-                ensureContentArray(message, `[voice:${displayFileName}]`)
-                ;(message.content as MessageContentComplex[]).push(
-                    isMimoAudioModel(model)
-                        ? buildAudioContent(model, base64, 'audio/mpeg')
-                        : ({
-                              type: 'audio_url',
-                              audio_url: {
-                                  url: audioUrl,
-                                  mimeType: 'audio/mpeg'
-                              }
-                          } as unknown as MessageContentComplex)
-                )
+                ensureContentArray(message, `[voice:${fileName}]`)
+                ;(message.content as MessageContentComplex[]).push({
+                    type: 'audio_url',
+                    audio_url: { url: dataUrl, mimeType: outMime }
+                } as unknown as MessageContentComplex)
 
                 logger.debug(
-                    `Transcoded unsupported audio to mp3 for multimodal input: ${displayFileName}`
+                    `Injected audio for ${model}: ${fileName} (${outMime}, ${outBuffer.byteLength} bytes)`
                 )
                 return true
             },
@@ -112,22 +96,28 @@ export function apply(ctx: Context, config: Config) {
     )
 }
 
+function modelAcceptsAudio(ctx: Context, model: string | undefined): boolean {
+    if (!model) return false
+    return (
+        ctx.chatluna.platform
+            .findModel(model)
+            ?.value?.capabilities?.includes(ModelCapabilities.AudioInput) ===
+        true
+    )
+}
+
 async function resolveAudioSourceUrl(
-    ctx: Context,
     session: Session,
     element: h
 ): Promise<string | null> {
-    const srcAttr = (element.attrs['src'] ?? element.attrs['url']) as
+    const src = (element.attrs['src'] ?? element.attrs['url']) as
         | string
         | undefined
-    if (srcAttr?.startsWith('http')) {
-        return srcAttr
-    }
-
-    if (session.platform !== 'onebot') return srcAttr ?? null
+    if (src?.startsWith('http')) return src
+    if (session.platform !== 'onebot') return src ?? null
 
     const fileId = element.attrs['fileId'] ?? element.attrs['fileid']
-    if (!fileId) return srcAttr ?? null
+    if (!fileId) return src ?? null
 
     try {
         const bot = session.bot as OneBotBot<Context>
@@ -136,239 +126,37 @@ async function resolveAudioSourceUrl(
             ? await bot.internal.getPrivateFileUrl(session.userId, fileId)
             : await bot.internal.getGroupFileUrl(session.guildId, fileId, busId)
     } catch {
-        return srcAttr ?? null
+        return src ?? null
     }
 }
 
-async function readFile(
+async function downloadAudio(
     ctx: Context,
     url: string
-): Promise<{ buffer: Buffer | null; mimeType: string | null }> {
-    const headers = { 'User-Agent': CHATLUNA_DOWNLOAD_USER_AGENT }
-
-    let sanitizedUrl: string
+): Promise<Buffer | null> {
     try {
-        const parsed = new URL(url)
-        sanitizedUrl = parsed.origin + parsed.pathname
-    } catch {
-        sanitizedUrl = url
-    }
-
-    let mimeTypeFromHead: string | null = null
-
-    // Try HEAD request for size check
-    try {
-        const headResponse = await ctx.http(url, { method: 'head', headers })
-        const headHeaders: Headers = headResponse?.headers
-        mimeTypeFromHead =
-            headHeaders
-                ?.get('content-type')
-                ?.split(';')[0]
-                ?.trim()
-                ?.toLowerCase() ?? null
-
-        const headContentLength = headHeaders?.get('content-length')
-            ? Number(headHeaders.get('content-length'))
-            : null
-
-        if (
-            headContentLength != null &&
-            Number.isFinite(headContentLength) &&
-            headContentLength > MAX_AUDIO_BYTES
-        ) {
-            logger.warn(
-                `Skip reading oversized audio from ${sanitizedUrl}: ${headContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
-            )
-            return { buffer: null, mimeType: mimeTypeFromHead }
-        }
-    } catch {
-        // Some endpoints do not support HEAD; continue with GET safeguards.
-    }
-
-    try {
-        const response = await fetch(url, { method: 'GET', headers })
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`)
-        }
-
-        const mimeType =
-            response.headers
-                .get('content-type')
-                ?.split(';')[0]
-                ?.trim()
-                ?.toLowerCase() ?? mimeTypeFromHead
-        const responseContentLength = response.headers.get('content-length')
-            ? Number(response.headers.get('content-length'))
-            : null
-
-        if (
-            responseContentLength != null &&
-            Number.isFinite(responseContentLength) &&
-            responseContentLength > MAX_AUDIO_BYTES
-        ) {
-            logger.warn(
-                `Skip reading oversized audio from ${sanitizedUrl}: ${responseContentLength} bytes > ${MAX_AUDIO_BYTES} bytes`
-            )
-            return { buffer: null, mimeType }
-        }
-
-        if (response.body == null) {
-            const arrayBuffer = await response.arrayBuffer()
-            if (arrayBuffer.byteLength > MAX_AUDIO_BYTES) {
-                logger.warn(
-                    `Skip reading oversized audio from ${sanitizedUrl}: ${arrayBuffer.byteLength} bytes > ${MAX_AUDIO_BYTES} bytes`
-                )
-                return { buffer: null, mimeType }
-            }
-            return { buffer: Buffer.from(arrayBuffer), mimeType }
-        }
-
-        const reader = response.body.getReader()
-        const chunks: Buffer[] = []
-        let totalBytes = 0
-
-        while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            if (!value?.byteLength) continue
-
-            totalBytes += value.byteLength
-            if (totalBytes > MAX_AUDIO_BYTES) {
-                await reader.cancel('audio exceeds max size')
-                logger.warn(
-                    `Skip reading oversized audio from ${sanitizedUrl}: streamed bytes exceed ${MAX_AUDIO_BYTES} bytes`
-                )
-                return { buffer: null, mimeType }
-            }
-
-            chunks.push(Buffer.from(value))
-        }
-
-        return { buffer: Buffer.concat(chunks, totalBytes), mimeType }
+        const { data } = await ctx.http(url, {
+            responseType: 'arraybuffer',
+            method: 'get',
+            headers: { 'User-Agent': BROWSER_UA }
+        })
+        return Buffer.from(data)
     } catch (error) {
-        logger.warn(`Failed to read audio from ${sanitizedUrl}:`, error)
-        return { buffer: null, mimeType: null }
-    }
-}
-
-function toMp3FileName(fileName?: string): string {
-    const baseName = (fileName ?? 'voice').trim()
-    const dotIndex = baseName.lastIndexOf('.')
-    return `${dotIndex <= 0 ? baseName : baseName.slice(0, dotIndex)}.mp3`
-}
-
-async function tryConvertAudioToMp3(
-    ctx: Context,
-    inputBuffer: Buffer,
-    fileName?: string
-): Promise<{ buffer: Buffer; fileName: string } | null> {
-    try {
-        let sourceBuffer = inputBuffer
-        let decodedPcmSampleRate: number | null = null
-
-        if (isSilkAudio(inputBuffer)) {
-            const decoded = await decodeSilkAudio(ctx, inputBuffer)
-            sourceBuffer = decoded.buffer
-            decodedPcmSampleRate = decoded.sampleRate
-            logger.debug('Decoded silk audio before mp3 transcoding.')
-        }
-
-        const ffmpeg = ctx.ffmpeg
-        if (!ffmpeg) {
-            throw new Error(
-                'FFmpeg service is unavailable. Please enable koishi-plugin-ffmpeg-path.'
-            )
-        }
-
-        const builder = ffmpeg.builder().input(sourceBuffer)
-        if (decodedPcmSampleRate != null) {
-            builder.inputOption(
-                '-f',
-                's16le',
-                '-ar',
-                String(decodedPcmSampleRate),
-                '-ac',
-                '1'
-            )
-        }
-
-        const outputBuffer = await builder
-            .outputOption(
-                '-vn',
-                '-acodec',
-                'libmp3lame',
-                '-q:a',
-                '4',
-                '-f',
-                'mp3'
-            )
-            .run('buffer')
-
-        return {
-            buffer: outputBuffer,
-            fileName: toMp3FileName(fileName)
-        }
-    } catch (error) {
-        logger.warn(
-            `Audio transcoding to mp3 failed, fallback to original audio: ${error instanceof Error ? error.message : String(error)}`
-        )
+        logger.warn(`Failed to fetch audio from ${url}:`, error)
         return null
     }
 }
 
-function isSilkAudio(inputBuffer: Buffer): boolean {
-    if (inputBuffer.length < 9) return false
-    const sig = inputBuffer.subarray(0, 9).toString('latin1')
+function audioName(element: h): string {
     return (
-        sig === '#!SILK_V3' ||
-        inputBuffer.subarray(1, 10).toString('latin1') === '#!SILK_V3'
+        (element.attrs['file'] as string | undefined) ??
+        (element.attrs['name'] as string | undefined) ??
+        (element.attrs['filename'] as string | undefined) ??
+        'voice'
     )
 }
 
-async function decodeSilkAudio(
-    ctx: Context,
-    inputBuffer: Buffer
-): Promise<{ buffer: Buffer; sampleRate: number }> {
-    const silk = ctx.silk
-    if (!silk) {
-        throw new Error(
-            'Detected silk audio, but no silk service is available for decoding'
-        )
-    }
-    for (const sampleRate of [24000, 16000, 12000, 8000]) {
-        try {
-            const result = (await silk.decode(
-                inputBuffer,
-                sampleRate
-            )) as DecodeResult
-
-            if (result?.data != null) {
-                return { buffer: Buffer.from(result.data), sampleRate }
-            }
-        } catch {
-            continue
-        }
-    }
-
-    throw new Error('silk decode returned empty output')
-}
-
-function ensureContentArray(message: Message, fallbackText: string) {
-    if (typeof message.content === 'string') {
-        message.content = [
-            {
-                type: 'text',
-                text: message.content.trim().length
-                    ? message.content
-                    : fallbackText
-            }
-        ]
-    }
-}
-
-interface DecodeResult {
-    data: Uint8Array
-    duration: number
+function stripExtension(name: string): string {
+    const dot = name.lastIndexOf('.')
+    return dot > 0 ? name.slice(0, dot) : name
 }

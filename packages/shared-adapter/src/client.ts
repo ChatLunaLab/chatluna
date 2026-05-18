@@ -1,5 +1,9 @@
+import { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ModelInfo } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { getModelContextSize } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+
+export const DEFAULT_AUDIO_MAX_BASE64_BYTES = 50 * 1024 * 1024
+export const DEFAULT_IMAGE_MAX_BASE64_BYTES = 50 * 1024 * 1024
 
 export type OpenAIReasoningEffort =
     | 'none'
@@ -153,7 +157,11 @@ function createGlobMatcher(pattern: string): (text: string) => boolean {
     return (text: string) => regex.test(text)
 }
 
-const imageModelMatchers = [
+function createRegexMatcher(regex: RegExp): (text: string) => boolean {
+    return (text: string) => regex.test(text)
+}
+
+const imageModelMatchers: ((text: string) => boolean)[] = [
     'vision',
     'vl',
     'gpt-4o',
@@ -176,11 +184,76 @@ const imageModelMatchers = [
     'glm-*v',
     'kimi-k2.5',
     'step3',
-    'grok-4',
-    'mimo-v2.5*'
-].map((pattern) => createGlobMatcher(pattern))
+    'grok-4'
+].map(createGlobMatcher)
+
+// mimo-v2.5 supports image/audio; mimo-v2.5-pro does NOT (text only).
+imageModelMatchers.push(createRegexMatcher(/mimo-v2\.5(?!-pro)/))
 
 export function supportImageInput(modelName: string) {
     const lowerModel = normalizeOpenAIModelName(modelName).toLowerCase()
     return imageModelMatchers.some((matcher) => matcher(lowerModel))
+}
+
+const audioModelMatchers: ((text: string) => boolean)[] = [
+    'gpt-4o-audio',
+    'gpt-4o-mini-audio',
+    'gpt-audio',
+    'mimo-v2-omni'
+].map(createGlobMatcher)
+
+audioModelMatchers.push(createRegexMatcher(/mimo-v2\.5(?!-pro)/))
+
+export function supportAudioInput(modelName: string) {
+    const lowerModel = normalizeOpenAIModelName(modelName).toLowerCase()
+    return audioModelMatchers.some((matcher) => matcher(lowerModel))
+}
+
+const openAIImageMimeTypes = [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/bmp'
+]
+
+const openAIAudioMimeTypes = [
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/flac',
+    'audio/mp4',
+    'audio/ogg'
+]
+
+export function getOpenAIFileHandlingConfig(
+    modelName: string
+): FileHandlingConfig | undefined {
+    const image = supportImageInput(modelName)
+    const audio = supportAudioInput(modelName)
+    if (!image && !audio) return undefined
+
+    const supportedMimeTypes = new Set<string>()
+    const overrides: Record<string, number> = {}
+
+    if (image) {
+        for (const mime of openAIImageMimeTypes) {
+            supportedMimeTypes.add(mime)
+            overrides[mime] = DEFAULT_IMAGE_MAX_BASE64_BYTES
+        }
+    }
+
+    if (audio) {
+        for (const mime of openAIAudioMimeTypes) {
+            supportedMimeTypes.add(mime)
+            overrides[mime] = DEFAULT_AUDIO_MAX_BASE64_BYTES
+        }
+    }
+
+    return {
+        supportedMimeTypes,
+        maxTotalSizeBytes: 100 * 1024 * 1024,
+        maxFileSizeBytes: 100 * 1024 * 1024,
+        maxFileSizeBytesOverrides: overrides
+    }
 }

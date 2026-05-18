@@ -5,7 +5,6 @@ import {
     ChatMessageChunk,
     FunctionMessageChunk,
     HumanMessageChunk,
-    MessageContentImageUrl,
     MessageType,
     SystemMessageChunk,
     ToolMessage,
@@ -21,11 +20,11 @@ import {
 } from './types'
 import {
     fetchImageUrl,
-    removeAdditionalProperties,
-    supportImageInput
+    removeAdditionalProperties
 } from '@chatluna/v1-shared-adapter'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
+import { logger } from '.'
 
 export function formatToolsToQWenTools(
     tools: StructuredTool[]
@@ -113,50 +112,13 @@ export async function langchainMessageToQWenMessage(
             }
         }
 
-        const images = rawMessage.additional_kwargs.images as string[] | null
-
-        if (
-            (model?.includes('qwen-vl') ||
-                model?.includes('omni') ||
-                model?.includes('qwen2.5-vl') ||
-                model?.includes('qwen2.5-omni') ||
-                model?.includes('qwen-omni') ||
-                model?.includes('qwen2-vl') ||
-                model?.includes('qvq') ||
-                supportImageInput(model)) &&
-            images != null
-        ) {
-            msg.content = [
-                {
-                    type: 'text',
-                    text: rawMessage.content as string
-                }
-            ]
-
-            const imageContents = await Promise.all(
-                images.map(async (image) => {
-                    try {
-                        const url = await fetchImageUrl(plugin, {
-                            type: 'image_url',
-                            image_url: { url: image }
-                        } as MessageContentImageUrl)
-                        return {
-                            type: 'image_url',
-                            image_url: {
-                                url,
-                                detail: 'low'
-                            }
-                        } as const
-                    } catch {
-                        return null
-                    }
-                })
+        if (rawMessage.additional_kwargs.images != null) {
+            logger.warn(
+                'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
             )
+        }
 
-            msg.content.push(
-                ...imageContents.filter((content) => content != null)
-            )
-        } else if (Array.isArray(msg.content) && msg.content.length > 0) {
+        if (Array.isArray(msg.content) && msg.content.length > 0) {
             const mappedContent = await Promise.all(
                 msg.content.map(async (content) => {
                     if (!isMessageContentImageUrl(content)) return content

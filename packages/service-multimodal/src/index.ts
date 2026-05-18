@@ -83,7 +83,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = {
     required: ['chatluna'],
-    optional: ['chatluna_storage', 'ffmpeg', 'silk']
+    optional: ['ffmpeg', 'silk']
 }
 
 export const name = 'chatluna-multimodal-service'
@@ -99,10 +99,4 @@ export const usage = `
 
 ### 注意
 建议搭配 \`chatluna-storage-service\` 使用。请求中的图像、文件大小限制遵循模型平台配置（如 Gemini：PDF 单文件 50MB、其他单文件 100MB、单轮总计 100MB，以文件被编码为 Base64 后的大小为准）。
-
-### MiMo 音频理解
-\`mimo-v2.5\` 与 \`mimo-v2-omni\` 的音频理解走 OpenAI 兼容 \`input_audio\`。启用音频转换后，服务会先读取语音 URL，必要时用 ffmpeg/Silk 转为 MP3，再以 Base64 data URL 注入模型，避免 QQ CDN 过期和 AMR/Silk 等格式兼容问题。MiMo Base64 单音频上限为 50MB。
-
-### MiMo 图片理解
-\`mimo-v2.5\` 与 \`mimo-v2-omni\` 的图片理解走 OpenAI 兼容 \`image_url\`。即使适配器暂未声明 \`ImageInput\`，服务也会按 MiMo 官方能力接入 JPEG、PNG、GIF、WebP、BMP，Base64 与 URL 单图片上限均为 50MB，多图受模型上下文限制。
 `
