@@ -8,34 +8,24 @@ class BingAPISearchProvider extends SearchProvider {
     async search(query: string, limit = this.config.topK) {
         const searchUrl = new URL('https://api.bing.microsoft.com/v7.0/search')
 
-        const headers = {
-            'Ocp-Apim-Subscription-Key': this.config.bingSearchApiKey,
-            'Ocp-Apim-Subscription-Region':
-                this.config.azureLocation ?? 'global'
-        }
-        const params = {
-            q: query,
-            responseFilter: 'Webpages',
-            count: limit.toString()
-        }
+        searchUrl.searchParams.set('q', query)
+        searchUrl.searchParams.set('responseFilter', 'Webpages')
+        searchUrl.searchParams.set('count', limit.toString())
+        searchUrl.searchParams.set('mkt', this.config.bingSearchLocation)
 
-        Object.entries(params).forEach(([key, value]) => {
-            searchUrl.searchParams.append(key, value)
+        const response = await this._plugin.fetch(searchUrl, {
+            headers: {
+                'Ocp-Apim-Subscription-Key': this.config.bingSearchApiKey,
+                'Ocp-Apim-Subscription-Region': this.config.azureLocation
+            }
         })
-
-        const response = await this._plugin.fetch(searchUrl, { headers })
 
         if (!response.ok) {
             throw new Error(`HTTP error ${response.status}`)
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res: any = await response.json()
-        const results = res.webPages.value as {
-            name: string
-            snippet: string
-            url: string
-        }[]
+        const res = (await response.json()) as BingAPIResponse
+        const results = res.webPages?.value ?? []
 
         if (results.length === 0) {
             return [
@@ -47,15 +37,13 @@ class BingAPISearchProvider extends SearchProvider {
             ]
         }
 
-        const snippets = results.map(
+        return results.map(
             (item): SearchResult => ({
                 title: item.name,
                 description: item.snippet,
                 url: item.url
             })
         )
-
-        return snippets
     }
 
     static schema = Schema.const('bing-api').i18n({
@@ -74,5 +62,15 @@ export function apply(
     const searchEngines = config.searchEngine
     if (searchEngines.includes('bing-api')) {
         manager.addProvider(new BingAPISearchProvider(ctx, config, plugin))
+    }
+}
+
+interface BingAPIResponse {
+    webPages?: {
+        value: {
+            name: string
+            snippet: string
+            url: string
+        }[]
     }
 }

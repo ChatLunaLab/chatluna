@@ -70,11 +70,18 @@
     "devDependencies": {
         "atsc": "^2.1.0",
         "koishi": "^4.18.9",
+        "koishi-plugin-chatluna-agent": "^1.0.28",
         "koishi-plugin-puppeteer": "^3.9.0"
     },
     "peerDependencies": {
         "koishi": "^4.18.9",
-        "koishi-plugin-chatluna": "^1.4.0-alpha.15"
+        "koishi-plugin-chatluna": "^1.4.0-alpha.16",
+        "koishi-plugin-chatluna-agent": "^1.0.28"
+    },
+    "peerDependenciesMeta": {
+        "koishi-plugin-chatluna-agent": {
+            "optional": true
+        }
     },
     "koishi": {
         "description": {

@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { Tool } from '@langchain/core/tools'
 import { SearchManager } from '../provide'
-import { PuppeteerBrowserTool } from './puppeteerBrowserTool'
+import { BrowserManager } from './browser/manager'
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters'
 import { MemoryVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { Embeddings } from '@langchain/core/embeddings'
@@ -34,7 +34,7 @@ export class SearchTool extends Tool {
 
     constructor(
         private searchManager: SearchManager,
-        private browserTool: PuppeteerBrowserTool,
+        private browser: BrowserManager,
         private embeddings: Embeddings,
         llm: ComputedRef<ChatLunaChatModel>,
         private summaryType: SummaryType
@@ -44,139 +44,126 @@ export class SearchTool extends Tool {
         this.llm = llm
     }
 
-    async _call(arg: string, _, config: ChatLunaToolRunnable): Promise<string> {
-        const documents = await this.fetchSearchResult(arg)
+    async _call(
+        query: string,
+        _,
+        config: ChatLunaToolRunnable
+    ): Promise<string> {
+        const llm = this.llm?.value ?? config.configurable.model
+
+        const docs = await this.fetchSearchResult(query, llm, config)
 
         if (this.summaryType !== SummaryType.Balanced) {
             return JSON.stringify(
-                documents.map((document) =>
-                    Object.assign({}, document.metadata as SearchResult)
-                )
+                docs.map((doc) => Object.assign({}, doc.metadata))
             )
         }
 
-        const fakeSearchResult = await generateFakeSearchResult(
-            arg,
-            this.llm?.value ?? config.configurable.model
-        )
+        const result = await generateFakeSearchResult(query, llm)
 
         return JSON.stringify(
-            await this._reRankDocuments(
-                getMessageContent(fakeSearchResult.content),
-                documents
-            )
+            await this._reRankDocuments(getMessageContent(result.content), docs)
         )
     }
 
-    private async fetchSearchResult(query: string) {
+    private async fetchSearchResult(
+        query: string,
+        llm: ChatLunaChatModel,
+        runConfig: ChatLunaToolRunnable
+    ) {
         const results = await this.searchManager.search(query)
 
-        if (this.summaryType === SummaryType.Quality) {
-            return await Promise.all(
-                results.map(async (result, k) => {
-                    let pageContent = result.description
-
-                    if (pageContent == null || pageContent.length < 500) {
-                        const browserContent: string =
-                            await this.browserTool.invoke({
-                                url: result.url,
-                                action: 'summarize',
-                                params: query
-                            })
-
-                        if (
-                            !browserContent.includes(
-                                'Error getting page text:'
-                            ) &&
-                            !browserContent.includes(
-                                'Error summarizing page:'
-                            ) &&
-                            browserContent !== '[none]'
-                        ) {
-                            pageContent = browserContent
-                        }
-                    }
-
-                    if (pageContent == null) {
-                        return
-                    }
-
-                    const chunks = await this._textSplitter
-                        .splitText(pageContent)
-                        .then((chunks) => {
-                            return chunks.map(
-                                (chunk) =>
-                                    ({
-                                        pageContent: chunk,
-                                        metadata: Object.assign(
-                                            { description: chunks },
-                                            removeProperty(result, [
-                                                'description'
-                                            ])
-                                        )
-                                    }) as Document
-                            )
-                        })
-
-                    return chunks
-                })
-            ).then((documents) => documents.flat())
-        } else if (this.summaryType === SummaryType.Balanced) {
-            return await Promise.all(
-                results.map(async (result, k) => {
-                    let pageContent = result.description
-
-                    if (pageContent == null || pageContent.length < 500) {
-                        const browserContent: string =
-                            await this.browserTool.invoke({
-                                url: result.url,
-                                action: 'text'
-                            })
-
-                        if (
-                            !browserContent.includes(
-                                'Error getting page text:'
-                            ) &&
-                            !browserContent.includes(
-                                'Error summarizing page:'
-                            ) &&
-                            browserContent !== '[none]'
-                        ) {
-                            pageContent = browserContent
-                        }
-                    }
-
-                    if (pageContent == null) {
-                        return
-                    }
-
-                    const chunks = await this._textSplitter
-                        .splitText(pageContent)
-                        .then((chunks) => {
-                            return chunks.map(
-                                (chunk) =>
-                                    ({
-                                        pageContent: chunk,
-                                        metadata: result
-                                    }) as Document
-                            )
-                        })
-
-                    return chunks
-                })
-            ).then((documents) => documents.flat())
+        if (this.summaryType === SummaryType.Speed) {
+            return results.map((result) => ({
+                pageContent: result.description,
+                metadata: result
+            })) as Document[]
         }
 
-        return results.map(
-            (result) =>
-                ({
-                    pageContent: result.description,
-                    metadata: result
-                }) as Document
-        )
+        const docs: Document[] = []
+        for (const result of results) {
+            try {
+                docs.push(
+                    ...(await this.createDocuments(
+                        result,
+                        query,
+                        llm,
+                        runConfig
+                    ))
+                )
+            } catch (err) {
+                logger.error(err)
+            }
+        }
+
+        return docs
+    }
+
+    private async createDocuments(
+        result: SearchResult,
+        query: string,
+        llm: ChatLunaChatModel,
+        runConfig: ChatLunaToolRunnable
+    ) {
+        const content = await this.readResult(result, query, llm, runConfig)
+
+        if (content == null) return []
+
+        const chunks = await this._textSplitter.splitText(content)
+
+        return chunks.map((chunk) => {
+            const metadata =
+                this.summaryType === SummaryType.Quality
+                    ? Object.assign(
+                          { description: chunk },
+                          removeProperty(result, ['description'])
+                      )
+                    : Object.assign({}, result, { description: chunk })
+
+            return {
+                pageContent: chunk,
+                metadata
+            } as Document
+        })
+    }
+
+    private async readResult(
+        result: SearchResult,
+        query: string,
+        llm: ChatLunaChatModel,
+        runConfig: ChatLunaToolRunnable
+    ) {
+        if (result.url.length < 1) return result.description
+
+        if (result.description && result.description.length >= 500) {
+            return result.description
+        }
+
+        const text = await (async () => {
+            try {
+                return this.summaryType === SummaryType.Quality
+                    ? await this.browser.summarize(
+                          { url: result.url, focus: query },
+                          llm,
+                          runConfig
+                      )
+                    : await this.browser.readText(
+                          { url: result.url },
+                          runConfig
+                      )
+            } catch {
+                return result.description
+            }
+        })()
+
+        if (isBrowserError(text)) return result.description
+
+        return text
     }
 
     private async _reRankDocuments(query: string, documents: Document[]) {
+        if (documents.length < 1) return []
+
         if (this.embeddings === emptyEmbeddings) {
             logger.warn('Embeddings is empty, try check your config')
             return documents
@@ -232,3 +219,11 @@ Generate a brief, factual answer that:
 Answer the question as if you are a search result snippet.`,
     inputVariables: ['query']
 })
+
+function isBrowserError(text: string) {
+    return (
+        text.includes('Error getting page text:') ||
+        text.includes('Error summarizing page:') ||
+        text === '[none]'
+    )
+}
