@@ -226,22 +226,36 @@ export class ReadFilesTool extends StructuredTool {
                     }
 
                     if (mime === 'image/gif') {
+                        let pushed = 0
                         const frames = await parseGifToFrames(fetched.buffer, {
                             strategy: this.config.gifStrategy,
                             frameCount: this.config.gifFrameCount
                         })
                         for (const frame of frames) {
                             const frameBase64 = frame.split(',')[1]
-                            const frameSize = getBase64EncodedSize(
-                                Buffer.from(frameBase64, 'base64').byteLength
+                            const buf = Buffer.from(frameBase64, 'base64')
+                            const sizeError = checkSize(
+                                buf,
+                                'image/png',
+                                fileConfig,
+                                totalBytes,
+                                maxTotal
                             )
-                            if (totalBytes + frameSize > maxTotal) {
+                            if (sizeError) {
+                                if (pushed < 1) {
+                                    pushError(
+                                        report,
+                                        sourceUrl,
+                                        sizeError,
+                                        'image/png'
+                                    )
+                                }
                                 logger.warn(
                                     'Skipping remaining GIF frames due to total size limit'
                                 )
                                 break
                             }
-                            totalBytes += frameSize
+                            totalBytes += getBase64EncodedSize(buf.byteLength)
                             pushNative(
                                 report,
                                 native,
@@ -249,6 +263,7 @@ export class ReadFilesTool extends StructuredTool {
                                 'image/png',
                                 frameBase64
                             )
+                            pushed++
                         }
                     } else {
                         totalBytes += getBase64EncodedSize(
@@ -308,6 +323,7 @@ export class ReadFilesTool extends StructuredTool {
             }
         }
 
+        const injected = native.length > 0 && !!conversationId
         if (native.length > 0 && conversationId) {
             this.ctx.chatluna.contextManager.inject({
                 conversationId,
@@ -326,14 +342,15 @@ export class ReadFilesTool extends StructuredTool {
 
         return JSON.stringify({
             response: report,
-            note:
-                native.length > 0
-                    ? `Successfully read ${native.length} file(s). The file content has been added to the conversation context and will be available in the next turn.`
-                    : describedCount > 0
-                      ? `Described ${describedCount} image file(s) using the vision model.`
-                      : report.failureCount > 0
-                        ? `Failed to read ${report.failureCount} file(s).`
-                        : 'No files were processed.'
+            note: injected
+                ? `Successfully read ${native.length} file(s). The file content has been added to the conversation context and will be available in the next turn.`
+                : native.length > 0
+                  ? `Successfully read ${native.length} file(s), but no conversation id was available, so the file content was not added to the conversation context.`
+                  : describedCount > 0
+                    ? `Described ${describedCount} image file(s) using the vision model.`
+                    : report.failureCount > 0
+                      ? `Failed to read ${report.failureCount} file(s).`
+                      : 'No files were processed.'
         })
     }
 
