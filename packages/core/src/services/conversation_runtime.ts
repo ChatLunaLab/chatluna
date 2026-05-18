@@ -91,26 +91,11 @@ export class ConversationRuntime {
         options: ChatOptions
     ): Promise<Message> {
         const requestId = options.requestId ?? randomUUID()
-
-        const [platform] = parseRawModelName(conversation.model)
-        if (platform == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.UNKNOWN_ERROR,
-                new Error(`Invalid conversation model: ${conversation.model}`)
-            )
-        }
+        const platform = requirePlatform(conversation)
 
         const chatInterface = await this.ensureChatInterface(conversation)
         const abortController = new AbortController()
-        const sig = options.signal
-        let onAbort: (() => void) | undefined
-        if (sig != null) {
-            if (sig.aborted) abortController.abort(sig.reason)
-            else {
-                onAbort = () => abortController.abort(sig.reason)
-                sig.addEventListener('abort', onAbort, { once: true })
-            }
-        }
+        const releaseSignal = linkAbortSignal(abortController, options.signal)
         const activeRequest = this.registerRequest(
             conversation.id,
             requestId,
@@ -121,15 +106,14 @@ export class ConversationRuntime {
         )
 
         let lastActiveAt = Date.now()
-        let idleDisponse: () => void = () => {}
         const touch = () => {
             lastActiveAt = Date.now()
         }
-
         const events = wrapEvents(options.event, touch)
 
+        let releaseIdleTimer: () => void = () => {}
         if (config.timeout > 0) {
-            idleDisponse = this.service.ctx.setInterval(
+            releaseIdleTimer = this.service.ctx.setInterval(
                 () => {
                     if (abortController.signal.aborted) return
                     if (Date.now() - lastActiveAt < config.timeout) return
@@ -146,17 +130,13 @@ export class ConversationRuntime {
         }
 
         try {
-            const humanMessage = new HumanMessage({
-                content: message.content,
-                name: message.name,
-                id: session.userId,
-                additional_kwargs: {
-                    ...message.additional_kwargs,
-                    preset: conversation.preset
-                }
-            })
-            markChatLunaUserMessage(humanMessage)
-
+            const humanMessage = buildHumanMessage(
+                session,
+                message,
+                conversation
+            )
+            const stream = options.stream ?? false
+            const variables = options.variables ?? {}
             const mask =
                 options.toolMask ??
                 (await this.platformService.resolveToolMask({
@@ -164,8 +144,6 @@ export class ConversationRuntime {
                     conversation,
                     bindingKey: conversation.bindingKey
                 }))
-            const variables = options.variables ?? {}
-            const stream = options.stream ?? false
 
             const chainValues = await chatInterface.chat({
                 message: humanMessage,
@@ -193,53 +171,51 @@ export class ConversationRuntime {
                 }),
                 onAgentEvent: async (agentEvent) => {
                     touch()
-                    if (agentEvent.type === 'round-decision') {
-                        activeRequest.lastDecision = agentEvent.canContinue
-                        if (agentEvent.canContinue == null) return
-                        flushRoundDecision(
-                            activeRequest,
-                            agentEvent.canContinue
-                        )
-                    }
+                    if (agentEvent.type !== 'round-decision') return
+                    activeRequest.lastDecision = agentEvent.canContinue
+                    if (agentEvent.canContinue == null) return
+                    flushRoundDecision(activeRequest, agentEvent.canContinue)
                 }
             })
 
-            const aiMessage = chainValues.message as AIMessage
-            const reasoning = aiMessage.additional_kwargs?.reasoning_content as
-                | string
-                | undefined
-            const reasoningTime = aiMessage.additional_kwargs
-                ?.reasoning_time as number | undefined
-            const usage = aiMessage.usage_metadata
-            const additionalReplyMessages: Message[] = []
-            const showThought = this.service.currentConfig.showThoughtMessage
-
-            if (showThought && reasoning != null && reasoning.length > 0) {
-                additionalReplyMessages.push({
-                    content:
-                        reasoningTime != null
-                            ? `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoning}`
-                            : `Thought: \n\n${reasoning}`
-                })
-            }
-
-            if (showThought && usage != null && usage.total_tokens > 0) {
-                additionalReplyMessages.push({
-                    content: formatUsageMetadataMessage(usage)
-                })
-            }
-
-            return {
-                content: aiMessage.content as string,
-                additional_kwargs: aiMessage.additional_kwargs,
-                additionalReplyMessages
-            }
+            return this.buildReply(chainValues.message as AIMessage)
         } finally {
-            idleDisponse()
-            if (sig != null && onAbort != null) {
-                sig.removeEventListener('abort', onAbort)
-            }
+            releaseIdleTimer()
+            releaseSignal()
             this.completeRequest(conversation.id, requestId)
+        }
+    }
+
+    private buildReply(aiMessage: AIMessage): Message {
+        const reasoning = aiMessage.additional_kwargs?.reasoning_content as
+            | string
+            | undefined
+        const reasoningTime = aiMessage.additional_kwargs?.reasoning_time as
+            | number
+            | undefined
+        const usage = aiMessage.usage_metadata
+        const showThought = this.service.currentConfig.showThoughtMessage
+        const additionalReplyMessages: Message[] = []
+
+        if (showThought && reasoning != null && reasoning.length > 0) {
+            additionalReplyMessages.push({
+                content:
+                    reasoningTime != null
+                        ? `Thought for ${reasoningTime / 1000} seconds: \n\n${reasoning}`
+                        : `Thought: \n\n${reasoning}`
+            })
+        }
+
+        if (showThought && usage != null && usage.total_tokens > 0) {
+            additionalReplyMessages.push({
+                content: formatUsageMetadataMessage(usage)
+            })
+        }
+
+        return {
+            content: aiMessage.content as string,
+            additional_kwargs: aiMessage.additional_kwargs,
+            additionalReplyMessages
         }
     }
 
@@ -289,19 +265,12 @@ export class ConversationRuntime {
     ): Promise<T> {
         const requestId = randomUUID()
         const modelRequestId = randomUUID()
-        const [platform] = parseRawModelName(conversation.model)
-        if (platform == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.UNKNOWN_ERROR,
-                new Error(`Invalid conversation model: ${conversation.model}`)
-            )
-        }
+        const platform = requirePlatform(conversation)
         const client = await this.platformService.getClient(platform)
 
         if (client.value == null) {
             await this.service.awaitLoadPlatform(platform)
         }
-
         if (client.value == null) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.UNKNOWN_ERROR,
@@ -316,7 +285,6 @@ export class ConversationRuntime {
                 this.conversationQueue.add(conversation.id, requestId),
                 this.modelQueue.add(platform, modelRequestId)
             ])
-
             await Promise.all([
                 this.conversationQueue.wait(
                     conversation.id,
@@ -331,7 +299,6 @@ export class ConversationRuntime {
                     config.timeout
                 )
             ])
-
             return await callback(config)
         } finally {
             await Promise.all([
@@ -355,11 +322,7 @@ export class ConversationRuntime {
             requestKey:
                 session == null
                     ? undefined
-                    : JSON.stringify([
-                          session.userId,
-                          session.guildId ?? '',
-                          conversationId
-                      ]),
+                    : buildRequestKey(session, conversationId),
             platform,
             abortController,
             chatMode,
@@ -383,10 +346,7 @@ export class ConversationRuntime {
         const active = Array.from(this.activeByConversation.values()).find(
             (item) => item.requestId === requestId
         )
-        if (active == null) {
-            return false
-        }
-        if (active.abortController.signal.aborted) {
+        if (active == null || active.abortController.signal.aborted) {
             return false
         }
         active.abortController.abort(
@@ -397,26 +357,15 @@ export class ConversationRuntime {
 
     stopConversationRequest(conversationId: string) {
         const activeRequest = this.activeByConversation.get(conversationId)
-        if (activeRequest == null) {
-            return false
-        }
-
-        return this.stopRequest(activeRequest.requestId)
+        return activeRequest == null
+            ? false
+            : this.stopRequest(activeRequest.requestId)
     }
 
     getRequestId(session: Session, conversationId: string) {
         const active = this.activeByConversation.get(conversationId)
-        if (active == null) {
-            return undefined
-        }
-        if (
-            active.requestKey !==
-            JSON.stringify([
-                session.userId,
-                session.guildId ?? '',
-                conversationId
-            ])
-        ) {
+        if (active == null) return undefined
+        if (active.requestKey !== buildRequestKey(session, conversationId)) {
             return undefined
         }
         return active.requestId
@@ -432,7 +381,6 @@ export class ConversationRuntime {
         }
 
         const activeRequest = this.activeByConversation.get(conversationId)
-
         if (activeRequest == null || activeRequest.chatMode !== 'plugin') {
             return false
         }
@@ -463,10 +411,7 @@ export class ConversationRuntime {
             const chatInterface = await this.ensureChatInterface(conversation)
             await this.service.ctx.root.parallel(
                 'chatluna/before-conversation-clear-history',
-                {
-                    conversation,
-                    chatInterface
-                }
+                { conversation, chatInterface }
             )
             await this.service.ctx.root.parallel(
                 'chatluna/clear-chat-history',
@@ -477,10 +422,7 @@ export class ConversationRuntime {
             this.interfaces.delete(conversation.id)
             await this.service.ctx.root.parallel(
                 'chatluna/after-conversation-clear-history',
-                {
-                    conversation,
-                    chatInterface
-                }
+                { conversation, chatInterface }
             )
         })
     }
@@ -500,40 +442,33 @@ export class ConversationRuntime {
         const existed = cached != null
         await this.service.ctx.root.parallel(
             'chatluna/before-conversation-cache-clear',
-            {
-                conversation,
-                chatInterface: cached?.chatInterface
-            }
+            { conversation, chatInterface: cached?.chatInterface }
         )
         this.interfaces.delete(conversation.id)
         await this.service.ctx.root.parallel(
             'chatluna/after-conversation-cache-clear',
-            {
-                conversation
-            }
+            { conversation }
         )
         return existed
     }
 
     async clearConversationInterface(conversation: ConversationRecord) {
-        return this.withConversationLock(conversation.id, async () => {
-            return this.clearConversationInterfaceLocked(conversation)
-        })
+        return this.withConversationLock(conversation.id, () =>
+            this.clearConversationInterfaceLocked(conversation)
+        )
     }
 
     dispose(platform?: string) {
+        const abortActive = (active: ActiveRequest) => {
+            flushRoundDecision(active, false)
+            active.abortController.abort(
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
+        }
+
         if (platform == null) {
-            for (const active of Array.from(
-                this.activeByConversation.values()
-            )) {
-                flushRoundDecision(active, false)
-                active.abortController.abort(
-                    new ChatLunaError(
-                        ChatLunaErrorCode.ABORTED,
-                        undefined,
-                        true
-                    )
-                )
+            for (const active of this.activeByConversation.values()) {
+                abortActive(active)
             }
             this.interfaces.clear()
             this.activeByConversation.clear()
@@ -541,18 +476,10 @@ export class ConversationRuntime {
         }
 
         for (const active of Array.from(this.activeByConversation.values())) {
-            if (active.platform === platform) {
-                flushRoundDecision(active, false)
-                active.abortController.abort(
-                    new ChatLunaError(
-                        ChatLunaErrorCode.ABORTED,
-                        undefined,
-                        true
-                    )
-                )
-                this.activeByConversation.delete(active.conversationId)
-                this.interfaces.delete(active.conversationId)
-            }
+            if (active.platform !== platform) continue
+            abortActive(active)
+            this.activeByConversation.delete(active.conversationId)
+            this.interfaces.delete(active.conversationId)
         }
 
         for (const [conversationId, entry] of Array.from(
@@ -565,7 +492,7 @@ export class ConversationRuntime {
     }
 }
 
-const EVENT_KEYS: (keyof ChatEvents)[] = [
+const EVENT_KEYS: readonly (keyof ChatEvents)[] = [
     'llm-new-token',
     'llm-queue-waiting',
     'llm-used-token-count',
@@ -588,45 +515,91 @@ function wrapEvents(source: ChatEvents | undefined, touch: () => void) {
     return out as ChatEvents
 }
 
-function formatUsageMetadataMessage(usage: UsageMetadata) {
-    const input = [
-        ...(usage.input_token_details?.audio != null &&
-        usage.input_token_details?.audio > 0
-            ? [`audio=${usage.input_token_details.audio}`]
-            : []),
-        ...(usage.input_token_details?.image != null &&
-        usage.input_token_details?.image > 0
-            ? [`image=${usage.input_token_details.image}`]
-            : []),
-        ...(usage.input_token_details?.cache_read != null
-            ? [`cache_read=${usage.input_token_details.cache_read}`]
-            : []),
-        ...(usage.input_token_details?.cache_creation != null
-            ? [`cache_creation=${usage.input_token_details.cache_creation}`]
-            : [])
-    ]
-    const output = [
-        ...(usage.output_token_details?.audio != null &&
-        usage.output_token_details?.audio > 0
-            ? [`audio=${usage.output_token_details.audio}`]
-            : []),
-        ...(usage.output_token_details?.image != null &&
-        usage.output_token_details?.image > 0
-            ? [`image=${usage.output_token_details.image}`]
-            : []),
-        ...(usage.output_token_details?.reasoning != null
-            ? [`reasoning=${usage.output_token_details.reasoning}`]
-            : [])
-    ]
+function linkAbortSignal(controller: AbortController, upstream?: AbortSignal) {
+    if (upstream == null) return () => {}
+    if (upstream.aborted) {
+        controller.abort(upstream.reason)
+        return () => {}
+    }
+    const onAbort = () => controller.abort(upstream.reason)
+    upstream.addEventListener('abort', onAbort, { once: true })
+    return () => upstream.removeEventListener('abort', onAbort)
+}
 
-    return [
+function buildHumanMessage(
+    session: Session,
+    message: Message,
+    conversation: ConversationRecord
+) {
+    const humanMessage = new HumanMessage({
+        content: message.content,
+        name: message.name,
+        id: session.userId,
+        additional_kwargs: {
+            ...message.additional_kwargs,
+            preset: conversation.preset
+        }
+    })
+    markChatLunaUserMessage(humanMessage)
+    return humanMessage
+}
+
+function buildRequestKey(session: Session, conversationId: string) {
+    return JSON.stringify([
+        session.userId,
+        session.guildId ?? '',
+        conversationId
+    ])
+}
+
+function requirePlatform(conversation: ConversationRecord) {
+    const [platform] = parseRawModelName(conversation.model)
+    if (platform == null) {
+        throw new ChatLunaError(
+            ChatLunaErrorCode.UNKNOWN_ERROR,
+            new Error(`Invalid conversation model: ${conversation.model}`)
+        )
+    }
+    return platform
+}
+
+function formatTokenDetail(
+    detail: Record<string, number | undefined> | undefined,
+    fields: readonly { key: string; positiveOnly?: boolean }[]
+) {
+    if (detail == null) return []
+    const parts: string[] = []
+    for (const { key, positiveOnly } of fields) {
+        const value = detail[key]
+        if (value == null) continue
+        if (positiveOnly && !(value > 0)) continue
+        parts.push(`${key}=${value}`)
+    }
+    return parts
+}
+
+function formatUsageMetadataMessage(usage: UsageMetadata) {
+    const input = formatTokenDetail(usage.input_token_details, [
+        { key: 'audio', positiveOnly: true },
+        { key: 'image', positiveOnly: true },
+        { key: 'cache_read' },
+        { key: 'cache_creation' }
+    ])
+    const output = formatTokenDetail(usage.output_token_details, [
+        { key: 'audio', positiveOnly: true },
+        { key: 'image', positiveOnly: true },
+        { key: 'reasoning' }
+    ])
+
+    const lines = [
         'Token usage:',
         `- input: ${usage.input_tokens}`,
         `- output: ${usage.output_tokens}`,
-        `- total: ${usage.total_tokens}`,
-        ...(input.length > 0 ? [`- input details: ${input.join(', ')}`] : []),
-        ...(output.length > 0 ? [`- output details: ${output.join(', ')}`] : [])
-    ].join('\n')
+        `- total: ${usage.total_tokens}`
+    ]
+    if (input.length > 0) lines.push(`- input details: ${input.join(', ')}`)
+    if (output.length > 0) lines.push(`- output details: ${output.join(', ')}`)
+    return lines.join('\n')
 }
 
 function flushRoundDecision(active: ActiveRequest, canContinue: boolean) {

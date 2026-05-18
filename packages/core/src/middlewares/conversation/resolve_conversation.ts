@@ -10,22 +10,24 @@ import { ConversationResolutionError } from '../../services/conversation_types'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_conversation', async (session, context) => {
-            const presetLane = getPresetLane(context)
-            const targetConversation = getTargetConversation(context)
-            const explicitConversationId = getExplicitConversationId(context)
+            const { options } = context
+            const presetLane =
+                options.conversation_manage?.presetLane ?? options.presetLane
+            const targetConversation =
+                options.conversation_manage?.targetConversation ??
+                options.targetConversation
+            const explicitConversationId =
+                options.conversation?.conversationId ??
+                options.conversation?.conversation?.id
             const hasExplicitTarget =
                 targetConversation != null || explicitConversationId != null
-            const conversationId = getConversationId(
-                targetConversation != null,
-                explicitConversationId
-            )
+            const conversationId =
+                targetConversation != null ? undefined : explicitConversationId
             const targetValue =
                 targetConversation ?? explicitConversationId ?? conversationId
-            const includeArchived =
-                context.options.conversation_manage?.includeArchived
-            const useRoutePresetLane = presetLane == null && !hasExplicitTarget
+            const includeArchived = options.conversation_manage?.includeArchived
 
-            context.options.presetLane = presetLane
+            options.presetLane = presetLane
 
             try {
                 const resolved =
@@ -37,16 +39,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             targetConversation,
                             presetLane,
                             includeArchived,
-                            allPresetLanes: context.options.allPresetLanes,
-                            useRoutePresetLane
+                            allPresetLanes: options.allPresetLanes,
+                            useRoutePresetLane:
+                                presetLane == null && !hasExplicitTarget
                         }
                     )
 
                 if (hasExplicitTarget && resolved.conversation == null) {
                     context.message =
                         targetValue == null
-                            ? getNotFoundMessage(session, context)
-                            : await getTargetNotFoundMessage(
+                            ? notFoundMessage(session, context)
+                            : await targetNotFoundMessage(
                                   ctx,
                                   session,
                                   context,
@@ -57,30 +60,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
 
-                context.options.conversation = resolved
-
+                options.conversation = resolved
                 return ChainMiddlewareRunStatus.CONTINUE
             } catch (error) {
-                if (
-                    error instanceof ConversationResolutionError &&
-                    error.code === 'ambiguous_target'
-                ) {
+                if (error instanceof ConversationResolutionError) {
                     context.message = session.text(
-                        'chatluna.conversation.messages.target_ambiguous'
+                        error.code === 'ambiguous_target'
+                            ? 'chatluna.conversation.messages.target_ambiguous'
+                            : 'chatluna.conversation.messages.target_outside_route'
                     )
                     return ChainMiddlewareRunStatus.STOP
                 }
-
-                if (
-                    error instanceof ConversationResolutionError &&
-                    error.code === 'target_outside_route'
-                ) {
-                    context.message = session.text(
-                        'chatluna.conversation.messages.target_outside_route'
-                    )
-                    return ChainMiddlewareRunStatus.STOP
-                }
-
                 throw error
             }
         })
@@ -99,39 +89,7 @@ declare module '../../chains/chain' {
     }
 }
 
-function getPresetLane(context: ChainMiddlewareContext) {
-    return (
-        context.options.conversation_manage?.presetLane ??
-        context.options.presetLane
-    )
-}
-
-function getTargetConversation(context: ChainMiddlewareContext) {
-    return (
-        context.options.conversation_manage?.targetConversation ??
-        context.options.targetConversation
-    )
-}
-
-function getConversationId(
-    hasTargetConversation: boolean,
-    explicitConversationId?: string
-) {
-    if (hasTargetConversation) {
-        return undefined
-    }
-
-    return explicitConversationId
-}
-
-function getExplicitConversationId(context: ChainMiddlewareContext) {
-    return (
-        context.options.conversation?.conversationId ??
-        context.options.conversation?.conversation?.id
-    )
-}
-
-function getNotFoundMessage(
+function notFoundMessage(
     session: ChainMiddlewareContext['session'],
     context: ChainMiddlewareContext
 ) {
@@ -140,29 +98,24 @@ function getNotFoundMessage(
         : session.text('commands.chatluna.chat.messages.conversation_not_exist')
 }
 
-function getTargetSuffixKey(context: ChainMiddlewareContext) {
-    const key = {
-        conversation_switch: 'commands.chatluna.switch.arguments.conversation',
-        conversation_archive:
-            'commands.chatluna.archive.arguments.conversation',
-        conversation_restore:
-            'commands.chatluna.restore.arguments.conversation',
-        conversation_export: 'commands.chatluna.export.arguments.conversation',
-        conversation_compress:
-            'commands.chatluna.compress.arguments.conversation',
-        conversation_delete: 'commands.chatluna.delete.arguments.conversation'
-    }[context.command ?? '']
+const TARGET_SUFFIX_BY_COMMAND: Record<string, string> = {
+    conversation_switch: 'commands.chatluna.switch.arguments.conversation',
+    conversation_archive: 'commands.chatluna.archive.arguments.conversation',
+    conversation_restore: 'commands.chatluna.restore.arguments.conversation',
+    conversation_export: 'commands.chatluna.export.arguments.conversation',
+    conversation_compress: 'commands.chatluna.compress.arguments.conversation',
+    conversation_delete: 'commands.chatluna.delete.arguments.conversation'
+}
 
-    if (key != null) {
-        return key
-    }
-
+function targetSuffixKey(context: ChainMiddlewareContext) {
+    const exact = TARGET_SUFFIX_BY_COMMAND[context.command ?? '']
+    if (exact != null) return exact
     return context.command?.startsWith('conversation_')
         ? 'commands.chatluna.conversation.options.conversation'
         : 'commands.chatluna.chat.text.options.conversation'
 }
 
-async function getTargetNotFoundMessage(
+async function targetNotFoundMessage(
     ctx: Context,
     session: ChainMiddlewareContext['session'],
     context: ChainMiddlewareContext,
@@ -189,12 +142,12 @@ async function getTargetNotFoundMessage(
     ).filter((item) => item.length > 0)
 
     if (expect.length === 0 || typeof session.suggest !== 'function') {
-        return getNotFoundMessage(session, context)
+        return notFoundMessage(session, context)
     }
 
     return session.suggest({
         actual: targetValue,
         expect,
-        suffix: session.text(getTargetSuffixKey(context))
+        suffix: session.text(targetSuffixKey(context))
     })
 }
