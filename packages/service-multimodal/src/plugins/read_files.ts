@@ -29,15 +29,6 @@ import z from 'zod'
 const DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const DEFAULT_MAX_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
 
-const fileSchema = z.object({ url: z.string().url() })
-const readFilesSchema = z.object({
-    files: z
-        .union([fileSchema, z.array(fileSchema).min(1).max(10)])
-        .describe(
-            'One file or a list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
-        )
-})
-
 interface NativePart {
     mimeType: string
     base64Data: string
@@ -50,7 +41,26 @@ interface NativePart {
 
 export class ReadFilesTool extends StructuredTool {
     name = 'read_files'
-    schema = readFilesSchema
+    schema = z.object({
+        files: z
+            .union([
+                z.object({
+                    url: z.string().url()
+                }),
+                z
+                    .array(
+                        z.object({
+                            url: z.string().url()
+                        })
+                    )
+                    .min(1)
+                    .max(10)
+            ])
+            .describe(
+                'One file or a list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
+            )
+    })
+
     description: string
 
     constructor(
