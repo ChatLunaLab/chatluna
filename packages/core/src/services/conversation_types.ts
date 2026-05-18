@@ -184,6 +184,70 @@ export class ConversationResolutionError extends Error {
     }
 }
 
+export class ConversationNotFoundError extends Error {
+    constructor() {
+        super('Conversation not found.')
+        this.name = 'ConversationNotFoundError'
+    }
+}
+
+export type ConstraintAction =
+    | 'create'
+    | 'switch'
+    | 'rename'
+    | 'delete'
+    | 'archive'
+    | 'restore'
+    | 'export'
+    | 'update'
+    | 'compress'
+
+export class ConstraintLockedError extends Error {
+    constructor(public readonly action: ConstraintAction) {
+        super(`Conversation ${action} is locked by constraint.`)
+        this.name = 'ConstraintLockedError'
+    }
+}
+
+export class ConstraintDisabledError extends Error {
+    constructor(public readonly action: ConstraintAction) {
+        super(`Conversation ${action} is disabled by constraint.`)
+        this.name = 'ConstraintDisabledError'
+    }
+}
+
+export type ConstraintFixedField = 'model' | 'preset' | 'chatMode'
+
+const FIXED_FIELD_LABEL: Record<ConstraintFixedField, string> = {
+    model: 'Model',
+    preset: 'Preset',
+    chatMode: 'Chat mode'
+}
+
+export class ConstraintFixedError extends Error {
+    constructor(
+        public readonly field: ConstraintFixedField,
+        public readonly value: string
+    ) {
+        super(`${FIXED_FIELD_LABEL[field]} is fixed to ${value}.`)
+        this.name = 'ConstraintFixedError'
+    }
+}
+
+export class InvalidChatModeError extends Error {
+    constructor(public readonly mode: string) {
+        super(`Chat mode ${mode} not found.`)
+        this.name = 'InvalidChatModeError'
+    }
+}
+
+export class AdminRequiredError extends Error {
+    constructor() {
+        super('Conversation management requires administrator permission.')
+        this.name = 'AdminRequiredError'
+    }
+}
+
 export interface ResolveConversationOptions {
     mode?: ConversationResolveMode
     presetLane?: string
