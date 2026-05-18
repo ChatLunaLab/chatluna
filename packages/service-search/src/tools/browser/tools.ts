@@ -336,11 +336,9 @@ class BrowserSummarizeTool extends StructuredTool {
         _,
         cfg: ChatLunaToolRunnable
     ) {
-        return await this.manager.summarize(
-            input,
-            this.model.value ?? cfg.configurable.model,
-            cfg
-        )
+        const model = this.model.value ?? cfg.configurable.model
+        if (!model) throw new Error('No model available for summarization')
+        return await this.manager.summarize(input, model, cfg)
     }
 }
 
