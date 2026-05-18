@@ -392,9 +392,22 @@ export async function langchainMessageToOpenAIMessage(
                             return null
                         }
                         try {
-                            return await fetchAudioContentPart(plugin, content)
-                        } catch {
-                            return null
+                            const part = await fetchAudioContentPart(
+                                plugin,
+                                content
+                            )
+                            if (part == null) {
+                                logger.warn(
+                                    `Audio content for model ${normalizedModel} was dropped (exceeded size limits or no data).`
+                                )
+                            }
+                            return part
+                        } catch (err) {
+                            logger.error(
+                                `Failed to fetch audio part for model ${normalizedModel}`,
+                                err
+                            )
+                            throw err
                         }
                     }
 
@@ -694,7 +707,13 @@ const AUDIO_MIME_TO_FORMAT: Record<string, string> = {
 }
 
 function audioMimeToFormat(mime: string): string {
-    return AUDIO_MIME_TO_FORMAT[mime.toLowerCase()] ?? 'mp3'
+    const format = AUDIO_MIME_TO_FORMAT[mime.toLowerCase()]
+    if (!format) {
+        throw new Error(
+            `Unsupported audio MIME for OpenAI input_audio: ${mime}`
+        )
+    }
+    return format
 }
 
 /**

@@ -109,10 +109,7 @@ export class ReadFilesTool extends StructuredTool {
                     fetched.buffer,
                     declared
                 )
-                const mime =
-                    declared?.startsWith('audio/') || detectedAudio
-                        ? detectedAudio
-                        : declared
+                const mime = detectedAudio ?? declared
 
                 if (!mime) {
                     pushError(
@@ -323,8 +320,7 @@ export class ReadFilesTool extends StructuredTool {
             })
             return {
                 buffer: Buffer.from(response.data),
-                contentType:
-                    (response.headers as Headers)?.get?.('content-type') ?? null
+                contentType: getHeaderValue(response.headers, 'content-type')
             }
         } catch {
             return null
@@ -411,6 +407,27 @@ function pushNative(
     native.push({ sourceUrl, mimeType, base64Data })
     report.files.push({ sourceUrl, mimeType, status: 'ok' })
     report.successCount++
+}
+
+function getHeaderValue(headers: unknown, name: string): string | null {
+    if (headers == null) return null
+
+    if (typeof (headers as { get?: unknown }).get === 'function') {
+        const value = (headers as { get(name: string): string | null }).get(
+            name
+        )
+        return typeof value === 'string' ? value : null
+    }
+
+    const record = headers as Record<string, unknown>
+    const lower = name.toLowerCase()
+    for (const key of Object.keys(record)) {
+        if (key.toLowerCase() === lower) {
+            const value = record[key]
+            return typeof value === 'string' ? value : null
+        }
+    }
+    return null
 }
 
 function isHttp(url: string): boolean {

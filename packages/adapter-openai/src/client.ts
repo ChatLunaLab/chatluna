@@ -67,13 +67,11 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     (model) =>
                         !(
                             model.includes('instruct') ||
-                            [
-                                'whisper',
-                                'tts',
-                                'dall-e',
-                                'audio',
-                                'realtime'
-                            ].some((keyword) => model.includes(keyword))
+                            ['whisper', 'tts', 'dall-e', 'realtime'].some(
+                                (keyword) => model.includes(keyword)
+                            ) ||
+                            (model.includes('audio') &&
+                                !supportAudioInput(model))
                         )
                 )
                 .map((model) => {

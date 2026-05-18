@@ -30,7 +30,9 @@ const MIME_TO_EXT: Record<string, string> = {
     'audio/wav': 'wav',
     'audio/flac': 'flac',
     'audio/ogg': 'ogg',
-    'audio/mp4': 'm4a'
+    'audio/mp4': 'm4a',
+    'audio/aac': 'aac',
+    'audio/webm': 'webm'
 }
 
 /**

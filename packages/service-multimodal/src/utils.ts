@@ -94,6 +94,8 @@ export function detectAudioMimeType(
     const head = buffer.subarray(0, 16).toString('latin1')
 
     if (head.startsWith('#!AMR')) return 'audio/amr'
+    // QQ/OneBot ships SILK voice files with a leading flag byte before the
+    // standard `#!SILK_V3` magic, so we also check offset 1 for that variant.
     if (
         head.startsWith('#!SILK_V3') ||
         buffer.subarray(1, 10).toString('latin1') === '#!SILK_V3'
@@ -135,6 +137,8 @@ export async function convertAudioToMp3(
     }
 
     try {
+        // Match both the standard SILK magic and the QQ/OneBot variant that
+        // prepends a flag byte before `#!SILK_V3`.
         const isSilk =
             buffer.subarray(0, 9).toString('latin1') === '#!SILK_V3' ||
             buffer.subarray(1, 10).toString('latin1') === '#!SILK_V3'
