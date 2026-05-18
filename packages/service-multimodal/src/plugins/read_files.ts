@@ -43,19 +43,38 @@ export class ReadFilesTool extends StructuredTool {
     name = 'read_files'
     schema = z.object({
         files: z
-            .union([
-                z.object({
-                    url: z.string().url()
-                }),
-                z
-                    .array(
-                        z.object({
-                            url: z.string().url()
-                        })
-                    )
-                    .min(1)
-                    .max(10)
-            ])
+            .preprocess(
+                (arg: unknown) => {
+                    if (typeof arg === 'string') {
+                        const base = JSON.parse(arg)
+                        if (
+                            typeof base === 'object' &&
+                            typeof base['files'] === 'string'
+                        ) {
+                            try {
+                                base['files'] = JSON.parse(base['files'])
+                                return base
+                            } catch {
+                                return base
+                            }
+                        }
+                    }
+                    return arg
+                },
+                z.union([
+                    z.object({
+                        url: z.string().url()
+                    }),
+                    z
+                        .array(
+                            z.object({
+                                url: z.string().url()
+                            })
+                        )
+                        .min(1)
+                        .max(10)
+                ])
+            )
             .describe(
                 'One file or a list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
             )
