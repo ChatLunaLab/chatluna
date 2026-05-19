@@ -1,7 +1,7 @@
-## koishi-plugin-chatluna-long-memory
+## koishi-plugin-chatluna-multimodal-service
 
-## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-long-memory)](https://www.npmjs.com/package/koishi-plugin-chatluna-long-memory) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-long-memory)](https://www.npmjs.com/package//koishi-plugin-chatluna-long-memory)
+## [![npm](https://img.shields.io/npm/v/koishi-plugin-chatluna-multimodal-service)](https://www.npmjs.com/package/koishi-plugin-chatluna-multimodal-service) [![npm](https://img.shields.io/npm/dm/koishi-plugin-chatluna-multimodal-service)](https://www.npmjs.com/package/koishi-plugin-chatluna-multimodal-service)
 
-> 提供长期记忆支持的插件
+> ChatLuna 的多模态服务插件，提供上下文图像/语音描述、GIF 处理与 `read_files` 文件读取工具。
 
-[长期记忆文档](https://chatluna.chat/ecosystem/renderer/image.html)
+[多模态插件文档](https://chatluna.chat/ecosystem/plugin/multimodal-service.html)

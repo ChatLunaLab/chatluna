@@ -30,15 +30,24 @@ import {
     ResponseUsage
 } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { logger } from 'koishi-plugin-chatluna'
 import {
     getImageMimeType,
     getMimeTypeFromSource,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
-import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
+import {
+    isChatLunaUserMessage,
+    isMessageContentAudio
+} from 'koishi-plugin-chatluna/utils/langchain'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
-import { normalizeOpenAIModelName, supportImageInput } from './client'
+import {
+    DEFAULT_AUDIO_MAX_BASE64_BYTES,
+    normalizeOpenAIModelName,
+    supportAudioInput,
+    supportImageInput
+} from './client'
 
 export function createUsageMetadata(data: {
     inputTokens: number
@@ -222,6 +231,7 @@ export function responseInputContent(
                 } satisfies ResponseInputContent
             }
 
+            // OpenAI Response API does not accept `input_audio` yet — drop it.
             return undefined
         })
         .filter((part) => part != null)
@@ -343,64 +353,71 @@ export async function langchainMessageToOpenAIMessage(
             }
         }
 
-        const images = rawMessage.additional_kwargs.images as string[] | null
-
-        const lowerModel = normalizedModel?.toLowerCase() ?? ''
-        if (
-            images != null &&
-            (supportImageInput(lowerModel) || supportImageInputType)
-        ) {
-            msg.content = [
-                {
-                    type: 'text',
-                    text: rawMessage.content as string
-                }
-            ]
-
-            const imageContents = await Promise.all(
-                images.map(async (image) => {
-                    try {
-                        const url = await fetchImageUrl(plugin, {
-                            type: 'image_url',
-                            image_url: { url: image }
-                        } as MessageContentImageUrl)
-                        return {
-                            type: 'image_url',
-                            image_url: {
-                                url,
-                                detail: 'low'
-                            }
-                        } as const
-                    } catch {
-                        return null
-                    }
-                })
+        if (rawMessage.additional_kwargs.images != null) {
+            logger.warn(
+                'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
             )
+        }
 
-            msg.content.push(
-                ...imageContents.filter((content) => content != null)
-            )
-        } else if (Array.isArray(msg.content) && msg.content.length > 0) {
+        if (Array.isArray(msg.content) && msg.content.length > 0) {
+            const supportsAudio = supportAudioInput(normalizedModel ?? '')
+            const supportsImage =
+                supportImageInput(normalizedModel ?? '') ||
+                supportImageInputType === true
             const mappedContent = await Promise.all(
                 msg.content.map(async (content) => {
-                    if (!isMessageContentImageUrl(content)) return content
-
-                    try {
-                        const url = await fetchImageUrl(plugin, content)
-                        return {
-                            type: 'image_url',
-                            image_url: {
-                                url,
-                                detail: 'low'
-                            }
+                    if (isMessageContentImageUrl(content)) {
+                        if (!supportsImage) {
+                            logger.warn(
+                                `Model ${normalizedModel} does not accept image input; dropping image content.`
+                            )
+                            return null
                         }
-                    } catch {
-                        return null
+                        try {
+                            const url = await fetchImageUrl(plugin, content)
+                            return {
+                                type: 'image_url',
+                                image_url: { url, detail: 'low' }
+                            }
+                        } catch {
+                            return null
+                        }
                     }
+
+                    if (isMessageContentAudio(content)) {
+                        if (!supportsAudio) {
+                            logger.warn(
+                                `Model ${normalizedModel} does not accept audio input; dropping audio content.`
+                            )
+                            return null
+                        }
+                        try {
+                            const part = await fetchAudioContentPart(
+                                plugin,
+                                content
+                            )
+                            if (part == null) {
+                                logger.warn(
+                                    `Audio content for model ${normalizedModel} was dropped (exceeded size limits or no data).`
+                                )
+                            }
+                            return part
+                        } catch (err) {
+                            logger.error(
+                                `Failed to fetch audio part for model ${normalizedModel}`,
+                                err
+                            )
+                            throw err
+                        }
+                    }
+
+                    return content
                 })
             )
 
-            msg.content = mappedContent.filter((content) => content != null)
+            msg.content = mappedContent.filter(
+                (content) => content != null
+            ) as ChatCompletionResponseMessage['content']
         }
 
         result.push(msg)
@@ -674,6 +691,54 @@ export async function fetchFileLikeUrl(
             getMimeTypeFromSource(url) ??
             'application/octet-stream'
     }
+}
+
+const AUDIO_MIME_TO_FORMAT: Record<string, string> = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/flac': 'flac',
+    'audio/x-flac': 'flac',
+    'audio/ogg': 'ogg',
+    'audio/mp4': 'mp4',
+    'audio/aac': 'aac',
+    'audio/webm': 'webm'
+}
+
+function audioMimeToFormat(mime: string): string {
+    const format = AUDIO_MIME_TO_FORMAT[mime.toLowerCase()]
+    if (!format) {
+        throw new Error(
+            `Unsupported audio MIME for OpenAI input_audio: ${mime}`
+        )
+    }
+    return format
+}
+
+/**
+ * Fetch an `audio_url` content part and convert it to the OpenAI-compatible
+ * `input_audio` shape used by gpt-4o-audio / MiMo. Returns `null` when the
+ * encoded payload exceeds {@link DEFAULT_AUDIO_MAX_BASE64_BYTES}.
+ */
+async function fetchAudioContentPart(
+    plugin: ChatLunaPlugin,
+    content: MessageContentFileLike & { type: 'audio_url' }
+): Promise<MessageContentComplex | null> {
+    const { buffer, mimeType } = await fetchFileLikeUrl(plugin, content)
+    const base64 = buffer.toString('base64')
+
+    if (base64.length > DEFAULT_AUDIO_MAX_BASE64_BYTES) {
+        return null
+    }
+
+    return {
+        type: 'input_audio',
+        input_audio: {
+            data: base64,
+            format: audioMimeToFormat(mimeType)
+        }
+    } as unknown as MessageContentComplex
 }
 
 export function messageTypeToOpenAIRole(

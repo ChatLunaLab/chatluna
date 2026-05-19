@@ -20,6 +20,8 @@ import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     getModelMaxContextSize,
+    getOpenAIFileHandlingConfig,
+    supportAudioInput,
     supportImageInput
 } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
@@ -65,13 +67,11 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                     (model) =>
                         !(
                             model.includes('instruct') ||
-                            [
-                                'whisper',
-                                'tts',
-                                'dall-e',
-                                'audio',
-                                'realtime'
-                            ].some((keyword) => model.includes(keyword))
+                            ['whisper', 'tts', 'dall-e', 'realtime'].some(
+                                (keyword) => model.includes(keyword)
+                            ) ||
+                            (model.includes('audio') &&
+                                !supportAudioInput(model))
                         )
                 )
                 .map((model) => {
@@ -84,6 +84,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                             ModelCapabilities.ToolCall,
                             supportImageInput(model)
                                 ? ModelCapabilities.ImageInput
+                                : undefined,
+                            supportAudioInput(model)
+                                ? ModelCapabilities.AudioInput
                                 : undefined
                         ].filter(Boolean)
                     } as ModelInfo
@@ -125,6 +128,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
+                fileHandlingConfig: getOpenAIFileHandlingConfig(model),
                 llmType: 'openai'
             })
         }

@@ -83,7 +83,7 @@ export const Config: Schema<Config> = Schema.intersect([
 
 export const inject = {
     required: ['chatluna'],
-    optional: ['chatluna_storage', 'ffmpeg', 'silk']
+    optional: ['ffmpeg', 'silk']
 }
 
 export const name = 'chatluna-multimodal-service'

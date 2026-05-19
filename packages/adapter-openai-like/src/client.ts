@@ -20,10 +20,12 @@ import { OpenAIRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import {
     getModelMaxContextSize,
+    getOpenAIFileHandlingConfig,
     isEmbeddingModel,
     isImageGenerationModel,
     isNonLLMModel,
     isRerankerModel,
+    supportAudioInput,
     supportImageInput
 } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
@@ -92,6 +94,9 @@ export class OpenAIClient extends PlatformModelEmbeddingsAndRerankerClient {
                         ModelCapabilities.ToolCall,
                         supportImageInput(model)
                             ? ModelCapabilities.ImageInput
+                            : null,
+                        supportAudioInput(model)
+                            ? ModelCapabilities.AudioInput
                             : null
                     ].filter(Boolean)
                 }
@@ -167,6 +172,7 @@ export class OpenAIClient extends PlatformModelEmbeddingsAndRerankerClient {
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
                 llmType: 'openai',
+                fileHandlingConfig: getOpenAIFileHandlingConfig(model),
                 isThinkModel:
                     model.includes('reasoner') ||
                     model.includes('r1') ||

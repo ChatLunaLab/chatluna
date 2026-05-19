@@ -21,24 +21,23 @@ export async function langchainMessageToOllamaMessage(
 
     const mappedMessage = await Promise.all(
         messages.map(async (rawMessage) => {
-            let images: string[] = []
-
-            if (rawMessage.additional_kwargs.images != null && supportImage) {
-                images = rawMessage.additional_kwargs.images as string[]
-            } else {
-                images =
-                    typeof rawMessage.content === 'string'
-                        ? undefined
-                        : await Promise.all(
-                              rawMessage.content
-                                  .filter((part) =>
-                                      isMessageContentImageUrl(part)
-                                  )
-                                  .map((part) =>
-                                      processOllamaImageContent(plugin, part)
-                                  )
-                          )
+            if (rawMessage.additional_kwargs.images != null) {
+                logger.warn(
+                    'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
+                )
             }
+
+            const images: string[] | undefined = supportImage
+                ? typeof rawMessage.content === 'string'
+                    ? undefined
+                    : await Promise.all(
+                          rawMessage.content
+                              .filter((part) => isMessageContentImageUrl(part))
+                              .map((part) =>
+                                  processOllamaImageContent(plugin, part)
+                              )
+                      )
+                : undefined
 
             const result = {
                 role: messageTypeToOllamaRole(rawMessage.getType()),

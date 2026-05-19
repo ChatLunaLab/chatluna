@@ -56,41 +56,15 @@ export async function langchainMessageToClaudeMessage(
 
     const mappedMessages = await Promise.all(
         messages.map(async (rawMessage) => {
-            let content: string | ClaudeInputContentBlockParam[] | undefined =
+            const content: string | ClaudeInputContentBlockParam[] | undefined =
                 typeof rawMessage.content === 'string'
                     ? rawMessage.content
                     : await processMessageContent(plugin, rawMessage.content)
 
-            const images = rawMessage.additional_kwargs.images as
-                | string[]
-                | null
-
-            if (
-                (model?.includes('claude-3') || model?.includes('claude-4')) &&
-                images != null
-            ) {
-                const mappedImages = await Promise.all(
-                    images.map(async (image) =>
-                        processImageContent(plugin, {
-                            type: 'image_url',
-                            image_url: { url: image }
-                        } as MessageContentImageUrl)
-                    )
+            if (rawMessage.additional_kwargs.images != null) {
+                logger.warn(
+                    'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
                 )
-
-                const nextContent: ClaudeInputContentBlockParam[] =
-                    mappedImages.filter((item) => item != null)
-
-                if (Array.isArray(content)) {
-                    nextContent.push(...content)
-                } else if ((content?.length ?? 0) > 0) {
-                    nextContent.push({
-                        type: 'text',
-                        text: content
-                    })
-                }
-
-                content = nextContent
             }
 
             const result: ClaudeMessage = {

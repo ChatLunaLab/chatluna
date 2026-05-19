@@ -14,7 +14,6 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     ChatFunctionCallingPart,
     ChatFunctionResponsePart,
-    ChatMessagePart,
     ChatPart,
     ChatResponse,
     GeminiUsageMetadata
@@ -78,9 +77,10 @@ export async function langchainMessageToGeminiMessage(
                           thoughtData
                       )
 
-            const images = message.additional_kwargs.images as string[] | null
-            if (images) {
-                processImageParts(result, images, model)
+            if (message.additional_kwargs.images != null) {
+                logger.warn(
+                    'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
+                )
             }
 
             return result
@@ -202,39 +202,6 @@ async function processFunctionMessage(
             }
         ]
     }
-}
-function processImageParts(
-    result: ChatCompletionResponseMessage,
-    images: string[],
-    model: string
-) {
-    if (
-        !(
-            (model.includes('vision') ||
-                model.includes('gemini') ||
-                model.includes('gemma2')) &&
-            !model.includes('gemini-1.0')
-        )
-    ) {
-        return
-    }
-
-    for (const image of images) {
-        const mineType = image.split(';')?.[0]?.split(':')?.[1] ?? 'image/jpeg'
-        const data = image.replace(/^data:image\/\w+;base64,/, '')
-
-        result.parts.push({
-            inline_data: { data, mime_type: mineType }
-        })
-    }
-
-    result.parts = result.parts.filter((uncheckedPart) => {
-        const part = partAsTypeCheck<ChatMessagePart>(
-            uncheckedPart,
-            (part) => part['text'] != null
-        )
-        return part == null || part.text.length > 0
-    })
 }
 
 async function processGeminiImageContent(
