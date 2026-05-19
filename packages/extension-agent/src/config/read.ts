@@ -2,6 +2,7 @@
 
 import { Context } from 'koishi'
 import { readFile } from 'fs/promises'
+import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import {
     AgentConfig,
     createToolDefaultAvailability,
@@ -68,14 +69,9 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
                     )
                 )
             },
-            trigger: {
-                ...base.trigger,
-                ...(cfg.trigger ?? {}),
-                providers: {
-                    ...(base.trigger?.providers ?? {}),
-                    ...(cfg.trigger?.providers ?? {})
-                }
-            }
+            trigger: deepAssign({}, base.trigger, cfg.trigger ?? {}),
+            computer: deepAssign({}, base.computer, cfg.computer ?? {}),
+            subAgent: deepAssign({}, base.subAgent, cfg.subAgent ?? {})
         }
     } catch {
         return getDefaultConfig()

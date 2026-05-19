@@ -81,7 +81,7 @@ export async function syncAgentcliConfig(
 
     const next = JSON.parse(chosen.content) as AgentConfig
     await writeConfig(agent.ctx, next)
-    await agent.reload(next)
+    await agent.reload()
     messages.push(`applied from ${sources.join(', ')}`)
 
     return {
