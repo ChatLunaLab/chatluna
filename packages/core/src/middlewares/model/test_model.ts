@@ -3,7 +3,6 @@ import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { Config } from '../../config'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
-import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { AIMessageChunk } from '@langchain/core/messages'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -78,11 +77,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 // Create the model
-                const chatModel = client.value.createModel(
+                const chatModel = await ctx.chatluna.createChatModel(
+                    platformName,
                     modelName
-                ) as ChatLunaChatModel
+                )
+                const modelRef = chatModel.value
 
-                if (!chatModel) {
+                if (modelRef == null) {
                     context.message = session.text('.model_not_found', [
                         `${platformName}/${modelName}`
                     ])
@@ -99,9 +100,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 let testError: Error | null = null
 
                 try {
-                    response = await chatModel.invoke('Hello', {
+                    response = await modelRef.invoke('Hello', {
                         maxTokens: 10,
-                        signal: AbortSignal.timeout(60000)
+                        signal: AbortSignal.timeout(60000),
+                        configurable: {
+                            session,
+                            source: 'chatluna'
+                        }
                     })
                 } catch (error) {
                     testError = error

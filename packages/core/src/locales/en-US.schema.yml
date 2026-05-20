@@ -67,6 +67,9 @@ $inner:
       voiceSpeakId: Set default speaker ID for vits service.
       isLog: Enable debug mode.
 
+    - $desc: Usage Tracking
+      enableUsageTracking: Record token usage for every model call. When enabled, usage events are emitted to plugins like chatluna-usage. Disable to skip all reporting overhead.
+
     - isProxy:
           $desc: Enable proxy for ChatLuna family plugin network requests.
           $inner:

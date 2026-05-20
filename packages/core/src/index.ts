@@ -22,6 +22,7 @@ import { purgeArchivedConversation } from './utils/archive'
 export * from './config'
 export * from './render'
 export * from './types'
+export type * from './services/usage'
 export * from '@vue/reactivity'
 export const name = 'chatluna'
 export const inject = {

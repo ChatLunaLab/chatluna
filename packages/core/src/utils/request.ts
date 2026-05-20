@@ -1,5 +1,5 @@
 import { HttpsProxyAgent } from 'https-proxy-agent'
-import { logger } from 'koishi-plugin-chatluna'
+import { Logger } from 'koishi'
 import { lookup } from 'node:dns/promises'
 import {
     ChatLunaError,
@@ -15,6 +15,8 @@ import Connector = buildConnector.connector
 import TLSOptions = buildConnector.BuildOptions
 
 export { FormData }
+
+const logger = new Logger('chatluna')
 
 function createProxyAgentForFetch(
     init: fetchType.RequestInit,

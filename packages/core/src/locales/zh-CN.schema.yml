@@ -68,6 +68,9 @@ $inner:
       voiceSpeakId: 设置使用 vits 服务时的默认发音人 ID。
       isLog: 是否启用调试模式。
 
+    - $desc: 用量统计
+      enableUsageTracking: 是否记录每次模型调用的 token 消耗。启用后可被 chatluna-usage 等扩展消费；关闭后将完全跳过用量上报，无任何额外开销。
+
     - isProxy:
           $desc: 是否启用代理。启用后，ChatLuna 全家桶插件的网络请求将使用此代理。
           $inner:

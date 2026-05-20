@@ -30,6 +30,7 @@ import type {
     ToolMaskArg,
     ToolMaskResolver
 } from '../llm-core/platform/service'
+import type { ModelUsagePayload } from './usage'
 
 export interface LegacyConversationRecord {
     id: string
@@ -191,6 +192,7 @@ declare module 'koishi' {
             session: Session,
             content: string
         ): Promise<boolean>
+        'chatluna/model-usage'(payload: ModelUsagePayload): Promise<void>
     }
 
     interface Tables {
@@ -221,6 +223,8 @@ declare module '@chatluna/shared-prompt-renderer' {
 }
 
 export * from '@chatluna/shared-prompt-renderer'
+
+export type * from './usage'
 
 export * from './conversation_types'
 

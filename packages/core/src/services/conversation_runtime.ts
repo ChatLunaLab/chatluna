@@ -70,16 +70,26 @@ export class ConversationRuntime {
         message: Message,
         options: ChatOptions = {}
     ): Promise<Message> {
-        return this.withConversationAndPlatformLock(
-            conversation,
-            async (config) =>
-                this.internalChat(
-                    config,
-                    session,
-                    conversation,
-                    message,
-                    options
-                )
+        return this.service.withDefaultUsageSource('chatluna', () =>
+            this.service.withUsageContext(
+                {
+                    conversationId: conversation.id,
+                    userId: session.userId,
+                    guildId: session.guildId
+                },
+                () =>
+                    this.withConversationAndPlatformLock(
+                        conversation,
+                        async (config) =>
+                            this.internalChat(
+                                config,
+                                session,
+                                conversation,
+                                message,
+                                options
+                            )
+                    )
+            )
         )
     }
 
@@ -91,99 +101,107 @@ export class ConversationRuntime {
         options: ChatOptions
     ): Promise<Message> {
         const requestId = options.requestId ?? randomUUID()
-        const platform = requirePlatform(conversation)
+        return this.service.withUsageContext({ requestId }, async () => {
+            const platform = requirePlatform(conversation)
 
-        const chatInterface = await this.ensureChatInterface(conversation)
-        const abortController = new AbortController()
-        const releaseSignal = linkAbortSignal(abortController, options.signal)
-        const activeRequest = this.registerRequest(
-            conversation.id,
-            requestId,
-            conversation.chatMode,
-            platform,
-            abortController,
-            session
-        )
-
-        let lastActiveAt = Date.now()
-        const touch = () => {
-            lastActiveAt = Date.now()
-        }
-        const events = wrapEvents(options.event, touch)
-
-        let releaseIdleTimer: () => void = () => {}
-        if (config.timeout > 0) {
-            releaseIdleTimer = this.service.ctx.setInterval(
-                () => {
-                    if (abortController.signal.aborted) return
-                    if (Date.now() - lastActiveAt < config.timeout) return
-                    abortController.abort(
-                        new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_TIMEOUT,
-                            undefined,
-                            true
-                        )
-                    )
-                },
-                Math.min(config.timeout, 30000)
+            const chatInterface = await this.ensureChatInterface(conversation)
+            const abortController = new AbortController()
+            const releaseSignal = linkAbortSignal(
+                abortController,
+                options.signal
             )
-        }
-
-        try {
-            const humanMessage = buildHumanMessage(
-                session,
-                message,
-                conversation
-            )
-            const stream = options.stream ?? false
-            const variables = options.variables ?? {}
-            const mask =
-                options.toolMask ??
-                (await this.platformService.resolveToolMask({
-                    session,
-                    conversation,
-                    bindingKey: conversation.bindingKey
-                }))
-
-            const chainValues = await chatInterface.chat({
-                message: humanMessage,
-                events,
-                stream,
-                conversationId: conversation.id,
+            const activeRequest = this.registerRequest(
+                conversation.id,
                 requestId,
-                session,
-                variables,
-                signal: abortController.signal,
-                postHandler: options.postHandler,
-                messageQueue: activeRequest.messageQueue,
-                toolMask: mask,
-                callbacks: await this.service.resolveCallbacks({
-                    session,
-                    conversation,
-                    message,
-                    event: events,
-                    stream,
-                    variables,
-                    postHandler: options.postHandler,
-                    requestId,
-                    toolMask: mask,
-                    callbacks: options.callbacks
-                }),
-                onAgentEvent: async (agentEvent) => {
-                    touch()
-                    if (agentEvent.type !== 'round-decision') return
-                    activeRequest.lastDecision = agentEvent.canContinue
-                    if (agentEvent.canContinue == null) return
-                    flushRoundDecision(activeRequest, agentEvent.canContinue)
-                }
-            })
+                conversation.chatMode,
+                platform,
+                abortController,
+                session
+            )
 
-            return this.buildReply(chainValues.message as AIMessage)
-        } finally {
-            releaseIdleTimer()
-            releaseSignal()
-            this.completeRequest(conversation.id, requestId)
-        }
+            let lastActiveAt = Date.now()
+            const touch = () => {
+                lastActiveAt = Date.now()
+            }
+            const events = wrapEvents(options.event, touch)
+
+            let releaseIdleTimer: () => void = () => {}
+            if (config.timeout > 0) {
+                releaseIdleTimer = this.service.ctx.setInterval(
+                    () => {
+                        if (abortController.signal.aborted) return
+                        if (Date.now() - lastActiveAt < config.timeout) return
+                        abortController.abort(
+                            new ChatLunaError(
+                                ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+                                undefined,
+                                true
+                            )
+                        )
+                    },
+                    Math.min(config.timeout, 30000)
+                )
+            }
+
+            try {
+                const humanMessage = buildHumanMessage(
+                    session,
+                    message,
+                    conversation
+                )
+                const stream = options.stream ?? false
+                const variables = options.variables ?? {}
+                const mask =
+                    options.toolMask ??
+                    (await this.platformService.resolveToolMask({
+                        session,
+                        conversation,
+                        bindingKey: conversation.bindingKey
+                    }))
+
+                const chainValues = await chatInterface.chat({
+                    message: humanMessage,
+                    events,
+                    stream,
+                    conversationId: conversation.id,
+                    requestId,
+                    session,
+                    variables,
+                    signal: abortController.signal,
+                    postHandler: options.postHandler,
+                    messageQueue: activeRequest.messageQueue,
+                    toolMask: mask,
+                    callbacks: await this.service.resolveCallbacks({
+                        session,
+                        conversation,
+                        message,
+                        event: events,
+                        stream,
+                        variables,
+                        postHandler: options.postHandler,
+                        requestId,
+                        toolMask: mask,
+                        callbacks: options.callbacks
+                    }),
+                    onAgentEvent: async (agentEvent) => {
+                        touch()
+                        if (agentEvent.type !== 'round-decision') return
+                        activeRequest.lastDecision = agentEvent.canContinue
+                        if (agentEvent.canContinue == null) return
+                        flushRoundDecision(
+                            activeRequest,
+                            agentEvent.canContinue
+                        )
+                    }
+                })
+
+                return this.buildReply(chainValues.message as AIMessage)
+            } finally {
+                releaseIdleTimer()
+                releaseSignal()
+                this.completeRequest(conversation.id, requestId)
+            }
+        })
     }
 
     private buildReply(aiMessage: AIMessage): Message {

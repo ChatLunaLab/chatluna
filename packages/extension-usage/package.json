@@ -1,0 +1,66 @@
+{
+    "name": "koishi-plugin-chatluna-usage",
+    "description": "Usage records for ChatLuna model calls",
+    "version": "1.0.0-alpha.0",
+    "main": "lib/index.cjs",
+    "module": "lib/index.mjs",
+    "typings": "lib/index.d.ts",
+    "files": [
+        "lib",
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "types": "./lib/index.d.ts",
+            "import": "./lib/index.mjs",
+            "require": "./lib/index.cjs"
+        },
+        "./package.json": "./package.json"
+    },
+    "type": "module",
+    "author": "dingyi222666 <dingyi222666@foxmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ChatLunaLab/chatluna.git",
+        "directory": "packages/extension-usage"
+    },
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChatLunaLab/chatluna/issues"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "homepage": "https://github.com/ChatLunaLab/chatluna/tree/v1-dev/packages/extension-usage#readme",
+    "scripts": {
+        "build": "atsc -b"
+    },
+    "keywords": [
+        "chatbot",
+        "koishi",
+        "plugin",
+        "service",
+        "chatluna",
+        "usage"
+    ],
+    "devDependencies": {
+        "atsc": "^2.1.0",
+        "koishi": "^4.18.9"
+    },
+    "peerDependencies": {
+        "koishi": "^4.18.9",
+        "koishi-plugin-chatluna": "^1.4.0-alpha.18"
+    },
+    "koishi": {
+        "description": {
+            "zh": "ChatLuna 模型调用用量记录",
+            "en": "Usage records for ChatLuna model calls"
+        },
+        "service": {
+            "required": [
+                "chatluna",
+                "database"
+            ]
+        }
+    }
+}

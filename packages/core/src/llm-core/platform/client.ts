@@ -21,6 +21,8 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import type {} from '../../services/types'
+import type { ModelUsageReporter } from '../../services/usage'
 
 export type { FileHandlingConfig }
 
@@ -185,9 +187,26 @@ export abstract class BasePlatformClient<
     createModel(model: string): R {
         if (!this._modelPool[model]) {
             this._modelPool[model] = this._createModel(model)
+            this._setUsageReporter(this._modelPool[model], model)
         }
 
         return this._modelPool[model]
+    }
+
+    private _setUsageReporter(model: R, name: string) {
+        const tracked = model as R & {
+            setUsageReporter?: (reporter: ModelUsageReporter) => void
+        }
+
+        if (typeof tracked.setUsageReporter === 'function') {
+            tracked.setUsageReporter((usage) =>
+                this.ctx.chatluna.reportModelUsage({
+                    ...usage,
+                    platform: this.platform,
+                    model: name
+                })
+            )
+        }
     }
 }
 

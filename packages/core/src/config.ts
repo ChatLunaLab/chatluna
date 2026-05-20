@@ -50,6 +50,8 @@ export interface Config {
     voiceSpeakId: number
 
     enableSimilarityCheck: boolean
+
+    enableUsageTracking: boolean
 }
 
 export const Config: Schema<Config> = Schema.intersect([
@@ -173,6 +175,10 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         voiceSpeakId: Schema.number().default(0),
         isLog: Schema.boolean().default(false)
+    }),
+
+    Schema.object({
+        enableUsageTracking: Schema.boolean().default(true)
     }),
 
     Schema.intersect([

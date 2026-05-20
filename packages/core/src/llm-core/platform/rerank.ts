@@ -4,6 +4,7 @@ import {
     AsyncCaller,
     AsyncCallerParams
 } from '@langchain/core/utils/async_caller'
+import { Logger } from 'koishi'
 import {
     RerankerRequester,
     RerankerRequestParams,
@@ -13,6 +14,10 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import type { ModelUsageReporter } from '../../services/usage'
+import { estimateTextTokens } from './usage'
+
+const logger = new Logger('chatluna')
 
 export interface ChatLunaRerankerParams extends AsyncCallerParams {
     timeout?: number
@@ -36,6 +41,7 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
     caller: AsyncCaller
 
     private _client: RerankerRequester
+    private _usageReporter?: ModelUsageReporter
 
     constructor(fields: ChatLunaRerankerParams) {
         super()
@@ -46,6 +52,10 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         this.topN = fields.topN ?? this.topN
         this.maxChunksPerDoc = fields.maxChunksPerDoc
         this._client = fields.client
+    }
+
+    setUsageReporter(reporter: ModelUsageReporter) {
+        this._usageReporter = reporter
     }
 
     async compressDocuments(
@@ -89,18 +99,45 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
                   : JSON.stringify(doc)
         )
 
-        const results = await this._rerankWithRetry({
+        const request = {
             model: options?.model ?? this.modelName,
             query,
             documents: docStrings,
             topN: options?.topN ?? this.topN,
             maxChunksPerDoc: options?.maxChunksPerDoc ?? this.maxChunksPerDoc
-        })
+        }
+
+        const results = await this._rerankWithRetry(request)
+
+        await this._reportUsage(request)
 
         return results.map((result) => ({
             index: result.index,
             relevanceScore: result.relevanceScore
         }))
+    }
+
+    private async _reportUsage(request: RerankerRequestParams) {
+        try {
+            if (this._usageReporter == null) {
+                return
+            }
+
+            const inputTokens = await estimateTextTokens([
+                request.query,
+                ...request.documents
+            ])
+
+            await this._usageReporter({
+                callType: 'reranker',
+                inputTokens,
+                outputTokens: 0,
+                totalTokens: inputTokens,
+                estimated: true
+            })
+        } catch (e) {
+            logger.warn('Failed to report reranker usage', e)
+        }
     }
 
     private async _rerankWithRetry(

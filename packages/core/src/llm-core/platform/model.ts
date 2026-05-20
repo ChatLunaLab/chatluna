@@ -17,7 +17,7 @@ import {
 } from '@langchain/core/outputs'
 import { StructuredTool } from '@langchain/core/tools'
 import { Tiktoken } from 'js-tiktoken'
-import { sleep } from 'koishi'
+import { Logger, sleep } from 'koishi'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
@@ -43,7 +43,10 @@ import { encodingForModel } from '../utils/tiktoken'
 import { formatFunctionDefinitions } from '../utils/function_def'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
-import { logger } from 'koishi-plugin-chatluna'
+import type { ModelUsageReporter, UsageContext } from '../../services/usage'
+import { estimateTextTokens } from './usage'
+
+const logger = new Logger('chatluna')
 
 export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
     model?: string
@@ -97,6 +100,15 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     overrideRequestParams?: Record<string, any>
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    configurable?: Record<string, any>
+
+    chatlunaUsageContext?: Partial<UsageContext>
+
+    chatlunaMessagesCropped?: boolean
+
+    chatlunaPromptTokens?: number
 }
 
 export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
@@ -127,6 +139,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private _modelInfo: ModelInfo
     private _isThinkModel: boolean
     private _fileHandlingConfig?: FileHandlingConfig
+    private _usageReporter?: ModelUsageReporter
 
     // eslint-disable-next-line @typescript-eslint/naming-convention
     lc_serializable = false
@@ -139,6 +152,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         this._modelInfo = _options.modelInfo
         this._isThinkModel = _options.isThinkModel ?? false
         this._fileHandlingConfig = _options.fileHandlingConfig
+    }
+
+    setUsageReporter(reporter: ModelUsageReporter) {
+        this._usageReporter = reporter
     }
 
     get callKeys(): (keyof ChatLunaModelCallOptions)[] {
@@ -157,7 +174,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             'variables_hide',
             'overrideRequestParams',
             'stream',
-            'tools'
+            'tools',
+            'configurable',
+            'chatlunaUsageContext'
         ]
     }
 
@@ -224,10 +243,13 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         options: this['ParsedCallOptions'],
         runManager?: CallbackManagerForLLMRun
     ): AsyncGenerator<ChatGenerationChunk> {
-        const withTool = (options.tools?.length ?? 0) > 0
+        let promptTokens = options.chatlunaPromptTokens ?? 0
 
-        if (withTool) {
-            ;[messages] = await this.cropMessages(messages, options['tools'])
+        if (options.chatlunaMessagesCropped !== true) {
+            ;[messages, promptTokens] = await this.cropMessages(
+                messages,
+                options['tools']
+            )
         }
 
         const maxRetries = Math.max(1, this._options.maxRetries ?? 1)
@@ -242,11 +264,16 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             let hasChunk = false
             let hasResponse = false
             let hasToolCallChunk = false
+            let outputText = ''
 
             try {
                 stream = await this._createStream(streamParams)
 
                 for await (const chunk of stream) {
+                    outputText +=
+                        chunk.text ??
+                        getMessageContent(chunk.message.content) ??
+                        ''
                     const hasTool = this._handleStreamChunk(
                         chunk,
                         runManager,
@@ -273,6 +300,33 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     latestTokenUsage,
                     runManager
                 )
+
+                if (latestTokenUsage.total_tokens > 0) {
+                    await this._reportUsage(
+                        {
+                            input_tokens: latestTokenUsage.input_tokens,
+                            output_tokens: latestTokenUsage.output_tokens,
+                            total_tokens: latestTokenUsage.total_tokens,
+                            input_token_details:
+                                latestTokenUsage.input_token_details,
+                            output_token_details:
+                                latestTokenUsage.output_token_details
+                        },
+                        false,
+                        options
+                    )
+                } else {
+                    const outputTokens = await estimateTextTokens(outputText)
+                    await this._reportUsage(
+                        {
+                            input_tokens: promptTokens,
+                            output_tokens: outputTokens,
+                            total_tokens: promptTokens + outputTokens
+                        },
+                        true,
+                        options
+                    )
+                }
                 return
             } catch (error) {
                 await this._closeStream(stream)
@@ -438,9 +492,18 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             options['tools']
         )
 
+        const nextOptions =
+            options.stream === true
+                ? {
+                      ...options,
+                      chatlunaMessagesCropped: true,
+                      chatlunaPromptTokens: promptTokens
+                  }
+                : options
+
         const response = await this._generateWithRetry(
             messages,
-            options,
+            nextOptions,
             runManager
         )
 
@@ -451,7 +514,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         let usageMetadata = (response.message as AIMessage | AIMessageChunk)
             .usage_metadata
 
-        if (!usageMetadata?.total_tokens) {
+        const hasProviderUsage = (usageMetadata?.total_tokens ?? 0) > 0
+
+        if (!hasProviderUsage) {
             const completionTokens = await this.countMessageTokens(
                 response.message
             )
@@ -474,9 +539,44 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             usage_metadata: usageMetadata
         }
 
+        if (options.stream !== true) {
+            await this._reportUsage(usageMetadata, !hasProviderUsage, options)
+        }
+
         return {
             generations: [response],
             llmOutput: response.generationInfo
+        }
+    }
+
+    private async _reportUsage(
+        usage: UsageMetadata,
+        estimated: boolean,
+        options: this['ParsedCallOptions']
+    ) {
+        try {
+            if (this._usageReporter == null) {
+                return
+            }
+
+            const usageContext = options.chatlunaUsageContext
+
+            await this._usageReporter({
+                callType: 'llm',
+                source: usageContext?.source,
+                inputTokens: usage.input_tokens,
+                outputTokens: usage.output_tokens,
+                totalTokens: usage.total_tokens,
+                estimated,
+                conversationId:
+                    usageContext?.conversationId ??
+                    (typeof options.id === 'string' ? options.id : undefined),
+                requestId: usageContext?.requestId,
+                userId: usageContext?.userId,
+                guildId: usageContext?.guildId
+            })
+        } catch (e) {
+            logger.warn('Failed to report LLM usage', e)
         }
     }
 
@@ -918,6 +1018,7 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
     timeout?: number
 
     private _client: EmbeddingsRequester
+    private _usageReporter?: ModelUsageReporter
 
     constructor(fields?: ChatLunaBaseEmbeddingsParams) {
         super(fields)
@@ -928,6 +1029,29 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
         this.modelName = fields?.model ?? this.modelName
 
         this._client = fields?.client
+    }
+
+    setUsageReporter(reporter: ModelUsageReporter) {
+        this._usageReporter = reporter
+    }
+
+    private async reportEstimatedUsage(input: string | string[]) {
+        try {
+            if (this._usageReporter == null) {
+                return
+            }
+
+            const inputTokens = await estimateTextTokens(input)
+            await this._usageReporter({
+                callType: 'embeddings',
+                inputTokens,
+                outputTokens: 0,
+                totalTokens: inputTokens,
+                estimated: true
+            })
+        } catch (e) {
+            logger.warn('Failed to report embedding usage', e)
+        }
     }
 
     async embedDocuments(texts: string[]): Promise<number[][]> {
@@ -949,6 +1073,7 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
             for (let j = 0; j < input.length; j += 1) {
                 embeddings.push(data[j] as number[])
             }
+            await this.reportEstimatedUsage(input)
         }
 
         return embeddings
@@ -959,10 +1084,8 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
             model: this.modelName,
             input: this.stripNewLines ? text.replaceAll('\n', ' ') : text
         })
-        if (data[0] instanceof Array) {
-            return data[0]
-        }
-        return data as number[]
+        await this.reportEstimatedUsage(text)
+        return (data[0] instanceof Array ? data[0] : data) as number[]
     }
 
     private async _embeddingWithRetry(request: EmbeddingsRequestParams) {
