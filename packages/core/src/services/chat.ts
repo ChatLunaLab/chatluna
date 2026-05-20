@@ -147,7 +147,7 @@ export class ChatLunaService extends Service<Config> {
         this._defineDatabase()
         this.ctx.on('ready', async () => {
             await this._dedupeConstraintNames()
-            warmupTokenEncoder()
+            warmupTokenEncoder().catch((e) => this.ctx.logger.warn(e))
         })
     }
 
@@ -398,13 +398,13 @@ export class ChatLunaService extends Service<Config> {
         if (this.currentConfig.enableUsageTracking === false) return
 
         const ctx = this._usageContext.getStore()
-        const source =
-            ctx?.source != null && ctx.source !== 'unknown'
-                ? ctx.source
-                : (input.source ?? 'unknown')
+        const source = input.source ?? 'unknown'
         const payload: ModelUsagePayload = {
             ...input,
-            source,
+            source:
+                ctx?.source != null && ctx.source !== 'unknown'
+                    ? ctx.source
+                    : source,
             conversationId: input.conversationId ?? ctx?.conversationId,
             requestId: input.requestId ?? ctx?.requestId,
             userId: input.userId ?? ctx?.userId,

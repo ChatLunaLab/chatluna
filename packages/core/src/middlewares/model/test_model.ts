@@ -1,148 +1,174 @@
-import { Context } from 'koishi'
+import { Context, Session } from 'koishi'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import {
+    ChainMiddlewareContext,
+    ChainMiddlewareRunStatus,
+    ChatChain
+} from '../../chains/chain'
 import { Config } from '../../config'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { AIMessageChunk } from '@langchain/core/messages'
+import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
+
+interface TestTarget {
+    platformName: string
+    modelName: string
+}
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const services = ctx.chatluna.platform
-
     chain
         .middleware('test_model', async (session, context) => {
-            const {
-                command,
-                options: { model }
-            } = context
-
-            if (command !== 'test_model')
+            if (context.command !== 'test_model') {
                 return ChainMiddlewareRunStatus.SKIPPED
-
-            let platformName: string
-            let modelName: string
-
-            try {
-                // Check if the input contains '/'
-                if (!model.includes('/')) {
-                    // Get all models from the specified platform
-                    const platformModels = services.listPlatformModels(
-                        model,
-                        ModelType.llm
-                    )
-
-                    if (
-                        !platformModels.value ||
-                        platformModels.value.length === 0
-                    ) {
-                        context.message = session.text('.platform_not_found', [
-                            model
-                        ])
-                        return ChainMiddlewareRunStatus.STOP
-                    }
-
-                    // Randomly select a model from the platform
-                    const randomIndex = Math.floor(
-                        Math.random() * platformModels.value.length
-                    )
-                    const selectedModel = platformModels.value[randomIndex]
-                    platformName = model
-                    modelName = selectedModel.name
-                } else {
-                    // Parse the full model name
-                    ;[platformName, modelName] = parseRawModelName(model)
-
-                    // Validate that parsing succeeded
-                    if (!platformName || !modelName) {
-                        context.message = session.text(
-                            '.invalid_model_format',
-                            [model]
-                        )
-                        return ChainMiddlewareRunStatus.STOP
-                    }
-                }
-
-                // Get the client for the platform
-                const client = await services.getClient(platformName)
-
-                if (client.value == null) {
-                    // Try to wait for the platform to load
-                    await ctx.chatluna.awaitLoadPlatform(platformName, 10000)
-                }
-
-                if (client.value == null) {
-                    context.message = session.text('.platform_unavailable', [
-                        platformName
-                    ])
-                    return ChainMiddlewareRunStatus.STOP
-                }
-
-                // Create the model
-                const chatModel = await ctx.chatluna.createChatModel(
-                    platformName,
-                    modelName
-                )
-                const modelRef = chatModel.value
-
-                if (modelRef == null) {
-                    context.message = session.text('.model_not_found', [
-                        `${platformName}/${modelName}`
-                    ])
-                    return ChainMiddlewareRunStatus.STOP
-                }
-
-                // Test the model with a simple request
-                context.message = session.text('.testing', [
-                    `${platformName}/${modelName}`
-                ])
-
-                const startTime = Date.now()
-                let response: AIMessageChunk
-                let testError: Error | null = null
-
-                try {
-                    response = await modelRef.invoke('Hello', {
-                        maxTokens: 10,
-                        signal: AbortSignal.timeout(60000),
-                        configurable: {
-                            session,
-                            source: 'chatluna'
-                        }
-                    })
-                } catch (error) {
-                    testError = error
-                }
-
-                const endTime = Date.now()
-                const responseTime = endTime - startTime
-
-                if (testError) {
-                    context.message = session.text('.test_failed', [
-                        `${platformName}/${modelName}`,
-                        responseTime.toString(),
-                        testError.message || testError.toString()
-                    ])
-                } else if (response && response.content) {
-                    context.message = session.text('.test_success', [
-                        `${platformName}/${modelName}`,
-                        responseTime.toString(),
-                        response.content.toString().substring(0, 50)
-                    ])
-                } else {
-                    context.message = session.text('.test_success_no_content', [
-                        `${platformName}/${modelName}`,
-                        responseTime.toString()
-                    ])
-                }
-            } catch (error) {
-                context.message = session.text('.test_error', [
-                    error.message || error.toString()
-                ])
             }
 
+            await testModel(ctx, session, context)
             return ChainMiddlewareRunStatus.STOP
         })
         .after('lifecycle-handle_command')
         .before('lifecycle-request_conversation')
+}
+
+async function testModel(
+    ctx: Context,
+    session: Session,
+    context: ChainMiddlewareContext
+) {
+    try {
+        const target = pickTarget(ctx, session, context)
+        if (target == null) return
+
+        const model = await getModel(ctx, session, context, target)
+        if (model == null) return
+
+        context.message = session.text('.testing', [
+            `${target.platformName}/${target.modelName}`
+        ])
+
+        const result = await callModel(session, model)
+        const name = `${target.platformName}/${target.modelName}`
+
+        if (result.error) {
+            context.message = session.text('.test_failed', [
+                name,
+                result.time.toString(),
+                result.error.message || result.error.toString()
+            ])
+            return
+        }
+
+        if (result.response?.content) {
+            context.message = session.text('.test_success', [
+                name,
+                result.time.toString(),
+                result.response.content.toString().substring(0, 50)
+            ])
+            return
+        }
+
+        context.message = session.text('.test_success_no_content', [
+            name,
+            result.time.toString()
+        ])
+    } catch (error) {
+        context.message = session.text('.test_error', [
+            error.message || error.toString()
+        ])
+    }
+}
+
+function pickTarget(
+    ctx: Context,
+    session: Session,
+    context: ChainMiddlewareContext
+): TestTarget | undefined {
+    const model = context.options.model
+
+    if (!model.includes('/')) {
+        const models = ctx.chatluna.platform.listPlatformModels(
+            model,
+            ModelType.llm
+        )
+
+        if (!models.value || models.value.length === 0) {
+            context.message = session.text('.platform_not_found', [model])
+            return
+        }
+
+        return {
+            platformName: model,
+            modelName:
+                models.value[Math.floor(Math.random() * models.value.length)]
+                    .name
+        }
+    }
+
+    const [platformName, modelName] = parseRawModelName(model)
+    if (!platformName || !modelName) {
+        context.message = session.text('.invalid_model_format', [model])
+        return
+    }
+
+    return { platformName, modelName }
+}
+
+async function getModel(
+    ctx: Context,
+    session: Session,
+    context: ChainMiddlewareContext,
+    target: TestTarget
+) {
+    const client = await ctx.chatluna.platform.getClient(target.platformName)
+
+    if (client.value == null) {
+        await ctx.chatluna.awaitLoadPlatform(target.platformName, 10000)
+    }
+
+    if (client.value == null) {
+        context.message = session.text('.platform_unavailable', [
+            target.platformName
+        ])
+        return
+    }
+
+    const model = await ctx.chatluna.createChatModel(
+        target.platformName,
+        target.modelName
+    )
+
+    if (model.value == null) {
+        context.message = session.text('.model_not_found', [
+            `${target.platformName}/${target.modelName}`
+        ])
+        return
+    }
+
+    return model.value
+}
+
+async function callModel(session: Session, model: ChatLunaChatModel) {
+    const start = Date.now()
+    let response: AIMessageChunk | undefined
+    let error: Error | undefined
+
+    try {
+        response = await model.invoke('Hello', {
+            maxTokens: 10,
+            signal: AbortSignal.timeout(60000),
+            configurable: {
+                session,
+                source: 'chatluna'
+            }
+        })
+    } catch (err) {
+        error = err
+    }
+
+    return {
+        response,
+        error,
+        time: Date.now() - start
+    }
 }
 
 declare module '../../chains/chain' {

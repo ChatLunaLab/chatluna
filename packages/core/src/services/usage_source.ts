@@ -54,23 +54,28 @@ export function usageSourceFromStack(stack?: string) {
         while (dir !== path.dirname(dir)) {
             const pkg = path.join(dir, 'package.json')
             if (fs.existsSync(pkg)) {
-                const name = JSON.parse(fs.readFileSync(pkg, 'utf8')).name
-                if (typeof name === 'string') {
-                    const source = usageSourceFromPackageName(name)
-                    const isFramework =
-                        name === 'koishi' ||
-                        name.startsWith('@koishijs/') ||
-                        name.startsWith('@cordisjs/') ||
-                        source === 'chatluna'
+                try {
+                    const name = JSON.parse(fs.readFileSync(pkg, 'utf8')).name
+                    if (typeof name === 'string') {
+                        const source = usageSourceFromPackageName(name)
+                        const isFramework =
+                            name === 'koishi' ||
+                            name.startsWith('@koishijs/') ||
+                            name.startsWith('@cordisjs/') ||
+                            source === 'chatluna'
 
-                    if (!isFramework) {
-                        if (stackSourceCache.size >= STACK_SOURCE_CACHE_LIMIT) {
-                            stackSourceCache.clear()
+                        if (!isFramework) {
+                            if (
+                                stackSourceCache.size >=
+                                STACK_SOURCE_CACHE_LIMIT
+                            ) {
+                                stackSourceCache.clear()
+                            }
+                            stackSourceCache.set(file, source)
+                            return source
                         }
-                        stackSourceCache.set(file, source)
-                        return source
                     }
-                }
+                } catch {}
                 break
             }
             dir = path.dirname(dir)
