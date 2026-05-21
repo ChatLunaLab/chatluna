@@ -222,7 +222,12 @@ export class ChatLunaPluginChain
             prompt: getMessageContent(message.content)
         })
         requests['variables']['built'] = {
-            conversationId
+            conversationId,
+            requestId,
+            userId: session.userId,
+            guildId: session.guildId ?? session.channelId,
+            chatPlatform: session.platform,
+            session
         }
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {

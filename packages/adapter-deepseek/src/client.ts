@@ -91,8 +91,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -107,7 +106,6 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
                 usageReporter: report,
-                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -130,7 +128,6 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
 
         return new ChatLunaEmbeddings({
             usageReporter: report,
-            usageSource: source,
             client: this._requester,
             model,
             maxRetries: this._config.maxRetries

@@ -114,8 +114,7 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -130,7 +129,6 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
         if (info.type === ModelType.embeddings) {
             return new ChatLunaEmbeddings({
                 usageReporter: report,
-                usageSource: source,
                 client: this._requester,
                 model,
                 maxRetries: this._config.maxRetries
@@ -140,7 +138,6 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
         const modelMaxContextSize = info.maxTokens
         return new ChatLunaChatModel({
             usageReporter: report,
-            usageSource: source,
             modelInfo: info,
             requester: this._requester,
             model: model.toLocaleLowerCase(),

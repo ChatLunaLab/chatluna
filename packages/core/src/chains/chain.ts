@@ -6,7 +6,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
-import type { ConversationResolution } from '../conversation_types'
+import type { ConversationResolution } from '../types'
 import { lifecycleNames } from '../middlewares/system/lifecycle'
 import { formatDuration } from '../utils/time'
 import type { QQBot } from '@koishijs/plugin-adapter-qq'

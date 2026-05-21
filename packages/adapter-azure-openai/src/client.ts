@@ -86,8 +86,7 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -103,7 +102,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
             const modelMaxContextSize = getModelMaxContextSize(info)
             return new ChatLunaChatModel({
                 usageReporter: report,
-                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -123,7 +121,6 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
 
         return new ChatLunaEmbeddings({
             usageReporter: report,
-            usageSource: source,
             client: this._requester,
             model,
             maxRetries: this._config.maxRetries

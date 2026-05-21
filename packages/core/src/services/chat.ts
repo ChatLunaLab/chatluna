@@ -48,7 +48,7 @@ import {
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { PresetService } from 'koishi-plugin-chatluna/preset'
-import { Message } from '../types'
+import { ConstraintRecord, ConversationRecord, Message } from '../types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -57,7 +57,6 @@ import { MessageTransformer } from './message_transform'
 import { ChatCallbackProviderInput, ChatCallbacksProvider } from './types'
 import { ConversationService } from './conversation'
 import { type ChatOptions, ConversationRuntime } from './conversation_runtime'
-import { ConstraintRecord, ConversationRecord } from '../conversation_types'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'

@@ -74,8 +74,7 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaEmbeddings {
         const info = this._modelInfos[model]
 
@@ -90,7 +89,6 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
                 usageReporter: report,
-                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -109,7 +107,6 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
         return new ChatLunaEmbeddings({
             usageReporter: report,
-            usageSource: source,
             model,
             client: this._requester,
             maxRetries: this._config.maxRetries

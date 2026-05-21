@@ -182,8 +182,7 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -199,7 +198,6 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             const modelMaxContextSize = info.maxTokens
             return new ChatLunaChatModel({
                 usageReporter: report,
-                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -222,7 +220,6 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
 
         return new ChatLunaEmbeddings({
             usageReporter: report,
-            usageSource: source,
             client: this._requester,
             model: info.name,
             batchSize: 5,

@@ -10,7 +10,7 @@ import {
 } from '../../chains/chain'
 import { randomUUID } from 'crypto'
 import { HumanMessage, MessageContentComplex } from '@langchain/core/messages'
-import type { ConversationRecord } from '../../conversation_types'
+import type { ConversationRecord } from '../../types'
 
 let logger: Logger
 

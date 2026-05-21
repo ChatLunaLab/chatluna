@@ -5,7 +5,7 @@ import {
     ChatChain
 } from '../../chains/chain'
 import { Config } from '../../config'
-import { ConversationResolutionError } from '../../conversation_types'
+import { ConversationResolutionError } from '../../types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain

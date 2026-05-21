@@ -66,8 +66,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel {
         const info = this._modelInfos[model]
 
@@ -82,7 +81,6 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         const modelMaxContextSize = info.maxTokens
         return new ChatLunaChatModel({
             usageReporter: report,
-            usageSource: source,
             modelInfo: info,
             requester: this._requester,
             model,

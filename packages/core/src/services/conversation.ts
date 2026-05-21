@@ -60,7 +60,7 @@ import {
     ResolvedConstraint,
     ResolvedConversationContext,
     RouteMode
-} from '../conversation_types'
+} from '../types'
 import {
     ArchiveManifest,
     ConversationArchivePayload,

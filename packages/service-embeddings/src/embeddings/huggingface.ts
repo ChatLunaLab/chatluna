@@ -83,12 +83,10 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaEmbeddings {
         return new ChatLunaEmbeddings({
             usageReporter: report,
-            usageSource: source,
             maxConcurrency: 1,
             maxRetries: this._config.maxRetries,
             model,

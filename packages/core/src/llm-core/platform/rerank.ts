@@ -13,8 +13,8 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { logger } from 'koishi-plugin-chatluna'
-import type { ModelUsageReporter } from './usage'
-import { estimateTextTokens } from './usage'
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import { estimateTextTokens } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
 export interface ChatLunaRerankerParams extends AsyncCallerParams {
     timeout?: number
@@ -24,7 +24,6 @@ export interface ChatLunaRerankerParams extends AsyncCallerParams {
     topN?: number
     maxChunksPerDoc?: number
     usageReporter?: ModelUsageReporter
-    usageSource?: string
 }
 
 export class ChatLunaReranker extends BaseDocumentCompressor {
@@ -41,7 +40,6 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
 
     private _client: RerankerRequester
     private _report?: ModelUsageReporter
-    private _usageSource?: string
 
     constructor(fields: ChatLunaRerankerParams) {
         super()
@@ -53,7 +51,6 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         this.maxChunksPerDoc = fields.maxChunksPerDoc
         this._client = fields.client
         this._report = fields.usageReporter
-        this._usageSource = fields.usageSource
     }
 
     async compressDocuments(
@@ -104,7 +101,13 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
             topN: options?.topN ?? this.topN,
             maxChunksPerDoc: options?.maxChunksPerDoc ?? this.maxChunksPerDoc
         }
-        const data = await this._rerankWithRetry(request)
+        let data: Awaited<ReturnType<RerankerRequester['rerank']>>
+        try {
+            data = await this._rerankWithRetry(request)
+        } catch (e) {
+            await this._reportFailedUsage()
+            throw e
+        }
         const results = Array.isArray(data) ? data : data.results
 
         await this._reportUsage(
@@ -177,17 +180,42 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         if (this._report == null) return
 
         try {
+            const estimated =
+                usage?.input_tokens == null &&
+                usage?.output_tokens == null &&
+                usage?.total_tokens == null
             const inputTokens =
                 usage?.input_tokens ??
                 usage?.total_tokens ??
                 (await estimateTextTokens(input))
             await this._report({
                 callType: 'reranker',
-                source: this._usageSource,
-                inputTokens,
-                outputTokens: usage?.output_tokens ?? 0,
-                totalTokens: usage?.total_tokens ?? inputTokens,
-                estimated: usage == null
+                tokens: {
+                    input: inputTokens,
+                    output: usage?.output_tokens ?? 0,
+                    total: usage?.total_tokens ?? inputTokens,
+                    estimated
+                },
+                success: true
+            })
+        } catch (e) {
+            logger.warn('Failed to report reranker usage', e)
+        }
+    }
+
+    private async _reportFailedUsage() {
+        if (this._report == null) return
+
+        try {
+            await this._report({
+                callType: 'reranker',
+                tokens: {
+                    input: 0,
+                    output: 0,
+                    total: 0,
+                    estimated: false
+                },
+                success: false
             })
         } catch (e) {
             logger.warn('Failed to report reranker usage', e)

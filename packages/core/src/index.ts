@@ -16,7 +16,7 @@ import { apply as loreBook } from './llm-core/memory/lore_book'
 import { apply as authorsNote } from './llm-core/memory/authors_note'
 import { ensureMigrationValidated } from './migration/room_to_conversation'
 import { middleware } from './middleware'
-import type { ConstraintRecord } from './conversation_types'
+import type { ConstraintRecord } from './types'
 import { purgeArchivedConversation } from './utils/archive'
 
 export * from './config'

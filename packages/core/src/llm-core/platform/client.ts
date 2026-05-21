@@ -21,12 +21,10 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import type {
-    ModelUsageInput,
-    ModelUsagePayload,
-    ModelUsageReporter
+import {
+    createModelUsageReporter,
+    type ModelUsageReporter
 } from 'koishi-plugin-chatluna/llm-core/platform/usage'
-import { usageSourceFromStack } from 'koishi-plugin-chatluna/utils/usage_source'
 
 export type { FileHandlingConfig }
 
@@ -188,36 +186,18 @@ export abstract class BasePlatformClient<
 
     protected abstract _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): R
 
     createModel(model: string): R {
         if (!this._modelPool[model]) {
-            const source = usageSourceFromStack(new Error().stack)
             this._modelPool[model] = this._createModel(
                 model,
-                (usage) => this._reportUsage(model, source, usage),
-                source
+                createModelUsageReporter(this.ctx, this.platform, model)
             )
         }
 
         return this._modelPool[model]
-    }
-
-    private async _reportUsage(
-        model: string,
-        source: string,
-        usage: ModelUsageInput
-    ) {
-        const payload: ModelUsagePayload = {
-            ...usage,
-            source: usage.source ?? source,
-            platform: this.platform,
-            model,
-            createdAt: usage.createdAt ?? new Date()
-        }
-        await this.ctx.root.parallel('chatluna/model-usage', payload)
     }
 }
 

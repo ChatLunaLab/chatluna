@@ -2,7 +2,7 @@ import { Context } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import fs from 'fs/promises'
-import { ConversationRecord } from '../../conversation_types'
+import { ConversationRecord } from '../../types'
 
 export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     chain

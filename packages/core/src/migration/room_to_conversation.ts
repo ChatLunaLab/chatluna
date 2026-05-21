@@ -7,7 +7,7 @@ import type {
     BindingRecord,
     ConversationRecord,
     MessageRecord
-} from '../conversation_types'
+} from '../types'
 import type {
     LegacyConversationRecord,
     LegacyMessageRecord,

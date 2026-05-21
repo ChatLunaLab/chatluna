@@ -12,7 +12,7 @@ import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/mode
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaInfiniteContextChain } from '../chain/infinite_context_chain'
-import type { ChatLunaMessageMeta } from '../../conversation_types'
+import type { ChatLunaMessageMeta } from '../../types'
 
 export interface CompressContextResult {
     inputTokens: number

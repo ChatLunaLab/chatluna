@@ -17,10 +17,7 @@ import {
 import { randomUUID } from 'crypto'
 import { observationToMessageContent } from '../../agent/legacy-executor'
 import type { AgentStep } from '../../agent/types'
-import type {
-    ChatLunaMessageMeta,
-    MessageRecord
-} from '../../../conversation_types'
+import type { ChatLunaMessageMeta, MessageRecord } from '../../../types'
 import type { ChatLunaService } from '../../../services/chat'
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {

@@ -18,7 +18,7 @@ import {
     getPresetLane,
     InvalidChatModeError,
     ResolvedConversationContext
-} from '../../conversation_types'
+} from '../../types'
 import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 import { logger } from '../..'

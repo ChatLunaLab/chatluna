@@ -10,7 +10,7 @@ import { apply as applyResolve } from '../src/middlewares/conversation/resolve_c
 import { apply as applyRequest } from '../src/middlewares/conversation/request_conversation'
 import { apply as applyManage } from '../src/middlewares/system/conversation_manage'
 import { apply as applyLifecycle } from '../src/middlewares/system/lifecycle'
-import { ConversationResolutionError } from '../src/conversation_types'
+import { ConversationResolutionError } from '../src/types'
 import {
     createConfig,
     createConversation,

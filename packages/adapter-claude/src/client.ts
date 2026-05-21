@@ -195,14 +195,12 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel {
         const info = this._modelInfos[model]
         const modelMaxContextSize = info.maxTokens ?? 128000
         return new ChatLunaChatModel({
             usageReporter: report,
-            usageSource: source,
             requester: this._requester,
             modelInfo: info,
             model,

@@ -57,8 +57,7 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel {
         const info = this._modelInfos[model]
 
@@ -73,7 +72,6 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
                 usageReporter: report,
-                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,

@@ -74,8 +74,7 @@ export class HunyuanClient extends PlatformModelAndEmbeddingsClient<ClientConfig
 
     protected _createModel(
         model: string,
-        report: ModelUsageReporter,
-        source: string
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -90,7 +89,6 @@ export class HunyuanClient extends PlatformModelAndEmbeddingsClient<ClientConfig
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
                 usageReporter: report,
-                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -107,7 +105,6 @@ export class HunyuanClient extends PlatformModelAndEmbeddingsClient<ClientConfig
 
         return new ChatLunaEmbeddings({
             usageReporter: report,
-            usageSource: source,
             client: this._requester,
             model: info.name,
             maxRetries: this._config.maxRetries

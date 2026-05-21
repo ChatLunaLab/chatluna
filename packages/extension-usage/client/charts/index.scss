@@ -1,0 +1,19 @@
+.chatluna-usage-chart {
+    header {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .echarts {
+        width: 100%;
+        height: 360px;
+    }
+
+    .chart-empty {
+        height: 360px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--k-text-light);
+    }
+}
