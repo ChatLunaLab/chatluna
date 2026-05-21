@@ -3,10 +3,11 @@ import { CanvasRenderer } from 'echarts/renderers'
 import {
     GridComponent,
     LegendComponent,
+    TitleComponent,
     TooltipComponent
 } from 'echarts/components'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
-import VChart from 'vue-echarts'
+import vChart from 'vue-echarts'
 
 use([
     BarChart,
@@ -15,7 +16,8 @@ use([
     LegendComponent,
     LineChart,
     PieChart,
+    TitleComponent,
     TooltipComponent
 ])
 
-export default VChart
+export default vChart

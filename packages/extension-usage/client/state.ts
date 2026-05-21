@@ -1,6 +1,6 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { send, store } from '@koishijs/client'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { ChatLunaUsage } from 'koishi-plugin-chatluna-usage'
 
 export const loading = ref(false)
@@ -18,7 +18,22 @@ export const query = reactive<ChatLunaUsage.Query>({
 
 export const usage = computed(() => store.chatluna_usage)
 
+let timer: ReturnType<typeof setTimeout> | undefined
+
+function refreshSoon() {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+        timer = undefined
+        refresh()
+    }, 250)
+}
+
 export async function refresh() {
+    if (timer) {
+        clearTimeout(timer)
+        timer = undefined
+    }
+
     try {
         loading.value = true
         store.chatluna_usage = await send('chatluna-usage/query', query)
@@ -29,28 +44,10 @@ export async function refresh() {
     }
 }
 
-export function search() {
-    query.page = 1
-    refresh()
-}
-
-export function selectModel(model: string) {
-    query.model = query.model === model ? undefined : model
-    query.page = 1
-    refresh()
-}
-
-export function selectSource(source: string) {
-    query.source = query.source === source ? undefined : source
-    query.page = 1
-    refresh()
-}
-
 export function changeRange() {
     query.start = range.value?.[0]
     query.end = range.value?.[1]
     query.page = 1
-    refresh()
 }
 
 export function resetFilters() {
@@ -77,7 +74,35 @@ export function resetFilters() {
         estimated: undefined,
         keyword: undefined
     })
-    refresh()
+    refreshSoon()
+}
+
+export async function clearHistory() {
+    try {
+        await ElMessageBox.confirm(
+            '这会删除所有 ChatLuna 用量历史数据，无法撤销。',
+            '清除历史数据',
+            {
+                confirmButtonText: '清除',
+                cancelButtonText: '取消',
+                type: 'warning',
+                confirmButtonClass: 'el-button--danger'
+            }
+        )
+    } catch {
+        return
+    }
+
+    try {
+        loading.value = true
+        await send('chatluna-usage/cleanup')
+        store.chatluna_usage = await send('chatluna-usage/query', query)
+        ElMessage.success('已清除 ChatLuna 用量历史数据')
+    } catch {
+        ElMessage.error('清除 ChatLuna 用量历史数据失败')
+    } finally {
+        loading.value = false
+    }
 }
 
 export function fmt(value?: number) {
@@ -91,3 +116,35 @@ export function pct(value?: number) {
 export function time(value?: string | Date) {
     return value ? new Date(value).toLocaleString() : '-'
 }
+
+watch(
+    () => [
+        query.period,
+        query.groupBy,
+        query.sortBy,
+        query.desc,
+        query.listSortBy,
+        query.listDesc,
+        query.start,
+        query.end,
+        query.source,
+        query.model,
+        query.platform,
+        query.chatPlatform,
+        query.callType,
+        query.guildId,
+        query.userId,
+        query.success,
+        query.estimated,
+        query.keyword
+    ],
+    () => {
+        query.page = 1
+        refreshSoon()
+    }
+)
+
+watch(
+    () => [query.page, query.pageSize],
+    () => refreshSoon()
+)

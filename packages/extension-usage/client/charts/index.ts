@@ -1,12 +1,7 @@
 import { Context } from '@koishijs/client'
-import ModelPie from './model-pie'
-import TokenLine from './token-line'
-import ModelLine from './model-line'
-import SourceBar from './source-bar'
+import tokenLine from './token-line'
+import './index.scss'
 
 export default (ctx: Context) => {
-    ctx.plugin(ModelPie)
-    ctx.plugin(TokenLine)
-    ctx.plugin(ModelLine)
-    ctx.plugin(SourceBar)
+    ctx.plugin(tokenLine)
 }

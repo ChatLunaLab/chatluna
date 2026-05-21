@@ -1,14 +1,14 @@
 import { Context } from '@koishijs/client'
 import type {} from 'koishi-plugin-chatluna-usage'
-import Charts from './charts'
-import Home from './home.vue'
+import charts from './charts'
+import home from './home.vue'
 
 export default (ctx: Context) => {
-    ctx.plugin(Charts)
+    ctx.plugin(charts)
 
     ctx.slot({
         type: 'home',
-        component: Home,
+        component: home,
         order: -1000
     })
 }

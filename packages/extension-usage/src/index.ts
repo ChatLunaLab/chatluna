@@ -23,10 +23,18 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 platform: { type: 'char', length: 128 },
                 chatPlatform: { type: 'char', length: 128, nullable: true },
                 model: { type: 'char', length: 255 },
-                inputTokens: 'unsigned',
-                outputTokens: 'unsigned',
-                totalTokens: 'unsigned',
-                estimated: 'boolean',
+                tokens: {
+                    type: 'json',
+                    nullable: false,
+                    initial: {
+                        input: 0,
+                        output: 0,
+                        total: 0,
+                        estimated: false,
+                        cacheRead: 0,
+                        cacheCreation: 0
+                    }
+                },
                 success: 'boolean',
                 createdAt: { type: 'timestamp', nullable: false },
                 conversationId: { type: 'char', length: 255, nullable: true },
@@ -49,10 +57,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                     platform: usage.platform,
                     chatPlatform: usage.context?.chatPlatform ?? null,
                     model: usage.model,
-                    inputTokens: usage.tokens.input,
-                    outputTokens: usage.tokens.output,
-                    totalTokens: usage.tokens.total,
-                    estimated: usage.tokens.estimated,
+                    tokens: usage.tokens,
                     success: usage.success,
                     createdAt: usage.createdAt,
                     conversationId: usage.context?.conversationId ?? null,
@@ -86,7 +91,12 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
 
             ctx.console.addEntry({
                 dev: resolve(__dirname, '../client/index.ts'),
-                prod: resolve(__dirname, '../dist')
+                prod: resolve(
+                    ctx.baseDir,
+                    'node_modules',
+                    'koishi-plugin-chatluna-usage',
+                    'dist'
+                )
             })
         })
     }
@@ -115,6 +125,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             outputTokens: 0,
             totalTokens: 0,
             estimatedTokens: 0,
+            cachedTokens: 0,
             successRate: 0
         }
 
@@ -130,6 +141,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 outputTokens: 0,
                 totalTokens: 0,
                 estimatedTokens: 0,
+                cachedTokens: 0,
                 successRate: 0
             }
             const model = models.get(row.model) ?? {
@@ -142,6 +154,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 outputTokens: 0,
                 totalTokens: 0,
                 estimatedTokens: 0,
+                cachedTokens: 0,
                 successRate: 0
             }
             const source = sources.get(row.source) ?? {
@@ -154,6 +167,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 outputTokens: 0,
                 totalTokens: 0,
                 estimatedTokens: 0,
+                cachedTokens: 0,
                 successRate: 0
             }
             const date = this.dateKey(row.createdAt, input.period ?? 'day')
@@ -162,7 +176,8 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 calls: 0,
                 inputTokens: 0,
                 outputTokens: 0,
-                totalTokens: 0
+                totalTokens: 0,
+                cachedTokens: 0
             }
 
             this.add(row, item)
@@ -170,9 +185,11 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             this.add(row, source)
             this.add(row, totals)
             point.calls += 1
-            point.inputTokens += row.inputTokens
-            point.outputTokens += row.outputTokens
-            point.totalTokens += row.totalTokens
+            point.inputTokens += row.tokens.input
+            point.outputTokens += row.tokens.output
+            point.totalTokens += row.tokens.total
+            point.cachedTokens +=
+                row.tokens.cacheRead + row.tokens.cacheCreation
             if (!modelTimeline.has(row.model))
                 modelTimeline.set(row.model, new Map())
             modelTimeline
@@ -235,10 +252,9 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         })) as ChatLunaUsage.Record[]
 
         return rows.filter((row) => {
-            if (query.source && !row.source.includes(query.source)) return false
-            if (query.model && !row.model.includes(query.model)) return false
-            if (query.platform && !row.platform.includes(query.platform))
-                return false
+            if (query.source && row.source !== query.source) return false
+            if (query.model && row.model !== query.model) return false
+            if (query.platform && row.platform !== query.platform) return false
             if (
                 query.chatPlatform &&
                 !(row.chatPlatform ?? '').includes(query.chatPlatform)
@@ -254,7 +270,10 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             }
             if (query.success != null && row.success !== query.success)
                 return false
-            if (query.estimated != null && row.estimated !== query.estimated) {
+            if (
+                query.estimated != null &&
+                row.tokens.estimated !== query.estimated
+            ) {
                 return false
             }
             if (!query.keyword) return true
@@ -303,15 +322,24 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
 
     private pageRows(rows: ChatLunaUsage.Record[], input: ChatLunaUsage.Query) {
         const query = this.withDefaults(input)
-        const sorted = rows.sort((a, b) => {
-            const left = a[query.listSortBy]
-            const right = b[query.listSortBy]
-            const diff =
-                left instanceof Date && right instanceof Date
-                    ? +left - +right
-                    : Number(left) - Number(right)
-            return query.listDesc ? -diff : diff
-        })
+        const sorted = rows
+            .map((row) => ({
+                ...row,
+                inputTokens: row.tokens.input,
+                outputTokens: row.tokens.output,
+                totalTokens: row.tokens.total,
+                estimated: row.tokens.estimated,
+                cachedTokens: row.tokens.cacheRead + row.tokens.cacheCreation
+            }))
+            .sort((a, b) => {
+                const left = a[query.listSortBy]
+                const right = b[query.listSortBy]
+                const diff =
+                    left instanceof Date && right instanceof Date
+                        ? +left - +right
+                        : Number(left) - Number(right)
+                return query.listDesc ? -diff : diff
+            })
         const start = (query.page - 1) * query.pageSize
 
         return {
@@ -326,10 +354,11 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         item.calls += 1
         if (row.success) item.successfulCalls += 1
         else item.failedCalls += 1
-        item.inputTokens += row.inputTokens
-        item.outputTokens += row.outputTokens
-        item.totalTokens += row.totalTokens
-        if (row.estimated) item.estimatedTokens += row.totalTokens
+        item.inputTokens += row.tokens.input
+        item.outputTokens += row.tokens.output
+        item.totalTokens += row.tokens.total
+        item.cachedTokens += row.tokens.cacheRead + row.tokens.cacheCreation
+        if (row.tokens.estimated) item.estimatedTokens += row.tokens.total
         if (!item.lastSeen || row.createdAt > item.lastSeen)
             item.lastSeen = row.createdAt
     }
@@ -371,16 +400,30 @@ namespace ChatLunaUsage {
         platform: string
         chatPlatform?: string | null
         model: string
-        inputTokens: number
-        outputTokens: number
-        totalTokens: number
-        estimated: boolean
+        tokens: Tokens
         success: boolean
         createdAt: Date
         conversationId?: string | null
         requestId?: string | null
         userId?: string | null
         guildId?: string | null
+    }
+
+    export interface Tokens {
+        input: number
+        output: number
+        total: number
+        estimated: boolean
+        cacheRead: number
+        cacheCreation: number
+    }
+
+    export interface ListRow extends Record {
+        inputTokens: number
+        outputTokens: number
+        totalTokens: number
+        estimated: boolean
+        cachedTokens: number
     }
 
     export type Period = 'day' | 'month' | 'year'
@@ -399,12 +442,14 @@ namespace ChatLunaUsage {
         | 'outputTokens'
         | 'totalTokens'
         | 'estimatedTokens'
+        | 'cachedTokens'
         | 'successRate'
     export type ListSortBy =
         | 'createdAt'
         | 'inputTokens'
         | 'outputTokens'
         | 'totalTokens'
+        | 'cachedTokens'
 
     export interface Query {
         period?: Period
@@ -439,6 +484,7 @@ namespace ChatLunaUsage {
         outputTokens: number
         totalTokens: number
         estimatedTokens: number
+        cachedTokens: number
         successRate: number
         lastSeen?: Date
     }
@@ -449,6 +495,7 @@ namespace ChatLunaUsage {
         inputTokens: number
         outputTokens: number
         totalTokens: number
+        cachedTokens: number
     }
 
     export interface ModelTimeline {
@@ -463,7 +510,7 @@ namespace ChatLunaUsage {
         total: number
         page: number
         pageSize: number
-        rows: Record[]
+        rows: ListRow[]
     }
 
     export interface Payload {

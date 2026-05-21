@@ -586,7 +586,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     input: usage.input_tokens,
                     output: usage.output_tokens,
                     total: usage.total_tokens,
-                    estimated
+                    estimated,
+                    cacheRead: usage.input_token_details?.cache_read ?? 0,
+                    cacheCreation:
+                        usage.input_token_details?.cache_creation ?? 0
                 },
                 success: true,
                 context: usageContextFromOptions(options)
@@ -1149,7 +1152,10 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
                     input: inputTokens,
                     output: usage?.output_tokens ?? 0,
                     total: usage?.total_tokens ?? inputTokens,
-                    estimated
+                    estimated,
+                    cacheRead: usage?.input_token_details?.cache_read ?? 0,
+                    cacheCreation:
+                        usage?.input_token_details?.cache_creation ?? 0
                 },
                 success: true
             })

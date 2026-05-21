@@ -20,7 +20,9 @@ export function createModelUsageReporter(
                 input: usage.tokens?.input ?? 0,
                 output: usage.tokens?.output ?? 0,
                 total: usage.tokens?.total ?? 0,
-                estimated: usage.tokens?.estimated ?? false
+                estimated: usage.tokens?.estimated ?? false,
+                cacheRead: usage.tokens?.cacheRead ?? 0,
+                cacheCreation: usage.tokens?.cacheCreation ?? 0
             },
             success: usage.success ?? true,
             createdAt: usage.createdAt ?? new Date()
@@ -84,6 +86,8 @@ export interface ModelUsageTokens {
     output: number
     total: number
     estimated: boolean
+    cacheRead: number
+    cacheCreation: number
 }
 
 export interface ModelUsageContext {
