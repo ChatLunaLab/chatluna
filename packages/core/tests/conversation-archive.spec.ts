@@ -10,7 +10,7 @@ import type {
     ArchiveRecord,
     BindingRecord,
     ConversationRecord
-} from '../src/services/conversation_types'
+} from '../src/conversation_types'
 import {
     createConversation,
     createMessage,

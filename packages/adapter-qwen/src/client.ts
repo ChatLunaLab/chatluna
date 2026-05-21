@@ -19,6 +19,8 @@ import { QWenRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { expandReasoningEffortModelVariants } from '@chatluna/v1-shared-adapter'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class QWenClient extends PlatformModelAndEmbeddingsClient {
     platform = 'qwen'
 
@@ -179,7 +181,9 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
     }
 
     protected _createModel(
-        model: string
+        model: string,
+        report: ModelUsageReporter,
+        source: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -194,6 +198,8 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
         if (info.type === ModelType.llm) {
             const modelMaxContextSize = info.maxTokens
             return new ChatLunaChatModel({
+                usageReporter: report,
+                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -215,6 +221,8 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
         }
 
         return new ChatLunaEmbeddings({
+            usageReporter: report,
+            usageSource: source,
             client: this._requester,
             model: info.name,
             batchSize: 5,

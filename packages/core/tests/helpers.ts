@@ -9,7 +9,7 @@ import {
     type ArchiveRecord,
     type ConversationRecord,
     type MessageRecord
-} from '../src/services/conversation_types'
+} from '../src/conversation_types'
 import { ChatLunaService } from '../src/services/chat'
 import { ConversationService } from '../src/services/conversation'
 import { ModelType } from '../src/llm-core/platform/types'

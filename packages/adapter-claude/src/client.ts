@@ -14,6 +14,8 @@ import { Config, logger } from '.'
 import { ClaudeRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class ClaudeClient extends PlatformModelClient<ClientConfig> {
     platform = 'claude'
 
@@ -191,10 +193,16 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
         )
     }
 
-    protected _createModel(model: string): ChatLunaChatModel {
+    protected _createModel(
+        model: string,
+        report: ModelUsageReporter,
+        source: string
+    ): ChatLunaChatModel {
         const info = this._modelInfos[model]
         const modelMaxContextSize = info.maxTokens ?? 128000
         return new ChatLunaChatModel({
+            usageReporter: report,
+            usageSource: source,
             requester: this._requester,
             modelInfo: info,
             model,

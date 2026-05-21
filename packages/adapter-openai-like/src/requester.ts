@@ -2,11 +2,13 @@ import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
+    EmbeddingsResult,
     ModelRequester,
     ModelRequestParams,
     RerankerRequester,
     RerankerRequestParams,
-    RerankerResult
+    RerankerResult,
+    RerankerUsageResult
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
     ClientConfig,
@@ -149,7 +151,7 @@ export class OpenAIRequester
 
     async embeddings(
         params: EmbeddingsRequestParams
-    ): Promise<number[] | number[][]> {
+    ): Promise<EmbeddingsResult> {
         const requestContext = createRequestContext(
             this.ctx,
             this._config.value,
@@ -161,7 +163,9 @@ export class OpenAIRequester
         return await createEmbeddings(requestContext, params)
     }
 
-    async rerank(params: RerankerRequestParams): Promise<RerankerResult[]> {
+    async rerank(
+        params: RerankerRequestParams
+    ): Promise<RerankerResult[] | RerankerUsageResult> {
         const requestContext = createRequestContext(
             this.ctx,
             this._config.value,

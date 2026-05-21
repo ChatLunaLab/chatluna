@@ -4,20 +4,17 @@ import {
     AsyncCaller,
     AsyncCallerParams
 } from '@langchain/core/utils/async_caller'
-import { Logger } from 'koishi'
 import {
     RerankerRequester,
-    RerankerRequestParams,
-    RerankerResult
+    RerankerRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import type { ModelUsageReporter } from '../../services/usage'
+import { logger } from 'koishi-plugin-chatluna'
+import type { ModelUsageReporter } from './usage'
 import { estimateTextTokens } from './usage'
-
-const logger = new Logger('chatluna')
 
 export interface ChatLunaRerankerParams extends AsyncCallerParams {
     timeout?: number
@@ -26,6 +23,8 @@ export interface ChatLunaRerankerParams extends AsyncCallerParams {
     model?: string
     topN?: number
     maxChunksPerDoc?: number
+    usageReporter?: ModelUsageReporter
+    usageSource?: string
 }
 
 export class ChatLunaReranker extends BaseDocumentCompressor {
@@ -41,7 +40,8 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
     caller: AsyncCaller
 
     private _client: RerankerRequester
-    private _usageReporter?: ModelUsageReporter
+    private _report?: ModelUsageReporter
+    private _usageSource?: string
 
     constructor(fields: ChatLunaRerankerParams) {
         super()
@@ -52,10 +52,8 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         this.topN = fields.topN ?? this.topN
         this.maxChunksPerDoc = fields.maxChunksPerDoc
         this._client = fields.client
-    }
-
-    setUsageReporter(reporter: ModelUsageReporter) {
-        this._usageReporter = reporter
+        this._report = fields.usageReporter
+        this._usageSource = fields.usageSource
     }
 
     async compressDocuments(
@@ -106,10 +104,13 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
             topN: options?.topN ?? this.topN,
             maxChunksPerDoc: options?.maxChunksPerDoc ?? this.maxChunksPerDoc
         }
+        const data = await this._rerankWithRetry(request)
+        const results = Array.isArray(data) ? data : data.results
 
-        const results = await this._rerankWithRetry(request)
-
-        await this._reportUsage(request)
+        await this._reportUsage(
+            [request.query, ...request.documents],
+            Array.isArray(data) ? undefined : data.usage
+        )
 
         return results.map((result) => ({
             index: result.index,
@@ -117,32 +118,9 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         }))
     }
 
-    private async _reportUsage(request: RerankerRequestParams) {
-        try {
-            if (this._usageReporter == null) {
-                return
-            }
-
-            const inputTokens = await estimateTextTokens([
-                request.query,
-                ...request.documents
-            ])
-
-            await this._usageReporter({
-                callType: 'reranker',
-                inputTokens,
-                outputTokens: 0,
-                totalTokens: inputTokens,
-                estimated: true
-            })
-        } catch (e) {
-            logger.warn('Failed to report reranker usage', e)
-        }
-    }
-
     private async _rerankWithRetry(
         request: RerankerRequestParams
-    ): Promise<RerankerResult[]> {
+    ): ReturnType<RerankerRequester['rerank']> {
         const timeoutError = new ChatLunaError(
             ChatLunaErrorCode.API_REQUEST_TIMEOUT,
             new Error(`timeout when calling ${request.model} reranker`),
@@ -152,7 +130,9 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         const makeRequest = async () => {
             let timeoutId: NodeJS.Timeout
 
-            const timeoutPromise = new Promise<RerankerResult[]>(
+            const timeoutPromise = new Promise<
+                Awaited<ReturnType<RerankerRequester['rerank']>>
+            >(
                 // eslint-disable-next-line promise/param-names
                 (_, reject) => {
                     timeoutId = setTimeout(() => {
@@ -183,6 +163,34 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
                 throw e
             }
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        }
+    }
+
+    private async _reportUsage(
+        input: string[],
+        usage?: {
+            total_tokens?: number
+            input_tokens?: number
+            output_tokens?: number
+        }
+    ) {
+        if (this._report == null) return
+
+        try {
+            const inputTokens =
+                usage?.input_tokens ??
+                usage?.total_tokens ??
+                (await estimateTextTokens(input))
+            await this._report({
+                callType: 'reranker',
+                source: this._usageSource,
+                inputTokens,
+                outputTokens: usage?.output_tokens ?? 0,
+                totalTokens: usage?.total_tokens ?? inputTokens,
+                estimated: usage == null
+            })
+        } catch (e) {
+            logger.warn('Failed to report reranker usage', e)
         }
     }
 }

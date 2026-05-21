@@ -1,5 +1,4 @@
 import { CallbackManager } from '@langchain/core/callbacks/manager'
-import { AsyncLocalStorage } from 'async_hooks'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -36,7 +35,6 @@ import {
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaReranker } from 'koishi-plugin-chatluna/llm-core/platform/rerank'
-import { warmupTokenEncoder } from '../llm-core/platform/usage'
 import {
     PlatformService,
     ToolMaskArg,
@@ -59,7 +57,7 @@ import { MessageTransformer } from './message_transform'
 import { ChatCallbackProviderInput, ChatCallbacksProvider } from './types'
 import { ConversationService } from './conversation'
 import { type ChatOptions, ConversationRuntime } from './conversation_runtime'
-import { ConstraintRecord, ConversationRecord } from './conversation_types'
+import { ConstraintRecord, ConversationRecord } from '../conversation_types'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
@@ -69,31 +67,12 @@ import { DefaultRenderer, Renderer } from 'koishi-plugin-chatluna'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 import { emptyEmbeddings } from 'koishi-plugin-chatluna/llm-core/model/in_memory'
 import { ChatLunaPromptRenderService } from './prompt_renderer'
-import { computed, ComputedRef, markRaw, watch } from '@vue/reactivity'
+import { computed, ComputedRef, watch } from '@vue/reactivity'
 import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import type { Notifier } from '@koishijs/plugin-notifier'
 import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { createChatPrompt } from 'koishi-plugin-chatluna/utils/chatluna'
-import type { ModelUsageInput, ModelUsagePayload, UsageContext } from './usage'
-import {
-    usageSourceFromContext,
-    usageSourceFromStack,
-    withUsageContextOption
-} from './usage_source'
-
-const chatModelUsageMethods = [
-    'invoke',
-    'stream',
-    'batch',
-    'generate',
-    'generatePrompt',
-    '_generate'
-]
-
-const embeddingsUsageMethods = ['embedQuery', 'embedDocuments']
-
-const rerankerUsageMethods = ['rerank', 'compressDocuments']
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -108,14 +87,6 @@ export class ChatLunaService extends Service<Config> {
     private readonly _conversation: ConversationService
     private readonly _conversationRuntime: ConversationRuntime
     private readonly _callbackProviders = new Set<ChatCallbacksProvider>()
-    private readonly _usageContext = markRaw(
-        new AsyncLocalStorage<UsageContext>()
-    )
-
-    private readonly _usageProxyCache = markRaw(
-        new WeakMap<object, Map<string, object>>()
-    )
-
     declare public config: Config
 
     declare public currentConfig: Config
@@ -147,7 +118,6 @@ export class ChatLunaService extends Service<Config> {
         this._defineDatabase()
         this.ctx.on('ready', async () => {
             await this._dedupeConstraintNames()
-            warmupTokenEncoder().catch((e) => this.ctx.logger.warn(e))
         })
     }
 
@@ -283,143 +253,6 @@ export class ChatLunaService extends Service<Config> {
         return merged
     }
 
-    get usageSource(): string {
-        return this._usageContext.getStore()?.source ?? 'unknown'
-    }
-
-    get usageContext(): UsageContext {
-        return this._usageContext.getStore() ?? { source: 'unknown' }
-    }
-
-    withUsageSource<T>(source: string, fn: () => T): T {
-        return this._usageContext.run(
-            {
-                ...this.usageContext,
-                source
-            },
-            fn
-        )
-    }
-
-    withDefaultUsageSource<T>(source: string, fn: () => T): T {
-        if (this.usageSource !== 'unknown') {
-            return fn()
-        }
-
-        return this.withUsageSource(source, fn)
-    }
-
-    withUsageContext<T>(ctx: Partial<UsageContext>, fn: () => T): T {
-        const existing = this._usageContext.getStore() ?? { source: 'unknown' }
-        const merged: UsageContext = {
-            ...existing,
-            ...ctx,
-            source: ctx.source ?? existing.source
-        }
-        return this._usageContext.run(merged, fn)
-    }
-
-    private _usageSourceFromCaller(stack?: string) {
-        if (this.usageSource !== 'unknown') {
-            return this.usageSource
-        }
-
-        const source = usageSourceFromContext(this.ctx)
-        return source !== 'unknown' ? source : usageSourceFromStack(stack)
-    }
-
-    private _withUsageSourceProxy<T extends object>(
-        target: T,
-        source: string,
-        methods: string[],
-        injectUsageContext = false
-    ): T {
-        const key = `${source}:${methods.join(',')}:${injectUsageContext}`
-        const cached = this._usageProxyCache.get(target)?.get(key)
-        if (cached) {
-            return cached as T
-        }
-
-        const proxy = new Proxy(target, {
-            get: (value, prop) => {
-                const result = Reflect.get(value, prop, value)
-                if (
-                    typeof prop === 'string' &&
-                    (methods.includes(prop) ||
-                        (injectUsageContext && prop === 'withConfig')) &&
-                    typeof result === 'function'
-                ) {
-                    return (...args: unknown[]) => {
-                        const callSource =
-                            this.usageSource !== 'unknown'
-                                ? this.usageSource
-                                : source !== 'unknown'
-                                  ? source
-                                  : this._usageSourceFromCaller(
-                                        new Error().stack
-                                    )
-                        const nextArgs = injectUsageContext
-                            ? args.concat([])
-                            : args
-
-                        if (injectUsageContext && prop === 'withConfig') {
-                            nextArgs[0] = withUsageContextOption(
-                                nextArgs[0],
-                                callSource
-                            )
-                        } else if (injectUsageContext) {
-                            nextArgs[1] = Array.isArray(nextArgs[1])
-                                ? nextArgs[1].map((opts) =>
-                                      withUsageContextOption(opts, callSource)
-                                  )
-                                : withUsageContextOption(
-                                      nextArgs[1],
-                                      callSource
-                                  )
-                        }
-
-                        return this.withDefaultUsageSource(callSource, () =>
-                            result.apply(value, nextArgs)
-                        )
-                    }
-                }
-
-                return result
-            }
-        })
-
-        const proxies = this._usageProxyCache.get(target) ?? new Map()
-        proxies.set(key, proxy)
-        this._usageProxyCache.set(target, proxies)
-        return proxy
-    }
-
-    async reportModelUsage(input: ModelUsageInput) {
-        if (this.currentConfig.enableUsageTracking === false) return
-
-        const ctx = this._usageContext.getStore()
-        const source = input.source ?? 'unknown'
-        const payload: ModelUsagePayload = {
-            ...input,
-            source:
-                ctx?.source != null && ctx.source !== 'unknown'
-                    ? ctx.source
-                    : source,
-            conversationId: input.conversationId ?? ctx?.conversationId,
-            requestId: input.requestId ?? ctx?.requestId,
-            userId: input.userId ?? ctx?.userId,
-            guildId: input.guildId ?? ctx?.guildId,
-            platform: input.platform ?? 'unknown',
-            model: input.model ?? 'unknown',
-            createdAt: input.createdAt ?? new Date()
-        }
-        try {
-            await this.ctx.root.parallel('chatluna/model-usage', payload)
-        } catch (e) {
-            this.ctx.logger.warn(e)
-        }
-    }
-
     async clearCache(conversation: ConversationRecord) {
         return this._conversationRuntime.clearConversationInterface(
             conversation
@@ -465,7 +298,6 @@ export class ChatLunaService extends Service<Config> {
 
     async createChatModel(platformName: string, model?: string) {
         const service = this._platformService
-        const source = this._usageSourceFromCaller(new Error().stack)
 
         if (model == null) {
             ;[platformName, model] = parseRawModelName(platformName)
@@ -478,12 +310,7 @@ export class ChatLunaService extends Service<Config> {
                 return undefined
             }
             try {
-                return this._withUsageSourceProxy(
-                    client.value.createModel(model) as ChatLunaChatModel,
-                    source,
-                    chatModelUsageMethods,
-                    true
-                )
+                return client.value.createModel(model) as ChatLunaChatModel
             } catch (error) {
                 this.ctx.logger.warn(`The model ${model} not found`, error)
             }
@@ -502,7 +329,6 @@ export class ChatLunaService extends Service<Config> {
 
     async createEmbeddings(platformName: string, modelName?: string) {
         const service = this._platformService
-        const source = this._usageSourceFromCaller(new Error().stack)
 
         if (modelName == null) {
             ;[platformName, modelName] = parseRawModelName(platformName)
@@ -546,11 +372,7 @@ export class ChatLunaService extends Service<Config> {
                 const model = client.value.createModel(modelName)
 
                 if (model instanceof ChatLunaBaseEmbeddings) {
-                    return this._withUsageSourceProxy(
-                        model,
-                        source,
-                        embeddingsUsageMethods
-                    )
+                    return model
                 }
             } catch (error) {
                 this.ctx.logger.warn(`The model ${modelName} not found`, error)
@@ -575,7 +397,6 @@ export class ChatLunaService extends Service<Config> {
 
     async createReranker(platformName: string, modelName?: string) {
         const service = this._platformService
-        const source = this._usageSourceFromCaller(new Error().stack)
 
         if (modelName == null) {
             ;[platformName, modelName] = parseRawModelName(platformName)
@@ -597,11 +418,7 @@ export class ChatLunaService extends Service<Config> {
                 const model = client.value.createModel(modelName)
 
                 if (model instanceof ChatLunaReranker) {
-                    return this._withUsageSourceProxy(
-                        model,
-                        source,
-                        rerankerUsageMethods
-                    )
+                    return model
                 }
             } catch (error) {
                 this.ctx.logger.warn(

@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna",
     "description": "chatluna for koishi",
-    "version": "1.4.0-alpha.18",
+    "version": "1.4.0-alpha.17",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -31,11 +31,6 @@
             "types": "./lib/services/chat.d.ts",
             "import": "./lib/services/chat.mjs",
             "require": "./lib/services/chat.cjs"
-        },
-        "./services/usage": {
-            "types": "./lib/services/usage.d.ts",
-            "import": "./lib/services/usage.mjs",
-            "require": "./lib/services/usage.cjs"
         },
         "./llm-core/prompt": {
             "types": "./lib/llm-core/prompt/index.d.ts",
@@ -82,6 +77,11 @@
             "import": "./lib/llm-core/platform/rerank.mjs",
             "require": "./lib/llm-core/platform/rerank.cjs"
         },
+        "./llm-core/platform/usage": {
+            "types": "./lib/llm-core/platform/usage.d.ts",
+            "import": "./lib/llm-core/platform/usage.mjs",
+            "require": "./lib/llm-core/platform/usage.cjs"
+        },
         "./llm-core/platform/service": {
             "types": "./lib/llm-core/platform/service.d.ts",
             "import": "./lib/llm-core/platform/service.mjs",
@@ -126,6 +126,11 @@
             "types": "./lib/utils/request.d.ts",
             "import": "./lib/utils/request.mjs",
             "require": "./lib/utils/request.cjs"
+        },
+        "./utils/usage_source": {
+            "types": "./lib/utils/usage_source.d.ts",
+            "import": "./lib/utils/usage_source.mjs",
+            "require": "./lib/utils/usage_source.cjs"
         },
         "./utils/sse": {
             "types": "./lib/utils/sse.d.ts",

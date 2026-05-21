@@ -3,7 +3,7 @@ import {
     type ConversationRecord,
     getBaseBindingKey,
     type ResolvedConversationContext
-} from '../services/conversation_types'
+} from '../conversation_types'
 
 export function getFallbackBindingKeys(session: Session, bindingKey: string) {
     const idx = bindingKey.indexOf(':preset:')

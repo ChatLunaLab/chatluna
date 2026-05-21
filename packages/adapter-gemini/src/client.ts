@@ -30,6 +30,8 @@ import {
 
 // #region GeminiClient
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'gemini'
 
@@ -182,7 +184,9 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
      * 根据模型名创建对应的 ChatLunaChatModel 或 ChatLunaEmbeddings 实例。
      */
     protected _createModel(
-        model: string
+        model: string,
+        report: ModelUsageReporter,
+        source: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -196,6 +200,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
+                usageReporter: report,
+                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -212,6 +218,8 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
 
         return new ChatLunaEmbeddings({
+            usageReporter: report,
+            usageSource: source,
             client: this._requester,
             model,
             maxRetries: this._config.maxRetries

@@ -228,8 +228,6 @@ export class ChatLunaPluginChain
         requests['configurable'] = {
             session,
             conversationId,
-            requestId,
-            source: 'chatluna',
             toolMask,
             agentContext: ctx
         }
@@ -293,12 +291,9 @@ export class ChatLunaPluginChain
                         session,
                         model: this.llm,
                         conversationId,
-                        requestId,
                         preset: preset.triggerKeyword[0],
                         userId: session.userId,
-                        guildId: session.guildId,
                         toolMask,
-                        source: 'chatluna',
                         agentContext: ctx
                     }
                 }

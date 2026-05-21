@@ -1,6 +1,4 @@
-import { Logger } from 'koishi'
-
-const logger = new Logger('chatluna')
+import { logger } from 'koishi-plugin-chatluna'
 
 // eslint-disable-next-line prefer-const
 export let ERROR_FORMAT_TEMPLATE =

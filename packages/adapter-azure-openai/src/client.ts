@@ -20,6 +20,8 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { AzureOpenAIClientConfig } from './types'
 import { getModelMaxContextSize } from '@chatluna/v1-shared-adapter'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAIClientConfig> {
     platform = 'azure'
 
@@ -83,7 +85,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
     }
 
     protected _createModel(
-        model: string
+        model: string,
+        report: ModelUsageReporter,
+        source: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -98,6 +102,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
         if (info.type === ModelType.llm) {
             const modelMaxContextSize = getModelMaxContextSize(info)
             return new ChatLunaChatModel({
+                usageReporter: report,
+                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -116,6 +122,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
         }
 
         return new ChatLunaEmbeddings({
+            usageReporter: report,
+            usageSource: source,
             client: this._requester,
             model,
             maxRetries: this._config.maxRetries

@@ -6,7 +6,7 @@ import type {
     ConversationRecord,
     MessageRecord,
     MetaRecord
-} from '../services/conversation_types'
+} from '../conversation_types'
 import type {
     LegacyMessageRecord,
     LegacyRoomGroupRecord,

@@ -9,7 +9,7 @@ import {
 import {
     type ConversationResolution,
     type MessageRecord
-} from '../../services/conversation_types'
+} from '../../conversation_types'
 import {
     checkAdmin,
     transformMessageContentToElements

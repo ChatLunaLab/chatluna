@@ -102,7 +102,6 @@ export class ChatLunaChatChain
         events,
         session,
         conversationId,
-        requestId,
         variables,
         signal,
         maxToken,
@@ -124,9 +123,7 @@ export class ChatLunaChatChain
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {
             session,
-            conversationId,
-            requestId,
-            source: 'chatluna'
+            conversationId
         }
         requests['id'] = conversationId
 

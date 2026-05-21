@@ -18,6 +18,8 @@ import { Config, logger } from '.'
 import { OllamaRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'ollama'
 
@@ -71,7 +73,9 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     }
 
     protected _createModel(
-        model: string
+        model: string,
+        report: ModelUsageReporter,
+        source: string
     ): ChatLunaChatModel | ChatLunaEmbeddings {
         const info = this._modelInfos[model]
 
@@ -85,6 +89,8 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
+                usageReporter: report,
+                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -102,6 +108,8 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
 
         return new ChatLunaEmbeddings({
+            usageReporter: report,
+            usageSource: source,
             model,
             client: this._requester,
             maxRetries: this._config.maxRetries

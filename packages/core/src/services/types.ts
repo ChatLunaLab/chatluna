@@ -9,7 +9,7 @@ import {
     MessageRecord,
     MetaRecord,
     ResolveConversationOptions
-} from './conversation_types'
+} from '../conversation_types'
 import { ChatLunaService } from './chat'
 import {
     AIMessage,
@@ -30,7 +30,6 @@ import type {
     ToolMaskArg,
     ToolMaskResolver
 } from '../llm-core/platform/service'
-import type { ModelUsagePayload } from './usage'
 
 export interface LegacyConversationRecord {
     id: string
@@ -192,7 +191,6 @@ declare module 'koishi' {
             session: Session,
             content: string
         ): Promise<boolean>
-        'chatluna/model-usage'(payload: ModelUsagePayload): Promise<void>
     }
 
     interface Tables {
@@ -224,8 +222,6 @@ declare module '@chatluna/shared-prompt-renderer' {
 
 export * from '@chatluna/shared-prompt-renderer'
 
-export type * from './usage'
-
-export * from './conversation_types'
+export * from '../conversation_types'
 
 export type { ToolMaskArg, ToolMaskResolver }

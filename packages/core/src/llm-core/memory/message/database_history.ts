@@ -20,7 +20,7 @@ import type { AgentStep } from '../../agent/types'
 import type {
     ChatLunaMessageMeta,
     MessageRecord
-} from '../../../services/conversation_types'
+} from '../../../conversation_types'
 import type { ChatLunaService } from '../../../services/chat'
 
 export class KoishiChatMessageHistory extends BaseChatMessageHistory {

@@ -10,7 +10,7 @@ import { apply as applyResolve } from '../src/middlewares/conversation/resolve_c
 import { apply as applyRequest } from '../src/middlewares/conversation/request_conversation'
 import { apply as applyManage } from '../src/middlewares/system/conversation_manage'
 import { apply as applyLifecycle } from '../src/middlewares/system/lifecycle'
-import { ConversationResolutionError } from '../src/services/conversation_types'
+import { ConversationResolutionError } from '../src/conversation_types'
 import {
     createConfig,
     createConversation,
@@ -31,7 +31,10 @@ it('resolve_conversation inherits active preset lane for explicit commands witho
             | undefined
         let useRoutePresetLane: boolean | undefined
 
-        ctx.chatluna.conversation.resolveConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.resolveConversation = async (
+            _session,
+            opts
+        ) => {
             useRoutePresetLane = opts.useRoutePresetLane
             return {
                 bindingKey: 'shared:discord:bot:guild:preset:helper',
@@ -340,7 +343,10 @@ it('resolve_conversation prefers pre-resolved conversation state over legacy top
             | undefined
         let opts: any
 
-        ctx.chatluna.conversation.resolveConversation = async (_session, value) => {
+        ctx.chatluna.conversation.resolveConversation = async (
+            _session,
+            value
+        ) => {
             opts = value
             return {
                 bindingKey: 'shared:discord:bot:guild',
@@ -660,7 +666,10 @@ it('conversation_switch accepts resolved direct conversation ids', async () => {
 
         session.text = (key, params) =>
             params == null ? key : `${key}:${params.join(',')}`
-        ctx.chatluna.conversation.switchConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.switchConversation = async (
+            _session,
+            opts
+        ) => {
             conversationId = opts.conversationId
             return {
                 id: 'conversation-1',
@@ -763,7 +772,10 @@ it('conversation_switch preserves explicit chain conversation through middleware
         applyResolve(ctx as never, {} as never, chain)
         applyManage(ctx as never, {} as never, chain)
 
-        ctx.chatluna.conversation.resolveConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.resolveConversation = async (
+            _session,
+            opts
+        ) => {
             resolveOpts = opts
 
             return {
@@ -780,7 +792,10 @@ it('conversation_switch preserves explicit chain conversation through middleware
                 mode: opts.mode
             }
         }
-        ctx.chatluna.conversation.switchConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.switchConversation = async (
+            _session,
+            opts
+        ) => {
             switchedId = opts.conversationId
 
             return {
@@ -790,21 +805,25 @@ it('conversation_switch preserves explicit chain conversation through middleware
             }
         }
 
-        const handled = await chain.receiveCommand(session, 'conversation_switch', {
-            conversation: {
-                bindingKey: 'shared:discord:bot:guild',
-                constraint,
-                effectiveModel: 'test-platform/test-model',
-                effectivePreset: 'default-preset',
-                effectiveChatMode: 'plugin',
-                conversationId: 'conversation-direct',
-                conversation: createConversation({
-                    id: 'conversation-direct',
-                    title: 'Direct Topic'
-                })
-            },
-            conversation_manage: {}
-        })
+        const handled = await chain.receiveCommand(
+            session,
+            'conversation_switch',
+            {
+                conversation: {
+                    bindingKey: 'shared:discord:bot:guild',
+                    constraint,
+                    effectiveModel: 'test-platform/test-model',
+                    effectivePreset: 'default-preset',
+                    effectiveChatMode: 'plugin',
+                    conversationId: 'conversation-direct',
+                    conversation: createConversation({
+                        id: 'conversation-direct',
+                        title: 'Direct Topic'
+                    })
+                },
+                conversation_manage: {}
+            }
+        )
 
         assert.equal(handled, false)
         assert.equal(resolveOpts.mode, 'target')
@@ -865,7 +884,10 @@ it('conversation_switch prefers explicit target over preexisting chain conversat
         applyResolve(ctx as never, {} as never, chain)
         applyManage(ctx as never, {} as never, chain)
 
-        ctx.chatluna.conversation.resolveConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.resolveConversation = async (
+            _session,
+            opts
+        ) => {
             resolveOpts = opts
 
             return {
@@ -882,7 +904,10 @@ it('conversation_switch prefers explicit target over preexisting chain conversat
                 mode: opts.mode
             }
         }
-        ctx.chatluna.conversation.switchConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.switchConversation = async (
+            _session,
+            opts
+        ) => {
             switchedId = opts.conversationId
 
             return {
@@ -892,23 +917,27 @@ it('conversation_switch prefers explicit target over preexisting chain conversat
             }
         }
 
-        const handled = await chain.receiveCommand(session, 'conversation_switch', {
-            conversation: {
-                bindingKey: 'shared:discord:bot:guild',
-                constraint,
-                effectiveModel: 'test-platform/test-model',
-                effectivePreset: 'default-preset',
-                effectiveChatMode: 'plugin',
-                conversationId: 'conversation-direct',
-                conversation: createConversation({
-                    id: 'conversation-direct',
-                    title: 'Direct Topic'
-                })
-            },
-            conversation_manage: {
-                targetConversation: 'conversation-target'
+        const handled = await chain.receiveCommand(
+            session,
+            'conversation_switch',
+            {
+                conversation: {
+                    bindingKey: 'shared:discord:bot:guild',
+                    constraint,
+                    effectiveModel: 'test-platform/test-model',
+                    effectivePreset: 'default-preset',
+                    effectiveChatMode: 'plugin',
+                    conversationId: 'conversation-direct',
+                    conversation: createConversation({
+                        id: 'conversation-direct',
+                        title: 'Direct Topic'
+                    })
+                },
+                conversation_manage: {
+                    targetConversation: 'conversation-target'
+                }
             }
-        })
+        )
 
         assert.equal(handled, false)
         assert.equal(resolveOpts.mode, 'target')
@@ -970,7 +999,10 @@ it('conversation_switch prefers explicit target over preexisting resolved conver
         applyResolve(ctx as never, {} as never, chain)
         applyManage(ctx as never, {} as never, chain)
 
-        ctx.chatluna.conversation.resolveConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.resolveConversation = async (
+            _session,
+            opts
+        ) => {
             resolveOpts = opts
 
             return {
@@ -987,7 +1019,10 @@ it('conversation_switch prefers explicit target over preexisting resolved conver
                 mode: opts.mode
             }
         }
-        ctx.chatluna.conversation.switchConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.switchConversation = async (
+            _session,
+            opts
+        ) => {
             switchedId = opts.conversationId
 
             return {
@@ -997,14 +1032,18 @@ it('conversation_switch prefers explicit target over preexisting resolved conver
             }
         }
 
-        const handled = await chain.receiveCommand(session, 'conversation_switch', {
-            conversation: {
-                conversationId: 'conversation-direct'
-            },
-            conversation_manage: {
-                targetConversation: 'conversation-target'
+        const handled = await chain.receiveCommand(
+            session,
+            'conversation_switch',
+            {
+                conversation: {
+                    conversationId: 'conversation-direct'
+                },
+                conversation_manage: {
+                    targetConversation: 'conversation-target'
+                }
             }
-        })
+        )
 
         assert.equal(handled, false)
         assert.equal(resolveOpts.mode, 'target')
@@ -1149,10 +1188,7 @@ it('message_delay keeps collected messages in send order', async () => {
             ChainMiddlewareRunStatus.STOP,
             ChainMiddlewareRunStatus.STOP
         ])
-        assert.equal(
-            content.map((part) => part.text ?? '').join(''),
-            '1\n2\n3'
-        )
+        assert.equal(content.map((part) => part.text ?? '').join(''), '1\n2\n3')
         ctx.emit('chatluna/after-chat', 'message-delay-order')
     } finally {
         await app.stop()
@@ -1264,7 +1300,10 @@ it('conversation_new keeps preset option out of preset lane resolution', async (
         applyResolve(ctx as never, {} as never, chain)
         applyManage(ctx as never, {} as never, chain)
 
-        ctx.chatluna.conversation.resolveConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.resolveConversation = async (
+            _session,
+            opts
+        ) => {
             resolveOpts = opts
 
             return {
@@ -1278,7 +1317,10 @@ it('conversation_new keeps preset option out of preset lane resolution', async (
                 mode: opts.mode
             }
         }
-        ctx.chatluna.conversation.createConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.createConversation = async (
+            _session,
+            opts
+        ) => {
             createOpts = opts
 
             return createConversation({
@@ -1291,11 +1333,15 @@ it('conversation_new keeps preset option out of preset lane resolution', async (
             })
         }
 
-        const handled = await chain.receiveCommand(session, 'conversation_new', {
-            conversation_create: {
-                preset: 'writer'
+        const handled = await chain.receiveCommand(
+            session,
+            'conversation_new',
+            {
+                conversation_create: {
+                    preset: 'writer'
+                }
             }
-        })
+        )
 
         assert.equal(handled, false)
         assert.equal(resolveOpts.mode, 'context')

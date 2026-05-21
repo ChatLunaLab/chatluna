@@ -26,6 +26,8 @@ import {
 } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'openai'
 
@@ -100,7 +102,9 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     }
 
     protected _createModel(
-        model: string
+        model: string,
+        report: ModelUsageReporter,
+        source: string
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -115,6 +119,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         if (info.type === ModelType.llm) {
             const modelMaxContextSize = getModelMaxContextSize(info)
             return new ChatLunaChatModel({
+                usageReporter: report,
+                usageSource: source,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -134,6 +140,8 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
 
         return new ChatLunaEmbeddings({
+            usageReporter: report,
+            usageSource: source,
             client: this._requester,
             model,
             batchSize: 256,

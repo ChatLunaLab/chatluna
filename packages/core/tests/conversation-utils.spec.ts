@@ -14,7 +14,7 @@ import {
 import {
     applyPresetLane,
     computeBaseBindingKey
-} from '../src/services/conversation_types'
+} from '../src/conversation_types'
 import {
     createMessage,
     type BindingSessionShape,

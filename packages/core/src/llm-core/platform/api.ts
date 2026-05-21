@@ -12,6 +12,12 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import type {
+    EmbeddingsResult,
+    RerankerUsageResult
+} from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
+export type { EmbeddingsResult, RerankerUsageResult }
 
 export interface BaseRequestParams {
     /**
@@ -237,7 +243,7 @@ export abstract class ModelRequester<
 }
 
 export interface EmbeddingsRequester {
-    embeddings(params: EmbeddingsRequestParams): Promise<number[] | number[][]>
+    embeddings(params: EmbeddingsRequestParams): Promise<EmbeddingsResult>
 }
 
 export interface RerankerRequestParams extends BaseRequestParams {
@@ -253,5 +259,7 @@ export interface RerankerResult {
 }
 
 export interface RerankerRequester {
-    rerank(params: RerankerRequestParams): Promise<RerankerResult[]>
+    rerank(
+        params: RerankerRequestParams
+    ): Promise<RerankerResult[] | RerankerUsageResult>
 }

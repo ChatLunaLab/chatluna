@@ -6,7 +6,7 @@ import type {
     BindingRecord,
     ConversationRecord,
     MessageRecord
-} from '../services/conversation_types'
+} from '../conversation_types'
 import type {
     ArchiveManifest,
     ConversationArchivePayload,
