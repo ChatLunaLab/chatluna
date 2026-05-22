@@ -10,11 +10,13 @@ import {
     SSEClientTransportOptions
 } from '@modelcontextprotocol/sdk/client/sse.js'
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
+import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { McpServerConfig } from '../types'
 
 export function createTransport(
     name: string,
-    config: McpServerConfig
+    config: McpServerConfig,
+    plugin: ChatLunaPlugin
 ): Transport {
     const type = config.type ?? 'stdio'
     const requestInit =
@@ -23,12 +25,22 @@ export function createTransport(
     for (const [k, v] of Object.entries(config.headers ?? {})) {
         headers.set(k, v)
     }
+
+    const proxyFetch: typeof fetch = (url, init) => {
+        return plugin.fetch(
+            url as Parameters<typeof plugin.fetch>[0],
+            init as Parameters<typeof plugin.fetch>[1],
+            config.proxy
+        ) as unknown as ReturnType<typeof fetch>
+    }
+
     const transportConfig = {
         ...config,
         requestInit: {
             ...requestInit,
             headers
-        }
+        },
+        fetch: proxyFetch
     }
 
     if (type === 'stdio') {
