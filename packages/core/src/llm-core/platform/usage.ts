@@ -10,20 +10,29 @@ export function createModelUsageReporter(
     platform: string,
     model: string
 ): ModelUsageReporter {
-    return async (usage) => {
+    const report: ModelUsageReporter = async (usage) => {
+        const limit = Error.stackTraceLimit
+        Error.stackTraceLimit = Math.max(limit, 50)
+        const stack = new Error().stack
+        Error.stackTraceLimit = limit
+        const source = usage.source ?? usageSourceFromStack(stack)
+        const fallback =
+            usage.source == null &&
+            (source === 'chatluna' || source === 'unknown')
+                ? usageSourceFromStack(report.stack)
+                : source
+
         const payload: ModelUsagePayload = {
             ...usage,
-            source: usage.source ?? usageSourceFromStack(new Error().stack),
+            source: fallback === 'unknown' ? source : fallback,
             platform: usage.platform ?? platform,
             model: usage.model ?? model,
-            tokens: {
-                input: usage.tokens?.input ?? 0,
-                output: usage.tokens?.output ?? 0,
-                total: usage.tokens?.total ?? 0,
-                estimated: usage.tokens?.estimated ?? false,
-                cacheRead: usage.tokens?.cacheRead ?? 0,
-                cacheCreation: usage.tokens?.cacheCreation ?? 0
+            usageMetadata: usage.usageMetadata ?? {
+                input_tokens: 0,
+                output_tokens: 0,
+                total_tokens: 0
             },
+            estimated: usage.estimated ?? false,
             success: usage.success ?? true,
             createdAt: usage.createdAt ?? new Date()
         }
@@ -33,6 +42,7 @@ export function createModelUsageReporter(
             ctx.logger.error(e)
         }
     }
+    return report
 }
 
 let encoder: Tiktoken | null = null
@@ -81,15 +91,6 @@ declare module 'koishi' {
 
 export type ModelUsageCallType = 'llm' | 'embeddings' | 'reranker'
 
-export interface ModelUsageTokens {
-    input: number
-    output: number
-    total: number
-    estimated: boolean
-    cacheRead: number
-    cacheCreation: number
-}
-
 export interface ModelUsageContext {
     chatPlatform?: string
     conversationId?: string
@@ -103,7 +104,8 @@ export interface ModelUsagePayload {
     callType: ModelUsageCallType
     platform: string
     model: string
-    tokens: ModelUsageTokens
+    usageMetadata: UsageMetadata
+    estimated: boolean
     success: boolean
     createdAt: Date
     context?: ModelUsageContext
@@ -111,19 +113,27 @@ export interface ModelUsagePayload {
 
 export type ModelUsageInput = Omit<
     ModelUsagePayload,
-    'source' | 'createdAt' | 'platform' | 'model' | 'tokens' | 'success'
+    | 'source'
+    | 'createdAt'
+    | 'platform'
+    | 'model'
+    | 'usageMetadata'
+    | 'estimated'
+    | 'success'
 > & {
     source?: string
     createdAt?: Date
     platform?: string
     model?: string
-    tokens?: Partial<ModelUsageTokens>
+    usageMetadata?: UsageMetadata
+    estimated?: boolean
     success?: boolean
 }
 
-export type ModelUsageReporter = (
-    usage: ModelUsageInput
-) => Promise<void> | void
+export interface ModelUsageReporter {
+    (usage: ModelUsageInput): Promise<void> | void
+    stack?: string
+}
 
 export interface EmbeddingsUsageResult {
     data: number[] | number[][]

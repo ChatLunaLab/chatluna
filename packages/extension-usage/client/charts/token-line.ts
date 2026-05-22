@@ -15,7 +15,13 @@ import { chartTheme } from '../theme'
 import { query, usage } from '../state'
 import { Tooltip } from './utils'
 
-type Tab = 'token-rank' | 'token-trend' | 'call-stack' | 'call-rank'
+type Tab =
+    | 'token-rank'
+    | 'token-trend'
+    | 'call-stack'
+    | 'call-rank'
+    | 'model-pie'
+    | 'model-success'
 
 interface Point {
     calls: number
@@ -23,13 +29,17 @@ interface Point {
 }
 
 const VChart = defineAsyncComponent(() => import('./echarts'))
+const ModelPie = defineAsyncComponent(() => import('./model-pie.vue'))
+const ModelSuccess = defineAsyncComponent(() => import('./model-success.vue'))
 const MAX_HOURS = 72
 
 const tabs: { label: string; value: Tab }[] = [
     { label: '消耗分布', value: 'token-rank' },
     { label: '消耗趋势', value: 'token-trend' },
     { label: '调用次数分布', value: 'call-stack' },
-    { label: '调用次数排行', value: 'call-rank' }
+    { label: '调用次数排行', value: 'call-rank' },
+    { label: '模型分布', value: 'model-pie' },
+    { label: '模型成功率', value: 'model-success' }
 ]
 
 function hour(date: string | Date) {
@@ -40,6 +50,15 @@ function hour(date: string | Date) {
     const hours = String(value.getHours()).padStart(2, '0')
 
     return `${year}-${month}-${day} ${hours}:00`
+}
+
+function escapeHtml(str: string) {
+    return str
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;')
 }
 
 function tooltip(
@@ -62,7 +81,7 @@ function tooltip(
         .map(
             (item) =>
                 `<div style="${row}">
-                    <span style="${name}">${item.marker ?? ''}${item.seriesName}</span>
+                    <span style="${name}">${item.marker ?? ''}${escapeHtml(item.seriesName)}</span>
                     <strong style="${value}">${Number(item.value).toLocaleString()}</strong>
                 </div>`
         )
@@ -145,6 +164,8 @@ export default (ctx: Context) => {
                 const option = computed<EChartsOption | void>(() => {
                     const data = usage.value
                     if (!data) return
+                    if (tab.value === 'model-pie') return
+                    if (tab.value === 'model-success') return
 
                     const theme = chartTheme.value
                     const list = top.value
@@ -560,8 +581,18 @@ export default (ctx: Context) => {
                                         ])
                                     )
                                 ]),
-                            default: () =>
-                                current
+                            default: () => {
+                                if (tab.value === 'model-pie') {
+                                    return h(ModelPie, {
+                                        key: `${chartTheme.value.key}-model-pie`
+                                    })
+                                }
+                                if (tab.value === 'model-success') {
+                                    return h(ModelSuccess, {
+                                        key: `${chartTheme.value.key}-model-success`
+                                    })
+                                }
+                                return current
                                     ? h(VChart, {
                                           key: `${chartTheme.value.key}-${tab.value}-${rows.value.length}`,
                                           option: current,
@@ -572,6 +603,7 @@ export default (ctx: Context) => {
                                               ? '正在加载小时级数据'
                                               : '暂无用量数据'
                                       ])
+                            }
                         }
                     )
                 }

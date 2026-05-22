@@ -14,9 +14,10 @@ export function usageSourceFromStack(stack?: string) {
     for (const line of stack.split('\n')) {
         logger?.debug(`stack line: ${line}`)
 
-        const match = line.match(
-            /\(?((?:[A-Za-z]:[\\/]|\/|file:\/\/\/).+):\d+:\d+\)?$/
-        )
+        const match =
+            line.match(
+                /^\s*at\s+(?:[^()]+\()?((?:[A-Za-z]:[\\/]|\/|file:\/\/\/).+):\d+:\d+\)?$/
+            ) ?? line.match(/^((?:[A-Za-z]:[\\/]|\/|file:\/\/\/).+):\d+:\d+$/)
         if (!match) {
             logger?.debug('stack line ignored: no file match')
             continue

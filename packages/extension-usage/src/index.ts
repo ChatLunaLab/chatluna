@@ -1,5 +1,6 @@
 import { Context, Logger, Schema, Time } from 'koishi'
 import { DataService } from '@koishijs/plugin-console'
+import type { UsageMetadata } from '@langchain/core/messages'
 import { resolve } from 'path'
 import type { ModelUsageCallType } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
@@ -23,18 +24,16 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 platform: { type: 'char', length: 128 },
                 chatPlatform: { type: 'char', length: 128, nullable: true },
                 model: { type: 'char', length: 255 },
-                tokens: {
+                usageMetadata: {
                     type: 'json',
                     nullable: false,
                     initial: {
-                        input: 0,
-                        output: 0,
-                        total: 0,
-                        estimated: false,
-                        cacheRead: 0,
-                        cacheCreation: 0
+                        input_tokens: 0,
+                        output_tokens: 0,
+                        total_tokens: 0
                     }
                 },
+                estimated: 'boolean',
                 success: 'boolean',
                 createdAt: { type: 'timestamp', nullable: false },
                 conversationId: { type: 'char', length: 255, nullable: true },
@@ -57,7 +56,8 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                     platform: usage.platform,
                     chatPlatform: usage.context?.chatPlatform ?? null,
                     model: usage.model,
-                    tokens: usage.tokens,
+                    usageMetadata: usage.usageMetadata,
+                    estimated: usage.estimated,
                     success: usage.success,
                     createdAt: usage.createdAt,
                     conversationId: usage.context?.conversationId ?? null,
@@ -65,11 +65,13 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                     userId: usage.context?.userId ?? null,
                     guildId: usage.context?.guildId ?? null
                 })
-                await this.refresh()
+                if (config.webui) await this.refresh()
             } catch (e) {
                 logger.error(e)
             }
         })
+
+        if (!config.webui) return
 
         ctx.inject(['console'], (ctx) => {
             ctx.console.addListener('chatluna-usage/query', async (input) =>
@@ -91,12 +93,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
 
             ctx.console.addEntry({
                 dev: resolve(__dirname, '../client/index.ts'),
-                prod: resolve(
-                    ctx.baseDir,
-                    'node_modules',
-                    'koishi-plugin-chatluna-usage',
-                    'dist'
-                )
+                prod: resolve(__dirname, '../dist')
             })
         })
     }
@@ -126,6 +123,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             totalTokens: 0,
             estimatedTokens: 0,
             cachedTokens: 0,
+            reasoningTokens: 0,
             successRate: 0
         }
 
@@ -134,6 +132,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             const item = groups.get(key) ?? {
                 key,
                 label: this.groupLabel(key, groupBy),
+                platform: groupBy === 'model' ? row.platform : undefined,
                 calls: 0,
                 successfulCalls: 0,
                 failedCalls: 0,
@@ -142,11 +141,13 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 totalTokens: 0,
                 estimatedTokens: 0,
                 cachedTokens: 0,
+                reasoningTokens: 0,
                 successRate: 0
             }
             const model = models.get(row.model) ?? {
                 key: row.model,
                 label: row.model,
+                platform: row.platform,
                 calls: 0,
                 successfulCalls: 0,
                 failedCalls: 0,
@@ -155,6 +156,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 totalTokens: 0,
                 estimatedTokens: 0,
                 cachedTokens: 0,
+                reasoningTokens: 0,
                 successRate: 0
             }
             const source = sources.get(row.source) ?? {
@@ -168,6 +170,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 totalTokens: 0,
                 estimatedTokens: 0,
                 cachedTokens: 0,
+                reasoningTokens: 0,
                 successRate: 0
             }
             const date = this.dateKey(row.createdAt, input.period ?? 'day')
@@ -177,7 +180,8 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 inputTokens: 0,
                 outputTokens: 0,
                 totalTokens: 0,
-                cachedTokens: 0
+                cachedTokens: 0,
+                reasoningTokens: 0
             }
 
             this.add(row, item)
@@ -185,11 +189,14 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             this.add(row, source)
             this.add(row, totals)
             point.calls += 1
-            point.inputTokens += row.tokens.input
-            point.outputTokens += row.tokens.output
-            point.totalTokens += row.tokens.total
+            point.inputTokens += row.usageMetadata.input_tokens
+            point.outputTokens += row.usageMetadata.output_tokens
+            point.totalTokens += row.usageMetadata.total_tokens
             point.cachedTokens +=
-                row.tokens.cacheRead + row.tokens.cacheCreation
+                (row.usageMetadata.input_token_details?.cache_read ?? 0) +
+                (row.usageMetadata.input_token_details?.cache_creation ?? 0)
+            point.reasoningTokens +=
+                row.usageMetadata.output_token_details?.reasoning ?? 0
             if (!modelTimeline.has(row.model))
                 modelTimeline.set(row.model, new Map())
             modelTimeline
@@ -247,33 +254,41 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
 
     private async search(input: ChatLunaUsage.Query) {
         const query = this.withDefaults(input)
-        const rows = (await this.ctx.database.get('chatluna_usage', {
+        const where: Record<string, unknown> = {
             createdAt: { $gte: query.start, $lt: query.end }
-        })) as ChatLunaUsage.Record[]
+        }
+        if (query.source) where.source = query.source
+        if (query.model) where.model = query.model
+        if (query.platform) where.platform = query.platform
+        if (query.callType) where.callType = query.callType
+        if (query.success != null) where.success = query.success
+        if (query.estimated != null) where.estimated = query.estimated
+
+        const rows = (await this.ctx.database.get(
+            'chatluna_usage',
+            where
+        )) as ChatLunaUsage.Record[]
+
+        if (
+            !query.chatPlatform &&
+            !query.guildId &&
+            !query.userId &&
+            !query.keyword
+        ) {
+            return rows
+        }
 
         return rows.filter((row) => {
-            if (query.source && row.source !== query.source) return false
-            if (query.model && row.model !== query.model) return false
-            if (query.platform && row.platform !== query.platform) return false
             if (
                 query.chatPlatform &&
                 !(row.chatPlatform ?? '').includes(query.chatPlatform)
             ) {
                 return false
             }
-            if (query.callType && row.callType !== query.callType) return false
             if (query.guildId && !(row.guildId ?? '').includes(query.guildId)) {
                 return false
             }
             if (query.userId && !(row.userId ?? '').includes(query.userId)) {
-                return false
-            }
-            if (query.success != null && row.success !== query.success)
-                return false
-            if (
-                query.estimated != null &&
-                row.tokens.estimated !== query.estimated
-            ) {
                 return false
             }
             if (!query.keyword) return true
@@ -325,11 +340,16 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         const sorted = rows
             .map((row) => ({
                 ...row,
-                inputTokens: row.tokens.input,
-                outputTokens: row.tokens.output,
-                totalTokens: row.tokens.total,
-                estimated: row.tokens.estimated,
-                cachedTokens: row.tokens.cacheRead + row.tokens.cacheCreation
+                inputTokens: row.usageMetadata.input_tokens,
+                outputTokens: row.usageMetadata.output_tokens,
+                totalTokens: row.usageMetadata.total_tokens,
+                estimated: row.estimated,
+                cachedTokens:
+                    (row.usageMetadata.input_token_details?.cache_read ?? 0) +
+                    (row.usageMetadata.input_token_details?.cache_creation ??
+                        0),
+                reasoningTokens:
+                    row.usageMetadata.output_token_details?.reasoning ?? 0
             }))
             .sort((a, b) => {
                 const left = a[query.listSortBy]
@@ -354,11 +374,16 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         item.calls += 1
         if (row.success) item.successfulCalls += 1
         else item.failedCalls += 1
-        item.inputTokens += row.tokens.input
-        item.outputTokens += row.tokens.output
-        item.totalTokens += row.tokens.total
-        item.cachedTokens += row.tokens.cacheRead + row.tokens.cacheCreation
-        if (row.tokens.estimated) item.estimatedTokens += row.tokens.total
+        item.inputTokens += row.usageMetadata.input_tokens
+        item.outputTokens += row.usageMetadata.output_tokens
+        item.totalTokens += row.usageMetadata.total_tokens
+        item.cachedTokens +=
+            (row.usageMetadata.input_token_details?.cache_read ?? 0) +
+            (row.usageMetadata.input_token_details?.cache_creation ?? 0)
+        item.reasoningTokens +=
+            row.usageMetadata.output_token_details?.reasoning ?? 0
+        if (row.estimated)
+            item.estimatedTokens += row.usageMetadata.total_tokens
         if (!item.lastSeen || row.createdAt > item.lastSeen)
             item.lastSeen = row.createdAt
     }
@@ -385,9 +410,12 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
     }
 
     private dateKey(date: Date, period: ChatLunaUsage.Period) {
-        if (period === 'year') return String(date.getFullYear())
-        if (period === 'month') return date.toISOString().slice(0, 7)
-        return date.toISOString().slice(0, 10)
+        const y = date.getFullYear()
+        const m = String(date.getMonth() + 1).padStart(2, '0')
+        const d = String(date.getDate()).padStart(2, '0')
+        if (period === 'year') return String(y)
+        if (period === 'month') return `${y}-${m}`
+        return `${y}-${m}-${d}`
     }
 }
 
@@ -400,7 +428,8 @@ namespace ChatLunaUsage {
         platform: string
         chatPlatform?: string | null
         model: string
-        tokens: Tokens
+        usageMetadata: UsageMetadata
+        estimated: boolean
         success: boolean
         createdAt: Date
         conversationId?: string | null
@@ -409,21 +438,13 @@ namespace ChatLunaUsage {
         guildId?: string | null
     }
 
-    export interface Tokens {
-        input: number
-        output: number
-        total: number
-        estimated: boolean
-        cacheRead: number
-        cacheCreation: number
-    }
-
     export interface ListRow extends Record {
         inputTokens: number
         outputTokens: number
         totalTokens: number
         estimated: boolean
         cachedTokens: number
+        reasoningTokens: number
     }
 
     export type Period = 'day' | 'month' | 'year'
@@ -443,6 +464,7 @@ namespace ChatLunaUsage {
         | 'totalTokens'
         | 'estimatedTokens'
         | 'cachedTokens'
+        | 'reasoningTokens'
         | 'successRate'
     export type ListSortBy =
         | 'createdAt'
@@ -450,6 +472,7 @@ namespace ChatLunaUsage {
         | 'outputTokens'
         | 'totalTokens'
         | 'cachedTokens'
+        | 'reasoningTokens'
 
     export interface Query {
         period?: Period
@@ -477,6 +500,7 @@ namespace ChatLunaUsage {
     export interface Summary {
         key: string
         label: string
+        platform?: string
         calls: number
         successfulCalls: number
         failedCalls: number
@@ -485,6 +509,7 @@ namespace ChatLunaUsage {
         totalTokens: number
         estimatedTokens: number
         cachedTokens: number
+        reasoningTokens: number
         successRate: number
         lastSeen?: Date
     }
@@ -496,6 +521,7 @@ namespace ChatLunaUsage {
         outputTokens: number
         totalTokens: number
         cachedTokens: number
+        reasoningTokens: number
     }
 
     export interface ModelTimeline {
@@ -542,6 +568,7 @@ namespace ChatLunaUsage {
     export interface Config {
         recentDays: number
         pageSize: number
+        webui: boolean
     }
 
     export interface ActionResult {
@@ -552,7 +579,12 @@ namespace ChatLunaUsage {
         recentDays: Schema.natural()
             .description('默认统计最近几天的数据。')
             .default(30),
-        pageSize: Schema.natural().description('调用明细分页大小。').default(50)
+        pageSize: Schema.natural()
+            .description('调用明细分页大小。')
+            .default(50),
+        webui: Schema.boolean()
+            .description('启用 Web UI 控制台用量面板。')
+            .default(true)
     })
 
     export const inject = ['chatluna', 'database']
@@ -578,7 +610,8 @@ export function apply(ctx: Context, config: ChatLunaUsage.Config) {
 export const Config = ChatLunaUsage.Config
 
 export const inject = {
-    required: ['chatluna', 'database', 'console']
+    required: ['chatluna', 'database'],
+    optional: ['console']
 }
 
 export const name = 'chatluna-usage'

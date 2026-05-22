@@ -31,9 +31,19 @@
                                 v-for="row in models"
                                 :key="row.key"
                             >
-                                <span class="source-model-name">
-                                    {{ row.label }}
-                                </span>
+                                <el-tooltip
+                                    :content="
+                                        row.platform
+                                            ? `${row.platform}/${row.label}`
+                                            : row.label
+                                    "
+                                    placement="top"
+                                    effect="dark"
+                                >
+                                    <span class="source-model-name">
+                                        {{ row.label }}
+                                    </span>
+                                </el-tooltip>
                                 <strong>
                                     {{ pct(row.totalTokens / modelTokens) }} ·
                                     {{ fmt(row.totalTokens) }}

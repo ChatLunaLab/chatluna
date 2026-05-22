@@ -34,6 +34,8 @@ export abstract class BasePlatformClient<
 > {
     private _modelPool: Record<string, R> = {}
 
+    private _reports: Record<string, ModelUsageReporter> = {}
+
     protected _modelInfos: Record<string, ModelInfo> = {}
 
     private _lock = new ObjectLock()
@@ -190,11 +192,18 @@ export abstract class BasePlatformClient<
     ): R
 
     createModel(model: string): R {
+        const limit = Error.stackTraceLimit
+        Error.stackTraceLimit = Math.max(limit, 50)
+        const stack = new Error().stack
+        Error.stackTraceLimit = limit
+        const report =
+            this._reports[model] ??
+            createModelUsageReporter(this.ctx, this.platform, model)
+        report.stack = stack
+        this._reports[model] = report
+
         if (!this._modelPool[model]) {
-            this._modelPool[model] = this._createModel(
-                model,
-                createModelUsageReporter(this.ctx, this.platform, model)
-            )
+            this._modelPool[model] = this._createModel(model, report)
         }
 
         return this._modelPool[model]

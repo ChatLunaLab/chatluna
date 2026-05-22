@@ -69,7 +69,9 @@
         "service": {
             "required": [
                 "chatluna",
-                "database",
+                "database"
+            ],
+            "optional": [
                 "console"
             ]
         }

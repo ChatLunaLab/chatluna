@@ -225,9 +225,9 @@ export class ChatLunaPluginChain
             conversationId,
             requestId,
             userId: session.userId,
-            guildId: session.guildId ?? session.channelId,
-            chatPlatform: session.platform,
-            session
+            guildId: session.guildId,
+            channelId: session.channelId,
+            chatPlatform: session.platform
         }
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {

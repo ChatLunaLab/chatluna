@@ -183,6 +183,13 @@ it('usageSourceFromStack reads package names instead of folder names', () => {
         ),
         'chatluna-openai-adapter'
     )
+    assert.equal(
+        usageSourceFromStack(
+            '    at process.processTicksAndRejections ' +
+                '(node:internal/process/task_queues:105:5)'
+        ),
+        'unknown'
+    )
 })
 
 it('getMessageContent flattens structured text parts', () => {

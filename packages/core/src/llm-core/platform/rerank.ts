@@ -1,4 +1,5 @@
 import { DocumentInterface } from '@langchain/core/documents'
+import type { UsageMetadata } from '@langchain/core/messages'
 import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors'
 import {
     AsyncCaller,
@@ -169,33 +170,24 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         }
     }
 
-    private async _reportUsage(
-        input: string[],
-        usage?: {
-            total_tokens?: number
-            input_tokens?: number
-            output_tokens?: number
-        }
-    ) {
+    private async _reportUsage(input: string[], usage?: UsageMetadata) {
         if (this._report == null) return
 
         try {
             const estimated =
-                usage?.input_tokens == null &&
-                usage?.output_tokens == null &&
-                usage?.total_tokens == null
+                usage?.input_tokens == null && usage?.total_tokens == null
             const inputTokens =
                 usage?.input_tokens ??
                 usage?.total_tokens ??
                 (await estimateTextTokens(input))
             await this._report({
                 callType: 'reranker',
-                tokens: {
-                    input: inputTokens,
-                    output: usage?.output_tokens ?? 0,
-                    total: usage?.total_tokens ?? inputTokens,
-                    estimated
+                usageMetadata: usage ?? {
+                    input_tokens: inputTokens,
+                    output_tokens: 0,
+                    total_tokens: inputTokens
                 },
+                estimated,
                 success: true
             })
         } catch (e) {
@@ -209,12 +201,12 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         try {
             await this._report({
                 callType: 'reranker',
-                tokens: {
-                    input: 0,
-                    output: 0,
-                    total: 0,
-                    estimated: false
+                usageMetadata: {
+                    input_tokens: 0,
+                    output_tokens: 0,
+                    total_tokens: 0
                 },
+                estimated: false,
                 success: false
             })
         } catch (e) {

@@ -1,172 +1,184 @@
 <template>
     <div class="chatluna-usage-dashboard">
-        <section class="dashboard-shell">
-            <header class="dashboard-head">
-                <h2>ChatLuna 模型用量统计</h2>
-            </header>
-
-            <number-grid />
-
-            <section class="dashboard-main">
-                <div class="chart-panel">
-                    <k-slot name="chatluna-usage-chart"></k-slot>
-                </div>
-                <source-list />
-            </section>
-
-            <k-card class="frameless chatluna-usage-filter">
-                <template #header>
-                    <span class="filter-title">
-                        <svg
-                            class="filter-title-icon"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                        >
-                            <circle
-                                cx="11"
-                                cy="11"
-                                r="7"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            />
-                            <path
-                                d="M16.5 16.5 21 21"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                            />
-                        </svg>
-                        用量查询
-                    </span>
-                    <span class="actions">
-                        <el-button
-                            :loading="loading"
-                            type="primary"
-                            @click="refresh"
-                        >
-                            刷新
-                        </el-button>
-                        <el-button :loading="loading" @click="resetFilters">
-                            重置
-                        </el-button>
-                        <el-button
-                            :loading="loading"
-                            type="danger"
-                            @click="clearHistory"
-                        >
-                            清除历史
-                        </el-button>
-                    </span>
-                </template>
-
-                <div class="filter-body">
-                    <el-date-picker
-                        v-model="range"
-                        class="date-filter"
-                        popper-class="chatluna-usage-date-popper"
-                        :prefix-icon="Calendar"
-                        type="datetimerange"
-                        start-placeholder="开始时间"
-                        end-placeholder="结束时间"
-                        value-format="YYYY-MM-DDTHH:mm:ss.SSSZ"
-                        @change="changeRange"
-                    />
-
-                    <div class="model-filter-row">
-                        <el-select
-                            v-model="query.platform"
-                            filterable
-                            allow-create
-                            default-first-option
-                            clearable
-                            placeholder="模型平台"
-                        >
-                            <el-option
-                                v-for="item in platformOptions"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                        <el-select
-                            v-model="query.model"
-                            filterable
-                            allow-create
-                            default-first-option
-                            clearable
-                            placeholder="模型名称"
-                        >
-                            <el-option
-                                v-for="item in modelOptions"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                        <el-select
-                            v-model="query.callType"
-                            filterable
-                            default-first-option
-                            clearable
-                            placeholder="模型类型"
-                        >
-                            <el-option
-                                v-for="item in typeOptions"
-                                :key="item"
-                                :label="
-                                    item === 'llm'
-                                        ? 'LLM'
-                                        : item === 'embeddings'
-                                          ? 'Embeddings'
-                                          : 'Reranker'
-                                "
-                                :value="item"
-                            />
-                        </el-select>
-                        <el-select
-                            v-model="query.success"
-                            clearable
-                            placeholder="成功状态"
-                        >
-                            <el-option label="成功" :value="true" />
-                            <el-option label="失败" :value="false" />
-                        </el-select>
-                        <el-select
-                            v-model="query.source"
-                            filterable
-                            allow-create
-                            default-first-option
-                            clearable
-                            placeholder="插件来源"
-                        >
-                            <el-option
-                                v-for="item in sourceOptions"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                    </div>
-                </div>
-            </k-card>
-
-            <k-card class="frameless chatluna-usage-table">
-                <template #header>
-                    <span>调用明细</span>
-                    <span>{{ usage?.list.total ?? 0 }} 条</span>
-                </template>
-                <el-table
-                    ref="table"
-                    :data="usage?.list.rows ?? []"
-                    :default-sort="{ prop: 'createdAt', order: 'descending' }"
-                    stripe
+        <header class="dashboard-head">
+            <h2>ChatLuna Tokens</h2>
+            <span
+                class="segment dashboard-segment"
+                :style="{
+                    '--segment-index': scopes.findIndex(
+                        (item) => item.value === scope
+                    )
+                }"
+            >
+                <span class="segment-thumb"></span>
+                <button
+                    v-for="item in scopes"
+                    :key="item.value"
+                    :class="{ active: scope === item.value }"
+                    type="button"
+                    @click="setScope(item.value)"
                 >
+                    {{ item.label }}
+                </button>
+            </span>
+        </header>
+
+        <number-grid />
+
+        <section class="dashboard-main">
+            <div class="chart-panel">
+                <k-slot name="chatluna-usage-chart"></k-slot>
+            </div>
+            <source-list />
+        </section>
+
+        <k-card class="frameless chatluna-usage-table">
+            <template #header>
+                <span class="table-title">
+                    <svg
+                        class="filter-title-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        aria-hidden="true"
+                    >
+                        <circle
+                            cx="11"
+                            cy="11"
+                            r="7"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        />
+                        <path
+                            d="M16.5 16.5 21 21"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                        />
+                    </svg>
+                    调用明细
+                </span>
+                <span class="actions">
+                    <el-button
+                        :loading="loading"
+                        type="primary"
+                        @click="refresh"
+                    >
+                        刷新
+                    </el-button>
+                    <el-button :loading="loading" @click="resetFilters">
+                        重置
+                    </el-button>
+                    <el-button
+                        :loading="loading"
+                        type="danger"
+                        @click="clearHistory"
+                    >
+                        清除历史
+                    </el-button>
+                </span>
+            </template>
+
+            <div class="filter-body">
+                <el-date-picker
+                    v-model="range"
+                    class="date-filter"
+                    popper-class="chatluna-usage-date-popper"
+                    :prefix-icon="Calendar"
+                    type="datetimerange"
+                    start-placeholder="开始时间"
+                    end-placeholder="结束时间"
+                    value-format="YYYY-MM-DDTHH:mm:ss.SSSZ"
+                    @change="changeRange"
+                />
+
+                <div class="model-filter-row">
+                    <el-select
+                        v-model="query.platform"
+                        filterable
+                        allow-create
+                        default-first-option
+                        clearable
+                        placeholder="模型平台"
+                    >
+                        <el-option
+                            v-for="item in platformOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                    <el-select
+                        v-model="query.model"
+                        filterable
+                        allow-create
+                        default-first-option
+                        clearable
+                        placeholder="模型名称"
+                    >
+                        <el-option
+                            v-for="item in modelOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                    <el-select
+                        v-model="query.callType"
+                        filterable
+                        default-first-option
+                        clearable
+                        placeholder="模型类型"
+                    >
+                        <el-option
+                            v-for="item in typeOptions"
+                            :key="item"
+                            :label="
+                                item === 'llm'
+                                    ? 'LLM'
+                                    : item === 'embeddings'
+                                      ? 'Embeddings'
+                                      : 'Reranker'
+                            "
+                            :value="item"
+                        />
+                    </el-select>
+                    <el-select
+                        v-model="query.success"
+                        clearable
+                        placeholder="成功状态"
+                    >
+                        <el-option label="成功" :value="true" />
+                        <el-option label="失败" :value="false" />
+                    </el-select>
+                    <el-select
+                        v-model="query.source"
+                        filterable
+                        allow-create
+                        default-first-option
+                        clearable
+                        placeholder="插件来源"
+                    >
+                        <el-option
+                            v-for="item in sourceOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                </div>
+            </div>
+
+            <el-table
+                ref="table"
+                :data="usage?.list.rows ?? []"
+                :default-sort="{ prop: 'createdAt', order: 'descending' }"
+                stripe
+            >
                     <el-table-column
                         prop="createdAt"
                         label="时间"
-                        width="190"
+                        width="180"
                         sortable
                     >
                         <template #default="scope">
@@ -176,27 +188,177 @@
                     <el-table-column
                         prop="model"
                         label="模型"
-                        min-width="180"
+                        width="200"
+                        sortable
+                    >
+                        <template #default="scope">
+                            <el-tooltip
+                                :content="
+                                    scope.row.platform
+                                        ? `${scope.row.platform}/${scope.row.model}`
+                                        : scope.row.model
+                                "
+                                placement="top"
+                                effect="dark"
+                            >
+                                <span class="ellipsis-cell">
+                                    {{ scope.row.model }}
+                                </span>
+                            </el-tooltip>
+                        </template>
+                    </el-table-column>
+                    <el-table-column
+                        prop="platform"
+                        label="渠道"
+                        width="160"
+                        show-overflow-tooltip
                         sortable
                     />
                     <el-table-column
                         prop="source"
                         label="插件来源"
-                        min-width="160"
+                        width="160"
+                        show-overflow-tooltip
                         sortable
                     />
                     <el-table-column
                         prop="callType"
                         label="类型"
-                        width="120"
+                        width="100"
                         sortable
                     />
-                    <el-table-column
-                        prop="totalTokens"
-                        label="Token"
-                        width="110"
-                        sortable
-                    />
+                    <el-table-column label="TOKEN" min-width="170">
+                        <template #default="scope">
+                            <el-tooltip
+                                placement="right"
+                                effect="dark"
+                                popper-class="chatluna-usage-token-popper"
+                            >
+                                <template #content>
+                                    <div class="token-detail">
+                                        <p class="token-detail-title">
+                                            Token 明细
+                                        </p>
+                                        <div class="token-detail-row">
+                                            <span>输入 Token</span>
+                                            <strong>
+                                                {{ fmt(scope.row.inputTokens) }}
+                                            </strong>
+                                        </div>
+                                        <div class="token-detail-row">
+                                            <span>输出 Token</span>
+                                            <strong>
+                                                {{
+                                                    fmt(scope.row.outputTokens)
+                                                }}
+                                            </strong>
+                                        </div>
+                                        <div
+                                            class="token-detail-row"
+                                            v-if="scope.row.reasoningTokens > 0"
+                                        >
+                                            <span>思考 Token</span>
+                                            <strong>
+                                                {{
+                                                    fmt(
+                                                        scope.row
+                                                            .reasoningTokens
+                                                    )
+                                                }}
+                                            </strong>
+                                        </div>
+                                        <div class="token-detail-row">
+                                            <span>缓存读取 Token</span>
+                                            <strong>
+                                                {{
+                                                    fmt(scope.row.cachedTokens)
+                                                }}
+                                            </strong>
+                                        </div>
+                                        <div class="token-detail-divider"></div>
+                                        <div class="token-detail-row total">
+                                            <span>总 Token</span>
+                                            <strong>
+                                                {{ fmt(scope.row.totalTokens) }}
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div class="token-cell">
+                                    <div class="token-io">
+                                        <span class="token-down">
+                                            ↓
+                                            {{ fmt(scope.row.inputTokens) }}
+                                        </span>
+                                        <span class="token-up">
+                                            ↑
+                                            {{ fmt(scope.row.outputTokens) }}
+                                        </span>
+                                        <span
+                                            class="token-think"
+                                            v-if="scope.row.reasoningTokens > 0"
+                                        >
+                                            <svg
+                                                class="token-think-icon"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    d="M12 3a6 6 0 0 0-3.5 10.9V17a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3.1A6 6 0 0 0 12 3Z"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linejoin="round"
+                                                />
+                                                <path
+                                                    d="M10 21h4"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                />
+                                            </svg>
+                                            {{
+                                                short(
+                                                    scope.row.reasoningTokens
+                                                )
+                                            }}
+                                        </span>
+                                    </div>
+                                    <div
+                                        class="token-cache"
+                                        v-if="scope.row.cachedTokens > 0"
+                                    >
+                                        <svg
+                                            class="token-cache-icon"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            aria-hidden="true"
+                                        >
+                                            <rect
+                                                x="3"
+                                                y="6"
+                                                width="18"
+                                                height="12"
+                                                rx="2"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                            />
+                                            <path
+                                                d="m4 8 8 6 8-6"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                        </svg>
+                                        {{ short(scope.row.cachedTokens) }}
+                                    </div>
+                                </div>
+                            </el-tooltip>
+                        </template>
+                    </el-table-column>
                     <el-table-column label="状态" width="100">
                         <template #default="scope">
                             <el-tag
@@ -218,7 +380,6 @@
                     @size-change="changeSize"
                 />
             </k-card>
-        </section>
     </div>
 </template>
 
@@ -231,11 +392,16 @@ import SourceList from './sources/index.vue'
 import {
     changeRange,
     clearHistory,
+    fmt,
     loading,
     query,
     range,
     refresh,
     resetFilters as resetQuery,
+    scope,
+    scopes,
+    setScope,
+    short,
     time,
     usage
 } from './state'
@@ -317,15 +483,6 @@ function changeSize(size: number) {
     }
 }
 
-.dashboard-shell {
-    min-width: 0;
-    padding: 1rem;
-    border: 1px solid var(--k-card-border);
-    border-radius: 12px;
-    background: var(--k-card-bg);
-    box-shadow: var(--k-card-shadow);
-}
-
 .dashboard-head {
     display: flex;
     justify-content: space-between;
@@ -339,6 +496,10 @@ function changeSize(size: number) {
         font-size: 1.35rem;
         font-weight: 600;
         line-height: 1.3;
+    }
+
+    .dashboard-segment {
+        flex: 0 0 auto;
     }
 }
 
@@ -365,123 +526,39 @@ function changeSize(size: number) {
 .usage-metric-card {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    min-height: 150px;
-    padding: 1rem;
-
-    > strong {
-        align-self: center;
-        color: var(--k-text-dark);
-        font-size: 2rem;
-        line-height: 1.1;
-    }
-
-    p {
-        margin: 0;
-    }
-}
-
-.request-card,
-.success-card {
-    position: relative;
-    overflow: hidden;
-    padding: 1.45rem 1.6rem;
-}
-
-.request-card > .metric-value,
-.success-card > .metric-value {
-    align-self: flex-start;
-    color: var(--k-text-dark);
-    font-size: 2rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    line-height: 1;
-
-    small {
-        margin-left: 0.12rem;
-        font-size: 0.72em;
-        font-weight: 400;
-    }
-}
-
-.metric-compare {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    color: var(--k-text-light);
-    font-size: 0.85rem;
-    line-height: 1;
-}
-
-.metric-badge {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--k-color-primary), transparent 88%);
-    color: var(--k-color-primary);
-    font-weight: 600;
-    padding: 0.25rem 0.48rem;
-
-    &.up {
-        background: color-mix(
-            in srgb,
-            var(--el-color-success),
-            transparent 88%
-        );
-        color: var(--el-color-success);
-    }
-
-    &.down {
-        background: color-mix(in srgb, var(--el-color-danger), transparent 88%);
-        color: var(--el-color-danger);
-    }
-}
-
-.metric-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--k-text-dark);
-    font-size: 1.05rem;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-}
-
-.metric-title-icon {
-    display: block;
-    width: 1.35rem;
-    height: 1.35rem;
-    box-sizing: border-box;
-    flex: 0 0 auto;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--k-color-primary), transparent 88%);
-    color: var(--k-color-primary);
-    padding: 0.28rem;
+    gap: 0.6rem;
+    min-height: 110px;
+    padding: 1rem 1.25rem 1.1rem;
 }
 
 .metric-label {
-    color: inherit;
-    font-size: inherit;
-    font-weight: inherit;
+    color: var(--k-text-light);
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1;
 }
 
-.metric-pills {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
+.metric-value {
+    color: var(--k-text-dark);
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
 
-    span {
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--k-color-divider), transparent 48%);
+    small {
+        margin-left: 0.18rem;
         color: var(--k-text-light);
-        padding: 0.25rem 0.65rem;
-        font-size: 0.8rem;
+        font-size: 0.6em;
+        font-weight: 500;
     }
 }
 
+.accent-value {
+    color: var(--k-color-primary);
+}
+
 .metric-progress {
-    height: 0.5rem;
+    height: 0.4rem;
     overflow: hidden;
     border-radius: 999px;
     background: color-mix(in srgb, var(--k-color-divider), transparent 48%);
@@ -495,90 +572,9 @@ function changeSize(size: number) {
     }
 }
 
-.metric-note {
-    color: var(--k-text-light);
-    font-size: 0.875rem;
-}
-
-.success-note {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    line-height: 1;
-
-    span:last-child {
-        color: var(--k-color-primary);
-    }
-}
-
-.token-card header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-}
-
 .token-card {
-    min-height: 170px;
-    padding: 1.45rem 1.6rem;
-}
-
-.token-title {
-    min-width: 0;
-}
-
-.token-icon {
-    position: relative;
-    width: 1.35rem;
-    height: 1.35rem;
-    box-sizing: border-box;
-    flex: 0 0 auto;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--k-color-primary), transparent 88%);
-    color: var(--k-color-primary);
-
-    &::before,
-    &::after {
-        content: '';
-        position: absolute;
-        left: 0.34rem;
-        bottom: 0.34rem;
-        border-radius: 999px;
-        background: currentColor;
-    }
-
-    &::before {
-        width: 0.1rem;
-        height: 0.72rem;
-    }
-
-    &::after {
-        width: 0.76rem;
-        height: 0.1rem;
-    }
-
-    i {
-        position: absolute;
-        bottom: 0.43rem;
-        width: 0.1rem;
-        border-radius: 999px 999px 0 0;
-        background: currentColor;
-
-        &:nth-child(1) {
-            left: 0.52rem;
-            height: 0.28rem;
-        }
-
-        &:nth-child(2) {
-            left: 0.7rem;
-            height: 0.45rem;
-        }
-
-        &:nth-child(3) {
-            left: 0.88rem;
-            height: 0.6rem;
-        }
-    }
+    min-height: 110px;
+    gap: 0.75rem;
 }
 
 .segment {
@@ -630,15 +626,22 @@ function changeSize(size: number) {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
-    margin: 1.45rem 0 0;
 
     div {
         min-width: 0;
-        padding: 0 1rem;
+        padding: 0 0.65rem;
         text-align: center;
 
         & + div {
             border-left: 1px solid var(--k-card-border);
+        }
+
+        &:first-child {
+            padding-left: 0;
+        }
+
+        &:last-child {
+            padding-right: 0;
         }
     }
 
@@ -652,56 +655,17 @@ function changeSize(size: number) {
 
     span {
         color: var(--k-text-light);
-        font-size: 0.82rem;
+        font-size: 0.78rem;
     }
 
     strong {
-        margin-top: 0.45rem;
+        margin-top: 0.4rem;
         color: var(--k-text-dark);
         font-size: 1.25rem;
-        font-weight: 500;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
         line-height: 1.15;
     }
-}
-
-.accent-card {
-    gap: 0.85rem;
-
-    .accent-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-
-    > strong {
-        align-self: flex-start;
-        color: var(--k-color-primary);
-    }
-}
-
-.accent-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    flex: 0 0 auto;
-    border-radius: 999px;
-    background: currentColor;
-    opacity: 0.7;
-}
-
-.accent-line {
-    display: block;
-    height: 1px;
-    background: var(--k-card-border);
-}
-
-.accent-summary {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    color: var(--k-text-light);
-    font-size: 0.85rem;
-    line-height: 1;
 }
 
 .chatluna-usage-source-panel {
@@ -871,12 +835,10 @@ function changeSize(size: number) {
     }
 }
 
-.chatluna-usage-filter,
 .chatluna-usage-table {
     margin-top: 1rem;
 }
 
-.chatluna-usage-filter header,
 .chatluna-usage-table header {
     display: flex;
     justify-content: space-between;
@@ -884,14 +846,14 @@ function changeSize(size: number) {
     gap: 1rem;
 }
 
-.chatluna-usage-filter .actions {
+.chatluna-usage-table .actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.5rem;
 }
 
-.chatluna-usage-filter .filter-title {
+.chatluna-usage-table .table-title {
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
@@ -902,7 +864,7 @@ function changeSize(size: number) {
     white-space: nowrap;
 }
 
-.chatluna-usage-filter .filter-title-icon {
+.chatluna-usage-table .filter-title-icon {
     display: block;
     width: 1.35rem;
     height: 1.35rem;
@@ -910,48 +872,48 @@ function changeSize(size: number) {
     color: var(--k-text-dark);
 }
 
-.chatluna-usage-filter {
+.chatluna-usage-table {
     overflow: visible;
 }
 
-.chatluna-usage-filter .filter-body {
+.chatluna-usage-table .filter-body {
     display: grid;
     box-sizing: border-box;
     gap: 0.8rem;
-    padding: 0.1rem 0.9rem 0.85rem;
+    padding: 0.5rem 0.9rem 1rem;
 }
 
-.chatluna-usage-filter .model-filter-row {
+.chatluna-usage-table .model-filter-row {
     display: grid;
     gap: 0.85rem;
     grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-.chatluna-usage-filter .el-input,
-.chatluna-usage-filter .el-select,
-.chatluna-usage-filter .el-date-editor {
+.chatluna-usage-table .el-input,
+.chatluna-usage-table .el-select,
+.chatluna-usage-table .el-date-editor {
     width: 100%;
 }
 
-.chatluna-usage-filter .el-input__wrapper,
-.chatluna-usage-filter .el-select__wrapper,
-.chatluna-usage-filter .el-date-editor.el-input__wrapper {
+.chatluna-usage-table .filter-body .el-input__wrapper,
+.chatluna-usage-table .filter-body .el-select__wrapper,
+.chatluna-usage-table .filter-body .el-date-editor.el-input__wrapper {
     min-width: 0;
     background: color-mix(in srgb, var(--k-card-bg), var(--k-page-bg) 42%);
     box-shadow: 0 0 0 1px var(--k-card-border) inset;
 }
 
-.chatluna-usage-filter .el-date-editor .el-range-input {
+.chatluna-usage-table .el-date-editor .el-range-input {
     min-width: 0;
 }
 
-.chatluna-usage-filter .el-date-editor.date-filter {
+.chatluna-usage-table .el-date-editor.date-filter {
     max-width: none;
     min-width: 0;
     width: calc(40% - 1.75rem);
 }
 
-.chatluna-usage-filter .el-date-editor.date-filter .el-range__icon {
+.chatluna-usage-table .el-date-editor.date-filter .el-range__icon {
     color: var(--k-text-light);
 }
 
@@ -1045,6 +1007,7 @@ function changeSize(size: number) {
 
 .chatluna-usage-table .pager {
     justify-content: flex-end;
+    padding: 0 1rem 0.25rem;
     margin-top: 1rem;
 }
 
@@ -1066,6 +1029,123 @@ function changeSize(size: number) {
 .chatluna-usage-table .el-table td.el-table__cell,
 .chatluna-usage-table .el-table th.el-table__cell {
     background-color: var(--el-table-tr-bg-color);
+}
+
+.token-cell {
+    display: grid;
+    gap: 0.2rem;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+
+.ellipsis-cell {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.token-io {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--k-text-dark);
+    font-weight: 500;
+
+    .token-down {
+        color: var(--el-color-success);
+    }
+
+    .token-up {
+        color: var(--k-color-primary);
+    }
+
+    .token-think {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: var(--el-color-warning);
+        font-weight: 500;
+    }
+
+    .token-think-icon {
+        width: 0.95rem;
+        height: 0.95rem;
+        flex: 0 0 auto;
+    }
+}
+
+.token-cache {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--k-color-primary);
+    font-size: 0.85rem;
+
+    .token-cache-icon {
+        width: 0.95rem;
+        height: 0.95rem;
+        flex: 0 0 auto;
+    }
+}
+
+.chatluna-usage-token-popper.el-popper {
+    --el-bg-color-overlay: var(--k-card-bg);
+    background: var(--k-card-bg);
+    border: 1px solid var(--k-card-border);
+    color: var(--k-text-dark);
+    box-shadow: var(--k-card-shadow);
+    padding: 0;
+}
+
+.chatluna-usage-token-popper .el-popper__arrow::before {
+    border-color: var(--k-card-border);
+    background: var(--k-card-bg);
+}
+
+.token-detail {
+    min-width: 14rem;
+    padding: 0.6rem 0.85rem 0.7rem;
+    color: var(--k-text-dark);
+    font-variant-numeric: tabular-nums;
+}
+
+.token-detail-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.token-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.18rem 0;
+    color: var(--k-text-light);
+    font-size: 0.85rem;
+
+    strong {
+        color: var(--k-text-dark);
+        font-weight: 600;
+    }
+
+    &.total {
+        color: var(--k-text-dark);
+        font-weight: 600;
+
+        strong {
+            color: var(--k-color-primary);
+        }
+    }
+}
+
+.token-detail-divider {
+    height: 1px;
+    margin: 0.4rem 0 0.3rem;
+    background: var(--k-card-border);
 }
 
 .chatluna-usage-table
@@ -1093,13 +1173,14 @@ function changeSize(size: number) {
 @media (max-width: 768px) {
     .dashboard-head {
         align-items: flex-start;
+        flex-direction: column;
     }
 
-    .chatluna-usage-filter .model-filter-row {
+    .chatluna-usage-table .model-filter-row {
         grid-template-columns: 1fr;
     }
 
-    .chatluna-usage-filter .el-date-editor.date-filter {
+    .chatluna-usage-table .el-date-editor.date-filter {
         width: 100%;
     }
 }

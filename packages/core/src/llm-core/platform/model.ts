@@ -312,7 +312,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         )
                     }
                     if (reportUsage) {
-                        await this._reportFailedUsage(options)
+                        await this._reportFailedUsage(options, promptTokens)
                     }
                     throw error
                 }
@@ -495,12 +495,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 runManager
             )
         } catch (e) {
-            await this._reportFailedUsage(options)
+            await this._reportFailedUsage(options, promptTokens)
             throw e
         }
 
         if (response == null) {
-            await this._reportFailedUsage(options)
+            await this._reportFailedUsage(options, promptTokens)
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
         }
 
@@ -582,15 +582,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         try {
             await this._report({
                 callType: 'llm',
-                tokens: {
-                    input: usage.input_tokens,
-                    output: usage.output_tokens,
-                    total: usage.total_tokens,
-                    estimated,
-                    cacheRead: usage.input_token_details?.cache_read ?? 0,
-                    cacheCreation:
-                        usage.input_token_details?.cache_creation ?? 0
-                },
+                usageMetadata: usage,
+                estimated,
                 success: true,
                 context: usageContextFromOptions(options)
             })
@@ -599,18 +592,21 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         }
     }
 
-    private async _reportFailedUsage(options: this['ParsedCallOptions']) {
+    private async _reportFailedUsage(
+        options: this['ParsedCallOptions'],
+        promptTokens = 0
+    ) {
         if (this._report == null) return
 
         try {
             await this._report({
                 callType: 'llm',
-                tokens: {
-                    input: 0,
-                    output: 0,
-                    total: 0,
-                    estimated: false
+                usageMetadata: {
+                    input_tokens: promptTokens,
+                    output_tokens: 0,
+                    total_tokens: promptTokens
                 },
+                estimated: promptTokens > 0,
                 success: false,
                 context: usageContextFromOptions(options)
             })
@@ -1148,15 +1144,12 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
                 (await estimateTextTokens(input))
             await this._report({
                 callType: 'embeddings',
-                tokens: {
-                    input: inputTokens,
-                    output: usage?.output_tokens ?? 0,
-                    total: usage?.total_tokens ?? inputTokens,
-                    estimated,
-                    cacheRead: usage?.input_token_details?.cache_read ?? 0,
-                    cacheCreation:
-                        usage?.input_token_details?.cache_creation ?? 0
+                usageMetadata: usage ?? {
+                    input_tokens: inputTokens,
+                    output_tokens: 0,
+                    total_tokens: inputTokens
                 },
+                estimated,
                 success: true
             })
         } catch (e) {
@@ -1170,12 +1163,12 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
         try {
             await this._report({
                 callType: 'embeddings',
-                tokens: {
-                    input: 0,
-                    output: 0,
-                    total: 0,
-                    estimated: false
+                usageMetadata: {
+                    input_tokens: 0,
+                    output_tokens: 0,
+                    total_tokens: 0
                 },
+                estimated: false,
                 success: false
             })
         } catch (e) {
@@ -1284,12 +1277,9 @@ function usageContextFromOptions(options: ChatLunaModelCallOptions) {
             session?.userId,
         guildId:
             built?.guildId ??
-            built?.channelId ??
             cfg?.guildId ??
             cfg?.agentContext?.guildId ??
-            cfg?.agentContext?.channelId ??
-            session?.guildId ??
-            session?.channelId
+            session?.guildId
     }
 
     return context.chatPlatform != null ||
