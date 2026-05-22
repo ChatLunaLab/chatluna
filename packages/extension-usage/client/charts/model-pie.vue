@@ -1,68 +1,79 @@
 <template>
     <div class="model-pie-panel" v-if="rows.length && tokens">
-        <v-chart
-            class="model-pie-chart"
-            :option="option"
-            autoresize
-        />
+        <div class="model-chart-title">
+            <h3>模型消耗分布</h3>
+            <p>总计：{{ fmt(tokens) }} Tokens</p>
+        </div>
 
-        <el-table
-            class="model-pie-table"
-            :data="rows"
-            :default-sort="{ prop: 'totalTokens', order: 'descending' }"
-            stripe
-            size="small"
-        >
-            <el-table-column prop="label" label="模型" min-width="180" sortable>
-                <template #default="scope">
-                    <span class="model-pie-cell">
-                        <span
-                            class="model-pie-dot"
-                            :style="{
-                                background: dotColor(
-                                    rows.findIndex(
-                                        (r) => r.key === scope.row.key
+        <div class="model-pie-body">
+            <v-chart class="model-pie-chart" :option="option" autoresize />
+
+            <el-table
+                class="model-pie-table"
+                :data="rows"
+                :default-sort="{ prop: 'totalTokens', order: 'descending' }"
+                height="100%"
+                stripe
+                size="small"
+            >
+                <el-table-column
+                    prop="label"
+                    label="模型"
+                    min-width="180"
+                    sortable
+                >
+                    <template #default="scope">
+                        <span class="model-pie-cell">
+                            <span
+                                class="model-pie-dot"
+                                :style="{
+                                    background: dotColor(
+                                        rows.findIndex(
+                                            (r) => r.key === scope.row.key
+                                        )
                                     )
-                                )
-                            }"
-                        ></span>
-                        <el-tooltip
-                            :content="
-                                scope.row.platform
-                                    ? `${scope.row.platform}/${scope.row.label}`
-                                    : scope.row.label
-                            "
-                            placement="top"
-                            effect="dark"
-                        >
-                            <span class="model-pie-name">
-                                {{ scope.row.label }}
-                            </span>
-                        </el-tooltip>
-                    </span>
-                </template>
-            </el-table-column>
-            <el-table-column
-                prop="calls"
-                label="请求"
-                width="90"
-                align="right"
-                sortable
-            >
-                <template #default="scope">{{ fmt(scope.row.calls) }}</template>
-            </el-table-column>
-            <el-table-column
-                prop="totalTokens"
-                label="Token"
-                width="110"
-                align="right"
-                sortable
-            >
-                <template #default="scope">
-                    {{ short(scope.row.totalTokens) }}
-                </template>
-            </el-table-column>
-        </el-table>
+                                }"
+                            ></span>
+                            <el-tooltip
+                                :content="
+                                    scope.row.platform
+                                        ? `${scope.row.platform}/${scope.row.label}`
+                                        : scope.row.label
+                                "
+                                placement="top"
+                                effect="dark"
+                            >
+                                <span class="model-pie-name">
+                                    {{ scope.row.label }}
+                                </span>
+                            </el-tooltip>
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column
+                    prop="calls"
+                    label="请求"
+                    width="90"
+                    align="right"
+                    sortable
+                >
+                    <template #default="scope">
+                        {{ fmt(scope.row.calls) }}
+                    </template>
+                </el-table-column>
+                <el-table-column
+                    prop="totalTokens"
+                    label="Token"
+                    width="110"
+                    align="right"
+                    sortable
+                >
+                    <template #default="scope">
+                        {{ short(scope.row.totalTokens) }}
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
     </div>
 
     <div class="chart-empty" v-else>暂无模型数据</div>
@@ -103,6 +114,23 @@ const option = computed<EChartsOption>(() => {
         color: palette.value,
         tooltip: {
             trigger: 'item',
+            appendToBody: true,
+            position: (point, _params, _dom, _rect, size) => {
+                const gap = 12
+                const view = size.viewSize
+                const content = size.contentSize
+                let x = point[0] + gap
+                let y = point[1] + gap
+
+                if (x + content[0] > view[0]) {
+                    x = point[0] - content[0] - gap
+                }
+                if (y + content[1] > view[1]) {
+                    y = point[1] - content[1] - gap
+                }
+
+                return [Math.max(gap, x), Math.max(gap, y)]
+            },
             formatter: (item) => {
                 const row = item.data as {
                     calls: number
@@ -126,19 +154,23 @@ const option = computed<EChartsOption>(() => {
             {
                 name: '模型 Token',
                 type: 'pie',
-                radius: ['64%', '90%'],
-                center: ['50%', '50%'],
+                radius: ['32%', '60%'],
+                center: ['50%', '40%'],
                 avoidLabelOverlap: true,
                 itemStyle: {
                     borderColor: theme.surface,
-                    borderRadius: 3,
-                    borderWidth: 2
+                    borderRadius: 6,
+                    borderWidth: 3
                 },
                 label: { show: false },
                 labelLine: { show: false },
                 emphasis: {
                     scale: true,
-                    scaleSize: 3
+                    scaleSize: 5,
+                    itemStyle: {
+                        shadowBlur: 14,
+                        shadowColor: 'rgba(0, 0, 0, 0.14)'
+                    }
                 },
                 data: rows.value.map((row) => ({
                     calls: row.calls,
@@ -155,15 +187,27 @@ const option = computed<EChartsOption>(() => {
 <style lang="scss">
 .model-pie-panel {
     display: grid;
-    grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
-    align-items: start;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 1.25rem;
+    height: 460px;
+    box-sizing: border-box;
+    padding: 18px 20px 16px;
+}
+
+.model-pie-body {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+    align-items: stretch;
     gap: 1.5rem;
-    padding: 0.75rem 1.25rem 1rem;
+    min-height: 0;
 }
 
 .model-pie-chart {
-    width: 100%;
-    height: 180px;
+    place-self: center;
+    width: min(100%, 260px);
+    height: min(100%, 260px);
+    min-width: 200px;
+    min-height: 200px;
 }
 
 .model-pie-table.el-table {
@@ -235,12 +279,14 @@ const option = computed<EChartsOption>(() => {
 }
 
 @media (max-width: 768px) {
-    .model-pie-panel {
+    .model-pie-body {
         grid-template-columns: 1fr;
+        grid-template-rows: 220px minmax(0, 1fr);
     }
 
     .model-pie-chart {
-        height: 200px;
+        width: min(100%, 220px);
+        height: 220px;
     }
 }
 </style>

@@ -34,10 +34,10 @@ const ModelSuccess = defineAsyncComponent(() => import('./model-success.vue'))
 const MAX_HOURS = 72
 
 const tabs: { label: string; value: Tab }[] = [
-    { label: '消耗分布', value: 'token-rank' },
+    { label: '消耗历史', value: 'token-rank' },
     { label: '消耗趋势', value: 'token-trend' },
-    { label: '调用次数分布', value: 'call-stack' },
-    { label: '调用次数排行', value: 'call-rank' },
+    { label: '调用历史', value: 'call-stack' },
+    { label: '调用次数', value: 'call-rank' },
     { label: '模型分布', value: 'model-pie' },
     { label: '模型成功率', value: 'model-success' }
 ]
@@ -234,7 +234,7 @@ export default (ctx: Context) => {
                                 'shadow'
                             ),
                             title: {
-                                text: 'Token 消耗分布',
+                                text: 'Token 消耗历史',
                                 subtext: `总计：${data.totals.totalTokens.toLocaleString()}`,
                                 left: 20,
                                 top: 18,
@@ -371,7 +371,7 @@ export default (ctx: Context) => {
                                 'shadow'
                             ),
                             title: {
-                                text: '调用次数分布',
+                                text: '模型调用历史',
                                 subtext: `总计：${data.totals.calls.toLocaleString()}`,
                                 left: 20,
                                 top: 18,

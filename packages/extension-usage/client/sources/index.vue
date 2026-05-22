@@ -104,9 +104,17 @@ const tokens = computed(() =>
     rows.value.reduce((sum, row) => sum + row.totalTokens, 0)
 )
 
-const title = computed(
-    () => rows.value.find((row) => row.key === active.value)?.label ?? ''
+const title = computed(() =>
+    sourceLabel(rows.value.find((row) => row.key === active.value)?.label)
 )
+
+function sourceLabel(label?: string) {
+    if (!label) return ''
+    if (label === 'chatluna') return label
+    return label.startsWith('chatluna-')
+        ? label.slice('chatluna-'.length)
+        : label
+}
 
 const option = computed<EChartsOption>(() => {
     const theme = chartTheme.value
@@ -177,7 +185,7 @@ const option = computed<EChartsOption>(() => {
                 data: rows.value.map((row) => ({
                     calls: row.calls,
                     key: row.key,
-                    name: row.label,
+                    name: sourceLabel(row.label),
                     selected: active.value === row.key,
                     value: row.totalTokens
                 }))

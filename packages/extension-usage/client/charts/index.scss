@@ -87,6 +87,32 @@
         color: var(--k-text-light);
     }
 
+    .model-chart-title {
+        display: grid;
+        gap: 0.35rem;
+        min-width: 0;
+        line-height: 1.2;
+
+        h3,
+        p {
+            margin: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        h3 {
+            color: var(--k-text-dark);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        p {
+            color: var(--k-text-light);
+            font-size: 14px;
+        }
+    }
+
     @media (max-width: 768px) {
         &.k-card > header {
             min-height: 4.75rem;

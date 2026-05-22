@@ -1,180 +1,177 @@
 <template>
     <div class="chatluna-usage-dashboard">
-        <header class="dashboard-head">
-            <h2>ChatLuna Tokens</h2>
-            <span
-                class="segment dashboard-segment"
-                :style="{
-                    '--segment-index': scopes.findIndex(
-                        (item) => item.value === scope
-                    )
-                }"
-            >
-                <span class="segment-thumb"></span>
-                <button
-                    v-for="item in scopes"
-                    :key="item.value"
-                    :class="{ active: scope === item.value }"
-                    type="button"
-                    @click="setScope(item.value)"
+        <section class="dashboard-shell">
+            <header class="dashboard-head">
+                <h2>Chatluna 数据看板</h2>
+                <span
+                    class="segment dashboard-segment"
+                    :style="{
+                        '--segment-index': scopes.findIndex(
+                            (item) => item.value === scope
+                        )
+                    }"
                 >
-                    {{ item.label }}
-                </button>
-            </span>
-        </header>
-
-        <number-grid />
-
-        <section class="dashboard-main">
-            <div class="chart-panel">
-                <k-slot name="chatluna-usage-chart"></k-slot>
-            </div>
-            <source-list />
-        </section>
-
-        <k-card class="frameless chatluna-usage-table">
-            <template #header>
-                <span class="table-title">
-                    <svg
-                        class="filter-title-icon"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        aria-hidden="true"
+                    <span class="segment-thumb"></span>
+                    <button
+                        v-for="item in scopes"
+                        :key="item.value"
+                        :class="{ active: scope === item.value }"
+                        type="button"
+                        @click="setScope(item.value)"
                     >
-                        <circle
-                            cx="11"
-                            cy="11"
-                            r="7"
-                            stroke="currentColor"
-                            stroke-width="2"
-                        />
-                        <path
-                            d="M16.5 16.5 21 21"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                        />
-                    </svg>
-                    调用明细
+                        {{ item.label }}
+                    </button>
                 </span>
-                <span class="actions">
-                    <el-button
-                        :loading="loading"
-                        type="primary"
-                        @click="refresh"
-                    >
-                        刷新
-                    </el-button>
-                    <el-button :loading="loading" @click="resetFilters">
-                        重置
-                    </el-button>
-                    <el-button
-                        :loading="loading"
-                        type="danger"
-                        @click="clearHistory"
-                    >
-                        清除历史
-                    </el-button>
-                </span>
-            </template>
+            </header>
 
-            <div class="filter-body">
-                <el-date-picker
-                    v-model="range"
-                    class="date-filter"
-                    popper-class="chatluna-usage-date-popper"
-                    :prefix-icon="Calendar"
-                    type="datetimerange"
-                    start-placeholder="开始时间"
-                    end-placeholder="结束时间"
-                    value-format="YYYY-MM-DDTHH:mm:ss.SSSZ"
-                    @change="changeRange"
-                />
+            <number-grid />
 
-                <div class="model-filter-row">
-                    <el-select
-                        v-model="query.platform"
-                        filterable
-                        allow-create
-                        default-first-option
-                        clearable
-                        placeholder="模型平台"
-                    >
-                        <el-option
-                            v-for="item in platformOptions"
-                            :key="item"
-                            :label="item"
-                            :value="item"
-                        />
-                    </el-select>
-                    <el-select
-                        v-model="query.model"
-                        filterable
-                        allow-create
-                        default-first-option
-                        clearable
-                        placeholder="模型名称"
-                    >
-                        <el-option
-                            v-for="item in modelOptions"
-                            :key="item"
-                            :label="item"
-                            :value="item"
-                        />
-                    </el-select>
-                    <el-select
-                        v-model="query.callType"
-                        filterable
-                        default-first-option
-                        clearable
-                        placeholder="模型类型"
-                    >
-                        <el-option
-                            v-for="item in typeOptions"
-                            :key="item"
-                            :label="
-                                item === 'llm'
-                                    ? 'LLM'
-                                    : item === 'embeddings'
-                                      ? 'Embeddings'
-                                      : 'Reranker'
-                            "
-                            :value="item"
-                        />
-                    </el-select>
-                    <el-select
-                        v-model="query.success"
-                        clearable
-                        placeholder="成功状态"
-                    >
-                        <el-option label="成功" :value="true" />
-                        <el-option label="失败" :value="false" />
-                    </el-select>
-                    <el-select
-                        v-model="query.source"
-                        filterable
-                        allow-create
-                        default-first-option
-                        clearable
-                        placeholder="插件来源"
-                    >
-                        <el-option
-                            v-for="item in sourceOptions"
-                            :key="item"
-                            :label="item"
-                            :value="item"
-                        />
-                    </el-select>
+            <section class="dashboard-main">
+                <div class="chart-panel">
+                    <k-slot name="chatluna-usage-chart"></k-slot>
                 </div>
-            </div>
+                <source-list />
+            </section>
 
-            <el-table
-                ref="table"
-                :data="usage?.list.rows ?? []"
-                :default-sort="{ prop: 'createdAt', order: 'descending' }"
-                stripe
-            >
+            <k-card class="frameless chatluna-usage-table">
+                <template #header>
+                    <span class="table-title">
+                        <svg
+                            class="filter-title-icon"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                        >
+                            <circle
+                                cx="11"
+                                cy="11"
+                                r="7"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            />
+                            <path
+                                d="M16.5 16.5 21 21"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        调用明细
+                    </span>
+                    <span class="actions">
+                        <el-button
+                            :loading="listLoading"
+                            type="primary"
+                            @click="refreshList"
+                        >
+                            刷新
+                        </el-button>
+                        <el-button :loading="listLoading" @click="resetFilters">
+                            重置
+                        </el-button>
+                        <el-button
+                            :loading="loading || listLoading"
+                            type="danger"
+                            @click="clearHistory"
+                        >
+                            清除历史
+                        </el-button>
+                    </span>
+                </template>
+
+                <div class="filter-body">
+                    <el-date-picker
+                        v-model="listRange"
+                        class="date-filter"
+                        popper-class="chatluna-usage-date-popper"
+                        :prefix-icon="Calendar"
+                        type="datetimerange"
+                        start-placeholder="开始时间"
+                        end-placeholder="结束时间"
+                        value-format="YYYY-MM-DDTHH:mm:ss.SSSZ"
+                        @change="changeListRange"
+                    />
+
+                    <div class="model-filter-row">
+                        <el-select
+                            v-model="listQuery.platform"
+                            filterable
+                            allow-create
+                            default-first-option
+                            clearable
+                            placeholder="模型平台"
+                        >
+                            <el-option
+                                v-for="item in platformOptions"
+                                :key="item"
+                                :label="item"
+                                :value="item"
+                            />
+                        </el-select>
+                        <el-select
+                            v-model="listQuery.model"
+                            filterable
+                            allow-create
+                            default-first-option
+                            clearable
+                            placeholder="模型名称"
+                        >
+                            <el-option
+                                v-for="item in modelOptions"
+                                :key="item"
+                                :label="item"
+                                :value="item"
+                            />
+                        </el-select>
+                        <el-select
+                            v-model="listQuery.callType"
+                            filterable
+                            default-first-option
+                            clearable
+                            placeholder="模型类型"
+                        >
+                            <el-option
+                                v-for="item in typeOptions"
+                                :key="item"
+                                :label="typeText(item)"
+                                :value="item"
+                            />
+                        </el-select>
+                        <el-select
+                            v-model="listQuery.success"
+                            clearable
+                            placeholder="成功状态"
+                        >
+                            <el-option label="成功" :value="true" />
+                            <el-option label="失败" :value="false" />
+                        </el-select>
+                        <el-select
+                            v-model="listQuery.source"
+                            filterable
+                            allow-create
+                            default-first-option
+                            clearable
+                            placeholder="插件来源"
+                        >
+                            <el-option
+                                v-for="item in sourceOptions"
+                                :key="item"
+                                :label="item"
+                                :value="item"
+                            />
+                        </el-select>
+                    </div>
+                </div>
+
+                <el-table
+                    ref="table"
+                    :data="list?.rows ?? []"
+                    :default-sort="{ prop: 'createdAt', order: 'descending' }"
+                    table-layout="auto"
+                    stripe
+                    @sort-change="changeSort"
+                >
                     <el-table-column
                         prop="createdAt"
                         label="时间"
@@ -188,7 +185,7 @@
                     <el-table-column
                         prop="model"
                         label="模型"
-                        width="200"
+                        :width="modelWidth"
                         sortable
                     >
                         <template #default="scope">
@@ -201,7 +198,7 @@
                                 placement="top"
                                 effect="dark"
                             >
-                                <span class="ellipsis-cell">
+                                <span class="nowrap-cell">
                                     {{ scope.row.model }}
                                 </span>
                             </el-tooltip>
@@ -210,24 +207,37 @@
                     <el-table-column
                         prop="platform"
                         label="渠道"
-                        width="160"
+                        :width="platformWidth"
                         show-overflow-tooltip
                         sortable
                     />
                     <el-table-column
                         prop="source"
                         label="插件来源"
-                        width="160"
-                        show-overflow-tooltip
+                        :min-width="sourceWidth"
                         sortable
                     />
                     <el-table-column
                         prop="callType"
                         label="类型"
-                        width="100"
+                        width="128"
                         sortable
-                    />
-                    <el-table-column label="TOKEN" min-width="170">
+                    >
+                        <template #default="scope">
+                            {{ typeText(scope.row.callType) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column
+                        prop="totalTokens"
+                        label="Tokens"
+                        width="290"
+                        align="right"
+                        header-align="left"
+                        sortable="custom"
+                    >
+                        <template #header>
+                            <span class="token-header">Tokens</span>
+                        </template>
                         <template #default="scope">
                             <el-tooltip
                                 placement="right"
@@ -285,81 +295,103 @@
                                     </div>
                                 </template>
                                 <div class="token-cell">
-                                    <div class="token-io">
-                                        <span class="token-down">
-                                            ↓
-                                            {{ fmt(scope.row.inputTokens) }}
-                                        </span>
-                                        <span class="token-up">
-                                            ↑
-                                            {{ fmt(scope.row.outputTokens) }}
-                                        </span>
-                                        <span
-                                            class="token-think"
-                                            v-if="scope.row.reasoningTokens > 0"
-                                        >
-                                            <svg
-                                                class="token-think-icon"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                aria-hidden="true"
-                                            >
-                                                <path
-                                                    d="M12 3a6 6 0 0 0-3.5 10.9V17a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3.1A6 6 0 0 0 12 3Z"
-                                                    stroke="currentColor"
-                                                    stroke-width="2"
-                                                    stroke-linejoin="round"
-                                                />
-                                                <path
-                                                    d="M10 21h4"
-                                                    stroke="currentColor"
-                                                    stroke-width="2"
-                                                    stroke-linecap="round"
-                                                />
-                                            </svg>
-                                            {{
-                                                short(
-                                                    scope.row.reasoningTokens
-                                                )
-                                            }}
-                                        </span>
-                                    </div>
-                                    <div
-                                        class="token-cache"
-                                        v-if="scope.row.cachedTokens > 0"
-                                    >
+                                    <span class="token-item token-input">
                                         <svg
-                                            class="token-cache-icon"
+                                            class="token-item-icon"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                d="M12 20V8"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                            />
+                                            <path
+                                                d="m7 13 5-5 5 5"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M5 4h14"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                            />
+                                        </svg>
+                                        <strong>
+                                            {{ fmt(scope.row.inputTokens) }}
+                                        </strong>
+                                    </span>
+                                    <span class="token-item token-output">
+                                        <svg
+                                            class="token-item-icon"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                d="M12 4v12"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                            />
+                                            <path
+                                                d="m7 11 5 5 5-5"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M5 20h14"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                            />
+                                        </svg>
+                                        <strong>
+                                            {{ fmt(scope.row.outputTokens) }}
+                                        </strong>
+                                    </span>
+                                    <span class="token-item token-cache">
+                                        <svg
+                                            class="token-item-icon"
                                             xmlns="http://www.w3.org/2000/svg"
                                             viewBox="0 0 24 24"
                                             fill="none"
                                             aria-hidden="true"
                                         >
                                             <rect
-                                                x="3"
-                                                y="6"
-                                                width="18"
-                                                height="12"
-                                                rx="2"
+                                                x="9"
+                                                y="18"
+                                                width="6"
+                                                height="3"
+                                                rx="1"
                                                 stroke="currentColor"
                                                 stroke-width="2"
                                             />
                                             <path
-                                                d="m4 8 8 6 8-6"
+                                                d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z"
                                                 stroke="currentColor"
                                                 stroke-width="2"
-                                                stroke-linecap="round"
                                                 stroke-linejoin="round"
                                             />
                                         </svg>
-                                        {{ short(scope.row.cachedTokens) }}
-                                    </div>
+                                        <strong>
+                                            {{ fmt(scope.row.cachedTokens) }}
+                                        </strong>
+                                    </span>
                                 </div>
                             </el-tooltip>
                         </template>
                     </el-table-column>
-                    <el-table-column label="状态" width="100">
+                    <el-table-column label="状态" width="92">
                         <template #default="scope">
                             <el-tag
                                 :type="scope.row.success ? 'success' : 'danger'"
@@ -372,14 +404,15 @@
                 <el-pagination
                     class="pager"
                     layout="prev, pager, next, sizes, total"
-                    :total="usage?.list.total ?? 0"
-                    :current-page="query.page"
-                    :page-size="query.pageSize"
+                    :total="list?.total ?? 0"
+                    :current-page="listQuery.page"
+                    :page-size="listQuery.pageSize"
                     :page-sizes="[20, 50, 100, 200]"
                     @current-change="changePage"
                     @size-change="changeSize"
                 />
             </k-card>
+        </section>
     </div>
 </template>
 
@@ -390,30 +423,38 @@ import { Calendar } from '@element-plus/icons-vue'
 import NumberGrid from './numbers/index.vue'
 import SourceList from './sources/index.vue'
 import {
-    changeRange,
+    changeListRange,
     clearHistory,
     fmt,
+    list,
+    listLoading,
+    listQuery,
+    listRange,
     loading,
-    query,
-    range,
-    refresh,
+    refreshList,
     resetFilters as resetQuery,
     scope,
     scopes,
     setScope,
-    short,
     time,
     usage
 } from './state'
 
 const table = ref<TableInstance>()
 
+function size(text: string) {
+    return Array.from(text).reduce(
+        (sum, ch) => sum + (ch.charCodeAt(0) > 255 ? 2 : 1),
+        0
+    )
+}
+
 const platformOptions = computed(
     () =>
         [
             ...new Set([
-                query.platform,
-                ...(usage.value?.list.rows ?? []).map((row) => row.platform)
+                listQuery.platform,
+                ...(list.value?.rows ?? []).map((row) => row.platform)
             ])
         ].filter(Boolean) as string[]
 )
@@ -422,7 +463,7 @@ const modelOptions = computed(
     () =>
         [
             ...new Set([
-                query.model,
+                listQuery.model,
                 ...(usage.value?.models ?? []).map((row) => row.label)
             ])
         ].filter(Boolean) as string[]
@@ -432,18 +473,31 @@ const sourceOptions = computed(
     () =>
         [
             ...new Set([
-                query.source,
+                listQuery.source,
                 ...(usage.value?.sources ?? []).map((row) => row.label)
             ])
         ].filter(Boolean) as string[]
+)
+
+const modelWidth = computed(
+    () => Math.max(8, ...modelOptions.value.map((item) => size(item))) * 8 + 52
+)
+
+const platformWidth = computed(
+    () =>
+        Math.max(4, ...platformOptions.value.map((item) => size(item))) * 8 + 52
+)
+
+const sourceWidth = computed(
+    () => Math.max(8, ...sourceOptions.value.map((item) => size(item))) * 8 + 52
 )
 
 const typeOptions = computed(
     () =>
         [
             ...new Set([
-                query.callType,
-                ...(usage.value?.list.rows ?? []).map((row) => row.callType),
+                listQuery.callType,
+                ...(list.value?.rows ?? []).map((row) => row.callType),
                 'llm',
                 'embeddings',
                 'reranker'
@@ -451,18 +505,35 @@ const typeOptions = computed(
         ].filter(Boolean) as string[]
 )
 
+function typeText(type: string) {
+    if (type === 'llm') return '大语言模型'
+    if (type === 'embeddings') return '嵌入模型'
+    if (type === 'reranker') return '重排序模型'
+    return type
+}
+
 function resetFilters() {
     table.value?.sort('createdAt', 'descending')
     resetQuery()
 }
 
 function changePage(page: number) {
-    query.page = page
+    listQuery.page = page
 }
 
 function changeSize(size: number) {
-    query.page = 1
-    query.pageSize = size
+    listQuery.page = 1
+    listQuery.pageSize = size
+}
+
+function changeSort(data: {
+    prop: string
+    order: 'ascending' | 'descending' | null
+}) {
+    if (data.prop !== 'totalTokens') return
+    listQuery.listSortBy = data.order ? 'totalTokens' : 'createdAt'
+    listQuery.listDesc = data.order !== 'ascending'
+    listQuery.page = 1
 }
 </script>
 
@@ -481,6 +552,15 @@ function changeSize(size: number) {
         box-shadow: var(--k-card-shadow);
         color: var(--k-text-dark);
     }
+}
+
+.dashboard-shell {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--k-card-border);
+    border-radius: 12px;
+    background: var(--k-card-bg);
+    box-shadow: var(--k-card-shadow);
 }
 
 .dashboard-head {
@@ -526,39 +606,109 @@ function changeSize(size: number) {
 .usage-metric-card {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    min-height: 110px;
-    padding: 1rem 1.25rem 1.1rem;
-}
+    justify-content: space-between;
+    min-height: 138px;
+    padding: 0.9rem;
 
-.metric-label {
-    color: var(--k-text-light);
-    font-size: 0.85rem;
-    font-weight: 500;
-    line-height: 1;
-}
+    > strong {
+        align-self: center;
+        color: var(--k-text-dark);
+        font-size: 2rem;
+        line-height: 1.1;
+    }
 
-.metric-value {
-    color: var(--k-text-dark);
-    font-size: 2rem;
-    font-weight: 600;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-
-    small {
-        margin-left: 0.18rem;
-        color: var(--k-text-light);
-        font-size: 0.6em;
-        font-weight: 500;
+    p {
+        margin: 0;
     }
 }
 
-.accent-value {
+.request-card,
+.success-card {
+    position: relative;
+    overflow: hidden;
+    padding: 1.2rem 1.4rem;
+}
+
+.request-card > .metric-value,
+.success-card > .metric-value {
+    align-self: flex-start;
+    color: var(--k-text-dark);
+    font-size: 2rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1;
+
+    small {
+        margin-left: 0.12rem;
+        font-size: 0.72em;
+        font-weight: 400;
+    }
+}
+
+.metric-compare {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--k-text-light);
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.metric-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--k-color-primary), transparent 88%);
     color: var(--k-color-primary);
+    font-weight: 600;
+    padding: 0.25rem 0.48rem;
+
+    &.up {
+        background: color-mix(
+            in srgb,
+            var(--el-color-success),
+            transparent 88%
+        );
+        color: var(--el-color-success);
+    }
+
+    &.down {
+        background: color-mix(in srgb, var(--el-color-danger), transparent 88%);
+        color: var(--el-color-danger);
+    }
+}
+
+.metric-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--k-text-dark);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.metric-title-icon {
+    display: block;
+    width: 1.35rem;
+    height: 1.35rem;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--k-color-primary), transparent 88%);
+    color: var(--k-color-primary);
+    padding: 0.28rem;
+}
+
+.metric-label {
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
 }
 
 .metric-progress {
-    height: 0.4rem;
+    height: 0.5rem;
     overflow: hidden;
     border-radius: 999px;
     background: color-mix(in srgb, var(--k-color-divider), transparent 48%);
@@ -572,9 +722,123 @@ function changeSize(size: number) {
     }
 }
 
+.metric-note {
+    color: var(--k-text-light);
+    font-size: 0.875rem;
+}
+
+.success-note {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    line-height: 1;
+
+    span:last-child {
+        color: var(--k-color-primary);
+    }
+}
+
+.token-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
 .token-card {
-    min-height: 110px;
-    gap: 0.75rem;
+    --token-columns-shift: -0.35rem;
+
+    min-height: 150px;
+    padding: 1.2rem 1.4rem;
+}
+
+.token-title {
+    min-width: 0;
+}
+
+.token-icon {
+    position: relative;
+    width: 1.35rem;
+    height: 1.35rem;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--k-color-primary), transparent 88%);
+    color: var(--k-color-primary);
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        left: 0.34rem;
+        bottom: 0.34rem;
+        border-radius: 999px;
+        background: currentColor;
+    }
+
+    &::before {
+        width: 0.1rem;
+        height: 0.72rem;
+    }
+
+    &::after {
+        width: 0.76rem;
+        height: 0.1rem;
+    }
+
+    i {
+        position: absolute;
+        bottom: 0.43rem;
+        width: 0.1rem;
+        border-radius: 999px 999px 0 0;
+        background: currentColor;
+
+        &:nth-child(1) {
+            left: 0.52rem;
+            height: 0.28rem;
+        }
+
+        &:nth-child(2) {
+            left: 0.7rem;
+            height: 0.45rem;
+        }
+
+        &:nth-child(3) {
+            left: 0.88rem;
+            height: 0.6rem;
+        }
+    }
+}
+
+.accent-card {
+    gap: 0.7rem;
+
+    .accent-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    > strong {
+        align-self: flex-start;
+        color: var(--k-color-primary);
+    }
+}
+
+.accent-line {
+    display: block;
+    height: 1px;
+    background: var(--k-card-border);
+}
+
+.accent-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--k-text-light);
+    font-size: 0.85rem;
+    line-height: 1;
 }
 
 .segment {
@@ -626,22 +890,16 @@ function changeSize(size: number) {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
+    margin: 1.15rem 0 0;
+    transform: translateY(var(--token-columns-shift));
 
     div {
         min-width: 0;
-        padding: 0 0.65rem;
+        padding: 0 0.8rem;
         text-align: center;
 
         & + div {
             border-left: 1px solid var(--k-card-border);
-        }
-
-        &:first-child {
-            padding-left: 0;
-        }
-
-        &:last-child {
-            padding-right: 0;
         }
     }
 
@@ -655,15 +913,14 @@ function changeSize(size: number) {
 
     span {
         color: var(--k-text-light);
-        font-size: 0.78rem;
+        font-size: 0.82rem;
     }
 
     strong {
-        margin-top: 0.4rem;
+        margin-top: 0.45rem;
         color: var(--k-text-dark);
         font-size: 1.25rem;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
+        font-weight: 500;
         line-height: 1.15;
     }
 }
@@ -1024,6 +1281,7 @@ function changeSize(size: number) {
         var(--k-color-divider) 32%
     );
     color: var(--k-text-dark);
+    width: 100%;
 }
 
 .chatluna-usage-table .el-table td.el-table__cell,
@@ -1031,64 +1289,70 @@ function changeSize(size: number) {
     background-color: var(--el-table-tr-bg-color);
 }
 
-.token-cell {
-    display: grid;
-    gap: 0.2rem;
-    line-height: 1.3;
-    font-variant-numeric: tabular-nums;
+.chatluna-usage-table .el-table .cell {
+    white-space: nowrap;
 }
 
-.ellipsis-cell {
+.token-cell {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 0.9rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    min-width: 16rem;
+    white-space: nowrap;
+}
+
+.token-header {
     display: inline-block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.nowrap-cell {
+    display: inline-block;
     white-space: nowrap;
     vertical-align: middle;
 }
 
-.token-io {
+.token-item {
     display: inline-flex;
     align-items: center;
-    gap: 0.65rem;
+    justify-content: flex-start;
+    gap: 0.22rem;
     color: var(--k-text-dark);
     font-weight: 500;
+    text-align: left;
 
-    .token-down {
-        color: var(--el-color-success);
+    strong,
+    span {
+        min-width: 0;
     }
 
-    .token-up {
-        color: var(--k-color-primary);
-    }
-
-    .token-think {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        color: var(--el-color-warning);
-        font-weight: 500;
-    }
-
-    .token-think-icon {
-        width: 0.95rem;
-        height: 0.95rem;
-        flex: 0 0 auto;
+    strong {
+        color: currentColor;
+        font-weight: 600;
+        text-align: left;
     }
 }
 
-.token-cache {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    color: var(--k-color-primary);
-    font-size: 0.85rem;
+.token-item-icon {
+    width: 0.95rem;
+    height: 0.95rem;
+    flex: 0 0 auto;
+}
 
-    .token-cache-icon {
-        width: 0.95rem;
-        height: 0.95rem;
-        flex: 0 0 auto;
-    }
+.token-input {
+    color: var(--el-color-success);
+}
+
+.token-output {
+    color: var(--k-color-primary);
+}
+
+.token-cache {
+    color: var(--el-color-warning);
 }
 
 .chatluna-usage-token-popper.el-popper {

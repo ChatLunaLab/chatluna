@@ -1,12 +1,12 @@
 <template>
     <div class="model-success-panel" v-if="rows.length">
-        <p class="model-success-desc">不同模型的请求成功率情况。</p>
+        <div class="model-chart-title">
+            <h3>模型请求成功率</h3>
+            <p>请求总量：{{ fmt(totalCalls) }}</p>
+        </div>
+
         <div class="model-success-list">
-            <div
-                class="model-success-row"
-                v-for="row in rows"
-                :key="row.key"
-            >
+            <div class="model-success-row" v-for="row in rows" :key="row.key">
                 <span class="model-success-icon" aria-hidden="true">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +38,8 @@
                                 v-if="row.platform"
                             >
                                 {{ row.platform }}/
-                            </span>{{ row.label }}
+                            </span>
+                            {{ row.label }}
                         </span>
                     </el-tooltip>
                     <span class="model-success-counts">
@@ -115,6 +116,8 @@ const rows = computed(() =>
         .sort((a, b) => b.calls - a.calls)
 )
 
+const totalCalls = computed(() => usage.value?.totals.calls ?? 0)
+
 function rateClass(rate: number) {
     if (rate >= 0.99) return 'rate-ok'
     if (rate >= 0.9) return 'rate-warn'
@@ -124,20 +127,19 @@ function rateClass(rate: number) {
 
 <style lang="scss">
 .model-success-panel {
-    padding: 0.5rem 1.25rem 1rem;
-}
-
-.model-success-desc {
-    margin: 0 0 0.75rem;
-    color: var(--k-text-light);
-    font-size: 0.85rem;
-    line-height: 1.4;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 1.25rem;
+    height: 460px;
+    box-sizing: border-box;
+    padding: 18px 20px 16px;
 }
 
 .model-success-list {
     display: grid;
+    align-content: start;
     gap: 0.45rem;
-    max-height: 22rem;
+    min-height: 0;
     overflow-y: auto;
     padding-right: 0.25rem;
     scrollbar-color: var(--k-card-border) transparent;

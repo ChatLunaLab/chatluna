@@ -3,7 +3,7 @@ import { send, store } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { ChatLunaUsage } from 'koishi-plugin-chatluna-usage'
 
-export type Scope = 'all' | 'month' | 'week' | 'day'
+export type Scope = 'all' | 'year' | 'month' | 'week' | 'day'
 
 export const scopes: { label: string; value: Scope }[] = [
     { label: '全部', value: 'all' },
@@ -13,58 +13,67 @@ export const scopes: { label: string; value: Scope }[] = [
 ]
 
 export const loading = ref(false)
-export const range = ref<[string, string]>()
+export const listLoading = ref(false)
+export const listRange = ref<[string, string]>()
 export const scope = ref<Scope>('all')
 export const query = reactive<ChatLunaUsage.Query>({
     period: 'day',
     groupBy: 'model',
     sortBy: 'totalTokens',
-    desc: true,
+    desc: true
+})
+export const listQuery = reactive<ChatLunaUsage.Query>({
     listSortBy: 'createdAt',
     listDesc: true,
     page: 1,
     pageSize: 50
 })
+export const list = ref<ChatLunaUsage.List>()
 
-let scopeChanging = false
 let reqId = 0
+let listReqId = 0
 
 function scopeRange(value: Scope): [Date, Date] | undefined {
     if (value === 'all') return
     const now = new Date()
     const start = new Date(now)
     if (value === 'day') start.setHours(0, 0, 0, 0)
-    if (value === 'week') start.setDate(start.getDate() - 7)
+    if (value === 'year') start.setFullYear(start.getFullYear() - 1)
     if (value === 'month') start.setMonth(start.getMonth() - 1)
+    if (value === 'week') start.setDate(start.getDate() - 7)
     return [start, now]
 }
 
 export function setScope(value: Scope) {
     scope.value = value
-    scopeChanging = true
     const r = scopeRange(value)
     if (!r) {
-        range.value = undefined
         query.start = undefined
         query.end = undefined
     } else {
-        range.value = [r[0].toISOString(), r[1].toISOString()]
         query.start = r[0]
         query.end = r[1]
     }
-    query.page = 1
-    scopeChanging = false
 }
 
 export const usage = computed(() => store.chatluna_usage)
 
 let timer: ReturnType<typeof setTimeout> | undefined
+let listTimer: ReturnType<typeof setTimeout> | undefined
 
 function refreshSoon() {
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => {
         timer = undefined
         refresh()
+    }, 250)
+}
+
+function refreshListSoon() {
+    if (listTimer) clearTimeout(listTimer)
+    listTimer = setTimeout(() => {
+        listTimer = undefined
+        refreshList()
     }, 250)
 }
 
@@ -86,21 +95,33 @@ export async function refresh() {
     }
 }
 
-export function changeRange() {
-    query.start = range.value?.[0]
-    query.end = range.value?.[1]
-    query.page = 1
-    if (!scopeChanging) scope.value = 'all'
+export async function refreshList() {
+    if (listTimer) {
+        clearTimeout(listTimer)
+        listTimer = undefined
+    }
+
+    const id = ++listReqId
+    try {
+        listLoading.value = true
+        const result = await send('chatluna-usage/list', listQuery)
+        if (id === listReqId) list.value = result
+    } catch {
+        if (id === listReqId) ElMessage.error('查询调用明细失败')
+    } finally {
+        if (id === listReqId) listLoading.value = false
+    }
+}
+
+export function changeListRange() {
+    listQuery.start = listRange.value?.[0]
+    listQuery.end = listRange.value?.[1]
+    listQuery.page = 1
 }
 
 export function resetFilters() {
-    range.value = undefined
-    scope.value = 'all'
-    Object.assign(query, {
-        period: 'day',
-        groupBy: 'model',
-        sortBy: 'totalTokens',
-        desc: true,
+    listRange.value = undefined
+    Object.assign(listQuery, {
         listSortBy: 'createdAt',
         listDesc: true,
         page: 1,
@@ -118,7 +139,7 @@ export function resetFilters() {
         estimated: undefined,
         keyword: undefined
     })
-    refreshSoon()
+    refreshListSoon()
 }
 
 export async function clearHistory() {
@@ -138,18 +159,25 @@ export async function clearHistory() {
     }
 
     const id = ++reqId
+    const listId = ++listReqId
     try {
         loading.value = true
+        listLoading.value = true
         await send('chatluna-usage/cleanup')
-        const result = await send('chatluna-usage/query', query)
+        const [result, rows] = await Promise.all([
+            send('chatluna-usage/query', query),
+            send('chatluna-usage/list', listQuery)
+        ])
         if (id === reqId) {
             store.chatluna_usage = result
             ElMessage.success('已清除 ChatLuna 用量历史数据')
         }
+        if (listId === listReqId) list.value = rows
     } catch {
         if (id === reqId) ElMessage.error('清除 ChatLuna 用量历史数据失败')
     } finally {
         if (id === reqId) loading.value = false
+        if (listId === listReqId) listLoading.value = false
     }
 }
 
@@ -181,28 +209,38 @@ watch(
         query.groupBy,
         query.sortBy,
         query.desc,
-        query.listSortBy,
-        query.listDesc,
         query.start,
-        query.end,
-        query.source,
-        query.model,
-        query.platform,
-        query.chatPlatform,
-        query.callType,
-        query.guildId,
-        query.userId,
-        query.success,
-        query.estimated,
-        query.keyword
+        query.end
     ],
-    () => {
-        query.page = 1
-        refreshSoon()
-    }
+    () => refreshSoon(),
+    { immediate: true }
 )
 
 watch(
-    () => [query.page, query.pageSize],
-    () => refreshSoon()
+    () => [
+        listQuery.listSortBy,
+        listQuery.listDesc,
+        listQuery.start,
+        listQuery.end,
+        listQuery.source,
+        listQuery.model,
+        listQuery.platform,
+        listQuery.chatPlatform,
+        listQuery.callType,
+        listQuery.guildId,
+        listQuery.userId,
+        listQuery.success,
+        listQuery.estimated,
+        listQuery.keyword
+    ],
+    () => {
+        listQuery.page = 1
+        refreshListSoon()
+    },
+    { immediate: true }
+)
+
+watch(
+    () => [listQuery.page, listQuery.pageSize],
+    () => refreshListSoon()
 )
