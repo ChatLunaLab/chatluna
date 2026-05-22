@@ -9,7 +9,10 @@ import {
     SSEClientTransport,
     SSEClientTransportOptions
 } from '@modelcontextprotocol/sdk/client/sse.js'
-import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
+import type {
+    FetchLike,
+    Transport
+} from '@modelcontextprotocol/sdk/shared/transport.js'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { McpServerConfig } from '../types'
 
@@ -19,29 +22,6 @@ export function createTransport(
     plugin: ChatLunaPlugin
 ): Transport {
     const type = config.type ?? 'stdio'
-    const requestInit =
-        (config as StreamableHTTPClientTransportOptions).requestInit ?? {}
-    const headers = new Headers(requestInit.headers)
-    for (const [k, v] of Object.entries(config.headers ?? {})) {
-        headers.set(k, v)
-    }
-
-    const proxyFetch: typeof fetch = (url, init) => {
-        return plugin.fetch(
-            url as Parameters<typeof plugin.fetch>[0],
-            init as Parameters<typeof plugin.fetch>[1],
-            config.proxy
-        ) as unknown as ReturnType<typeof fetch>
-    }
-
-    const transportConfig = {
-        ...config,
-        requestInit: {
-            ...requestInit,
-            headers
-        },
-        fetch: proxyFetch
-    }
 
     if (type === 'stdio') {
         return new StdioClientTransport({
@@ -51,6 +31,30 @@ export function createTransport(
             cwd: config.cwd,
             stderr: 'pipe'
         })
+    }
+
+    const requestInit =
+        (config as StreamableHTTPClientTransportOptions).requestInit ?? {}
+    const headers = new Headers(requestInit.headers)
+    for (const [k, v] of Object.entries(config.headers ?? {})) {
+        headers.set(k, v)
+    }
+
+    const proxyFetch: FetchLike = (url, init) => {
+        return plugin.fetch(
+            url as Parameters<typeof plugin.fetch>[0],
+            init as Parameters<typeof plugin.fetch>[1],
+            config.proxy
+        ) as unknown as ReturnType<FetchLike>
+    }
+
+    const transportConfig = {
+        ...config,
+        requestInit: {
+            ...requestInit,
+            headers
+        },
+        fetch: proxyFetch
     }
 
     if (type === 'sse') {

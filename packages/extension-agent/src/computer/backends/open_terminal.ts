@@ -5,6 +5,7 @@ import { Buffer } from 'node:buffer'
 import { posix } from 'path'
 import { Readable } from 'node:stream'
 import { Context } from 'koishi'
+import type {} from '@koishijs/plugin-proxy-agent'
 import mimeTypes from 'mime-types'
 import { quoteShell } from './types'
 import { OpenTerminalBackendConfig } from '../../types'
@@ -52,6 +53,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const current = readOpenTerminalData<OpenTerminalCwdData>(
             await this.ctx.http(this.url('/files/cwd'), {
                 method: 'GET',
+                proxyAgent: '',
                 headers: this.headers()
             })
         )
@@ -71,6 +73,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 const result = readOpenTerminalData<OpenTerminalListData>(
                     await this.ctx.http(this.url('/files/list'), {
                         method: 'GET',
+                        proxyAgent: '',
                         headers: this.headers(),
                         params: {
                             directory: this.options.cwd
@@ -110,6 +113,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             >(
                 await this.ctx.http(this.url('/files/list'), {
                     method: 'GET',
+                    proxyAgent: '',
                     headers: this.headers(),
                     params: {
                         directory: target
@@ -151,6 +155,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         }>(
             await this.ctx.http(this.url(`/files/read?${params.toString()}`), {
                 method: 'GET',
+                proxyAgent: '',
                 headers: this.headers()
             })
         )
@@ -214,6 +219,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 content
             },
             {
+                proxyAgent: '',
                 headers: {
                     ...this.headers(),
                     'content-type': 'application/json'
@@ -269,6 +275,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 ]
             },
             {
+                proxyAgent: '',
                 headers: {
                     ...this.headers(),
                     'content-type': 'application/json'
@@ -311,6 +318,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         }>(
             await this.ctx.http(this.url(`/files/grep?${params.toString()}`), {
                 method: 'GET',
+                proxyAgent: '',
                 headers: this.headers()
             })
         )
@@ -343,6 +351,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         }>(
             await this.ctx.http(this.url(`/files/glob?${params.toString()}`), {
                 method: 'GET',
+                proxyAgent: '',
                 headers: this.headers()
             })
         )
@@ -515,13 +524,16 @@ exit
 
     async openAsset(filePath: string) {
         const target = this.resolvePath(filePath)
-        const url = new URL(this.url('/files/view'))
-        url.searchParams.set('path', target)
-        const result = await fetch(url, {
-            headers: this.headers()
+        const result = await this.ctx.http(this.url('/files/view'), {
+            method: 'GET',
+            proxyAgent: '',
+            headers: this.headers(),
+            params: { path: target },
+            responseType: 'stream',
+            validateStatus: () => true
         })
 
-        if (!result.ok || result.body == null) {
+        if (result.status < 200 || result.status >= 300) {
             throw new Error(`Failed to open asset: ${result.status}`)
         }
 
@@ -529,7 +541,7 @@ exit
         const fallback = mimeTypes.lookup(target)
         const size = Number(result.headers.get('content-length') ?? '')
         return {
-            stream: Readable.fromWeb(result.body),
+            stream: Readable.fromWeb(result.data),
             size: Number.isFinite(size) ? size : undefined,
             mimeType: mimeType ?? (fallback === false ? undefined : fallback)
         }
@@ -727,6 +739,7 @@ async function openOpenTerminal(
 ) {
     const result = readOpenTerminalData<OpenTerminalTerminalData>(
         await ctx.http.post(options.url('/api/terminals'), undefined, {
+            proxyAgent: '',
             headers: options.headers
         })
     )
@@ -737,6 +750,7 @@ async function openOpenTerminal(
     const ws = ctx.http.ws(
         toWebSocketUrl(options.url(`/api/terminals/${result.id}`)),
         {
+            proxyAgent: '',
             headers: options.headers
         }
     )
@@ -802,6 +816,7 @@ async function openOpenTerminal(
         }
         await ctx.http
             .delete(options.url(`/api/terminals/${result.id}`), {
+                proxyAgent: '',
                 headers: options.headers
             })
             .catch(() => undefined)
@@ -818,6 +833,7 @@ async function openOpenTerminal(
             }
             await ctx.http
                 .delete(options.url(`/api/terminals/${result.id}`), {
+                    proxyAgent: '',
                     headers: options.headers
                 })
                 .catch(() => undefined)
