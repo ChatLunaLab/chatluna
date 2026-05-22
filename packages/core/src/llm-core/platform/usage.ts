@@ -8,18 +8,18 @@ import { getEncoding } from '../utils/tiktoken'
 export function createModelUsageReporter(
     ctx: Context,
     platform: string,
-    model: string
+    model: string,
+    stack?: string
 ): ModelUsageReporter {
     const report: ModelUsageReporter = async (usage) => {
         const limit = Error.stackTraceLimit
         Error.stackTraceLimit = Math.max(limit, 50)
-        const stack = new Error().stack
+        const currentStack = new Error().stack
         Error.stackTraceLimit = limit
-        const source = usage.source ?? usageSourceFromStack(stack)
+        const source = usageSourceFromStack(currentStack)
         const fallback =
-            usage.source == null &&
-            (source === 'chatluna' || source === 'unknown')
-                ? usageSourceFromStack(report.stack)
+            source === 'chatluna' || source === 'unknown'
+                ? usageSourceFromStack(stack)
                 : source
 
         const payload: ModelUsagePayload = {
@@ -121,7 +121,6 @@ export type ModelUsageInput = Omit<
     | 'estimated'
     | 'success'
 > & {
-    source?: string
     createdAt?: Date
     platform?: string
     model?: string
@@ -132,7 +131,6 @@ export type ModelUsageInput = Omit<
 
 export interface ModelUsageReporter {
     (usage: ModelUsageInput): Promise<void> | void
-    stack?: string
 }
 
 export interface EmbeddingsUsageResult {

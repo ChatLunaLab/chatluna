@@ -25,6 +25,7 @@ import {
     createModelUsageReporter,
     type ModelUsageReporter
 } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import { usageSourceFromStack } from 'koishi-plugin-chatluna/utils/usage_source'
 
 export type { FileHandlingConfig }
 
@@ -196,17 +197,18 @@ export abstract class BasePlatformClient<
         Error.stackTraceLimit = Math.max(limit, 50)
         const stack = new Error().stack
         Error.stackTraceLimit = limit
+        const source = usageSourceFromStack(stack)
+        const key = `${source}:${model}`
         const report =
-            this._reports[model] ??
-            createModelUsageReporter(this.ctx, this.platform, model)
-        report.stack = stack
-        this._reports[model] = report
+            this._reports[key] ??
+            createModelUsageReporter(this.ctx, this.platform, model, stack)
+        this._reports[key] = report
 
-        if (!this._modelPool[model]) {
-            this._modelPool[model] = this._createModel(model, report)
+        if (!this._modelPool[key]) {
+            this._modelPool[key] = this._createModel(model, report)
         }
 
-        return this._modelPool[model]
+        return this._modelPool[key]
     }
 }
 
