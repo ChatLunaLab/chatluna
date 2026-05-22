@@ -529,7 +529,7 @@ exit
             proxyAgent: '',
             headers: this.headers(),
             params: { path: target },
-            responseType: 'stream',
+            responseType: 'arraybuffer',
             validateStatus: () => true
         })
 
@@ -541,7 +541,7 @@ exit
         const fallback = mimeTypes.lookup(target)
         const size = Number(result.headers.get('content-length') ?? '')
         return {
-            stream: Readable.fromWeb(result.data),
+            stream: Readable.from(Buffer.from(result.data)),
             size: Number.isFinite(size) ? size : undefined,
             mimeType: mimeType ?? (fallback === false ? undefined : fallback)
         }
