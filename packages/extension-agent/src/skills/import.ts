@@ -4,7 +4,6 @@ import { randomUUID } from 'crypto'
 import { unzipSync } from 'fflate'
 import { cp, mkdir, rm, stat, writeFile } from 'fs/promises'
 import { Context } from 'koishi'
-import type {} from '@koishijs/plugin-proxy-agent'
 import { basename, dirname, join, resolve } from 'path'
 import { getSkillsRootPath } from '../config/path'
 import {
@@ -632,10 +631,9 @@ async function requestGithub<T>(
     try {
         return (await ctx.http(url, {
             method: 'get',
-            proxyAgent: '',
             headers: githubHeaders(ctx),
             responseType: options.responseType
-        })) as unknown as { data: T }
+        } as never)) as unknown as { data: T }
     } catch (err) {
         throw new Error(getGithubError(err))
     }
