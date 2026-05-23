@@ -251,7 +251,7 @@ export class ChatLunaAgentMcpService {
             try {
                 await this._drop(name, false)
 
-                const transport = createTransport(name, cfg)
+                const transport = createTransport(name, cfg, this.plugin)
                 const client = new Client({
                     name: 'ChatLuna',
                     version: '1.0.0',
@@ -423,12 +423,12 @@ export class ChatLunaAgentMcpService {
             }
 
             const langChainTool = tool(
-                async (input: Record<string, unknown>) => {
+                async (input: unknown) => {
                     return await callTool(
                         serverName,
                         mcpTool.name,
                         client,
-                        input,
+                        input as Record<string, unknown>,
                         { timeout: t.timeout },
                         undefined,
                         this.ctx,

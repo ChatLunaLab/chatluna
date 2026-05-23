@@ -633,7 +633,7 @@ async function requestGithub<T>(
             method: 'get',
             headers: githubHeaders(ctx),
             responseType: options.responseType
-        })) as unknown as { data: T }
+        } as never)) as unknown as { data: T }
     } catch (err) {
         throw new Error(getGithubError(err))
     }
