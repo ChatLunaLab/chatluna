@@ -847,6 +847,21 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 baselineRoundIdx = conversationRounds.length - 1
             }
 
+            // baselineTokens covers messages[0..baselineIdx-1].
+            // We also need to count the AI message itself and any messages
+            // after it within the same round (tool messages, etc.)
+            let roundStartIdx = 0
+            for (let r = 0; r < baselineRoundIdx; r++) {
+                roundStartIdx += conversationRounds[r].length
+            }
+            for (
+                let i = baselineIdx;
+                i < roundStartIdx + conversationRounds[baselineRoundIdx].length;
+                i++
+            ) {
+                baselineTokens += await this.countMessageTokens(messages[i])
+            }
+
             // Iterate from end; when we reach baseline region, add all at once
             for (let i = conversationRounds.length - 1; i >= 0; i--) {
                 if (i <= baselineRoundIdx && selectedRounds.length === 0) {

@@ -261,7 +261,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     logger.warn(
                         `Model "${model}" does not support image input. ` +
                             'Please use a model that supports vision capabilities, ' +
-                            'or install chatluna-multimodal-service plugin to enable image description.'
+                            'or install chatluna-multimodal-service (multimodal-service) plugin to enable image description.'
                     )
                 }
                 return false
@@ -292,7 +292,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (ext === 'image/gif') {
                 if (!isInstalledImageService) {
                     logger.warn(
-                        `Detected GIF image, which is not supported by most models. Please install chatluna-multimodal-service plugin to parse GIF animations.`
+                        `Detected GIF image, which is not supported by most models. Please install chatluna-multimodal-service (multimodal-service) plugin to parse GIF animations.`
                     )
                 }
                 return false
@@ -625,7 +625,7 @@ async function handleFileElement(
                 ctx.chatluna.getPlugin('multimodal-service') != null
             if (!isInstalledMultimodalService) {
                 logger.warn(
-                    `Unsupported audio format "${mimeType}". Please install chatluna-multimodal-service plugin to handle this format.`
+                    `Unsupported audio format "${mimeType}". Please install chatluna-multimodal-service (multimodal-service) plugin to handle this format.`
                 )
             }
             return false
@@ -737,7 +737,7 @@ async function oldImageRead(
         if (ext === 'image/gif') {
             if (!isInstalledImageService) {
                 logger.warn(
-                    `Detected GIF image, which is not supported by most models. Please install chatluna-multimodal-service plugin to parse GIF animations.`
+                    `Detected GIF image, which is not supported by most models. Please install chatluna-multimodal-service (multimodal-service) plugin to parse GIF animations.`
                 )
             }
             return false
