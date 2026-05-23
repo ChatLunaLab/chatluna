@@ -210,13 +210,9 @@ export function parseRawModelName(
 }
 
 // ---------------------------------------------------------------------------
-// Smart token counting with usage_metadata optimization
+// Token counting with usage_metadata baseline optimization
 // ---------------------------------------------------------------------------
 
-/**
- * Count tokens for a single message using a tokenCounter function.
- * Strips base64 image markdown before counting.
- */
 export async function countMessageTokens(
     message: BaseMessage,
     tokenCounter: (text: string) => Promise<number>
@@ -231,63 +227,36 @@ export async function countMessageTokens(
         content = content.replaceAll(/!\[.*?\]\(.*?\)/g, '')
     }
 
-    let result =
+    return (
         (await tokenCounter(content)) +
-        (await tokenCounter(messageTypeToOpenAIRole(message.getType())))
-
-    if (message.name) {
-        result += await tokenCounter(message.name)
-    }
-
-    return result
+        (await tokenCounter(messageTypeToOpenAIRole(message.getType()))) +
+        (message.name ? await tokenCounter(message.name) : 0)
+    )
 }
 
 /**
- * Count tokens for a list of messages, using usage_metadata from the last
- * AI message as a baseline when available.
- *
- * If an AI message has usage_metadata.input_tokens, that value represents
- * the total input tokens at that LLM call (all prior messages + system prompt).
- * We use the last such message as a baseline and only count messages after it.
- *
- * @param messages - The message list to count
- * @param tokenCounter - Function to count tokens for a string
- * @param presetTokens - Token count of system/preset messages (subtracted from
- *                       baseline since usage_metadata.input_tokens includes them)
+ * Count tokens for messages. Uses the last AI message's usage_metadata as
+ * baseline to skip re-counting earlier messages.
  */
 export async function countMessagesTokens(
     messages: BaseMessage[],
     tokenCounter: (text: string) => Promise<number>,
     presetTokens = 0
 ): Promise<number> {
-    // Find the last AI message with usage_metadata.input_tokens
-    let baselineIdx = -1
-    let baselineTokens = 0
-
+    // Find last AI message with usage_metadata as baseline
     for (let i = messages.length - 1; i >= 0; i--) {
-        const msg = messages[i]
-        if (msg.getType() !== 'ai') continue
-
-        const usage = (msg as AIMessage).usage_metadata
+        if (messages[i].getType() !== 'ai') continue
+        const usage = (messages[i] as AIMessage).usage_metadata
         if (usage?.input_tokens > 0) {
-            baselineIdx = i
-            // input_tokens includes preset, subtract to get history-only tokens
-            baselineTokens = usage.input_tokens - presetTokens
-            break
+            let tail = 0
+            for (let j = i; j < messages.length; j++) {
+                tail += await countMessageTokens(messages[j], tokenCounter)
+            }
+            return Math.max(usage.input_tokens - presetTokens + tail, 0)
         }
     }
 
-    if (baselineIdx >= 0) {
-        // Count only messages from the baseline AI message onward
-        // (the AI message's output becomes part of next call's input)
-        let tail = 0
-        for (let i = baselineIdx; i < messages.length; i++) {
-            tail += await countMessageTokens(messages[i], tokenCounter)
-        }
-        return Math.max(baselineTokens + tail, 0)
-    }
-
-    // Fallback: count all messages
+    // Fallback: count all
     let total = 0
     for (const msg of messages) {
         total += await countMessageTokens(msg, tokenCounter)

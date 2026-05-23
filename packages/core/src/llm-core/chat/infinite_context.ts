@@ -43,19 +43,24 @@ export async function compressIfNeeded(
     opts: CompressContextOptions
 ): Promise<CompressContextResult> {
     const { chatHistory, model, conversationId, force } = opts
-
     const messages = await chatHistory.getMessages()
 
-    if (messages.length === 0) {
-        return emptyResult()
-    }
+    if (messages.length === 0) return emptyResult()
 
-    // Step 1: compact expired tool results in-place
+    // Step 1: compact expired tool results
     const compacted = compactExpiredToolResults(messages)
 
     // Step 2: count tokens
     const tokenCounter = (text: string) => model.getNumTokens(text)
     const inputTokens = await countMessagesTokens(compacted, tokenCounter)
+
+    const noCompressResult = (): CompressContextResult => ({
+        ...emptyResult(),
+        inputTokens,
+        originalMessageCount: messages.length,
+        remainingMessageCount: compacted.length,
+        messages: compacted !== messages ? compacted : undefined
+    })
 
     // Step 3: determine if compression is needed
     if (!force) {
@@ -65,15 +70,7 @@ export async function compressIfNeeded(
                 ? invocation.maxTokenLimit
                 : model.getModelMaxContextSize()
 
-        if (!maxTokenLimit || maxTokenLimit <= 0) {
-            return {
-                ...emptyResult(),
-                inputTokens,
-                originalMessageCount: messages.length,
-                remainingMessageCount: compacted.length,
-                messages: compacted !== messages ? compacted : undefined
-            }
-        }
+        if (!maxTokenLimit || maxTokenLimit <= 0) return noCompressResult()
 
         const presetMessages = Array.isArray(opts.preset?.value?.messages)
             ? (opts.preset.value.messages as BaseMessage[])
@@ -84,15 +81,7 @@ export async function compressIfNeeded(
         )
         const threshold = Math.floor(maxTokenLimit * (opts.threshold ?? 0.85))
 
-        if (inputTokens + presetTokens <= threshold) {
-            return {
-                ...emptyResult(),
-                inputTokens,
-                originalMessageCount: messages.length,
-                remainingMessageCount: compacted.length,
-                messages: compacted !== messages ? compacted : undefined
-            }
-        }
+        if (inputTokens + presetTokens <= threshold) return noCompressResult()
 
         logger.info(
             '[InfiniteContext] Start compression: history=%d tokens, total=%d, threshold=%d',
@@ -107,32 +96,13 @@ export async function compressIfNeeded(
         )
     }
 
-    // Step 4: split messages into [to-compress, to-keep]
-    // Keep the most recent complete rounds that fit within 40% of threshold
+    // Step 4: split messages
     const { toCompress, toKeep } = splitMessages(compacted)
+    if (toCompress.length === 0) return noCompressResult()
 
-    if (toCompress.length === 0) {
-        return {
-            ...emptyResult(),
-            inputTokens,
-            originalMessageCount: messages.length,
-            remainingMessageCount: compacted.length,
-            messages: compacted !== messages ? compacted : undefined
-        }
-    }
-
-    // Step 5: generate summary from early messages
+    // Step 5: generate summary
     const transcript = formatTranscript(toCompress)
-
-    if (!transcript.trim()) {
-        return {
-            ...emptyResult(),
-            inputTokens,
-            originalMessageCount: messages.length,
-            remainingMessageCount: compacted.length,
-            messages: compacted !== messages ? compacted : undefined
-        }
-    }
+    if (!transcript.trim()) return noCompressResult()
 
     const summary = await compressChunk(
         model,
@@ -140,24 +110,13 @@ export async function compressIfNeeded(
         conversationId,
         opts.signal
     )
+    if (!summary?.text.trim()) return noCompressResult()
 
-    if (!summary?.text.trim()) {
-        return {
-            ...emptyResult(),
-            inputTokens,
-            originalMessageCount: messages.length,
-            remainingMessageCount: compacted.length,
-            messages: compacted !== messages ? compacted : undefined
-        }
-    }
-
-    // Step 6: build structured output
+    // Step 6: build result
     const summaryMessage = new HumanMessage({
         content: summary.text.trim(),
         name: 'infinite_context',
-        additional_kwargs: {
-            source: 'infinite-context'
-        }
+        additional_kwargs: { source: 'infinite-context' }
     })
 
     const resultMessages = [summaryMessage, ...toKeep]
@@ -205,7 +164,6 @@ function emptyResult(): CompressContextResult {
 
 /**
  * Replace expired (>1h) tool result content with a placeholder.
- * Returns a new array if any were compacted, otherwise the original.
  */
 function compactExpiredToolResults(messages: BaseMessage[]): BaseMessage[] {
     const placeholder =
@@ -214,11 +172,10 @@ function compactExpiredToolResults(messages: BaseMessage[]): BaseMessage[] {
 
     const result = messages.map((msg) => {
         if (msg.getType() !== 'tool') return msg
-
         const meta = msg.response_metadata?.chatluna as
             | ChatLunaMessageMeta
             | undefined
-        if (meta?.createdAt == null) return msg
+        if (!meta?.createdAt) return msg
         if (Date.now() - new Date(meta.createdAt).getTime() < 3600000)
             return msg
         if (getMessageContent(msg.content).trim() === placeholder) return msg
@@ -229,14 +186,7 @@ function compactExpiredToolResults(messages: BaseMessage[]): BaseMessage[] {
         return mapStoredMessageToChatMessage(cloned)
     })
 
-    if (!changed) return messages
-
-    logger.info(
-        '[InfiniteContext] Compacted %d expired tool results',
-        result.filter((_, i) => result[i] !== messages[i]).length
-    )
-
-    return result
+    return changed ? result : messages
 }
 
 /**
@@ -281,7 +231,6 @@ function splitMessages(messages: BaseMessage[]): {
 
 /**
  * Format messages into a transcript string for the LLM summarizer.
- * Preserves tool-call structure information.
  */
 function formatTranscript(messages: BaseMessage[]): string {
     return messages
@@ -290,29 +239,22 @@ function formatTranscript(messages: BaseMessage[]): string {
             const name = msg.name ? ` (${msg.name})` : ''
             const content = getMessageContent(msg.content).trim()
 
-            // Include tool_calls info for AI messages
             const toolCalls = msg['tool_calls'] as
                 | { name: string; args: unknown }[]
                 | undefined
-            let toolInfo = ''
-            if (toolCalls?.length > 0) {
-                toolInfo =
-                    '\nTool calls: ' +
-                    toolCalls
-                        .map((tc) => {
-                            const args = JSON.stringify(tc.args)
-                            const truncated =
-                                args.length > 200
-                                    ? args.slice(0, 200) + '...'
-                                    : args
-                            return `${tc.name}(${truncated})`
-                        })
-                        .join(', ')
-            }
+            const toolInfo =
+                toolCalls?.length > 0
+                    ? '\nTool calls: ' +
+                      toolCalls
+                          .map((tc) => {
+                              const args = JSON.stringify(tc.args)
+                              return `${tc.name}(${args.length > 200 ? args.slice(0, 200) + '...' : args})`
+                          })
+                          .join(', ')
+                    : ''
 
-            // Include tool_call_id for tool messages
-            const toolCallId = msg['tool_call_id'] as string | undefined
-            const idInfo = toolCallId ? ` [call_id: ${toolCallId}]` : ''
+            const callId = msg['tool_call_id'] as string | undefined
+            const idInfo = callId ? ` [call_id: ${callId}]` : ''
 
             return `[${role}${name}${idInfo}]\n${content || '(empty)'}${toolInfo}`
         })

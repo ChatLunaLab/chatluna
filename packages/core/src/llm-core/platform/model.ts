@@ -817,115 +817,67 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         const conversationRounds = buildConversationRounds(messages)
         const selectedRounds: BaseMessage[][] = []
         let truncated = false
+        const hasLimit = maxTokenLimit != null && maxTokenLimit > 0
 
-        // Find baseline: last AI message with usage_metadata in the conversation
-        let baselineIdx = -1
+        // Find baseline: last AI message with usage_metadata
+        let baselineRoundIdx = -1
         let baselineTokens = 0
-        for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].getType() !== 'ai') continue
-            const usage = (messages[i] as AIMessage).usage_metadata
-            if (usage?.input_tokens > 0) {
-                baselineIdx = i
-                // input_tokens includes system messages we already counted
-                baselineTokens = usage.input_tokens - totalTokens
-                break
+        if (hasLimit) {
+            let msgOffset = 0
+            for (let r = 0; r < conversationRounds.length; r++) {
+                for (let j = 0; j < conversationRounds[r].length; j++) {
+                    const msg = messages[msgOffset + j]
+                    if (msg.getType() === 'ai') {
+                        const usage = (msg as AIMessage).usage_metadata
+                        if (usage?.input_tokens > 0) {
+                            baselineRoundIdx = r
+                            baselineTokens = usage.input_tokens - totalTokens
+                        }
+                    }
+                }
+                msgOffset += conversationRounds[r].length
+            }
+            // Add tokens for messages after the baseline AI msg within its round
+            if (baselineRoundIdx >= 0) {
+                // Count the tail of the baseline round (AI msg itself + tool msgs)
+                for (const msg of conversationRounds[baselineRoundIdx]) {
+                    if (msg.getType() === 'ai' || msg.getType() === 'tool') {
+                        baselineTokens += await this.countMessageTokens(msg)
+                    }
+                }
             }
         }
 
-        if (baselineIdx >= 0 && maxTokenLimit != null && maxTokenLimit > 0) {
-            // Find which round the baseline falls in
-            let msgCount = 0
-            let baselineRoundIdx = -1
-            for (let r = 0; r < conversationRounds.length; r++) {
-                msgCount += conversationRounds[r].length
-                if (msgCount > baselineIdx) {
-                    baselineRoundIdx = r
-                    break
-                }
-            }
-            if (baselineRoundIdx < 0) {
-                baselineRoundIdx = conversationRounds.length - 1
-            }
-
-            // baselineTokens covers messages[0..baselineIdx-1].
-            // We also need to count the AI message itself and any messages
-            // after it within the same round (tool messages, etc.)
-            let roundStartIdx = 0
-            for (let r = 0; r < baselineRoundIdx; r++) {
-                roundStartIdx += conversationRounds[r].length
-            }
-            for (
-                let i = baselineIdx;
-                i < roundStartIdx + conversationRounds[baselineRoundIdx].length;
-                i++
-            ) {
-                baselineTokens += await this.countMessageTokens(messages[i])
-            }
-
-            // Iterate from end; when we reach baseline region, add all at once
-            for (let i = conversationRounds.length - 1; i >= 0; i--) {
-                if (i <= baselineRoundIdx && selectedRounds.length === 0) {
-                    // Bulk add all rounds up to baseline
-                    const exceedsLimit =
-                        totalTokens + baselineTokens > maxTokenLimit
-
-                    if (exceedsLimit && selectedRounds.length > 0) {
-                        truncated = true
-                        break
-                    }
-
-                    totalTokens += baselineTokens
-                    for (let j = 0; j <= baselineRoundIdx; j++) {
-                        selectedRounds.unshift(
-                            conversationRounds[baselineRoundIdx - j]
-                        )
-                    }
-
-                    if (exceedsLimit) {
-                        truncated = true
-                    }
-                    break
-                }
-
-                const round = conversationRounds[i]
-                const roundTokens = await countRoundTokens(round)
-                const exceedsLimit = totalTokens + roundTokens > maxTokenLimit
-
-                if (exceedsLimit && selectedRounds.length > 0) {
+        // Select rounds from end to start
+        for (let i = conversationRounds.length - 1; i >= 0; i--) {
+            // If we hit the baseline region, bulk-add everything up to it
+            if (baselineRoundIdx >= 0 && i <= baselineRoundIdx) {
+                if (hasLimit && totalTokens + baselineTokens > maxTokenLimit) {
                     truncated = true
                     break
                 }
-
-                totalTokens += roundTokens
-                selectedRounds.unshift(round)
-
-                if (exceedsLimit) {
-                    truncated = true
-                    break
+                totalTokens += baselineTokens
+                for (let j = 0; j <= i; j++) {
+                    selectedRounds.unshift(conversationRounds[j])
                 }
+                break
             }
-        } else {
-            // No baseline or no limit, fallback to counting each round
-            for (let i = conversationRounds.length - 1; i >= 0; i--) {
-                const round = conversationRounds[i]
-                const roundTokens = await countRoundTokens(round)
-                const exceedsLimit =
-                    maxTokenLimit != null && maxTokenLimit > 0
-                        ? totalTokens + roundTokens > maxTokenLimit
-                        : false
 
-                if (exceedsLimit && selectedRounds.length > 0) {
-                    truncated = true
-                    break
-                }
+            const roundTokens = await countRoundTokens(conversationRounds[i])
+            const exceeds =
+                hasLimit && totalTokens + roundTokens > maxTokenLimit
 
-                totalTokens += roundTokens
-                selectedRounds.unshift(round)
+            if (exceeds && selectedRounds.length > 0) {
+                truncated = true
+                break
+            }
 
-                if (exceedsLimit) {
-                    truncated = true
-                    break
-                }
+            totalTokens += roundTokens
+            selectedRounds.unshift(conversationRounds[i])
+
+            if (exceeds) {
+                truncated = true
+                break
             }
         }
 
