@@ -32,11 +32,7 @@
                                 :key="row.key"
                             >
                                 <el-tooltip
-                                    :content="
-                                        row.platform
-                                            ? `${row.platform}/${row.label}`
-                                            : row.label
-                                    "
+                                    :content="row.label"
                                     placement="top"
                                     effect="dark"
                                 >

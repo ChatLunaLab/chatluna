@@ -146,7 +146,9 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             }
             const model = models.get(row.model) ?? {
                 key: row.model,
-                label: row.model,
+                label: row.platform
+                    ? `${row.platform}/${row.model}`
+                    : row.model,
                 platform: row.platform,
                 calls: 0,
                 successfulCalls: 0,

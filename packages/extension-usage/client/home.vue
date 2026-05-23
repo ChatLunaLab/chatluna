@@ -35,27 +35,6 @@
             <k-card class="frameless chatluna-usage-table">
                 <template #header>
                     <span class="table-title">
-                        <svg
-                            class="filter-title-icon"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                        >
-                            <circle
-                                cx="11"
-                                cy="11"
-                                r="7"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            />
-                            <path
-                                d="M16.5 16.5 21 21"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                            />
-                        </svg>
                         调用明细
                     </span>
                     <span class="actions">

@@ -35,11 +35,7 @@
                                 }"
                             ></span>
                             <el-tooltip
-                                :content="
-                                    scope.row.platform
-                                        ? `${scope.row.platform}/${scope.row.label}`
-                                        : scope.row.label
-                                "
+                                :content="scope.row.label"
                                 placement="top"
                                 effect="dark"
                             >

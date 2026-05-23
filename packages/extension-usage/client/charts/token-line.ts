@@ -439,7 +439,7 @@ export default (ctx: Context) => {
                             return {
                                 name: model.label,
                                 type: 'line',
-                                smooth: false,
+                                smooth: true,
                                 showSymbol: true,
                                 symbol: 'circle',
                                 symbolSize: 6,
@@ -510,37 +510,6 @@ export default (ctx: Context) => {
                             header: () =>
                                 h('div', { class: 'chart-heading' }, [
                                     h('span', { class: 'chart-title' }, [
-                                        h(
-                                            'svg',
-                                            {
-                                                class: 'chart-title-icon',
-                                                xmlns: 'http://www.w3.org/2000/svg',
-                                                viewBox: '0 0 24 24',
-                                                fill: 'none',
-                                                'aria-hidden': 'true'
-                                            },
-                                            [
-                                                h('path', {
-                                                    d: 'M4 19V5',
-                                                    stroke: 'currentColor',
-                                                    'stroke-width': '2',
-                                                    'stroke-linecap': 'round'
-                                                }),
-                                                h('path', {
-                                                    d: 'M4 19h16',
-                                                    stroke: 'currentColor',
-                                                    'stroke-width': '2',
-                                                    'stroke-linecap': 'round'
-                                                }),
-                                                h('path', {
-                                                    d: 'M7 15l3-4 3 2 4-6',
-                                                    stroke: 'currentColor',
-                                                    'stroke-width': '2.2',
-                                                    'stroke-linecap': 'round',
-                                                    'stroke-linejoin': 'round'
-                                                })
-                                            ]
-                                        ),
                                         '模型数据分析'
                                     ]),
                                     h(
