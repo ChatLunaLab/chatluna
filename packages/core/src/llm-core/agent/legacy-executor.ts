@@ -385,11 +385,11 @@ async function compressScratchpad(
 
     if (!maxTokenLimit || maxTokenLimit <= 0) return
 
-    // Only compress if scratchpad exceeds 50% of context window
-    if (scratchpadTokens < maxTokenLimit * 0.5) return
+    // Only compress if scratchpad exceeds 84% of context window
+    if (scratchpadTokens < maxTokenLimit * 0.84) return
 
     logger.info(
-        '[ScratchpadCompress] Scratchpad tokens %d exceed 50%% of %d, compressing',
+        '[ScratchpadCompress] Scratchpad tokens %d exceed 84%% of %d, compressing',
         scratchpadTokens,
         maxTokenLimit
     )
