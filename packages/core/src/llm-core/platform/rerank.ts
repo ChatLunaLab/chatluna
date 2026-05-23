@@ -180,12 +180,16 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
                 usage?.input_tokens ??
                 usage?.total_tokens ??
                 (await estimateTextTokens(input))
+            const outputTokens = usage?.output_tokens ?? 0
             await this._report({
                 callType: 'reranker',
-                usageMetadata: usage ?? {
-                    input_tokens: inputTokens,
-                    output_tokens: 0,
-                    total_tokens: inputTokens
+                usageMetadata: {
+                    ...usage,
+                    input_tokens: usage?.input_tokens ?? inputTokens,
+                    output_tokens: outputTokens,
+                    total_tokens:
+                        usage?.total_tokens ??
+                        (usage?.input_tokens ?? inputTokens) + outputTokens
                 },
                 estimated,
                 success: true
