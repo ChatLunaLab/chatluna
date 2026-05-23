@@ -15,6 +15,8 @@ import { SparkClientConfig } from './types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { hasSparkModelPassword, sparkModelCatalog } from './utils'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class SparkClient extends PlatformModelClient<SparkClientConfig> {
     platform = 'spark'
 
@@ -62,7 +64,10 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
         return result
     }
 
-    protected _createModel(model: string): ChatLunaChatModel {
+    protected _createModel(
+        model: string,
+        report: ModelUsageReporter
+    ): ChatLunaChatModel {
         const info = this._modelInfos[model]
 
         if (info == null) {
@@ -75,6 +80,7 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
 
         const modelMaxContextSize = info.maxTokens
         return new ChatLunaChatModel({
+            usageReporter: report,
             modelInfo: info,
             requester: this._requester,
             model,

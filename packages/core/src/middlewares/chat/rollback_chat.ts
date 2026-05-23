@@ -6,10 +6,7 @@ import {
     ChainMiddlewareRunStatus,
     type ChatChain
 } from '../../chains/chain'
-import {
-    type ConversationResolution,
-    type MessageRecord
-} from '../../services/conversation_types'
+import { type ConversationResolution, type MessageRecord } from '../../types'
 import {
     checkAdmin,
     transformMessageContentToElements

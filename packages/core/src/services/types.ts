@@ -6,10 +6,11 @@ import {
     BindingRecord,
     ConstraintRecord,
     ConversationRecord,
+    Message,
     MessageRecord,
     MetaRecord,
     ResolveConversationOptions
-} from './conversation_types'
+} from '../types'
 import { ChatLunaService } from './chat'
 import {
     AIMessage,
@@ -24,7 +25,6 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatInterface } from '../llm-core/chat/app'
 import { MessageQueue } from '../llm-core/agent/types'
-import type { Message } from '../types'
 import type { PostHandler } from '../utils/types'
 import type {
     ToolMaskArg,
@@ -222,6 +222,42 @@ declare module '@chatluna/shared-prompt-renderer' {
 
 export * from '@chatluna/shared-prompt-renderer'
 
-export * from './conversation_types'
+export {
+    AdminRequiredError,
+    applyPresetLane,
+    computeBaseBindingKey,
+    ConstraintDisabledError,
+    ConstraintFixedError,
+    ConstraintLockedError,
+    ConversationNotFoundError,
+    ConversationResolutionError,
+    getBaseBindingKey,
+    getPresetLane,
+    InvalidChatModeError,
+    type ACLRecord,
+    type ArchiveRecord,
+    type ArchiveState,
+    type BindingRecord,
+    type ChatLunaMessageMeta,
+    type ConstraintAction,
+    type ConstraintFixedField,
+    type ConstraintManageMode,
+    type ConstraintPermission,
+    type ConstraintPrincipalType,
+    type ConstraintRecord,
+    type ConversationCompressionRecord,
+    type ConversationListEntry,
+    type ConversationRecord,
+    type ConversationResolution,
+    type ConversationResolutionErrorCode,
+    type ConversationResolveMode,
+    type ConversationStatus,
+    type MessageRecord,
+    type MetaRecord,
+    type ResolveConversationOptions,
+    type ResolvedConstraint,
+    type ResolvedConversationContext,
+    type RouteMode
+} from '../types'
 
 export type { ToolMaskArg, ToolMaskResolver }

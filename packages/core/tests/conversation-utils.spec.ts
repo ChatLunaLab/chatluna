@@ -1,5 +1,6 @@
 /// <reference types="mocha" />
 
+import path from 'node:path'
 import { assert } from 'chai'
 import { Pagination } from '../src/utils/pagination'
 import {
@@ -14,7 +15,8 @@ import {
 import {
     applyPresetLane,
     computeBaseBindingKey
-} from '../src/services/conversation_types'
+} from '../src/types'
+import { usageSourceFromStack } from '../src/utils/usage_source'
 import {
     createMessage,
     type BindingSessionShape,
@@ -143,6 +145,51 @@ it('gzip helpers round-trip archived payload content', async () => {
 
     assert.equal(await gzipDecode(arrayBuffer), json)
     assert.equal(await gzipDecode(base64), json)
+})
+
+it('usageSourceFromStack reads package names instead of folder names', () => {
+    const core = path.join(
+        process.cwd(),
+        'packages/core/src/llm-core/platform/usage.ts'
+    )
+    const adapter = path.join(
+        process.cwd(),
+        'packages/adapter-openai/src/client.ts'
+    )
+    const langchain = path.join(
+        process.cwd(),
+        'node_modules/@langchain/core/dist/language_models/chat_models.cjs'
+    )
+
+    assert.equal(
+        usageSourceFromStack(`    at report (${core}:16:20)`),
+        'chatluna'
+    )
+    assert.equal(
+        usageSourceFromStack(
+            [
+                `    at report (${core}:16:20)`,
+                `    at stream (${langchain}:127:34)`
+            ].join('\n')
+        ),
+        'chatluna'
+    )
+    assert.equal(
+        usageSourceFromStack(
+            [
+                `    at report (${core}:16:20)`,
+                `    at create (${adapter}:120:13)`
+            ].join('\n')
+        ),
+        'chatluna-openai-adapter'
+    )
+    assert.equal(
+        usageSourceFromStack(
+            '    at process.processTicksAndRejections ' +
+                '(node:internal/process/task_queues:105:5)'
+        ),
+        'unknown'
+    )
 })
 
 it('getMessageContent flattens structured text parts', () => {

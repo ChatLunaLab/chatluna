@@ -1,4 +1,5 @@
 import { DocumentInterface } from '@langchain/core/documents'
+import type { UsageMetadata } from '@langchain/core/messages'
 import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors'
 import {
     AsyncCaller,
@@ -6,13 +7,15 @@ import {
 } from '@langchain/core/utils/async_caller'
 import {
     RerankerRequester,
-    RerankerRequestParams,
-    RerankerResult
+    RerankerRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { logger } from 'koishi-plugin-chatluna'
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import { estimateTextTokens } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
 export interface ChatLunaRerankerParams extends AsyncCallerParams {
     timeout?: number
@@ -21,6 +24,7 @@ export interface ChatLunaRerankerParams extends AsyncCallerParams {
     model?: string
     topN?: number
     maxChunksPerDoc?: number
+    usageReporter?: ModelUsageReporter
 }
 
 export class ChatLunaReranker extends BaseDocumentCompressor {
@@ -36,6 +40,7 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
     caller: AsyncCaller
 
     private _client: RerankerRequester
+    private _report?: ModelUsageReporter
 
     constructor(fields: ChatLunaRerankerParams) {
         super()
@@ -46,6 +51,7 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         this.topN = fields.topN ?? this.topN
         this.maxChunksPerDoc = fields.maxChunksPerDoc
         this._client = fields.client
+        this._report = fields.usageReporter
     }
 
     async compressDocuments(
@@ -89,13 +95,26 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
                   : JSON.stringify(doc)
         )
 
-        const results = await this._rerankWithRetry({
+        const request = {
             model: options?.model ?? this.modelName,
             query,
             documents: docStrings,
             topN: options?.topN ?? this.topN,
             maxChunksPerDoc: options?.maxChunksPerDoc ?? this.maxChunksPerDoc
-        })
+        }
+        let data: Awaited<ReturnType<RerankerRequester['rerank']>>
+        try {
+            data = await this._rerankWithRetry(request)
+        } catch (e) {
+            await this._reportFailedUsage()
+            throw e
+        }
+        const results = Array.isArray(data) ? data : data.results
+
+        await this._reportUsage(
+            [request.query, ...request.documents],
+            Array.isArray(data) ? undefined : data.usage
+        )
 
         return results.map((result) => ({
             index: result.index,
@@ -105,7 +124,7 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
 
     private async _rerankWithRetry(
         request: RerankerRequestParams
-    ): Promise<RerankerResult[]> {
+    ): ReturnType<RerankerRequester['rerank']> {
         const timeoutError = new ChatLunaError(
             ChatLunaErrorCode.API_REQUEST_TIMEOUT,
             new Error(`timeout when calling ${request.model} reranker`),
@@ -115,7 +134,9 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
         const makeRequest = async () => {
             let timeoutId: NodeJS.Timeout
 
-            const timeoutPromise = new Promise<RerankerResult[]>(
+            const timeoutPromise = new Promise<
+                Awaited<ReturnType<RerankerRequester['rerank']>>
+            >(
                 // eslint-disable-next-line promise/param-names
                 (_, reject) => {
                     timeoutId = setTimeout(() => {
@@ -146,6 +167,54 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
                 throw e
             }
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        }
+    }
+
+    private async _reportUsage(input: string[], usage?: UsageMetadata) {
+        if (this._report == null) return
+
+        try {
+            const estimated =
+                usage?.input_tokens == null && usage?.total_tokens == null
+            const inputTokens =
+                usage?.input_tokens ??
+                usage?.total_tokens ??
+                (await estimateTextTokens(input))
+            const outputTokens = usage?.output_tokens ?? 0
+            await this._report({
+                callType: 'reranker',
+                usageMetadata: {
+                    ...usage,
+                    input_tokens: usage?.input_tokens ?? inputTokens,
+                    output_tokens: outputTokens,
+                    total_tokens:
+                        usage?.total_tokens ??
+                        (usage?.input_tokens ?? inputTokens) + outputTokens
+                },
+                estimated,
+                success: true
+            })
+        } catch (e) {
+            logger.warn('Failed to report reranker usage', e)
+        }
+    }
+
+    private async _reportFailedUsage() {
+        if (this._report == null) return
+
+        try {
+            await this._report({
+                callType: 'reranker',
+                usageMetadata: {
+                    input_tokens: 0,
+                    output_tokens: 0,
+                    total_tokens: 0
+                },
+                estimated: false,
+                success: false
+            })
+        } catch (e) {
+            logger.warn('Failed to report reranker usage', e)
         }
     }
 }

@@ -2,11 +2,7 @@ import { createHash } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
 import type { Context } from 'koishi'
-import type {
-    BindingRecord,
-    ConversationRecord,
-    MessageRecord
-} from '../services/conversation_types'
+import type { BindingRecord, ConversationRecord, MessageRecord } from '../types'
 import type {
     ArchiveManifest,
     ConversationArchivePayload,

@@ -10,6 +10,7 @@ import { Context } from 'koishi'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
+    EmbeddingsResult,
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
@@ -111,7 +112,7 @@ export class ZhipuRequester
 
     async embeddings(
         params: EmbeddingsRequestParams
-    ): Promise<number[] | number[][]> {
+    ): Promise<EmbeddingsResult> {
         const requestContext = createRequestContext(
             this.ctx,
             this._config.value,

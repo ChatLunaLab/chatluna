@@ -26,7 +26,7 @@ import type {
     BindingRecord,
     ConversationRecord,
     MessageRecord
-} from '../src/services/conversation_types'
+} from '../src/types'
 
 it('runRoomToConversationMigration migrates legacy rooms, messages, bindings, and ACL', async () => {
     const { ctx, database } = await createService({

@@ -20,6 +20,8 @@ import { DoubaoRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { expandReasoningEffortModelVariants } from '@chatluna/v1-shared-adapter'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'doubao'
 
@@ -129,7 +131,8 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     }
 
     protected _createModel(
-        model: string
+        model: string,
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -143,6 +146,7 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
+                usageReporter: report,
                 modelInfo: info,
                 requester: this._requester,
                 model,
@@ -159,6 +163,7 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
 
         return new ChatLunaEmbeddings({
+            usageReporter: report,
             client: this._requester,
             model,
             batchSize: 256,

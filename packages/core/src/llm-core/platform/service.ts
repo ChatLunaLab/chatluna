@@ -30,7 +30,7 @@ import { computed, ComputedRef, reactive } from '@vue/reactivity'
 import { randomUUID } from 'crypto'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { ToolMask } from '../agent'
-import type { ConversationRecord } from '../../services/conversation_types'
+import type { ConversationRecord } from '../../types'
 
 export class PlatformService {
     private _platformClients: Record<string, BasePlatformClient> = reactive({})

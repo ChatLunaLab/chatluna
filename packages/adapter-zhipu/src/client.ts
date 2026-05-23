@@ -21,6 +21,8 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { logger as pluginLogger } from '.'
 import { supportImageInput } from '@chatluna/v1-shared-adapter'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'zhipu'
 
@@ -111,7 +113,8 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
     }
 
     protected _createModel(
-        model: string
+        model: string,
+        report: ModelUsageReporter
     ): ChatLunaChatModel | ChatLunaBaseEmbeddings {
         const info = this._modelInfos[model]
 
@@ -125,6 +128,7 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
 
         if (info.type === ModelType.embeddings) {
             return new ChatLunaEmbeddings({
+                usageReporter: report,
                 client: this._requester,
                 model,
                 maxRetries: this._config.maxRetries
@@ -133,6 +137,7 @@ export class ZhipuClient extends PlatformModelAndEmbeddingsClient<ClientConfig> 
 
         const modelMaxContextSize = info.maxTokens
         return new ChatLunaChatModel({
+            usageReporter: report,
             modelInfo: info,
             requester: this._requester,
             model: model.toLocaleLowerCase(),

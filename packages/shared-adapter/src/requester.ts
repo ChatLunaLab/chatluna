@@ -1,10 +1,12 @@
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequestParams,
+    EmbeddingsResult,
     ModelRequester,
     ModelRequestParams,
     RerankerRequestParams,
-    RerankerResult
+    RerankerResult,
+    RerankerUsageResult
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import {
@@ -882,7 +884,7 @@ export async function createEmbeddings<
     requestContext: RequestContext<T, R>,
     params: EmbeddingsRequestParams,
     embeddingUrl: string = 'embeddings'
-): Promise<number[] | number[][]> {
+): Promise<EmbeddingsResult> {
     const { modelRequester } = requestContext
     let data: CreateEmbeddingResponse | string
 
@@ -896,7 +898,16 @@ export async function createEmbeddings<
         data = JSON.parse(data as string) as CreateEmbeddingResponse
 
         if (data.data && data.data.length > 0) {
-            return data.data.map((item) => item.embedding)
+            return data.usage
+                ? {
+                      data: data.data.map((item) => item.embedding),
+                      usage: {
+                          input_tokens: data.usage.prompt_tokens,
+                          output_tokens: 0,
+                          total_tokens: data.usage.total_tokens
+                      }
+                  }
+                : data.data.map((item) => item.embedding)
         }
 
         throw new Error(`Call Embedding Error: ${JSON.stringify(data)}`)
@@ -916,7 +927,7 @@ export async function createRerank<
     requestContext: RequestContext<T, R>,
     params: RerankerRequestParams,
     rerankUrl: string = 'rerank'
-): Promise<RerankerResult[]> {
+): Promise<RerankerResult[] | RerankerUsageResult> {
     const { modelRequester } = requestContext
 
     try {
@@ -944,10 +955,27 @@ export async function createRerank<
             )
         }
 
-        return data.results.map((item) => ({
+        const results = data.results.map((item) => ({
             index: item.index,
             relevanceScore: item.relevance_score
         }))
+
+        return data.usage
+            ? {
+                  results,
+                  usage: {
+                      input_tokens:
+                          data.usage.prompt_tokens ??
+                          data.usage.total_tokens ??
+                          0,
+                      output_tokens: 0,
+                      total_tokens:
+                          data.usage.total_tokens ??
+                          data.usage.prompt_tokens ??
+                          0
+                  }
+              }
+            : results
     } catch (e) {
         if (e instanceof ChatLunaError) {
             throw e

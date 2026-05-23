@@ -102,6 +102,7 @@ export class ChatLunaChatChain
         events,
         session,
         conversationId,
+        requestId,
         variables,
         signal,
         maxToken,
@@ -118,7 +119,12 @@ export class ChatLunaChatChain
             prompt: getMessageContent(message.content)
         })
         requests['variables']['built'] = {
-            conversationId
+            conversationId,
+            requestId,
+            userId: session.userId,
+            guildId: session.guildId,
+            channelId: session.channelId,
+            chatPlatform: session.platform
         }
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {

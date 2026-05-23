@@ -7,6 +7,7 @@ import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
+    EmbeddingsResult,
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
@@ -168,7 +169,7 @@ export class GeminiRequester
 
     async embeddings(
         params: EmbeddingsRequestParams
-    ): Promise<number[] | number[][]> {
+    ): Promise<EmbeddingsResult> {
         const input = this._prepareEmbeddingsInput(params.input)
 
         try {

@@ -15,6 +15,8 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { PlatformModelClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { DifyClientConfig } from './types'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export class DifyClient extends PlatformModelClient<DifyClientConfig> {
     platform = 'dify'
 
@@ -53,7 +55,10 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
         )
     }
 
-    protected _createModel(model: string): ChatLunaChatModel {
+    protected _createModel(
+        model: string,
+        report: ModelUsageReporter
+    ): ChatLunaChatModel {
         const info = this._modelInfos[model]
 
         if (info == null) {
@@ -66,6 +71,7 @@ export class DifyClient extends PlatformModelClient<DifyClientConfig> {
 
         if (info.type === ModelType.llm) {
             return new ChatLunaChatModel({
+                usageReporter: report,
                 modelInfo: info,
                 requester: this._requester,
                 model,

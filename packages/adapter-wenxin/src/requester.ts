@@ -9,6 +9,7 @@ import { Context } from 'koishi'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
+    EmbeddingsResult,
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
@@ -107,7 +108,7 @@ export class WenxinRequester
 
     async embeddings(
         params: EmbeddingsRequestParams
-    ): Promise<number[] | number[][]> {
+    ): Promise<EmbeddingsResult> {
         if (
             typeof params.input === 'string' &&
             params.input.trim().length < 1
@@ -123,7 +124,7 @@ export class WenxinRequester
             this
         )
 
-        const result = (await createEmbeddings(
+        const data = await createEmbeddings(
             requestContext,
             {
                 ...params,
@@ -132,13 +133,19 @@ export class WenxinRequester
                     : [params.input]
             },
             'v2/embeddings'
-        )) as number[][]
+        )
+        const result = (Array.isArray(data) ? data : data.data) as number[][]
 
         if (Array.isArray(params.input)) {
-            return result
+            return data
         }
 
-        return result[0]
+        return Array.isArray(data)
+            ? result[0]
+            : {
+                  data: result[0],
+                  usage: data.usage
+              }
     }
 
     concatUrl(url: string): string {

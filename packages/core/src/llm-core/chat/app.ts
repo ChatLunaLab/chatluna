@@ -31,7 +31,7 @@ import type {
     BindingRecord,
     ConstraintRecord,
     ConversationRecord
-} from '../../services/conversation_types'
+} from '../../types'
 import type { ChatLunaService } from '../../services/chat'
 
 export class ChatInterface {

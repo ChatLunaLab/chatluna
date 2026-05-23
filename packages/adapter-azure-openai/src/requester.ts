@@ -2,6 +2,7 @@ import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
+    EmbeddingsResult,
     ModelRequester,
     ModelRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
@@ -49,7 +50,7 @@ export class OpenAIRequester
 
     async embeddings(
         params: EmbeddingsRequestParams
-    ): Promise<number[] | number[][]> {
+    ): Promise<EmbeddingsResult> {
         const embeddingsUrl = `openai/deployments/${params.model}/embeddings?api-version=${this._pluginConfig[params.model].modelVersion}`
 
         const requestContext = createRequestContext(

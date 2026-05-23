@@ -10,8 +10,8 @@ import type {
     BindingRecord,
     ConversationRecord,
     ConstraintRecord
-} from '../src/services/conversation_types'
-import { ConversationResolutionError } from '../src/services/conversation_types'
+} from '../src/types'
+import { ConversationResolutionError } from '../src/types'
 import { gzipEncode } from '../src/utils/compression'
 import {
     createConversation,

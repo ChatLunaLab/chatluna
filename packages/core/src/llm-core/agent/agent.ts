@@ -129,7 +129,11 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                 prompt: text,
                 built: {
                     conversationId: input.conversationId,
-                    session: input.session
+                    requestId: input.requestId,
+                    userId: input.session?.userId,
+                    guildId: input.session?.guildId,
+                    channelId: input.session?.channelId,
+                    chatPlatform: input.session?.platform
                 }
             }
             const toolMask =

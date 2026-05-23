@@ -20,7 +20,7 @@ import {
     getSystemPromptVariables,
     PresetPostHandler
 } from 'koishi-plugin-chatluna/utils/string'
-import type { ConversationRecord } from '../../services/conversation_types'
+import type { ConversationRecord } from '../../types'
 import {
     MessageEditQueue,
     sendInitialMessage,

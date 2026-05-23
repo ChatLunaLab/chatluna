@@ -18,6 +18,8 @@ import {
     EmbeddingsRequestParams
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 
+import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+
 export async function apply(
     ctx: Context,
     config: Config,
@@ -79,8 +81,12 @@ class HuggingfaceClient extends PlatformEmbeddingsClient {
         })
     }
 
-    protected _createModel(model: string): ChatLunaEmbeddings {
+    protected _createModel(
+        model: string,
+        report: ModelUsageReporter
+    ): ChatLunaEmbeddings {
         return new ChatLunaEmbeddings({
+            usageReporter: report,
             maxConcurrency: 1,
             maxRetries: this._config.maxRetries,
             model,

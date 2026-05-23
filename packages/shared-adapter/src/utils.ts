@@ -103,26 +103,32 @@ export function createUsageMetadata(data: {
 export function openAIUsageToUsageMetadata(
     usage: ChatCompletionUsage
 ): UsageMetadata {
+    const prompt = usage.prompt_tokens_details
+    const completion = usage.completion_tokens_details
+
     return createUsageMetadata({
         inputTokens: usage.prompt_tokens,
         outputTokens: usage.completion_tokens,
         totalTokens: usage.total_tokens,
-        inputAudioTokens: usage.prompt_tokens_details?.audio_tokens,
-        outputAudioTokens: usage.completion_tokens_details?.audio_tokens,
-        cacheReadTokens: usage.prompt_tokens_details?.cached_tokens,
-        reasoningTokens: usage.completion_tokens_details?.reasoning_tokens
+        inputAudioTokens: prompt?.audio_tokens,
+        outputAudioTokens: completion?.audio_tokens,
+        cacheReadTokens: prompt?.cached_tokens,
+        reasoningTokens: completion?.reasoning_tokens
     })
 }
 
 export function openAIResponseUsageToUsageMetadata(
     usage: ResponseUsage
 ): UsageMetadata {
+    const input = usage.input_tokens_details
+    const output = usage.output_tokens_details
+
     return createUsageMetadata({
         inputTokens: usage.input_tokens,
         outputTokens: usage.output_tokens,
         totalTokens: usage.total_tokens,
-        cacheReadTokens: usage.input_tokens_details?.cached_tokens,
-        reasoningTokens: usage.output_tokens_details?.reasoning_tokens
+        cacheReadTokens: input?.cached_tokens,
+        reasoningTokens: output?.reasoning_tokens
     })
 }
 
