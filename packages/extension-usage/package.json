@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-usage",
     "description": "Usage records for ChatLuna model calls",
-    "version": "1.0.0-alpha.0",
+    "version": "1.0.0",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
