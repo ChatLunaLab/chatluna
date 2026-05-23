@@ -1,37 +1,36 @@
 <template>
     <div class="chatluna-usage-dashboard">
-        <section class="dashboard-shell">
-            <header class="dashboard-head">
-                <h2>Chatluna 数据看板</h2>
-                <span
-                    class="segment dashboard-segment"
-                    :style="{
-                        '--segment-index': scopes.findIndex(
-                            (item) => item.value === scope
-                        )
-                    }"
+        <header class="dashboard-head">
+            <h2>Chatluna 数据看板</h2>
+            <span
+                class="segment dashboard-segment"
+                :style="{
+                    '--segment-index': scopes.findIndex(
+                        (item) => item.value === scope
+                    )
+                }"
+            >
+                <span class="segment-thumb"></span>
+                <button
+                    v-for="item in scopes"
+                    :key="item.value"
+                    :class="{ active: scope === item.value }"
+                    type="button"
+                    @click="setScope(item.value)"
                 >
-                    <span class="segment-thumb"></span>
-                    <button
-                        v-for="item in scopes"
-                        :key="item.value"
-                        :class="{ active: scope === item.value }"
-                        type="button"
-                        @click="setScope(item.value)"
-                    >
-                        {{ item.label }}
-                    </button>
-                </span>
-            </header>
+                    {{ item.label }}
+                </button>
+            </span>
+        </header>
 
-            <number-grid />
+        <number-grid />
 
-            <section class="dashboard-main">
-                <div class="chart-panel">
-                    <k-slot name="chatluna-usage-chart"></k-slot>
-                </div>
-                <source-list />
-            </section>
+        <section class="dashboard-main">
+            <div class="chart-panel">
+                <k-slot name="chatluna-usage-chart"></k-slot>
+            </div>
+            <source-list />
+        </section>
 
             <k-card class="frameless chatluna-usage-table">
                 <template #header>
@@ -447,7 +446,6 @@
                     @size-change="changeSize"
                 />
             </k-card>
-        </section>
     </div>
 </template>
 
@@ -586,15 +584,6 @@ function changeSort(data: {
         box-shadow: var(--k-card-shadow);
         color: var(--k-text-dark);
     }
-}
-
-.dashboard-shell {
-    min-width: 0;
-    padding: 1rem;
-    border: 1px solid var(--k-card-border);
-    border-radius: 12px;
-    background: var(--k-card-bg);
-    box-shadow: var(--k-card-shadow);
 }
 
 .dashboard-head {
