@@ -166,7 +166,8 @@ export class ChatInterface {
                     conversationId: this._input.conversationId,
                     preset: this._input.preset,
                     threshold:
-                        this.chatluna.currentConfig.infiniteContextThreshold
+                        this.chatluna.currentConfig.infiniteContextThreshold,
+                    signal: arg.signal
                 })
                 if (result?.messages) {
                     await this._chatHistory.replaceMessages(result.messages)

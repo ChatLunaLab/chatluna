@@ -32,6 +32,7 @@ export interface CompressContextOptions {
     preset?: ComputedRef<PresetTemplate>
     threshold?: number
     force?: boolean
+    signal?: AbortSignal
 }
 
 /**
@@ -71,7 +72,7 @@ export async function compressIfNeeded(
                 originalMessageCount: messages.length,
                 remainingMessageCount: compacted.length,
                 messages:
-                    compacted.length !== messages.length ? compacted : undefined
+                    compacted !== messages ? compacted : undefined
             }
         }
 
@@ -90,8 +91,7 @@ export async function compressIfNeeded(
                 inputTokens,
                 originalMessageCount: messages.length,
                 remainingMessageCount: compacted.length,
-                messages:
-                    compacted.length !== messages.length ? compacted : undefined
+                messages: compacted !== messages ? compacted : undefined
             }
         }
 
@@ -119,7 +119,7 @@ export async function compressIfNeeded(
             originalMessageCount: messages.length,
             remainingMessageCount: compacted.length,
             messages:
-                compacted.length !== messages.length ? compacted : undefined
+                compacted !== messages ? compacted : undefined
         }
     }
 
@@ -133,11 +133,16 @@ export async function compressIfNeeded(
             originalMessageCount: messages.length,
             remainingMessageCount: compacted.length,
             messages:
-                compacted.length !== messages.length ? compacted : undefined
+                compacted !== messages ? compacted : undefined
         }
     }
 
-    const summary = await compressChunk(model, transcript, conversationId)
+    const summary = await compressChunk(
+        model,
+        transcript,
+        conversationId,
+        opts.signal
+    )
 
     if (!summary?.text.trim()) {
         return {
@@ -146,7 +151,7 @@ export async function compressIfNeeded(
             originalMessageCount: messages.length,
             remainingMessageCount: compacted.length,
             messages:
-                compacted.length !== messages.length ? compacted : undefined
+                compacted !== messages ? compacted : undefined
         }
     }
 

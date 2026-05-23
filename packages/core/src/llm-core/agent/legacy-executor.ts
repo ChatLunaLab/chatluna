@@ -313,7 +313,8 @@ export async function* runAgent(
                     options.input,
                     model,
                     config?.configurable?.['conversationId'] ?? '',
-                    inputTokens
+                    inputTokens,
+                    signal
                 )
             }
         }
@@ -386,7 +387,8 @@ async function compressScratchpad(
     input: ChainValues,
     model: ChatLunaChatModel,
     conversationId: string,
-    inputTokens: number
+    inputTokens: number,
+    signal?: AbortSignal
 ): Promise<void> {
     const invocation = model.invocationParams()
     const maxTokenLimit =
@@ -396,11 +398,11 @@ async function compressScratchpad(
 
     if (!maxTokenLimit || maxTokenLimit <= 0) return
 
-    // Only compress if input tokens exceed 84% of context window
-    if (inputTokens < maxTokenLimit * 0.84) return
+    // Only compress if input tokens exceed 85% of context window
+    if (inputTokens < maxTokenLimit * 0.85) return
 
     logger.info(
-        '[ScratchpadCompress] Input tokens %d exceed 84%% of %d, compressing',
+        '[ScratchpadCompress] Input tokens %d exceed 85%% of %d, compressing',
         inputTokens,
         maxTokenLimit
     )
@@ -436,7 +438,8 @@ async function compressScratchpad(
         const summary = await compressChunk(
             model,
             transcript,
-            conversationId
+            conversationId,
+            signal
         )
 
         if (!summary?.text.trim()) return

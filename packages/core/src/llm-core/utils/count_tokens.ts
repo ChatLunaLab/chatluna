@@ -277,7 +277,7 @@ export async function countMessagesTokens(
         }
     }
 
-    if (baselineIdx >= 0 && baselineIdx < messages.length - 1) {
+    if (baselineIdx >= 0) {
         // Count only messages from the baseline AI message onward
         // (the AI message's output becomes part of next call's input)
         let tail = 0
