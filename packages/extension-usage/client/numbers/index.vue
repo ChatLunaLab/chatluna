@@ -4,32 +4,6 @@
             <k-slot-item>
                 <article class="usage-metric-card request-card">
                     <span class="metric-title">
-                        <svg
-                            class="metric-title-icon"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                        >
-                            <ellipse
-                                cx="12"
-                                cy="5"
-                                rx="7"
-                                ry="3"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            />
-                            <path
-                                d="M5 5v14c0 1.66 3.13 3 7 3s7-1.34 7-3V5"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            />
-                            <path
-                                d="M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            />
-                        </svg>
                         <span class="metric-label">总请求数</span>
                     </span>
                     <strong class="metric-value">
@@ -51,27 +25,6 @@
 
                 <article class="usage-metric-card success-card">
                     <span class="metric-title">
-                        <svg
-                            class="metric-title-icon"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                        >
-                            <path
-                                d="M12 3 19 6v6c0 4.5-2.8 7.74-7 9-4.2-1.26-7-4.5-7-9V6l7-3Z"
-                                stroke="currentColor"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                            />
-                            <path
-                                d="m8.6 12.3 2.1 2.1 4.7-5"
-                                stroke="currentColor"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                            />
-                        </svg>
                         <span class="metric-label">成功率</span>
                     </span>
                     <strong class="metric-value">
@@ -94,11 +47,6 @@
                 <article class="usage-metric-card token-card">
                     <header>
                         <span class="metric-title token-title">
-                            <span class="token-icon" aria-hidden="true">
-                                <i></i>
-                                <i></i>
-                                <i></i>
-                            </span>
                             <span class="metric-label">Token 统计</span>
                         </span>
                     </header>
@@ -113,21 +61,6 @@
                 <article class="usage-metric-card accent-card">
                     <header class="accent-head">
                         <span class="metric-title">
-                            <svg
-                                class="metric-title-icon"
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    d="M3 12h4l2-6 4 12 2-6h6"
-                                    stroke="currentColor"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                />
-                            </svg>
                             <span class="metric-label">今日请求</span>
                         </span>
                     </header>
