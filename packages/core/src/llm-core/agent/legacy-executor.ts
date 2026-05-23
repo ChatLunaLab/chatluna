@@ -296,17 +296,26 @@ export async function* runAgent(
             }
         }
 
-        // Compress scratchpad if it's getting too large
+        // Compress scratchpad if input tokens are approaching context limit
         const model = config?.configurable?.['model'] as
             | ChatLunaChatModel
             | undefined
         if (model && scratchpad.length > 6) {
-            await compressScratchpad(
-                scratchpad,
-                options.input,
-                model,
-                config?.configurable?.['conversationId'] ?? ''
-            )
+            // Get input_tokens from the AI message that triggered tool calls
+            const aiMsg = output[0]?.['messageLog']?.[0] as
+                | AIMessage
+                | undefined
+            const inputTokens = (aiMsg as AIMessage)?.usage_metadata
+                ?.input_tokens
+            if (inputTokens > 0) {
+                await compressScratchpad(
+                    scratchpad,
+                    options.input,
+                    model,
+                    config?.configurable?.['conversationId'] ?? '',
+                    inputTokens
+                )
+            }
         }
 
         const last = newSteps[newSteps.length - 1]
@@ -367,21 +376,18 @@ export async function* runAgent(
 
 /**
  * Compress scratchpad when it grows too large during tool-call loops.
- * Summarizes early scratchpad entries + chat_history into a single summary,
- * replaces input.chat_history with [summary], and keeps only recent scratchpad entries.
+ * Uses the actual input_tokens from the last LLM call to determine if
+ * compression is needed. Summarizes early scratchpad entries + chat_history
+ * into a single summary, replaces input.chat_history, and keeps only recent
+ * scratchpad entries.
  */
 async function compressScratchpad(
     scratchpad: ScratchpadEntry[],
     input: ChainValues,
     model: ChatLunaChatModel,
-    conversationId: string
+    conversationId: string,
+    inputTokens: number
 ): Promise<void> {
-    const tokenCounter = (text: string) => model.getNumTokens(text)
-
-    // Estimate scratchpad tokens from text content
-    const scratchpadText = formatScratchpadForCount(scratchpad)
-    const scratchpadTokens = await tokenCounter(scratchpadText)
-
     const invocation = model.invocationParams()
     const maxTokenLimit =
         invocation.maxTokenLimit && invocation.maxTokenLimit > 0
@@ -390,12 +396,12 @@ async function compressScratchpad(
 
     if (!maxTokenLimit || maxTokenLimit <= 0) return
 
-    // Only compress if scratchpad exceeds 84% of context window
-    if (scratchpadTokens < maxTokenLimit * 0.84) return
+    // Only compress if input tokens exceed 84% of context window
+    if (inputTokens < maxTokenLimit * 0.84) return
 
     logger.info(
-        '[ScratchpadCompress] Scratchpad tokens %d exceed 84%% of %d, compressing',
-        scratchpadTokens,
+        '[ScratchpadCompress] Input tokens %d exceed 84%% of %d, compressing',
+        inputTokens,
         maxTokenLimit
     )
 
@@ -427,7 +433,11 @@ async function compressScratchpad(
     if (!transcript.trim()) return
 
     try {
-        const summary = await compressChunk(model, transcript, conversationId)
+        const summary = await compressChunk(
+            model,
+            transcript,
+            conversationId
+        )
 
         if (!summary?.text.trim()) return
 
@@ -451,28 +461,6 @@ async function compressScratchpad(
     } catch (e) {
         logger.error('[ScratchpadCompress] Failed:', e)
     }
-}
-
-function formatScratchpadForCount(entries: ScratchpadEntry[]): string {
-    return entries
-        .map((entry) => {
-            if ('messages' in entry) {
-                return entry.messages
-                    .map((m) =>
-                        typeof m.content === 'string'
-                            ? m.content
-                            : JSON.stringify(m.content)
-                    )
-                    .join('\n')
-            }
-            const obs = observationToMessageContent(entry.observation)
-            const input =
-                typeof entry.action.toolInput === 'string'
-                    ? entry.action.toolInput
-                    : JSON.stringify(entry.action.toolInput)
-            return `${entry.action.tool}: ${input}\n${obs}`
-        })
-        .join('\n')
 }
 
 function formatScratchpadTranscript(entries: ScratchpadEntry[]): string {
