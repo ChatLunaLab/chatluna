@@ -530,8 +530,7 @@ function changeSort(data: {
     prop: string
     order: 'ascending' | 'descending' | null
 }) {
-    if (data.prop !== 'totalTokens') return
-    listQuery.listSortBy = data.order ? 'totalTokens' : 'createdAt'
+    listQuery.listSortBy = data.order ? data.prop : 'createdAt'
     listQuery.listDesc = data.order !== 'ascending'
     listQuery.page = 1
 }

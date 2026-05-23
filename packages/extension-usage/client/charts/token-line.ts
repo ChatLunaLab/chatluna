@@ -13,7 +13,7 @@ import type { EChartsOption } from 'echarts'
 import type { ChatLunaUsage } from 'koishi-plugin-chatluna-usage'
 import { chartTheme } from '../theme'
 import { query, usage } from '../state'
-import { Tooltip } from './utils'
+import { escapeHtml, Tooltip } from './utils'
 
 type Tab =
     | 'token-rank'
@@ -50,15 +50,6 @@ function hour(date: string | Date) {
     const hours = String(value.getHours()).padStart(2, '0')
 
     return `${year}-${month}-${day} ${hours}:00`
-}
-
-function escapeHtml(str: string) {
-    return str
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
 }
 
 function tooltip(
@@ -475,6 +466,7 @@ export default (ctx: Context) => {
                         }
 
                         const idx = ++id
+                        const snapshot = { ...query }
                         const result: ChatLunaUsage.Record[] = []
                         let page = 1
                         loading.value = true
@@ -483,7 +475,7 @@ export default (ctx: Context) => {
                         try {
                             while (true) {
                                 const list = await send('chatluna-usage/list', {
-                                    ...query,
+                                    ...snapshot,
                                     page,
                                     pageSize: 1000
                                 })

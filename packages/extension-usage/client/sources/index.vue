@@ -80,6 +80,7 @@ import type { EChartsOption } from 'echarts'
 import type { ChatLunaUsage } from 'koishi-plugin-chatluna-usage'
 import { chartTheme } from '../theme'
 import { fmt, pct, query, usage } from '../state'
+import { escapeHtml } from '../charts/utils'
 
 interface SourceClick {
     data: {
@@ -138,7 +139,7 @@ const option = computed<EChartsOption>(() => {
                 }
 
                 return [
-                    row.name,
+                    escapeHtml(row.name),
                     `Token ${fmt(row.value)}`,
                     `调用 ${fmt(row.calls)}`,
                     `占比 ${pct(row.value / tokens.value)}`

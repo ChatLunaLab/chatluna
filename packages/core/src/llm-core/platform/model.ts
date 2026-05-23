@@ -312,7 +312,11 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         )
                     }
                     if (reportUsage) {
-                        await this._reportFailedUsage(options, promptTokens)
+                        await this._reportFailedUsage(
+                            options,
+                            promptTokens,
+                            latestTokenUsage.output_tokens
+                        )
                     }
                     throw error
                 }
@@ -594,7 +598,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     private async _reportFailedUsage(
         options: this['ParsedCallOptions'],
-        promptTokens = 0
+        promptTokens = 0,
+        outputTokens = 0
     ) {
         if (this._report == null) return
 
@@ -603,10 +608,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 callType: 'llm',
                 usageMetadata: {
                     input_tokens: promptTokens,
-                    output_tokens: 0,
-                    total_tokens: promptTokens
+                    output_tokens: outputTokens,
+                    total_tokens: promptTokens + outputTokens
                 },
-                estimated: promptTokens > 0,
+                estimated: promptTokens > 0 || outputTokens > 0,
                 success: false,
                 context: usageContextFromOptions(options)
             })

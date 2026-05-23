@@ -84,6 +84,7 @@ import { computed, defineAsyncComponent } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { chartTheme } from '../theme'
 import { fmt, pct, short, usage } from '../state'
+import { escapeHtml } from './utils'
 
 const VChart = defineAsyncComponent(() => import('./echarts'))
 
@@ -138,7 +139,7 @@ const option = computed<EChartsOption>(() => {
                     value: number
                 }
                 return [
-                    row.name,
+                    escapeHtml(row.name),
                     `Token ${fmt(row.value)}`,
                     `调用 ${fmt(row.calls)}`,
                     `占比 ${pct(row.value / tokens.value)}`
