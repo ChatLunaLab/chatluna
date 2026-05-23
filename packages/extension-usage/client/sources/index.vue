@@ -32,12 +32,16 @@
                                 :key="row.key"
                             >
                                 <el-tooltip
-                                    :content="row.label"
+                                    :content="
+                                        row.platform
+                                            ? `${row.platform}/${row.label}`
+                                            : row.label
+                                    "
                                     placement="top"
                                     effect="dark"
                                 >
                                     <span class="source-model-name">
-                                        {{ row.label }}
+                                        {{ row.platform ? `${row.platform}/` : '' }}{{ row.label }}
                                     </span>
                                 </el-tooltip>
                                 <strong>

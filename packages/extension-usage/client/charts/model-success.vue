@@ -24,12 +24,16 @@
                 </span>
                 <div class="model-success-meta">
                     <el-tooltip
-                        :content="row.label"
+                        :content="
+                            row.platform
+                                ? `${row.platform}/${row.label}`
+                                : row.label
+                        "
                         placement="top"
                         effect="dark"
                     >
                         <span class="model-success-name">
-                            {{ row.label }}
+                            {{ row.platform ? `${row.platform}/` : '' }}{{ row.label }}
                         </span>
                     </el-tooltip>
                     <span class="model-success-counts">

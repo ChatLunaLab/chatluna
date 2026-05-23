@@ -250,7 +250,7 @@ export default (ctx: Context) => {
                                     new Map()
 
                                 return {
-                                    name: model.label,
+                                    name: model.platform ? `${model.platform}/${model.label}` : model.label,
                                     type: 'bar',
                                     stack: 'tokens',
                                     barMaxWidth: 42,
@@ -299,7 +299,7 @@ export default (ctx: Context) => {
                             },
                             legend: {
                                 ...common.legend,
-                                data: rank.map((model) => model.label)
+                                data: rank.map((model) => model.platform ? `${model.platform}/${model.label}` : model.label)
                             },
                             grid: {
                                 top: 96,
@@ -310,7 +310,7 @@ export default (ctx: Context) => {
                             },
                             xAxis: {
                                 type: 'category',
-                                data: rank.map((model) => model.label),
+                                data: rank.map((model) => model.platform ? `${model.platform}/${model.label}` : model.label),
                                 axisLabel: {
                                     color: theme.muted
                                 },
@@ -325,7 +325,7 @@ export default (ctx: Context) => {
                             },
                             yAxis: common.yAxis,
                             series: rank.map((model, index) => ({
-                                name: model.label,
+                                name: model.platform ? `${model.platform}/${model.label}` : model.label,
                                 type: 'bar',
                                 stack: 'calls',
                                 barMaxWidth: 72,
@@ -387,7 +387,7 @@ export default (ctx: Context) => {
                                     new Map()
 
                                 return {
-                                    name: model.label,
+                                    name: model.platform ? `${model.platform}/${model.label}` : model.label,
                                     type: 'bar',
                                     stack: 'calls',
                                     barMaxWidth: 42,
@@ -437,7 +437,7 @@ export default (ctx: Context) => {
                                 hourly.value.data.get(model.key) ?? new Map()
 
                             return {
-                                name: model.label,
+                                name: model.platform ? `${model.platform}/${model.label}` : model.label,
                                 type: 'line',
                                 smooth: true,
                                 showSymbol: true,

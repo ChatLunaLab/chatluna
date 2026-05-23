@@ -35,12 +35,16 @@
                                 }"
                             ></span>
                             <el-tooltip
-                                :content="scope.row.label"
+                                :content="
+                                    scope.row.platform
+                                        ? `${scope.row.platform}/${scope.row.label}`
+                                        : scope.row.label
+                                "
                                 placement="top"
                                 effect="dark"
                             >
                                 <span class="model-pie-name">
-                                    {{ scope.row.label }}
+                                    {{ scope.row.platform ? `${scope.row.platform}/` : '' }}{{ scope.row.label }}
                                 </span>
                             </el-tooltip>
                         </span>
@@ -172,7 +176,7 @@ const option = computed<EChartsOption>(() => {
                 data: rows.value.map((row) => ({
                     calls: row.calls,
                     key: row.key,
-                    name: row.label,
+                    name: row.platform ? `${row.platform}/${row.label}` : row.label,
                     value: row.totalTokens
                 }))
             }
