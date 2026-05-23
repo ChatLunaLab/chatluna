@@ -6,49 +6,12 @@ import {
     PromptPipelineMiddleware
 } from './context_manager'
 import { logger } from 'koishi-plugin-chatluna'
-import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { messageTypeToOpenAIRole } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import {
+    countMessageTokens,
+    countMessagesTokens
+} from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 
-// ---------------------------------------------------------------------------
-// Token counting helpers (shared by multiple middlewares)
-// ---------------------------------------------------------------------------
-
-export async function countMessageTokens(
-    message: BaseMessage,
-    tokenCounter: (text: string) => Promise<number>
-): Promise<number> {
-    let content = getMessageContent(message.content)
-
-    if (
-        content.includes('![image]') &&
-        content.includes('base64') &&
-        message.additional_kwargs?.['images']
-    ) {
-        content = content.replaceAll(/!\[.*?\]\(.*?\)/g, '')
-        message.content = content
-    }
-
-    let result =
-        (await tokenCounter(getMessageContent(message.content))) +
-        (await tokenCounter(messageTypeToOpenAIRole(message.getType())))
-
-    if (message.name) {
-        result += await tokenCounter(message.name)
-    }
-
-    return result
-}
-
-export async function countMessagesTokens(
-    messages: BaseMessage[],
-    tokenCounter: (text: string) => Promise<number>
-): Promise<number> {
-    let total = 0
-    for (const message of messages) {
-        total += await countMessageTokens(message, tokenCounter)
-    }
-    return total
-}
+export { countMessageTokens, countMessagesTokens }
 
 // ---------------------------------------------------------------------------
 // system_prompts pipeline middleware

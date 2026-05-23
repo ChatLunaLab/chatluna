@@ -1,18 +1,18 @@
-/* eslint-disable max-len */
 import {
     BaseMessage,
     HumanMessage,
     mapStoredMessageToChatMessage
 } from '@langchain/core/messages'
-import { ComputedRef } from '@vue/reactivity'
 import { logger } from 'koishi-plugin-chatluna'
-import { ChatLunaLLMChainWrapper } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import { KoishiChatMessageHistory } from 'koishi-plugin-chatluna/llm-core/memory/message'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { ChatLunaInfiniteContextChain } from '../chain/infinite_context_chain'
+import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
+import { countMessagesTokens } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
+import { compressChunk } from '../chain/infinite_context_chain'
 import type { ChatLunaMessageMeta } from '../../types'
+import { ComputedRef } from '@vue/reactivity'
 
 export interface CompressContextResult {
     inputTokens: number
@@ -25,298 +25,301 @@ export interface CompressContextResult {
     messages?: BaseMessage[]
 }
 
-function formatTranscript(messages: BaseMessage[]) {
-    return messages
-        .map((message) => {
-            const role = message.getType().toUpperCase()
-            const name = message.name ? ` (${message.name})` : ''
-            const content = getMessageContent(message.content).trim()
-            return `[${role}${name}]\n${content || '(empty)'}`
-        })
-        .join('\n\n---\n\n')
-}
-
-export interface InfiniteContextManagerOptions {
+export interface CompressContextOptions {
     chatHistory: KoishiChatMessageHistory
+    model: ChatLunaChatModel
     conversationId: string
     preset?: ComputedRef<PresetTemplate>
     threshold?: number
+    force?: boolean
 }
 
-export class InfiniteContextManager {
-    private _chain?: ChatLunaInfiniteContextChain
+/**
+ * Compress chat history when token usage exceeds threshold.
+ * Produces structured output: [summary message, ...recent messages].
+ */
+export async function compressIfNeeded(
+    opts: CompressContextOptions
+): Promise<CompressContextResult> {
+    const { chatHistory, model, conversationId, force } = opts
 
-    constructor(private readonly options: InfiniteContextManagerOptions) {}
+    const messages = await chatHistory.getMessages()
 
-    async compressIfNeeded(
-        wrapper: ChatLunaLLMChainWrapper,
-        force = false
-    ): Promise<CompressContextResult> {
-        const model = wrapper.model
+    if (messages.length === 0) {
+        return emptyResult()
+    }
 
-        if (!model) {
+    // Step 1: compact expired tool results in-place
+    const compacted = compactExpiredToolResults(messages)
+
+    // Step 2: count tokens
+    const tokenCounter = (text: string) => model.getNumTokens(text)
+    const inputTokens = await countMessagesTokens(compacted, tokenCounter)
+
+    // Step 3: determine if compression is needed
+    if (!force) {
+        const invocation = model.invocationParams()
+        const maxTokenLimit =
+            invocation.maxTokenLimit && invocation.maxTokenLimit > 0
+                ? invocation.maxTokenLimit
+                : model.getModelMaxContextSize()
+
+        if (!maxTokenLimit || maxTokenLimit <= 0) {
             return {
-                inputTokens: 0,
-                outputTokens: 0,
-                reducedTokens: 0,
-                reducedPercent: 0,
-                compressed: false,
-                originalMessageCount: 0,
-                remainingMessageCount: 0
-            }
-        }
-
-        const messages = await this.options.chatHistory.getMessages()
-
-        if (messages.length === 0) {
-            return {
-                inputTokens: 0,
-                outputTokens: 0,
-                reducedTokens: 0,
-                reducedPercent: 0,
-                compressed: false,
-                originalMessageCount: 0,
-                remainingMessageCount: 0
-            }
-        }
-
-        const inputTokens = await this._countMessagesTokens(model, messages)
-        const expiredToolResultText =
-            'This tool result expired after 1 hour, so the original output was removed.'
-        let compactedCount = 0
-        const compactedIndexes = new Set<number>()
-
-        for (let idx = 0; idx < messages.length; idx++) {
-            const message = messages[idx]
-
-            if (message.getType() !== 'tool') {
-                continue
-            }
-
-            const meta = message.response_metadata?.chatluna as
-                | ChatLunaMessageMeta
-                | undefined
-
-            if (meta?.createdAt == null) {
-                continue
-            }
-
-            if (Date.now() - new Date(meta.createdAt).getTime() < 3600000) {
-                continue
-            }
-
-            if (
-                getMessageContent(message.content).trim() ===
-                expiredToolResultText
-            ) {
-                continue
-            }
-
-            compactedCount++
-            compactedIndexes.add(idx)
-        }
-
-        const compactedMessages =
-            compactedCount > 0
-                ? messages.map((message, idx) => {
-                      const cloned = mapStoredMessageToChatMessage(
-                          message.toDict()
-                      )
-
-                      if (compactedIndexes.has(idx)) {
-                          cloned.content = expiredToolResultText
-                      }
-
-                      return cloned
-                  })
-                : messages
-        const nextMessages = compactedCount > 0 ? compactedMessages : messages
-        const compactedTokens =
-            compactedCount > 0
-                ? await this._countMessagesTokens(model, nextMessages)
-                : inputTokens
-        let presetTokens = 0
-        let threshold: number | undefined
-
-        if (compactedCount > 0) {
-            logger.info(
-                '[InfiniteContext] Replaced %d expired tool results before compression',
-                compactedCount
-            )
-        }
-
-        if (!force) {
-            const invocation = model.invocationParams()
-            const maxTokenLimit =
-                invocation.maxTokenLimit && invocation.maxTokenLimit > 0
-                    ? invocation.maxTokenLimit
-                    : model.getModelMaxContextSize()
-
-            if (!maxTokenLimit || maxTokenLimit <= 0) {
-                return {
-                    inputTokens,
-                    outputTokens: compactedTokens,
-                    reducedTokens: inputTokens - compactedTokens,
-                    reducedPercent:
-                        inputTokens > 0
-                            ? ((inputTokens - compactedTokens) / inputTokens) *
-                              100
-                            : 0,
-                    compressed: false,
-                    originalMessageCount: messages.length,
-                    remainingMessageCount: nextMessages.length,
-                    messages: compactedCount > 0 ? nextMessages : undefined
-                }
-            }
-
-            const presetMessages = Array.isArray(
-                this.options.preset?.value?.messages
-            )
-                ? (this.options.preset?.value.messages as BaseMessage[])
-                : []
-
-            presetTokens = await this._countMessagesTokens(
-                model,
-                presetMessages
-            )
-            threshold = Math.floor(
-                maxTokenLimit * (this.options.threshold ?? 0.85)
-            )
-
-            if (compactedTokens + presetTokens <= threshold) {
-                return {
-                    inputTokens,
-                    outputTokens: compactedTokens,
-                    reducedTokens: inputTokens - compactedTokens,
-                    reducedPercent:
-                        inputTokens > 0
-                            ? ((inputTokens - compactedTokens) / inputTokens) *
-                              100
-                            : 0,
-                    compressed: false,
-                    originalMessageCount: messages.length,
-                    remainingMessageCount: nextMessages.length,
-                    messages: compactedCount > 0 ? nextMessages : undefined
-                }
-            }
-
-            logger.info(
-                '[InfiniteContext] Start compression with history tokens: %d, total tokens: %d, threshold: %d',
-                compactedTokens,
-                compactedTokens + presetTokens,
-                threshold
-            )
-        } else {
-            logger.info(
-                '[InfiniteContext] Start manual compression with history tokens: %d',
-                compactedTokens
-            )
-        }
-
-        const transcript = formatTranscript(nextMessages)
-
-        if (!transcript.trim()) {
-            return {
+                ...emptyResult(),
                 inputTokens,
-                outputTokens: compactedTokens,
-                reducedTokens: inputTokens - compactedTokens,
-                reducedPercent:
-                    inputTokens > 0
-                        ? ((inputTokens - compactedTokens) / inputTokens) * 100
-                        : 0,
-                compressed: false,
                 originalMessageCount: messages.length,
-                remainingMessageCount: nextMessages.length,
-                messages: compactedCount > 0 ? nextMessages : undefined
+                remainingMessageCount: compacted.length,
+                messages:
+                    compacted.length !== messages.length
+                        ? compacted
+                        : undefined
             }
         }
 
-        const summary = await this._ensureInfiniteContextChain(
-            wrapper
-        ).compressChunk({
-            chunk: transcript,
-            conversationId: this.options.conversationId
-        })
-
-        if (!summary?.text.trim()) {
-            return {
-                inputTokens,
-                outputTokens: compactedTokens,
-                reducedTokens: inputTokens - compactedTokens,
-                reducedPercent:
-                    inputTokens > 0
-                        ? ((inputTokens - compactedTokens) / inputTokens) * 100
-                        : 0,
-                compressed: false,
-                originalMessageCount: messages.length,
-                remainingMessageCount: nextMessages.length,
-                messages: compactedCount > 0 ? nextMessages : undefined
-            }
-        }
-
-        const message = new HumanMessage({
-            content: summary.text.trim(),
-            name: 'infinite_context',
-            additional_kwargs: {
-                source: 'infinite-context'
-            }
-        })
-
-        const outputTokens = summary.usageMetadata?.output_tokens ?? 0
-        const reducedTokens = inputTokens - outputTokens
-        const reducedPercent =
-            inputTokens > 0 ? (reducedTokens / inputTokens) * 100 : 0
-
-        logger.info(
-            '[InfiniteContext] Compressed history from %d to %d (-%d, %s%%)',
-            inputTokens,
-            outputTokens,
-            reducedTokens,
-            reducedPercent.toFixed(2)
+        const presetMessages = Array.isArray(opts.preset?.value?.messages)
+            ? (opts.preset.value.messages as BaseMessage[])
+            : []
+        const presetTokens = await countMessagesTokens(
+            presetMessages,
+            tokenCounter
+        )
+        const threshold = Math.floor(
+            maxTokenLimit * (opts.threshold ?? 0.85)
         )
 
-        if (threshold != null && outputTokens + presetTokens > threshold) {
-            logger.warn(
-                '[InfiniteContext] Tokens remain above threshold after compression: %d > %d',
-                outputTokens + presetTokens,
-                threshold
-            )
+        if (inputTokens + presetTokens <= threshold) {
+            return {
+                ...emptyResult(),
+                inputTokens,
+                originalMessageCount: messages.length,
+                remainingMessageCount: compacted.length,
+                messages:
+                    compacted.length !== messages.length
+                        ? compacted
+                        : undefined
+            }
         }
 
-        return {
+        logger.info(
+            '[InfiniteContext] Start compression: history=%d tokens, total=%d, threshold=%d',
             inputTokens,
-            outputTokens,
-            reducedTokens,
-            reducedPercent,
-            compressed: true,
+            inputTokens + presetTokens,
+            threshold
+        )
+    } else {
+        logger.info(
+            '[InfiniteContext] Manual compression: history=%d tokens',
+            inputTokens
+        )
+    }
+
+    // Step 4: split messages into [to-compress, to-keep]
+    // Keep the most recent complete rounds that fit within 40% of threshold
+    const { toCompress, toKeep } = splitMessages(compacted)
+
+    if (toCompress.length === 0) {
+        return {
+            ...emptyResult(),
+            inputTokens,
             originalMessageCount: messages.length,
-            remainingMessageCount: 1,
-            messages: [message]
+            remainingMessageCount: compacted.length,
+            messages:
+                compacted.length !== messages.length ? compacted : undefined
         }
     }
 
-    private async _countMessagesTokens(
-        model: ChatLunaChatModel,
-        messages: BaseMessage[]
-    ): Promise<number> {
-        let total = 0
+    // Step 5: generate summary from early messages
+    const transcript = formatTranscript(toCompress)
 
-        for (const message of messages) {
-            total += await model.countMessageTokens(message)
+    if (!transcript.trim()) {
+        return {
+            ...emptyResult(),
+            inputTokens,
+            originalMessageCount: messages.length,
+            remainingMessageCount: compacted.length,
+            messages:
+                compacted.length !== messages.length ? compacted : undefined
         }
-
-        return total
     }
 
-    private _ensureInfiniteContextChain(
-        wrapper: ChatLunaLLMChainWrapper
-    ): ChatLunaInfiniteContextChain {
-        if (!this._chain || this._chain.model !== wrapper.model) {
-            this._chain = ChatLunaInfiniteContextChain.fromLLM(wrapper.model, {
-                historyMemory: wrapper.historyMemory
-            })
-        }
+    const summary = await compressChunk(model, transcript, conversationId)
 
-        return this._chain
+    if (!summary?.text.trim()) {
+        return {
+            ...emptyResult(),
+            inputTokens,
+            originalMessageCount: messages.length,
+            remainingMessageCount: compacted.length,
+            messages:
+                compacted.length !== messages.length ? compacted : undefined
+        }
     }
+
+    // Step 6: build structured output
+    const summaryMessage = new HumanMessage({
+        content: summary.text.trim(),
+        name: 'infinite_context',
+        additional_kwargs: {
+            source: 'infinite-context'
+        }
+    })
+
+    const resultMessages = [summaryMessage, ...toKeep]
+    const outputTokens = await countMessagesTokens(resultMessages, tokenCounter)
+    const reducedTokens = inputTokens - outputTokens
+    const reducedPercent =
+        inputTokens > 0 ? (reducedTokens / inputTokens) * 100 : 0
+
+    logger.info(
+        '[InfiniteContext] Compressed: %d → %d tokens (-%d, %.2f%%), kept %d recent messages',
+        inputTokens,
+        outputTokens,
+        reducedTokens,
+        reducedPercent,
+        toKeep.length
+    )
+
+    return {
+        inputTokens,
+        outputTokens,
+        reducedTokens,
+        reducedPercent,
+        compressed: true,
+        originalMessageCount: messages.length,
+        remainingMessageCount: resultMessages.length,
+        messages: resultMessages
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function emptyResult(): CompressContextResult {
+    return {
+        inputTokens: 0,
+        outputTokens: 0,
+        reducedTokens: 0,
+        reducedPercent: 0,
+        compressed: false,
+        originalMessageCount: 0,
+        remainingMessageCount: 0
+    }
+}
+
+/**
+ * Replace expired (>1h) tool result content with a placeholder.
+ * Returns a new array if any were compacted, otherwise the original.
+ */
+function compactExpiredToolResults(messages: BaseMessage[]): BaseMessage[] {
+    const placeholder =
+        'This tool result expired after 1 hour, so the original output was removed.'
+    let changed = false
+
+    const result = messages.map((msg) => {
+        if (msg.getType() !== 'tool') return msg
+
+        const meta = msg.response_metadata?.chatluna as
+            | ChatLunaMessageMeta
+            | undefined
+        if (meta?.createdAt == null) return msg
+        if (Date.now() - new Date(meta.createdAt).getTime() < 3600000)
+            return msg
+        if (getMessageContent(msg.content).trim() === placeholder) return msg
+
+        changed = true
+        const cloned = msg.toDict()
+        cloned.data.content = placeholder
+        return mapStoredMessageToChatMessage(cloned)
+    })
+
+    if (!changed) return messages
+
+    logger.info(
+        '[InfiniteContext] Compacted %d expired tool results',
+        result.filter((_, i) => result[i] !== messages[i]).length
+    )
+
+    return result
+}
+
+/**
+ * Split messages into [toCompress, toKeep].
+ * Keep the most recent complete conversation rounds.
+ * A round starts at a user message (HumanMessage or ChatLuna user message).
+ */
+function splitMessages(messages: BaseMessage[]): {
+    toCompress: BaseMessage[]
+    toKeep: BaseMessage[]
+} {
+    // Build rounds from the end
+    const rounds: BaseMessage[][] = []
+    let current: BaseMessage[] = []
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        current.unshift(msg)
+
+        const isRoundStart =
+            isChatLunaUserMessage(msg) || msg.getType() === 'human'
+
+        if (isRoundStart && i > 0) {
+            rounds.unshift(current)
+            current = []
+        }
+    }
+
+    if (current.length > 0) {
+        rounds.unshift(current)
+    }
+
+    // Keep at least the last round, at most last 3 rounds
+    const keepCount = Math.min(Math.max(1, Math.ceil(rounds.length * 0.3)), 3)
+    const splitIdx = rounds.length - keepCount
+
+    const toCompress = rounds.slice(0, splitIdx).flat()
+    const toKeep = rounds.slice(splitIdx).flat()
+
+    return { toCompress, toKeep }
+}
+
+/**
+ * Format messages into a transcript string for the LLM summarizer.
+ * Preserves tool-call structure information.
+ */
+function formatTranscript(messages: BaseMessage[]): string {
+    return messages
+        .map((msg) => {
+            const role = msg.getType().toUpperCase()
+            const name = msg.name ? ` (${msg.name})` : ''
+            const content = getMessageContent(msg.content).trim()
+
+            // Include tool_calls info for AI messages
+            const toolCalls = msg['tool_calls'] as
+                | Array<{ name: string; args: unknown }>
+                | undefined
+            let toolInfo = ''
+            if (toolCalls?.length > 0) {
+                toolInfo =
+                    '\nTool calls: ' +
+                    toolCalls
+                        .map((tc) => {
+                            const args = JSON.stringify(tc.args)
+                            const truncated =
+                                args.length > 200
+                                    ? args.slice(0, 200) + '...'
+                                    : args
+                            return `${tc.name}(${truncated})`
+                        })
+                        .join(', ')
+            }
+
+            // Include tool_call_id for tool messages
+            const toolCallId = msg['tool_call_id'] as string | undefined
+            const idInfo = toolCallId ? ` [call_id: ${toolCallId}]` : ''
+
+            return `[${role}${name}${idInfo}]\n${content || '(empty)'}${toolInfo}`
+        })
+        .join('\n\n---\n\n')
 }

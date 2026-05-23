@@ -1,4 +1,4 @@
-import { BaseMessage } from '@langchain/core/messages'
+import { AIMessage, BaseMessage } from '@langchain/core/messages'
 import {
     ChatLunaContextManagerService,
     PromptContextRuntime,
@@ -16,6 +16,9 @@ import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
  * Truncates conversation history to fit within the token budget, keeping
  * the most recent complete turns.  Also accounts for input + scratchpad
  * token consumption so that downstream stages know the remaining budget.
+ *
+ * Uses usage_metadata from AI messages as a baseline to avoid re-counting
+ * tokens for messages that were already counted by the LLM.
  */
 export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
     return async (runtime: PromptContextRuntime, next) => {
@@ -64,27 +67,98 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
         let truncated = false
         let usedTokens = runtime.usedTokens
 
-        for (let i = rounds.length - 1; i >= 0; i--) {
-            const round = rounds[i]
-            const roundTokens = await countMessagesTokens(
-                round,
-                runtime.tokenCounter
-            )
-            const exceedsLimit = hasValidLimit
-                ? usedTokens + roundTokens > availableLimit
-                : false
+        // Find baseline: last AI message with usage_metadata in chatHistory
+        // Everything up to and including that message has a known token count
+        const baseline = findBaseline(chatHistory, runtime.usedTokens)
 
-            if (exceedsLimit && selectedRounds.length > 0) {
-                truncated = true
-                break
+        if (baseline && hasValidLimit) {
+            // We know the total tokens for all messages up to baseline index.
+            // Find which rounds are fully before the baseline, which are after.
+            let msgIdx = 0
+            let baselineRoundIdx = -1
+            for (let r = 0; r < rounds.length; r++) {
+                msgIdx += rounds[r].length
+                if (msgIdx > baseline.idx) {
+                    baselineRoundIdx = r
+                    break
+                }
             }
+            if (baselineRoundIdx < 0) baselineRoundIdx = rounds.length - 1
 
-            usedTokens += roundTokens
-            selectedRounds.unshift(round)
+            // Rounds from baselineRoundIdx onward: count individually
+            // Rounds before baselineRoundIdx: total is baseline.tokens
+            // We iterate from the end, adding rounds until budget is exceeded
+            for (let i = rounds.length - 1; i >= 0; i--) {
+                const round = rounds[i]
+                let roundTokens: number
 
-            if (exceedsLimit) {
-                truncated = true
-                break
+                if (i <= baselineRoundIdx && selectedRounds.length === 0) {
+                    // First time hitting baseline region from the end:
+                    // all rounds [0..baselineRoundIdx] together = baseline.tokens
+                    // Add them all at once
+                    const bulkRounds = rounds.slice(0, baselineRoundIdx + 1)
+                    const bulkTokens = baseline.tokens
+                    const exceedsLimit = usedTokens + bulkTokens > availableLimit
+
+                    if (exceedsLimit && selectedRounds.length > 0) {
+                        truncated = true
+                        break
+                    }
+
+                    usedTokens += bulkTokens
+                    for (let j = 0; j <= baselineRoundIdx; j++) {
+                        selectedRounds.unshift(bulkRounds[baselineRoundIdx - j])
+                    }
+
+                    if (exceedsLimit) {
+                        truncated = true
+                    }
+                    break
+                }
+
+                roundTokens = await countMessagesTokens(
+                    round,
+                    runtime.tokenCounter
+                )
+                const exceedsLimit = usedTokens + roundTokens > availableLimit
+
+                if (exceedsLimit && selectedRounds.length > 0) {
+                    truncated = true
+                    break
+                }
+
+                usedTokens += roundTokens
+                selectedRounds.unshift(round)
+
+                if (exceedsLimit) {
+                    truncated = true
+                    break
+                }
+            }
+        } else {
+            // No baseline, fallback to counting each round
+            for (let i = rounds.length - 1; i >= 0; i--) {
+                const round = rounds[i]
+                const roundTokens = await countMessagesTokens(
+                    round,
+                    runtime.tokenCounter
+                )
+                const exceedsLimit = hasValidLimit
+                    ? usedTokens + roundTokens > availableLimit
+                    : false
+
+                if (exceedsLimit && selectedRounds.length > 0) {
+                    truncated = true
+                    break
+                }
+
+                usedTokens += roundTokens
+                selectedRounds.unshift(round)
+
+                if (exceedsLimit) {
+                    truncated = true
+                    break
+                }
             }
         }
 
@@ -115,6 +189,34 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
 
         await next()
     }
+}
+
+/**
+ * Find the last AI message with usage_metadata.input_tokens in the history.
+ * Returns the index and the estimated history-only tokens up to that point.
+ */
+function findBaseline(
+    messages: BaseMessage[],
+    preAccountedTokens: number
+): { idx: number; tokens: number } | null {
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        if (msg.getType() !== 'ai') continue
+
+        const usage = (msg as AIMessage).usage_metadata
+        if (usage?.input_tokens > 0) {
+            // input_tokens includes system prompts + history + input.
+            // preAccountedTokens already covers system + input + scratchpad.
+            // The history portion is roughly: input_tokens - (system + input)
+            // But we don't know exact system tokens here. Use a simpler model:
+            // The baseline tells us "all messages up to this AI response
+            // plus the AI response itself" consumed input_tokens total input.
+            // For truncation purposes, we treat it as the token cost of
+            // messages[0..i] in the history array.
+            return { idx: i, tokens: usage.input_tokens - preAccountedTokens }
+        }
+    }
+    return null
 }
 
 /**

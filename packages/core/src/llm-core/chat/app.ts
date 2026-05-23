@@ -24,8 +24,10 @@ import {
     initModel,
     supportChatMode
 } from './helper'
-import type { CompressContextResult } from './infinite_context'
-import { InfiniteContextManager } from './infinite_context'
+import {
+    type CompressContextResult,
+    compressIfNeeded
+} from './infinite_context'
 import type {
     ArchiveRecord,
     BindingRecord,
@@ -41,7 +43,6 @@ export class ChatInterface {
     private _embeddings: ComputedRef<Embeddings>
 
     private _historyMemory?: BufferMemory
-    private _infiniteContextManager?: InfiniteContextManager
 
     private _chatCount = 0
 
@@ -58,7 +59,6 @@ export class ChatInterface {
         this._chain = undefined
         this._embeddings = undefined
         this._historyMemory = undefined
-        this._infiniteContextManager = undefined
     }
 
     private async handleChatError(
@@ -157,10 +157,17 @@ export class ChatInterface {
             hasSavedUser = true
         }
 
-        try {
-            if (this.chatluna.currentConfig.infiniteContext) {
-                const manager = this._ensureInfiniteContextManager()
-                const result = await manager?.compressIfNeeded(wrapper)
+        // Compress chat history before starting
+        if (this.chatluna.currentConfig.infiniteContext && this._chatHistory) {
+            try {
+                const result = await compressIfNeeded({
+                    chatHistory: this._chatHistory,
+                    model: wrapper.model,
+                    conversationId: this._input.conversationId,
+                    preset: this._input.preset,
+                    threshold:
+                        this.chatluna.currentConfig.infiniteContextThreshold
+                })
                 if (result?.messages) {
                     await this._chatHistory.replaceMessages(result.messages)
                 }
@@ -170,9 +177,9 @@ export class ChatInterface {
                         result
                     )
                 }
+            } catch (error) {
+                logger.error('Error compressing context:', error)
             }
-        } catch (error) {
-            logger.error('Error compressing context:', error)
         }
 
         const response = (await wrapper.call({
@@ -387,15 +394,21 @@ export class ChatInterface {
 
     async compressContext(force = false): Promise<CompressContextResult> {
         const wrapper = await this.getChatLunaLLMChainWrapper()
-        const manager = this._ensureInfiniteContextManager()
-        if (!manager) {
+        if (!this._chatHistory) {
             throw new ChatLunaError(
                 ChatLunaErrorCode.CHAT_HISTORY_INIT_ERROR,
                 new Error('Chat history is not initialized')
             )
         }
 
-        const result = await manager.compressIfNeeded(wrapper, force)
+        const result = await compressIfNeeded({
+            chatHistory: this._chatHistory,
+            model: wrapper.model,
+            conversationId: this._input.conversationId,
+            preset: this._input.preset,
+            threshold: this.chatluna.currentConfig.infiniteContextThreshold,
+            force
+        })
         if (result.messages) {
             await this._chatHistory.replaceMessages(result.messages)
         }
@@ -440,25 +453,6 @@ export class ChatInterface {
         })
 
         return this._historyMemory
-    }
-
-    private _ensureInfiniteContextManager():
-        | InfiniteContextManager
-        | undefined {
-        if (!this._chatHistory) {
-            return undefined
-        }
-
-        if (!this._infiniteContextManager) {
-            this._infiniteContextManager = new InfiniteContextManager({
-                chatHistory: this._chatHistory,
-                conversationId: this._input.conversationId,
-                preset: this._input.preset,
-                threshold: this.chatluna.currentConfig.infiniteContextThreshold
-            })
-        }
-
-        return this._infiniteContextManager
     }
 }
 

@@ -1,5 +1,5 @@
 import { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager'
-import { AIMessage, AIMessageChunk } from '@langchain/core/messages'
+import { AIMessage, AIMessageChunk, BaseMessage, HumanMessage } from '@langchain/core/messages'
 import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {
@@ -34,6 +34,8 @@ import {
     MessageQueue,
     ScratchpadEntry
 } from './types'
+import { compressChunk } from '../chain/infinite_context_chain'
+import type { ChatLunaChatModel } from '../platform/model'
 
 async function executeTools(
     actions: AgentAction[],
@@ -289,6 +291,19 @@ export async function* runAgent(
             }
         }
 
+        // Compress scratchpad if it's getting too large
+        const model = config?.configurable?.['model'] as
+            | ChatLunaChatModel
+            | undefined
+        if (model && scratchpad.length > 6) {
+            await compressScratchpad(
+                scratchpad,
+                options.input,
+                model,
+                config?.configurable?.['conversationId'] ?? ''
+            )
+        }
+
         const last = newSteps[newSteps.length - 1]
         const tool = last ? toolMap[last.action.tool?.toLowerCase()] : undefined
 
@@ -343,6 +358,146 @@ export async function* runAgent(
         log: '',
         steps
     }
+}
+
+/**
+ * Compress scratchpad when it grows too large during tool-call loops.
+ * Summarizes early scratchpad entries + chat_history into a single summary,
+ * replaces input.chat_history with [summary], and keeps only recent scratchpad entries.
+ */
+async function compressScratchpad(
+    scratchpad: ScratchpadEntry[],
+    input: ChainValues,
+    model: ChatLunaChatModel,
+    conversationId: string
+): Promise<void> {
+    const tokenCounter = (text: string) => model.getNumTokens(text)
+
+    // Estimate scratchpad tokens from text content
+    const scratchpadText = formatScratchpadForCount(scratchpad)
+    const scratchpadTokens = await tokenCounter(scratchpadText)
+
+    const invocation = model.invocationParams()
+    const maxTokenLimit =
+        invocation.maxTokenLimit && invocation.maxTokenLimit > 0
+            ? invocation.maxTokenLimit
+            : model.getModelMaxContextSize()
+
+    if (!maxTokenLimit || maxTokenLimit <= 0) return
+
+    // Only compress if scratchpad exceeds 50% of context window
+    if (scratchpadTokens < maxTokenLimit * 0.5) return
+
+    logger.info(
+        '[ScratchpadCompress] Scratchpad tokens %d exceed 50%% of %d, compressing',
+        scratchpadTokens,
+        maxTokenLimit
+    )
+
+    // Keep the last 3 entries (most recent tool calls), compress the rest
+    const keepCount = Math.min(3, scratchpad.length)
+    const toCompress = scratchpad.slice(0, scratchpad.length - keepCount)
+
+    if (toCompress.length === 0) return
+
+    // Build transcript from chat_history + early scratchpad
+    const chatHistory = (input['chat_history'] ?? []) as BaseMessage[]
+    const chatTranscript = chatHistory
+        .map((msg) => {
+            const role = msg.getType().toUpperCase()
+            const name = msg.name ? ` (${msg.name})` : ''
+            const content =
+                typeof msg.content === 'string'
+                    ? msg.content.trim()
+                    : JSON.stringify(msg.content)
+            return `[${role}${name}]\n${content || '(empty)'}`
+        })
+        .join('\n\n---\n\n')
+
+    const scratchTranscript = formatScratchpadTranscript(toCompress)
+    const transcript = chatTranscript
+        ? `${chatTranscript}\n\n---\n\n${scratchTranscript}`
+        : scratchTranscript
+
+    if (!transcript.trim()) return
+
+    try {
+        const summary = await compressChunk(
+            model,
+            transcript,
+            conversationId
+        )
+
+        if (!summary?.text.trim()) return
+
+        // Replace chat_history with summary
+        input['chat_history'] = [
+            new HumanMessage({
+                content: summary.text.trim(),
+                name: 'infinite_context',
+                additional_kwargs: { source: 'scratchpad-compression' }
+            })
+        ]
+
+        // Trim scratchpad: remove early entries, keep recent
+        scratchpad.splice(0, scratchpad.length - keepCount)
+
+        logger.info(
+            '[ScratchpadCompress] Compressed %d entries, kept %d',
+            toCompress.length,
+            keepCount
+        )
+    } catch (e) {
+        logger.error('[ScratchpadCompress] Failed:', e)
+    }
+}
+
+function formatScratchpadForCount(entries: ScratchpadEntry[]): string {
+    return entries
+        .map((entry) => {
+            if ('messages' in entry) {
+                return entry.messages
+                    .map((m) =>
+                        typeof m.content === 'string'
+                            ? m.content
+                            : JSON.stringify(m.content)
+                    )
+                    .join('\n')
+            }
+            const obs = observationToMessageContent(entry.observation)
+            return `${entry.action.tool}: ${typeof entry.action.toolInput === 'string' ? entry.action.toolInput : JSON.stringify(entry.action.toolInput)}\n${obs}`
+        })
+        .join('\n')
+}
+
+function formatScratchpadTranscript(entries: ScratchpadEntry[]): string {
+    return entries
+        .map((entry) => {
+            if ('messages' in entry) {
+                return entry.messages
+                    .map((m) => {
+                        const content =
+                            typeof m.content === 'string'
+                                ? m.content.trim()
+                                : JSON.stringify(m.content)
+                        return `[HUMAN]\n${content}`
+                    })
+                    .join('\n\n---\n\n')
+            }
+            const toolInput =
+                typeof entry.action.toolInput === 'string'
+                    ? entry.action.toolInput
+                    : JSON.stringify(entry.action.toolInput)
+            const truncatedInput =
+                toolInput.length > 300
+                    ? toolInput.slice(0, 300) + '...'
+                    : toolInput
+            const obs = observationToMessageContent(entry.observation)
+            const truncatedObs =
+                obs.length > 500 ? obs.slice(0, 500) + '...' : obs
+            return `[AI Tool Call: ${entry.action.tool}]\n${truncatedInput}\n\n[TOOL Result]\n${truncatedObs}`
+        })
+        .join('\n\n---\n\n')
 }
 
 export async function emitAgentEvent(

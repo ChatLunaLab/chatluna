@@ -249,7 +249,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     : undefined
 
             const isInstalledImageService =
-                ctx.chatluna.getPlugin('chatluna-multimodal-service') != null
+                ctx.chatluna.getPlugin('multimodal-service') != null
 
             if (
                 parsedModelInfo?.value != null &&
