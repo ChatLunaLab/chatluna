@@ -359,7 +359,9 @@
                                             {{ fmt(scope.row.outputTokens) }}
                                         </strong>
                                     </span>
-                                    <span class="token-item token-cache">
+                                    <span class="token-item token-reasoning"
+                                        v-if="scope.row.reasoningTokens > 0"
+                                    >
                                         <svg
                                             class="token-item-icon"
                                             xmlns="http://www.w3.org/2000/svg"
@@ -381,6 +383,39 @@
                                                 stroke="currentColor"
                                                 stroke-width="2"
                                                 stroke-linejoin="round"
+                                            />
+                                        </svg>
+                                        <strong>
+                                            {{
+                                                fmt(
+                                                    scope.row.reasoningTokens
+                                                )
+                                            }}
+                                        </strong>
+                                    </span>
+                                    <span class="token-item token-cache">
+                                        <svg
+                                            class="token-item-icon"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                d="M12 2C8 2 4 3.5 4 6s4 4 8 4 8-1.5 8-4-4-4-8-4Z"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M4 6v5c0 2.5 4 4 8 4s8-1.5 8-4V6"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                            />
+                                            <path
+                                                d="M4 11v5c0 2.5 4 4 8 4s8-1.5 8-4v-5"
+                                                stroke="currentColor"
+                                                stroke-width="2"
                                             />
                                         </svg>
                                         <strong>
@@ -1352,6 +1387,10 @@ function changeSort(data: {
 
 .token-cache {
     color: var(--el-color-warning);
+}
+
+.token-reasoning {
+    color: var(--el-color-info);
 }
 
 .chatluna-usage-token-popper.el-popper {
