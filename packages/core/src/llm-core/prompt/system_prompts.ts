@@ -1,4 +1,4 @@
-import { BaseMessage, SystemMessage } from '@langchain/core/messages'
+import { SystemMessage } from '@langchain/core/messages'
 import { HumanMessagePromptTemplate } from '@langchain/core/prompts'
 import {
     ChatLunaContextManagerService,
@@ -7,8 +7,8 @@ import {
 } from './context_manager'
 import { logger } from 'koishi-plugin-chatluna'
 import {
-    countMessageTokens,
-    countMessagesTokens
+    countMessagesTokens,
+    countMessageTokens
 } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 
 export { countMessageTokens, countMessagesTokens }

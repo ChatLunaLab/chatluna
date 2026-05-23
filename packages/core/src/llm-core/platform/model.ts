@@ -806,7 +806,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             return rounds
         }
 
-        const tokenCounter = (text: string) => this.getNumTokens(text)
         const countRoundTokens = async (items: BaseMessage[]) => {
             let tokens = 0
             for (const item of items) {
@@ -875,8 +874,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
                 const round = conversationRounds[i]
                 const roundTokens = await countRoundTokens(round)
-                const exceedsLimit =
-                    totalTokens + roundTokens > maxTokenLimit
+                const exceedsLimit = totalTokens + roundTokens > maxTokenLimit
 
                 if (exceedsLimit && selectedRounds.length > 0) {
                     truncated = true

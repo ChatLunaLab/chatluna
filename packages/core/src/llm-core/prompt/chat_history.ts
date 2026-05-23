@@ -90,7 +90,6 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
             // We iterate from the end, adding rounds until budget is exceeded
             for (let i = rounds.length - 1; i >= 0; i--) {
                 const round = rounds[i]
-                let roundTokens: number
 
                 if (i <= baselineRoundIdx && selectedRounds.length === 0) {
                     // First time hitting baseline region from the end:
@@ -98,7 +97,8 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
                     // Add them all at once
                     const bulkRounds = rounds.slice(0, baselineRoundIdx + 1)
                     const bulkTokens = baseline.tokens
-                    const exceedsLimit = usedTokens + bulkTokens > availableLimit
+                    const exceedsLimit =
+                        usedTokens + bulkTokens > availableLimit
 
                     if (exceedsLimit && selectedRounds.length > 0) {
                         truncated = true
@@ -116,7 +116,7 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
                     break
                 }
 
-                roundTokens = await countMessagesTokens(
+                const roundTokens = await countMessagesTokens(
                     round,
                     runtime.tokenCounter
                 )

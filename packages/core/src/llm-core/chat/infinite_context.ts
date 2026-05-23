@@ -71,9 +71,7 @@ export async function compressIfNeeded(
                 originalMessageCount: messages.length,
                 remainingMessageCount: compacted.length,
                 messages:
-                    compacted.length !== messages.length
-                        ? compacted
-                        : undefined
+                    compacted.length !== messages.length ? compacted : undefined
             }
         }
 
@@ -84,9 +82,7 @@ export async function compressIfNeeded(
             presetMessages,
             tokenCounter
         )
-        const threshold = Math.floor(
-            maxTokenLimit * (opts.threshold ?? 0.85)
-        )
+        const threshold = Math.floor(maxTokenLimit * (opts.threshold ?? 0.85))
 
         if (inputTokens + presetTokens <= threshold) {
             return {
@@ -95,9 +91,7 @@ export async function compressIfNeeded(
                 originalMessageCount: messages.length,
                 remainingMessageCount: compacted.length,
                 messages:
-                    compacted.length !== messages.length
-                        ? compacted
-                        : undefined
+                    compacted.length !== messages.length ? compacted : undefined
             }
         }
 
@@ -297,7 +291,7 @@ function formatTranscript(messages: BaseMessage[]): string {
 
             // Include tool_calls info for AI messages
             const toolCalls = msg['tool_calls'] as
-                | Array<{ name: string; args: unknown }>
+                | { name: string; args: unknown }[]
                 | undefined
             let toolInfo = ''
             if (toolCalls?.length > 0) {

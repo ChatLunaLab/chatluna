@@ -1,5 +1,10 @@
 import { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager'
-import { AIMessage, AIMessageChunk, BaseMessage, HumanMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage
+} from '@langchain/core/messages'
 import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {
@@ -422,11 +427,7 @@ async function compressScratchpad(
     if (!transcript.trim()) return
 
     try {
-        const summary = await compressChunk(
-            model,
-            transcript,
-            conversationId
-        )
+        const summary = await compressChunk(model, transcript, conversationId)
 
         if (!summary?.text.trim()) return
 
@@ -465,7 +466,11 @@ function formatScratchpadForCount(entries: ScratchpadEntry[]): string {
                     .join('\n')
             }
             const obs = observationToMessageContent(entry.observation)
-            return `${entry.action.tool}: ${typeof entry.action.toolInput === 'string' ? entry.action.toolInput : JSON.stringify(entry.action.toolInput)}\n${obs}`
+            const input =
+                typeof entry.action.toolInput === 'string'
+                    ? entry.action.toolInput
+                    : JSON.stringify(entry.action.toolInput)
+            return `${entry.action.tool}: ${input}\n${obs}`
         })
         .join('\n')
 }
