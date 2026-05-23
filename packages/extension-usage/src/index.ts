@@ -352,12 +352,19 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                     row.usageMetadata.output_token_details?.reasoning ?? 0
             }))
             .sort((a, b) => {
-                const left = a[query.listSortBy]
-                const right = b[query.listSortBy]
-                const diff =
-                    left instanceof Date && right instanceof Date
-                        ? +left - +right
-                        : Number(left) - Number(right)
+                const left = a[query.listSortBy] as unknown
+                const right = b[query.listSortBy] as unknown
+                let diff: number
+                if (left instanceof Date && right instanceof Date) {
+                    diff = +left - +right
+                } else if (
+                    typeof left === 'string' &&
+                    typeof right === 'string'
+                ) {
+                    diff = left.localeCompare(right)
+                } else {
+                    diff = Number(left) - Number(right)
+                }
                 return query.listDesc ? -diff : diff
             })
         const start = (query.page - 1) * query.pageSize

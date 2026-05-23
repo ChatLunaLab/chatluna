@@ -294,133 +294,131 @@
                                     </div>
                                 </template>
                                 <div class="token-cell">
-                                    <span class="token-item token-input">
-                                        <svg
-                                            class="token-item-icon"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                d="M12 20V8"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linecap="round"
-                                            />
-                                            <path
-                                                d="m7 13 5-5 5 5"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                            />
-                                            <path
-                                                d="M5 4h14"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linecap="round"
-                                            />
-                                        </svg>
-                                        <strong>
-                                            {{ fmt(scope.row.inputTokens) }}
-                                        </strong>
-                                    </span>
-                                    <span class="token-item token-output">
-                                        <svg
-                                            class="token-item-icon"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                d="M12 4v12"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linecap="round"
-                                            />
-                                            <path
-                                                d="m7 11 5 5 5-5"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                            />
-                                            <path
-                                                d="M5 20h14"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linecap="round"
-                                            />
-                                        </svg>
-                                        <strong>
-                                            {{ fmt(scope.row.outputTokens) }}
-                                        </strong>
-                                    </span>
-                                    <span class="token-item token-reasoning"
-                                        v-if="scope.row.reasoningTokens > 0"
-                                    >
-                                        <svg
-                                            class="token-item-icon"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            aria-hidden="true"
-                                        >
-                                            <rect
-                                                x="9"
-                                                y="18"
-                                                width="6"
-                                                height="3"
-                                                rx="1"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                            />
-                                            <path
-                                                d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linejoin="round"
-                                            />
-                                        </svg>
-                                        <strong>
-                                            {{
-                                                fmt(
-                                                    scope.row.reasoningTokens
-                                                )
-                                            }}
-                                        </strong>
-                                    </span>
-                                    <span class="token-item token-cache">
-                                        <svg
-                                            class="token-item-icon"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                d="M12 2C8 2 4 3.5 4 6s4 4 8 4 8-1.5 8-4-4-4-8-4Z"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                stroke-linejoin="round"
-                                            />
-                                            <path
-                                                d="M4 6v5c0 2.5 4 4 8 4s8-1.5 8-4V6"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                            />
-                                            <path
-                                                d="M4 11v5c0 2.5 4 4 8 4s8-1.5 8-4v-5"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                            />
-                                        </svg>
-                                        <strong>
-                                            {{ fmt(scope.row.cachedTokens) }}
-                                        </strong>
-                                    </span>
+                                    <div class="token-row">
+                                        <span class="token-item token-input">
+                                            <svg
+                                                class="token-item-icon"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    d="M12 20V8"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                />
+                                                <path
+                                                    d="m7 13 5-5 5 5"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                />
+                                                <path
+                                                    d="M5 4h14"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                />
+                                            </svg>
+                                            <strong>
+                                                {{ fmt(scope.row.inputTokens) }}
+                                            </strong>
+                                        </span>
+                                        <span class="token-item token-output">
+                                            <svg
+                                                class="token-item-icon"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    d="M12 4v12"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                />
+                                                <path
+                                                    d="m7 11 5 5 5-5"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                />
+                                                <path
+                                                    d="M5 20h14"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                />
+                                            </svg>
+                                            <strong>
+                                                {{ fmt(scope.row.outputTokens) }}
+                                            </strong>
+                                        </span>
+                                    </div>
+                                    <div class="token-row">
+                                        <span class="token-item token-reasoning">
+                                            <svg
+                                                class="token-item-icon"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                aria-hidden="true"
+                                            >
+                                                <rect
+                                                    x="9"
+                                                    y="18"
+                                                    width="6"
+                                                    height="3"
+                                                    rx="1"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                />
+                                                <path
+                                                    d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linejoin="round"
+                                                />
+                                            </svg>
+                                            <strong>
+                                                {{ fmt(scope.row.reasoningTokens) }}
+                                            </strong>
+                                        </span>
+                                        <span class="token-item token-cache">
+                                            <svg
+                                                class="token-item-icon"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    d="M12 2C8 2 4 3.5 4 6s4 4 8 4 8-1.5 8-4-4-4-8-4Z"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linejoin="round"
+                                                />
+                                                <path
+                                                    d="M4 6v5c0 2.5 4 4 8 4s8-1.5 8-4V6"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                />
+                                                <path
+                                                    d="M4 11v5c0 2.5 4 4 8 4s8-1.5 8-4v-5"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                />
+                                            </svg>
+                                            <strong>
+                                                {{ fmt(scope.row.cachedTokens) }}
+                                            </strong>
+                                        </span>
+                                    </div>
                                 </div>
                             </el-tooltip>
                         </template>
@@ -1317,14 +1315,19 @@ function changeSort(data: {
 }
 
 .token-cell {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: center;
-    gap: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-    min-width: 16rem;
+    min-width: 12rem;
     white-space: nowrap;
+}
+
+.token-row {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
 }
 
 .token-header {
@@ -1474,5 +1477,20 @@ function changeSort(data: {
     .chatluna-usage-table .el-date-editor.date-filter {
         width: 100%;
     }
+}
+
+html.is-dark .chatluna-usage-table .el-tag {
+    --el-tag-bg-color: transparent;
+    --el-tag-border-color: currentColor;
+}
+
+html.is-dark .chatluna-usage-table .el-tag--success {
+    --el-tag-text-color: var(--el-color-success);
+    --el-tag-border-color: var(--el-color-success);
+}
+
+html.is-dark .chatluna-usage-table .el-tag--danger {
+    --el-tag-text-color: var(--el-color-danger);
+    --el-tag-border-color: var(--el-color-danger);
 }
 </style>
