@@ -71,8 +71,7 @@ export async function compressIfNeeded(
                 inputTokens,
                 originalMessageCount: messages.length,
                 remainingMessageCount: compacted.length,
-                messages:
-                    compacted !== messages ? compacted : undefined
+                messages: compacted !== messages ? compacted : undefined
             }
         }
 
@@ -118,8 +117,7 @@ export async function compressIfNeeded(
             inputTokens,
             originalMessageCount: messages.length,
             remainingMessageCount: compacted.length,
-            messages:
-                compacted !== messages ? compacted : undefined
+            messages: compacted !== messages ? compacted : undefined
         }
     }
 
@@ -132,8 +130,7 @@ export async function compressIfNeeded(
             inputTokens,
             originalMessageCount: messages.length,
             remainingMessageCount: compacted.length,
-            messages:
-                compacted !== messages ? compacted : undefined
+            messages: compacted !== messages ? compacted : undefined
         }
     }
 
@@ -150,8 +147,7 @@ export async function compressIfNeeded(
             inputTokens,
             originalMessageCount: messages.length,
             remainingMessageCount: compacted.length,
-            messages:
-                compacted !== messages ? compacted : undefined
+            messages: compacted !== messages ? compacted : undefined
         }
     }
 
