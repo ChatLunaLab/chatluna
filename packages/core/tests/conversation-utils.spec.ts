@@ -210,6 +210,21 @@ it('prompt pick renders without configurable options', async () => {
     assert.equal(result.text, 'green')
 })
 
+it('prompt pick uses conversation id as stable seed', async () => {
+    const service = new ChatLunaPromptRenderService()
+    const result = await service.renderTemplate(
+        '{pick("red","green","blue")}',
+        {},
+        {
+            configurable: {
+                conversationId: 'conversation-b'
+            }
+        }
+    )
+
+    assert.equal(result.text, 'green')
+})
+
 it('getMessageContent flattens structured text parts', () => {
     assert.equal(
         getMessageContent([

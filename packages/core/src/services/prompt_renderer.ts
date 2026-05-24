@@ -4,7 +4,7 @@ import {
     HumanMessage,
     SystemMessage
 } from '@langchain/core/messages'
-import { type Session, Time } from 'koishi'
+import { Time } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import {
@@ -95,24 +95,11 @@ export class ChatLunaPromptRenderService {
             return selectFromList(args.join(','), false)
         })
 
-        this.registerFunctionProvider('pick', (args, variables, cfg) => {
-            const session = cfg?.session as Session
-            const built = variables?.built as { conversationId?: string }
-
+        this.registerFunctionProvider('pick', (args, _variables, cfg) => {
             return selectFromList(
                 args.join(','),
                 true,
-                [
-                    cfg?.conversationId,
-                    built?.conversationId,
-                    session?.platform,
-                    session?.selfId,
-                    session?.guildId,
-                    session?.channelId,
-                    session?.userId
-                ]
-                    .filter(Boolean)
-                    .join(':')
+                String(cfg?.conversationId ?? '')
             )
         })
 
