@@ -55,7 +55,7 @@ function hour(date: string | Date) {
 function tooltip(
     params: { marker?: string; seriesName: string; value: number }[],
     theme: typeof chartTheme.value,
-    skipZero = false
+    skipZero = true
 ) {
     const row =
         'display:flex;align-items:center;justify-content:space-between;' +
