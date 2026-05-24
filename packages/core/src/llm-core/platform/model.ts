@@ -806,7 +806,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             return rounds
         }
 
-        const countMessagesTokens = async (items: BaseMessage[]) => {
+        const countRoundTokens = async (items: BaseMessage[]) => {
             let tokens = 0
             for (const item of items) {
                 tokens += await this.countMessageTokens(item)
@@ -817,24 +817,65 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         const conversationRounds = buildConversationRounds(messages)
         const selectedRounds: BaseMessage[][] = []
         let truncated = false
+        const hasLimit = maxTokenLimit != null && maxTokenLimit > 0
 
+        // Find baseline: last AI message with usage_metadata
+        let baselineRoundIdx = -1
+        let baselineTokens = 0
+        if (hasLimit) {
+            let msgOffset = 0
+            for (let r = 0; r < conversationRounds.length; r++) {
+                for (let j = 0; j < conversationRounds[r].length; j++) {
+                    const msg = messages[msgOffset + j]
+                    if (msg.getType() === 'ai') {
+                        const usage = (msg as AIMessage).usage_metadata
+                        if (usage?.input_tokens > 0) {
+                            baselineRoundIdx = r
+                            baselineTokens = usage.input_tokens - totalTokens
+                        }
+                    }
+                }
+                msgOffset += conversationRounds[r].length
+            }
+            // Add tokens for messages after the baseline AI msg within its round
+            if (baselineRoundIdx >= 0) {
+                // Count the tail of the baseline round (AI msg itself + tool msgs)
+                for (const msg of conversationRounds[baselineRoundIdx]) {
+                    if (msg.getType() === 'ai' || msg.getType() === 'tool') {
+                        baselineTokens += await this.countMessageTokens(msg)
+                    }
+                }
+            }
+        }
+
+        // Select rounds from end to start
         for (let i = conversationRounds.length - 1; i >= 0; i--) {
-            const round = conversationRounds[i]
-            const roundTokens = await countMessagesTokens(round)
-            const exceedsLimit =
-                maxTokenLimit != null && maxTokenLimit > 0
-                    ? totalTokens + roundTokens > maxTokenLimit
-                    : false
+            // If we hit the baseline region, bulk-add everything up to it
+            if (baselineRoundIdx >= 0 && i <= baselineRoundIdx) {
+                if (hasLimit && totalTokens + baselineTokens > maxTokenLimit) {
+                    truncated = true
+                    break
+                }
+                totalTokens += baselineTokens
+                for (let j = 0; j <= i; j++) {
+                    selectedRounds.unshift(conversationRounds[j])
+                }
+                break
+            }
 
-            if (exceedsLimit && selectedRounds.length > 0) {
+            const roundTokens = await countRoundTokens(conversationRounds[i])
+            const exceeds =
+                hasLimit && totalTokens + roundTokens > maxTokenLimit
+
+            if (exceeds && selectedRounds.length > 0) {
                 truncated = true
                 break
             }
 
             totalTokens += roundTokens
-            selectedRounds.unshift(round)
+            selectedRounds.unshift(conversationRounds[i])
 
-            if (exceedsLimit) {
+            if (exceeds) {
                 truncated = true
                 break
             }
@@ -842,7 +883,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
         if (conversationRounds.length > 0 && selectedRounds.length === 0) {
             const round = conversationRounds[conversationRounds.length - 1]
-            totalTokens += await countMessagesTokens(round)
+            totalTokens += await countRoundTokens(round)
             selectedRounds.unshift(round)
             truncated = maxTokenLimit != null && maxTokenLimit > 0
         }

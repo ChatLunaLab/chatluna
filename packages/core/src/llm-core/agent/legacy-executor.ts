@@ -1,5 +1,10 @@
 import { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager'
-import { AIMessage, AIMessageChunk } from '@langchain/core/messages'
+import {
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage
+} from '@langchain/core/messages'
 import { isDirectToolOutput } from '@langchain/core/messages/tool'
 import { OutputParserException } from '@langchain/core/output_parsers'
 import {
@@ -34,6 +39,8 @@ import {
     MessageQueue,
     ScratchpadEntry
 } from './types'
+import { compressChunk } from '../chain/infinite_context_chain'
+import type { ChatLunaChatModel } from '../platform/model'
 
 async function executeTools(
     actions: AgentAction[],
@@ -289,6 +296,29 @@ export async function* runAgent(
             }
         }
 
+        // Compress scratchpad if input tokens are approaching context limit
+        const model = config?.configurable?.['model'] as
+            | ChatLunaChatModel
+            | undefined
+        if (model && scratchpad.length > 6) {
+            // Get input_tokens from the AI message that triggered tool calls
+            const aiMsg = output[0]?.['messageLog']?.[0] as
+                | AIMessage
+                | undefined
+            const inputTokens = (aiMsg as AIMessage)?.usage_metadata
+                ?.input_tokens
+            if (inputTokens > 0) {
+                await compressScratchpad(
+                    scratchpad,
+                    options.input,
+                    model,
+                    config?.configurable?.['conversationId'] ?? '',
+                    inputTokens,
+                    signal
+                )
+            }
+        }
+
         const last = newSteps[newSteps.length - 1]
         const tool = last ? toolMap[last.action.tool?.toLowerCase()] : undefined
 
@@ -342,6 +372,102 @@ export async function* runAgent(
         output: 'Agent stopped due to iteration limit.',
         log: '',
         steps
+    }
+}
+
+/**
+ * Compress scratchpad when input tokens approach context limit.
+ * Summarizes early scratchpad + chat_history, keeps recent entries.
+ */
+async function compressScratchpad(
+    scratchpad: ScratchpadEntry[],
+    input: ChainValues,
+    model: ChatLunaChatModel,
+    conversationId: string,
+    inputTokens: number,
+    signal?: AbortSignal
+): Promise<void> {
+    const invocation = model.invocationParams()
+    const limit =
+        invocation.maxTokenLimit && invocation.maxTokenLimit > 0
+            ? invocation.maxTokenLimit
+            : model.getModelMaxContextSize()
+
+    if (!limit || limit <= 0 || inputTokens < limit * 0.85) return
+
+    logger.info(
+        '[ScratchpadCompress] %d tokens exceed 85%% of %d, compressing',
+        inputTokens,
+        limit
+    )
+
+    const keepCount = Math.min(3, scratchpad.length)
+    const toCompress = scratchpad.slice(0, scratchpad.length - keepCount)
+    if (toCompress.length === 0) return
+
+    const chatHistory = (input['chat_history'] ?? []) as BaseMessage[]
+    const chatPart = chatHistory
+        .map((msg) => {
+            const content =
+                typeof msg.content === 'string'
+                    ? msg.content.trim()
+                    : JSON.stringify(msg.content)
+            return `[${msg.getType().toUpperCase()}${msg.name ? ` (${msg.name})` : ''}]\n${content || '(empty)'}`
+        })
+        .join('\n\n---\n\n')
+
+    const scratchPart = toCompress
+        .map((entry) => {
+            if ('messages' in entry) {
+                return entry.messages
+                    .map((m) => {
+                        const c =
+                            typeof m.content === 'string'
+                                ? m.content.trim()
+                                : JSON.stringify(m.content)
+                        return `[HUMAN]\n${c}`
+                    })
+                    .join('\n\n---\n\n')
+            }
+            const inp =
+                typeof entry.action.toolInput === 'string'
+                    ? entry.action.toolInput
+                    : JSON.stringify(entry.action.toolInput)
+            const obs = observationToMessageContent(entry.observation)
+            return `[AI Tool Call: ${entry.action.tool}]\n${inp.slice(0, 300)}\n\n[TOOL Result]\n${obs.slice(0, 500)}`
+        })
+        .join('\n\n---\n\n')
+
+    const transcript = chatPart
+        ? `${chatPart}\n\n---\n\n${scratchPart}`
+        : scratchPart
+    if (!transcript.trim()) return
+
+    try {
+        const summary = await compressChunk(
+            model,
+            transcript,
+            conversationId,
+            signal
+        )
+        if (!summary?.text.trim()) return
+
+        input['chat_history'] = [
+            new HumanMessage({
+                content: summary.text.trim(),
+                name: 'infinite_context',
+                additional_kwargs: { source: 'scratchpad-compression' }
+            })
+        ]
+        scratchpad.splice(0, scratchpad.length - keepCount)
+
+        logger.info(
+            '[ScratchpadCompress] Compressed %d entries, kept %d',
+            toCompress.length,
+            keepCount
+        )
+    } catch (e) {
+        logger.error('[ScratchpadCompress] Failed:', e)
     }
 }
 
