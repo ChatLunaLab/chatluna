@@ -17,6 +17,7 @@ import {
     computeBaseBindingKey
 } from '../src/types'
 import { usageSourceFromStack } from '../src/utils/usage_source'
+import { selectFromList } from '../src/utils/string'
 import {
     createMessage,
     type BindingSessionShape,
@@ -189,6 +190,15 @@ it('usageSourceFromStack reads package names instead of folder names', () => {
                 '(node:internal/process/task_queues:105:5)'
         ),
         'unknown'
+    )
+})
+
+it('selectFromList keeps pick stable for a seed', () => {
+    assert.equal(selectFromList('red,green,blue', true, 'stable'), 'blue')
+    assert.equal(selectFromList('red,green,blue', true, 'stable'), 'blue')
+    assert.equal(
+        selectFromList('red,green,blue', true, 'conversation-b'),
+        'green'
     )
 })
 
