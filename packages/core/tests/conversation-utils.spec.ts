@@ -12,6 +12,7 @@ import {
     getMessageContent,
     parsePresetLaneInput
 } from '../src/utils/message_content'
+import { ChatLunaPromptRenderService } from '../src/services/prompt_renderer'
 import {
     applyPresetLane,
     computeBaseBindingKey
@@ -200,6 +201,13 @@ it('selectFromList keeps pick stable for a seed', () => {
         selectFromList('red,green,blue', true, 'conversation-b'),
         'green'
     )
+})
+
+it('prompt pick renders without configurable options', async () => {
+    const service = new ChatLunaPromptRenderService()
+    const result = await service.renderTemplate('{pick("red","green","blue")}')
+
+    assert.equal(result.text, 'green')
 })
 
 it('getMessageContent flattens structured text parts', () => {

@@ -96,14 +96,14 @@ export class ChatLunaPromptRenderService {
         })
 
         this.registerFunctionProvider('pick', (args, variables, cfg) => {
-            const session = cfg.session as Session
-            const built = variables.built as { conversationId?: string }
+            const session = cfg?.session as Session
+            const built = variables?.built as { conversationId?: string }
 
             return selectFromList(
                 args.join(','),
                 true,
                 [
-                    cfg.conversationId,
+                    cfg?.conversationId,
                     built?.conversationId,
                     session?.platform,
                     session?.selfId,
