@@ -99,7 +99,7 @@ export class ChatLunaPromptRenderService {
             return selectFromList(
                 args.join(','),
                 true,
-                String(cfg?.conversationId ?? '')
+                cfg?.conversationId ?? ''
             )
         })
 
