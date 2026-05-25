@@ -12,11 +12,13 @@ import {
     getMessageContent,
     parsePresetLaneInput
 } from '../src/utils/message_content'
+import { ChatLunaPromptRenderService } from '../src/services/prompt_renderer'
 import {
     applyPresetLane,
     computeBaseBindingKey
 } from '../src/types'
 import { usageSourceFromStack } from '../src/utils/usage_source'
+import { selectFromList } from '../src/utils/string'
 import {
     createMessage,
     type BindingSessionShape,
@@ -190,6 +192,37 @@ it('usageSourceFromStack reads package names instead of folder names', () => {
         ),
         'unknown'
     )
+})
+
+it('selectFromList keeps pick stable for a seed', () => {
+    assert.equal(selectFromList('red,green,blue', true, 'stable'), 'blue')
+    assert.equal(selectFromList('red,green,blue', true, 'stable'), 'blue')
+    assert.equal(
+        selectFromList('red,green,blue', true, 'conversation-b'),
+        'green'
+    )
+})
+
+it('prompt pick renders without configurable options', async () => {
+    const service = new ChatLunaPromptRenderService()
+    const result = await service.renderTemplate('{pick("red","green","blue")}')
+
+    assert.equal(result.text, 'green')
+})
+
+it('prompt pick uses conversation id as stable seed', async () => {
+    const service = new ChatLunaPromptRenderService()
+    const result = await service.renderTemplate(
+        '{pick("red","green","blue")}',
+        {},
+        {
+            configurable: {
+                conversationId: 'conversation-b'
+            }
+        }
+    )
+
+    assert.equal(result.text, 'green')
 })
 
 it('getMessageContent flattens structured text parts', () => {

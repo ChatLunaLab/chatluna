@@ -317,11 +317,18 @@ export const getTimeDiff = (time1: string, time2: string): string => {
     )
 }
 
-export const selectFromList = (args: string, isPick: boolean): string => {
+export const selectFromList = (
+    args: string,
+    isPick: boolean,
+    seed: string = ''
+): string => {
     const items = args.split(',').map((item) => item.trim())
     if (isPick) {
-        // TODO: Implement stable selection for 'pick'
-        return items[Math.floor(Math.random() * items.length)]
+        const hash = crypto
+            .createHash('sha1')
+            .update(`${seed}:${args}`)
+            .digest()
+        return items[hash.readUInt32BE(0) % items.length]
     }
     return items[Math.floor(Math.random() * items.length)]
 }

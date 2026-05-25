@@ -95,8 +95,12 @@ export class ChatLunaPromptRenderService {
             return selectFromList(args.join(','), false)
         })
 
-        this.registerFunctionProvider('pick', (args) => {
-            return selectFromList(args.join(','), true)
+        this.registerFunctionProvider('pick', (args, _variables, cfg) => {
+            return selectFromList(
+                args.join(','),
+                true,
+                cfg?.conversationId ?? ''
+            )
         })
 
         this.registerFunctionProvider('roll', (args) => {
