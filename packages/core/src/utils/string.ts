@@ -320,7 +320,7 @@ export const getTimeDiff = (time1: string, time2: string): string => {
 export const selectFromList = (
     args: string,
     isPick: boolean,
-    seed: unknown = ''
+    seed: string = ''
 ): string => {
     const items = args.split(',').map((item) => item.trim())
     if (isPick) {
