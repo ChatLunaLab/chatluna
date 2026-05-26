@@ -71,7 +71,7 @@ import { Embeddings } from '@langchain/core/embeddings'
 import { RunnableConfig } from '@langchain/core/runnables'
 import type { Notifier } from '@koishijs/plugin-notifier'
 import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
-import { createChatPrompt } from 'koishi-plugin-chatluna/utils/chatluna'
+import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -449,8 +449,18 @@ export class ChatLunaService extends Service<Config> {
         const { preset, instructions } = resolveAgentPreset(options, (name) =>
             computed(() => this._preset.getPreset(name).value)
         )
+        const model = llm.value
         const prompt =
-            options.prompt ?? createChatPrompt(this.ctx, llm.value, preset)
+            options.prompt ??
+            new ChatLunaChatPrompt({
+                preset,
+                tokenCounter: (text) => model.getNumTokens(text),
+                sendTokenLimit:
+                    model.invocationParams().maxTokenLimit ??
+                    model.getModelMaxContextSize(),
+                contextManager: this._contextManager,
+                promptRenderService: this._promptRenderer
+            })
 
         return createAgent({
             id: options.id,
