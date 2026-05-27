@@ -182,9 +182,13 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'gpt-4.1',
     'gpt-5',
     'glm-*v',
+    'glm-4.1v',
+    'glm-4.6v',
+    'glm-5v',
     'kimi-k2.5',
     'step3',
-    'grok-4'
+    'grok-4',
+    'ocr'
 ].map(createGlobMatcher)
 
 // mimo-v2.5 supports image/audio; mimo-v2.5-pro does NOT (text only).
