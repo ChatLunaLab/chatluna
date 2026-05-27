@@ -24,6 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const targetConversation = getTargetConversation(context)
             const current = context.options.conversation
             const resolved =
+                targetConversation == null &&
                 current?.conversation != null &&
                 current.conversationId != null &&
                 current.bindingKey != null &&
