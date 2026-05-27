@@ -13,7 +13,6 @@ import {
     FileHandlingConfig,
     ModelCapabilities,
     ModelInfo,
-    ModelType,
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
@@ -143,15 +142,6 @@ export abstract class BasePlatformClient<
             this._modelInfos = {}
 
             for (const model of models) {
-                if (
-                    model.type === ModelType.embeddings ||
-                    model.type === ModelType.reranker
-                ) {
-                    model.capabilities = model.capabilities.filter(
-                        (cap) => cap !== ModelCapabilities.ToolCall
-                    )
-                }
-
                 model.capabilities = model.capabilities.includes(
                     ModelCapabilities.ImageGeneration
                 )

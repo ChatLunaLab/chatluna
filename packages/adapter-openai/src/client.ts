@@ -77,13 +77,17 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         )
                 )
                 .map((model) => {
+                    const type = model.includes('embedding')
+                        ? ModelType.embeddings
+                        : ModelType.llm
+
                     return {
                         name: model,
-                        type: model.includes('embedding')
-                            ? ModelType.embeddings
-                            : ModelType.llm,
+                        type,
                         capabilities: [
-                            ModelCapabilities.ToolCall,
+                            type === ModelType.llm
+                                ? ModelCapabilities.ToolCall
+                                : undefined,
                             supportImageInput(model)
                                 ? ModelCapabilities.ImageInput
                                 : undefined,

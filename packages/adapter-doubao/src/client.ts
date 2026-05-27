@@ -110,13 +110,16 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         })
 
         return expandedModels.map(([model, token]) => {
+            const type = model.includes('embedding')
+                ? ModelType.embeddings
+                : ModelType.llm
+
             return {
                 name: model,
-                type: model.includes('embedding')
-                    ? ModelType.embeddings
-                    : ModelType.llm,
+                type,
                 maxTokens: token,
                 capabilities: [
+                    type !== ModelType.llm ||
                     unsupportedFunctionCallModels.includes(model)
                         ? undefined
                         : ModelCapabilities.ToolCall,

@@ -59,18 +59,27 @@ export class OpenAIClient extends PlatformModelEmbeddingsAndRerankerClient {
                 : []
 
             const additionalModels = this._config.additionalModels.map(
-                ({ model, modelType, contextSize, modelCapabilities }) =>
-                    ({
+                ({ model, modelType, contextSize, modelCapabilities }) => {
+                    const type =
+                        modelType === 'Embeddings 嵌入模型'
+                            ? ModelType.embeddings
+                            : modelType === 'Reranker 重排序模型'
+                              ? ModelType.reranker
+                              : ModelType.llm
+
+                    return {
                         name: model,
-                        type:
-                            modelType === 'Embeddings 嵌入模型'
-                                ? ModelType.embeddings
-                                : modelType === 'Reranker 重排序模型'
-                                  ? ModelType.reranker
-                                  : ModelType.llm,
-                        capabilities: modelCapabilities,
+                        type,
+                        capabilities:
+                            type === ModelType.llm
+                                ? modelCapabilities
+                                : modelCapabilities.filter(
+                                      (cap) =>
+                                          cap !== ModelCapabilities.ToolCall
+                                  ),
                         maxTokens: contextSize ?? 4096
-                    }) as ModelInfo
+                    } as ModelInfo
+                }
             )
 
             const filteredModels = rawModels.filter(
@@ -109,18 +118,21 @@ export class OpenAIClient extends PlatformModelEmbeddingsAndRerankerClient {
                     const id = model.toLowerCase()
                     return !blacklist.some((keyword) => id.includes(keyword))
                 })
-                .map(
-                    (model) =>
-                        ({
-                            name: model,
-                            type: isRerankerModel(model)
-                                ? ModelType.reranker
-                                : isEmbeddingModel(model)
-                                  ? ModelType.embeddings
-                                  : ModelType.llm,
-                            ...supportToolCalling(model)
-                        }) as ModelInfo
-                )
+                .map((model) => {
+                    const type = isRerankerModel(model)
+                        ? ModelType.reranker
+                        : isEmbeddingModel(model)
+                          ? ModelType.embeddings
+                          : ModelType.llm
+
+                    return {
+                        name: model,
+                        type,
+                        ...(type === ModelType.llm
+                            ? supportToolCalling(model)
+                            : { capabilities: [] })
+                    } as ModelInfo
+                })
 
             return additionalModels.concat(
                 formattedModels.filter(
