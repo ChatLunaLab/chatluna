@@ -22,17 +22,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'stop_chat') return ChainMiddlewareRunStatus.SKIPPED
 
             const targetConversation = getTargetConversation(context)
+            const current = context.options.conversation
             const resolved =
-                await ctx.chatluna.conversation.resolveConversation(session, {
-                    targetConversation,
-                    presetLane: context.options.presetLane,
-                    allPresetLanes: context.options.allPresetLanes,
-                    permission: 'manage',
-                    useRoutePresetLane:
-                        context.options.presetLane == null &&
-                        targetConversation == null,
-                    mode: 'target'
-                })
+                current?.conversation != null &&
+                current.conversationId != null &&
+                current.bindingKey != null &&
+                current.constraint != null
+                    ? current
+                    : await ctx.chatluna.conversation.resolveConversation(
+                          session,
+                          {
+                              targetConversation,
+                              presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
+                              permission: 'manage',
+                              useRoutePresetLane:
+                                  context.options.presetLane == null &&
+                                  targetConversation == null,
+                              mode: 'target'
+                          }
+                      )
             const conversation = resolved.conversation
 
             if (conversation == null) {

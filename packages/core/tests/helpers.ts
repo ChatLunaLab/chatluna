@@ -181,6 +181,24 @@ export class FakeDatabase {
         }
     }
 
+    async set(
+        table: string,
+        query: Record<string, unknown>,
+        update: Record<string, unknown>
+    ) {
+        const target = (this.tables[table] ??= [])
+
+        for (let idx = 0; idx < target.length; idx += 1) {
+            if (
+                Object.entries(query).every(
+                    ([key, expected]) => target[idx][key] === expected
+                )
+            ) {
+                target[idx] = { ...target[idx], ...update }
+            }
+        }
+    }
+
     async remove(table: string, query: Record<string, unknown>) {
         const target = (this.tables[table] ??= [])
         this.tables[table] = target.filter(
@@ -384,6 +402,7 @@ export async function createMemoryService(
     app.plugin(memory)
     app.plugin(ChatLunaService, createConfig(options.config))
     await app.start()
+    app.chatluna.platform.registerChatChain('plugin', {}, () => ({}) as never)
     ;(
         app.chatluna.platform as unknown as {
             _models: Record<string, unknown[]>

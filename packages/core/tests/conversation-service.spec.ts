@@ -1660,11 +1660,13 @@ it('ConversationService emits conversation lifecycle events for switch archive r
         events.map((item) => item.name),
         [
             'chatluna/before-conversation-switch',
+            'chatluna/after-binding-update',
             'chatluna/after-conversation-switch',
             'chatluna/conversation-compressed',
             'chatluna/before-conversation-archive',
             'chatluna/after-conversation-archive',
             'chatluna/before-conversation-restore',
+            'chatluna/after-binding-update',
             'chatluna/after-conversation-restore',
             'chatluna/before-conversation-delete',
             'chatluna/after-conversation-delete'

@@ -53,6 +53,7 @@ it('ConversationRuntime chat preserves additional kwargs metadata', async () => 
                 }
             })
         },
+        resolveCallbacks: async (input) => input.callbacks,
         ctx: {
             root: {
                 parallel: async () => {}
