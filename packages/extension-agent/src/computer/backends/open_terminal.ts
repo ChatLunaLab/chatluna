@@ -248,12 +248,8 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         }
 
         if (replaceCount === 1) {
-            if (
-                content.indexOf(
-                    oldString,
-                    content.indexOf(oldString) + oldString.length
-                ) !== -1
-            ) {
+            const firstIdx = content.indexOf(oldString)
+            if (content.indexOf(oldString, firstIdx + 1) !== -1) {
                 throw new Error(
                     `Found multiple matches for oldString in ${filePath}. ` +
                         'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'

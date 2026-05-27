@@ -124,15 +124,13 @@ export function apply(ctx: Context) {
                 const config = structuredClone(
                     ctx.chatluna_agent.getConsoleData().config
                 )
-                let count = 0
 
                 for (const [name, server] of Object.entries(servers)) {
                     config.mcp.mcpServers[name] = server as never
-                    count += 1
                 }
 
                 await ctx.chatluna_agent.saveMcpConfig(config.mcp)
-                return `Added ${count} server(s)`
+                return `Added ${Object.keys(servers).length} server(s)`
             }
         })
     )

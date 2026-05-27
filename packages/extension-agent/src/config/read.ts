@@ -61,10 +61,10 @@ function mergeTool(
         ...base,
         registry: mergeToolRegistry(base.registry, cfg?.registry),
         items: Object.fromEntries(
-            Object.entries(cfg?.items ?? {}).map(([name, item]) => [
-                name,
-                createToolItemConfig(item, name)
-            ])
+            Object.entries({
+                ...(base.items ?? {}),
+                ...(cfg?.items ?? {})
+            }).map(([name, item]) => [name, createToolItemConfig(item, name)])
         )
     }
 }

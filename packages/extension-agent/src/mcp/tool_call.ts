@@ -33,24 +33,19 @@ export async function callTool(
             JSON.stringify(args, null, 2)
         )
 
-        const requestOptions: RequestOptions = {
+        const opts: RequestOptions = {
             ...(config?.timeout ? { timeout: config.timeout } : {}),
             ...(config?.signal ? { signal: config.signal } : {})
         }
 
-        const callToolArgs: Parameters<typeof client.callTool> = [
-            {
-                name: toolName,
-                arguments: args
-            }
-        ]
-
-        if (Object.keys(requestOptions).length > 0) {
-            callToolArgs.push(undefined)
-            callToolArgs.push(requestOptions)
-        }
-
-        const result = await client.callTool(...callToolArgs)
+        const result =
+            Object.keys(opts).length > 0
+                ? await client.callTool(
+                      { name: toolName, arguments: args },
+                      undefined,
+                      opts
+                  )
+                : await client.callTool({ name: toolName, arguments: args })
 
         return convertCallToolResult(
             serverName,

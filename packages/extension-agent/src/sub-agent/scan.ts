@@ -70,7 +70,7 @@ function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
         seen.add(key)
 
         const combined = `${item}\n${dir}`.replaceAll('\\', '/').toLowerCase()
-        const hint: ScanTarget['hint'] = combined.includes('/claude/agents')
+        const hint: ScanTarget['hint'] = combined.includes('claude/agents')
             ? 'claude'
             : combined.includes('/opencode/agents')
               ? 'opencode'

@@ -13,12 +13,7 @@ import {
 import type { Message, RenderType } from 'koishi-plugin-chatluna'
 import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import {
-    parseBindingKey,
-    type WakeupAction,
-    type WakeupResult,
-    type WakeupTarget
-} from '../types'
+import { parseBindingKey, type WakeupAction, type WakeupResult } from '../types'
 import { buildVirtualSession } from './session'
 
 export class ChatLunaAgentTriggerExecutor {
@@ -174,14 +169,13 @@ export class ChatLunaAgentTriggerExecutor {
                 }
             }
         } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
             this.ctx.logger.error(err)
             return {
                 ok: false,
                 requestId,
                 error: {
                     code: 'internal',
-                    message
+                    message: err instanceof Error ? err.message : String(err)
                 },
                 stats: {
                     durationMs: Date.now() - startedAt,
@@ -257,7 +251,13 @@ export class ChatLunaAgentTriggerExecutor {
     ): Promise<
         { session: Session; bindingKey: string } | { result: WakeupResult }
     > {
-        const target = action.target ?? this._legacyTarget(action)
+        const target =
+            action.target ??
+            action.session ??
+            action.routing ??
+            (action.bindingKey != null
+                ? { bindingKey: action.bindingKey }
+                : undefined)
         if (target == null) {
             return {
                 result: errorResult(
@@ -271,8 +271,12 @@ export class ChatLunaAgentTriggerExecutor {
         let session: Session | undefined
         let bindingKey: string | undefined
 
-        if (isSession(target)) {
-            session = target
+        if (
+            typeof target === 'object' &&
+            'bot' in target &&
+            'platform' in target
+        ) {
+            session = target as Session
         } else if ('bindingKey' in target) {
             bindingKey = target.bindingKey
             const parsed = parseBindingKey(bindingKey)
@@ -334,13 +338,6 @@ export class ChatLunaAgentTriggerExecutor {
             ).bindingKey
 
         return { session, bindingKey }
-    }
-
-    private _legacyTarget(action: WakeupAction): WakeupTarget | undefined {
-        if (action.session != null) return action.session
-        if (action.routing != null) return action.routing
-        if (action.bindingKey != null) return { bindingKey: action.bindingKey }
-        return undefined
     }
 
     private async _runChainMode(
@@ -457,15 +454,6 @@ export class ChatLunaAgentTriggerExecutor {
                 await sendReply(session, this.ctx, reply)
         }
     }
-}
-
-function isSession(target: WakeupTarget): target is Session {
-    return (
-        typeof target === 'object' &&
-        target != null &&
-        'bot' in target &&
-        'platform' in target
-    )
 }
 
 function resolveBot(

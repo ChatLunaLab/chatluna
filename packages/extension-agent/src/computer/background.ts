@@ -65,7 +65,7 @@ export function readBackgroundExit(
     marker: string
 ) {
     const lines = (pending + data).split(/\r?\n/)
-    const rest = lines.pop()
+    const rest = lines.pop()!
 
     for (const line of lines) {
         if (!line.startsWith(`${marker}:`)) continue

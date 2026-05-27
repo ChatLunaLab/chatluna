@@ -258,13 +258,18 @@ export class TriggerTool extends StructuredTool {
                 ) {
                     continue
                 }
-                params[
+                const paramKey =
                     key === 'missed'
                         ? 'missedRunPolicy'
                         : key === 'fire_at'
                           ? 'fireAt'
                           : key
-                ] = rawValue(value)
+                params[paramKey] =
+                    typeof value !== 'object'
+                        ? value
+                        : value.kind === 'duration'
+                          ? value.ms
+                          : value.name
             }
 
             let replyTo: 'channel' | 'user' | 'silent' | undefined
@@ -430,10 +435,4 @@ function formatTask(task: TriggerTask) {
         params: task.params,
         createdBy: task.createdBy
     }
-}
-
-function rawValue(value: DslValue): unknown {
-    if (typeof value !== 'object') return value
-    if (value.kind === 'duration') return value.ms
-    return value.name
 }

@@ -194,12 +194,6 @@ interface ActivityState {
 const STATE_LIMIT = 512
 const states = new Map<number, ActivityState>()
 
-function resolveDirection(params: ActivityParams): Direction {
-    if (params.direction === 'up') return 'up'
-    if (params.direction === 'down') return 'down'
-    return params.initialScore < params.activeThreshold ? 'up' : 'down'
-}
-
 function decayTowards(
     score: number,
     initial: number,
@@ -219,19 +213,14 @@ function curveGain(
 ): number {
     if (distinct < minDistinct) return -0.5
     const excess = distinct - minDistinct + 1
-    let value: number
     switch (curve) {
         case 'linear':
-            value = excess
-            break
+            return excess * gain
         case 'sqrt':
-            value = Math.sqrt(excess)
-            break
+            return Math.sqrt(excess) * gain
         case 'log':
-            value = Math.log1p(excess)
-            break
+            return Math.log1p(excess) * gain
     }
-    return value * gain
 }
 
 function gcStates(now: number) {
@@ -241,9 +230,7 @@ function gcStates(now: number) {
         }
     }
 
-    if (states.size <= STATE_LIMIT) {
-        return
-    }
+    if (states.size <= STATE_LIMIT) return
 
     const sorted = [...states.entries()].sort(
         (a, b) => a[1].lastTouched - b[1].lastTouched
@@ -341,19 +328,15 @@ function selectElements(session: Session) {
             hasMedia = true
         }
     }
-    const text = h
-        .select(elements as h[], 'text')
-        .join('')
-        .trim()
-    const isEmojiOnly =
-        text.length > 0 &&
-        /^[\p{Emoji}\p{P}\p{S}\s]+$/u.test(text) &&
-        !/[\p{L}\p{N}]/u.test(text)
+    const text = h.select(elements, 'text').join('').trim()
     return {
         hasMention,
         hasMedia,
         hasQuote: session.quote != null,
-        isEmojiOnly
+        isEmojiOnly:
+            text.length > 0 &&
+            /^[\p{Emoji}\p{P}\p{S}\s]+$/u.test(text) &&
+            !/[\p{L}\p{N}]/u.test(text)
     }
 }
 
@@ -386,7 +369,14 @@ export const activityTriggerProvider: TriggerProvider = {
             return null
         }
         const params = parsed.data
-        const direction = resolveDirection(params)
+        const direction: Direction =
+            params.direction === 'up'
+                ? 'up'
+                : params.direction === 'down'
+                  ? 'down'
+                  : params.initialScore < params.activeThreshold
+                    ? 'up'
+                    : 'down'
 
         const now = Date.now()
         let state = states.get(task.id)

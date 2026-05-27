@@ -62,8 +62,7 @@ export function parseAgentFrontmatter(
         format = hint
     } else if (
         'disallowedTools' in frontmatter ||
-        'permissionMode' in frontmatter ||
-        'maxTurns' in frontmatter
+        'permissionMode' in frontmatter
     ) {
         format = 'claude'
     } else if (
@@ -117,8 +116,12 @@ export function parseAgentFrontmatter(
             : ''
 
     if (format === 'claude') {
-        const tools = readNames(frontmatter.tools)
-        const disallowed = readNames(frontmatter.disallowedTools)
+        const tools = readNames(frontmatter.tools).flatMap((t) =>
+            mapCompatToolName(t)
+        )
+        const disallowed = readNames(frontmatter.disallowedTools).flatMap((t) =>
+            mapCompatToolName(t)
+        )
         const skills = readNames(frontmatter.skills)
         const mcpServers = readNames(frontmatter.mcpServers)
 
@@ -159,7 +162,9 @@ export function parseAgentFrontmatter(
                 ? frontmatter.maxTurns
                 : undefined
     } else if (format === 'opencode') {
-        const tools = readNames(frontmatter.tools)
+        const tools = readNames(frontmatter.tools).flatMap((t) =>
+            mapCompatToolName(t)
+        )
         if (tools.length > 0) {
             permissions.tools.mode = 'allow'
             permissions.tools.allow = tools
@@ -284,6 +289,16 @@ export function parseAgentFrontmatter(
             permissions.skills = createRule(p.skills, 'inherit')
             permissions.mcp = createRule(p.mcp, 'inherit')
             permissions.tools = createRule(p.tools, 'inherit')
+            permissions.tools.allow = Array.from(
+                new Set(
+                    permissions.tools.allow.flatMap((t) => mapCompatToolName(t))
+                )
+            )
+            permissions.tools.deny = Array.from(
+                new Set(
+                    permissions.tools.deny.flatMap((t) => mapCompatToolName(t))
+                )
+            )
             permissions.computer = createRule(p.computer, 'inherit')
         }
     }
@@ -377,7 +392,6 @@ function readNames(value: unknown) {
             .split(/\s*,\s*|\s+/)
             .map((s) => s.trim())
             .filter(Boolean)
-            .flatMap((s) => mapCompatToolName(s))
     }
 
     if (!Array.isArray(value)) return []
@@ -393,7 +407,6 @@ function readNames(value: unknown) {
         })
         .map((s) => s.trim())
         .filter(Boolean)
-        .flatMap((s) => mapCompatToolName(s))
 }
 
 function readValues(value: unknown) {

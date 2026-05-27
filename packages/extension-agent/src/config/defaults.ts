@@ -44,10 +44,6 @@ function copyRule(rule?: PermissionRule, mode: PermissionRule['mode'] = 'all') {
     }
 }
 
-function normalizeMode(value?: string): 'all' | 'allow' | 'deny' {
-    return value === 'allow' || value === 'deny' ? value : 'all'
-}
-
 export function createSubAgentItemConfig(
     input: Partial<SubAgentItemConfig> = {}
 ): SubAgentItemConfig {
@@ -59,8 +55,16 @@ export function createSubAgentItemConfig(
         character: input.character !== false,
         characterGroup: input.characterGroup !== false,
         characterPrivate: input.characterPrivate !== false,
-        characterGroupMode: normalizeMode(input.characterGroupMode),
-        characterPrivateMode: normalizeMode(input.characterPrivateMode),
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
         characterGroupIds: [...(input.characterGroupIds ?? [])],
         characterPrivateIds: [...(input.characterPrivateIds ?? [])],
         authority: input.authority ?? 0,
@@ -92,8 +96,16 @@ export function createToolItemConfig(
         character: input.character !== false,
         characterGroup: input.characterGroup !== false,
         characterPrivate: input.characterPrivate !== false,
-        characterGroupMode: normalizeMode(input.characterGroupMode),
-        characterPrivateMode: normalizeMode(input.characterPrivateMode),
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
         characterGroupIds: [...(input.characterGroupIds ?? [])],
         characterPrivateIds: [...(input.characterPrivateIds ?? [])],
         subAgents: copyRule(input.subAgents, 'all'),
@@ -117,8 +129,16 @@ export function createSkillItemConfig(
         character: input.character !== false,
         characterGroup: input.characterGroup !== false,
         characterPrivate: input.characterPrivate !== false,
-        characterGroupMode: normalizeMode(input.characterGroupMode),
-        characterPrivateMode: normalizeMode(input.characterPrivateMode),
+        characterGroupMode:
+            input.characterGroupMode === 'allow' ||
+            input.characterGroupMode === 'deny'
+                ? input.characterGroupMode
+                : 'all',
+        characterPrivateMode:
+            input.characterPrivateMode === 'allow' ||
+            input.characterPrivateMode === 'deny'
+                ? input.characterPrivateMode
+                : 'all',
         characterGroupIds: [...(input.characterGroupIds ?? [])],
         characterPrivateIds: [...(input.characterPrivateIds ?? [])],
         subAgents: copyRule(input.subAgents, 'all')

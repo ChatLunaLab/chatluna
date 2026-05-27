@@ -125,8 +125,8 @@ async function createInnerAgent(
             service.listSkills().filter((item) => item.modelEnabled)
         )
         if (filtered.length > 0) {
-            const cwd = options.ctx.chatluna_agent?.computer.getPromptWorkdir()
-            const status = options.ctx.chatluna_agent?.computer.getStatus()
+            const cwd = options.ctx.chatluna_agent?.computer?.getPromptWorkdir()
+            const status = options.ctx.chatluna_agent?.computer?.getStatus()
             const remote = status != null && status.defaultProvider !== 'local'
             skills = getMessageContent(
                 renderAvailableSkills(

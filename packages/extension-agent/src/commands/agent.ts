@@ -22,13 +22,9 @@ export function apply(ctx: Context) {
 
         try {
             const result = await service.syncAgentcliConfig()
-            const header = result.applied
-                ? 'agentcli sync: applied'
-                : 'agentcli sync: no changes'
-            return `${header}\n${result.message}`
+            return `${result.applied ? 'agentcli sync: applied' : 'agentcli sync: no changes'}\n${result.message}`
         } catch (err) {
-            const msg = getErrorMessage(err) || String(err) || 'unknown error'
-            return `agentcli sync failed: ${msg}`
+            return `agentcli sync failed: ${getErrorMessage(err)}`
         }
     })
 }

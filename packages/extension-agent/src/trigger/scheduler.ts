@@ -37,9 +37,7 @@ export class ChatLunaAgentTriggerScheduler {
     sync(task: TriggerTask) {
         this.remove(task.id)
 
-        if (!task.enabled || task.nextFireAt == null) {
-            return
-        }
+        if (!task.enabled || task.nextFireAt == null) return
 
         let active = true
         let dispose = () => {}
@@ -80,9 +78,7 @@ export class ChatLunaAgentTriggerScheduler {
             }
         }
         const schedule = () => {
-            if (!active) {
-                return
-            }
+            if (!active) return
 
             const delay = Math.max(task.nextFireAt.valueOf() - Date.now(), 0)
             dispose = this.ctx.setTimeout(
@@ -100,12 +96,7 @@ export class ChatLunaAgentTriggerScheduler {
     }
 
     remove(id: number) {
-        const dispose = this._timers.get(id)
-        if (dispose == null) {
-            return
-        }
-
-        dispose()
+        this._timers.get(id)?.()
         this._timers.delete(id)
     }
 }

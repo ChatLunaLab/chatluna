@@ -502,7 +502,7 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async getDesktopInfo(): Promise<DesktopInfo | undefined> {
-        return null
+        return undefined
     }
 
     async screenshot(): Promise<ScreenshotResult> {

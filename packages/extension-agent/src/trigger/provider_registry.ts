@@ -14,37 +14,39 @@ export class ChatLunaAgentTriggerProviderRegistry {
     }
 
     get(kind: string | null | undefined) {
-        if (kind == null) {
-            return
-        }
-
+        if (kind == null) return
         return this._providers.get(kind)
     }
 
     list() {
-        return Array.from(this._providers.values()).sort((a, b) =>
+        return [...this._providers.values()].sort((a, b) =>
             a.kind.localeCompare(b.kind)
         )
     }
 
     listDescriptors(): TriggerProviderDescriptor[] {
-        return this.list().map((provider) => ({
-            kind: provider.kind,
-            name: provider.name,
-            description: provider.description,
-            passive: provider.passive,
-            scheduled: provider.scheduled,
-            needsMessage: provider.needsMessage,
-            schema: provider.schema
-                ? getSchema(provider.kind, provider.schema)
-                : undefined
-        }))
+        return this.list().map((provider) => {
+            let schema: Record<string, unknown> | undefined
+            if (provider.schema) {
+                const json = zodToJsonSchema(
+                    provider.schema,
+                    provider.kind
+                ) as {
+                    definitions?: Record<string, Record<string, unknown>>
+                }
+                schema =
+                    json.definitions?.[provider.kind] ??
+                    (json as Record<string, unknown>)
+            }
+            return {
+                kind: provider.kind,
+                name: provider.name,
+                description: provider.description,
+                passive: provider.passive,
+                scheduled: provider.scheduled,
+                needsMessage: provider.needsMessage,
+                schema
+            }
+        })
     }
-}
-
-function getSchema(kind: string, schema: TriggerProvider['schema']) {
-    const json = zodToJsonSchema(schema!, kind) as {
-        definitions?: Record<string, Record<string, unknown>>
-    }
-    return json.definitions?.[kind] ?? (json as Record<string, unknown>)
 }

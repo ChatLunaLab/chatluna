@@ -694,10 +694,9 @@ export class ChatLunaAgentTriggerService {
         pendingKey: string,
         item: DeferredWakeup
     ) {
-        if (!this._deferred.has(pendingKey)) {
-            this._deferred.set(pendingKey, new Map())
-        }
-        this._deferred.get(pendingKey).set(key, item)
+        const map = this._deferred.get(pendingKey) ?? new Map()
+        map.set(key, item)
+        this._deferred.set(pendingKey, map)
     }
 
     private async _replayDeferred(platform: string, selfId: string) {

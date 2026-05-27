@@ -66,18 +66,23 @@ export class ChatLunaAgentTriggerListener {
     }
 
     async handle(session: Session, input?: string) {
-        const content = input ?? h.select(session.elements, 'text').join('')
-        const text = content.trim()
+        const text = (
+            input ?? h.select(session.elements, 'text').join('')
+        ).trim()
         const now = Date.now()
         this._compact(now)
 
         const key = `${session.uid}:${session.guildId ?? 'd'}:${session.channelId}`
         let entry = this._bindings.get(key)
         if (entry == null) {
-            const bindingKey = (
-                await this.ctx.chatluna.conversation.resolveConstraint(session)
-            ).bindingKey
-            entry = { key: bindingKey, ts: now }
+            entry = {
+                key: (
+                    await this.ctx.chatluna.conversation.resolveConstraint(
+                        session
+                    )
+                ).bindingKey,
+                ts: now
+            }
         } else {
             entry.ts = now
         }

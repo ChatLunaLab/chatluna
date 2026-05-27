@@ -19,10 +19,9 @@ class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
 
     async get(forced?: boolean) {
         if (this.ctx.chatluna_agent) {
-            const base = JSON.parse(
+            return JSON.parse(
                 JSON.stringify(this.ctx.chatluna_agent.getConsoleData())
             )
-            return base
         }
 
         return {
