@@ -96,17 +96,6 @@ export class TaskTool extends StructuredTool {
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
-        return await this.service.runTask(
-            {
-                action: input.action,
-                agent: input.agent,
-                id: input.id,
-                prompt: input.prompt,
-                reason: input.reason,
-                background: input.background,
-                message: input.message
-            },
-            runConfig
-        )
+        return await this.service.runTask(input, runConfig)
     }
 }

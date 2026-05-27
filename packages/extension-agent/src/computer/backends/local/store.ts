@@ -51,8 +51,7 @@ export class FileStore implements BaseFileStore {
 
         const stat = await fs.stat(filePath)
         if (stat.isDirectory()) {
-            const entries = await fs.readdir(filePath, { withFileTypes: true })
-            return entries
+            return (await fs.readdir(filePath, { withFileTypes: true }))
                 .filter(
                     (entry) =>
                         !this._shouldIgnore(path.join(filePath, entry.name))
@@ -65,16 +64,14 @@ export class FileStore implements BaseFileStore {
                 .join('\n')
         }
 
-        const raw = await fs.readFile(filePath, 'utf-8')
-        const lines = raw.split('\n')
+        const lines = (await fs.readFile(filePath, 'utf-8')).split('\n')
         const start = offset != null ? Math.max(0, offset - 1) : 0
         const end =
             limit != null ? Math.min(lines.length, start + limit) : lines.length
         const result = lines
             .slice(start, end)
             .map((line, idx) => {
-                const text = line.length > 2000 ? line.slice(0, 2000) : line
-                return `${start + idx + 1}: ${text}`
+                return `${start + idx + 1}: ${line.length > 2000 ? line.slice(0, 2000) : line}`
             })
             .join('\n')
 
@@ -99,9 +96,8 @@ export class FileStore implements BaseFileStore {
         replaceCount?: number
     ) {
         this.assertInScope(filePath)
-        const content = await fs.readFile(filePath, 'utf-8')
         const next = replaceSubstring(
-            content,
+            await fs.readFile(filePath, 'utf-8'),
             oldString,
             newString,
             replaceCount
@@ -193,13 +189,16 @@ export class FileStore implements BaseFileStore {
                     const text = (
                         (item.data.lines.text as string | undefined) || ''
                     ).replace(/\r?\n$/, '')
-                    const list = matched.get(file) || []
-                    list.push(`${file}:${item.data.line_number}:${text}`)
-                    matched.set(file, list)
+                    if (!matched.has(file)) {
+                        matched.set(file, [])
+                    }
+                    matched
+                        .get(file)
+                        .push(`${file}:${item.data.line_number}:${text}`)
                 }
 
                 const files = await sortByMtime([...matched.keys()])
-                return files.flatMap((file) => matched.get(file) || [])
+                return files.flatMap((f) => matched.get(f) || [])
             } catch (err) {
                 if (process.env['CHATLUNA_AGENT_DEBUG']) {
                     console.debug(err)
@@ -240,8 +239,9 @@ export class FileStore implements BaseFileStore {
             }
         }
 
-        const sorted = await sortByMtime([...matched.keys()])
-        return sorted.flatMap((file) => matched.get(file) || [])
+        return (await sortByMtime([...matched.keys()])).flatMap(
+            (f) => matched.get(f) || []
+        )
     }
 
     async glob(pattern: string, searchPath?: string) {
@@ -253,7 +253,7 @@ export class FileStore implements BaseFileStore {
             return []
         }
 
-        if (!stat?.isDirectory()) {
+        if (!stat.isDirectory()) {
             return this._matchPattern(dir, pattern) ? [dir] : []
         }
 
@@ -282,17 +282,17 @@ export class FileStore implements BaseFileStore {
                     )
                 }
 
-                const files = result.stdout
-                    .split('\0')
-                    .filter(Boolean)
-                    .map((file) => path.resolve(dir, file))
-                    .filter(
-                        (file) =>
-                            !this._shouldIgnore(file) &&
-                            this._matchPattern(file, pattern)
-                    )
-
-                return sortByMtime(files)
+                return sortByMtime(
+                    result.stdout
+                        .split('\0')
+                        .filter(Boolean)
+                        .map((file) => path.resolve(dir, file))
+                        .filter(
+                            (file) =>
+                                !this._shouldIgnore(file) &&
+                                this._matchPattern(file, pattern)
+                        )
+                )
             } catch (err) {
                 if (process.env['CHATLUNA_AGENT_DEBUG']) {
                     console.debug(err)
@@ -364,14 +364,11 @@ export class FileStore implements BaseFileStore {
     }
 
     private _matchPattern(filePath: string, pattern: string) {
-        const base = this._cfg.scopePath || process.cwd()
-        const relativePath = path.relative(base, filePath).replaceAll('\\', '/')
+        const rel = path
+            .relative(this._cfg.scopePath || process.cwd(), filePath)
+            .replaceAll('\\', '/')
         return micromatch.some(
-            [
-                relativePath,
-                filePath.replaceAll('\\', '/'),
-                path.basename(filePath)
-            ],
+            [rel, filePath.replaceAll('\\', '/'), path.basename(filePath)],
             pattern,
             { dot: true }
         )
@@ -381,12 +378,13 @@ export class FileStore implements BaseFileStore {
         if (this._cfg.ignores.length === 0) {
             return false
         }
-
-        const base = this._cfg.scopePath || process.cwd()
-        const relativePath = path.relative(base, filePath).replace(/\\/g, '/')
-        return micromatch.isMatch(relativePath, this._cfg.ignores, {
-            dot: true
-        })
+        return micromatch.isMatch(
+            path
+                .relative(this._cfg.scopePath || process.cwd(), filePath)
+                .replace(/\\/g, '/'),
+            this._cfg.ignores,
+            { dot: true }
+        )
     }
 
     private assertInScope(filePath: string) {
@@ -400,8 +398,8 @@ export class FileStore implements BaseFileStore {
     }
 }
 
-async function runProcess(file: string, args: string[], cwd: string) {
-    return await new Promise<{
+function runProcess(file: string, args: string[], cwd: string) {
+    return new Promise<{
         exitCode: number
         stdout: string
         stderr: string
@@ -456,12 +454,12 @@ function replaceSubstring(
     }
 
     if (replaceCount === 1) {
-        const firstIdx = content.indexOf(oldString)
-        const secondIdx = content.indexOf(
-            oldString,
-            firstIdx + oldString.length
-        )
-        if (secondIdx !== -1) {
+        if (
+            content.indexOf(
+                oldString,
+                content.indexOf(oldString) + oldString.length
+            ) !== -1
+        ) {
             throw new Error(
                 'Found multiple matches for oldString. Provide more surrounding ' +
                     'lines in oldString to identify the correct match, or set ' +
@@ -489,8 +487,7 @@ function buildEditContext(
     newString: string
 ): string {
     const lines = content.split('\n')
-    const marker = newString || oldString
-    const row = lines.findIndex((line) => line.includes(marker))
+    const row = lines.findIndex((line) => line.includes(newString || oldString))
     const start = Math.max(0, row - 10)
     const end = Math.min(lines.length, row + 11)
 

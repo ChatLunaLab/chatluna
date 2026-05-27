@@ -19,9 +19,8 @@ export async function apply(ctx: Context, config: Config) {
 
     plugin = new ChatLunaPlugin(ctx, config, 'agent', false)
 
-    const agentConfig = await readConfig(ctx)
     ctx.plugin(ChatLunaAgentService, {
-        config: agentConfig,
+        config: await readConfig(ctx),
         plugin
     })
 

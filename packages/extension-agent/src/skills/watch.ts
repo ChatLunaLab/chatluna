@@ -1,5 +1,3 @@
-/** @module skills/watch */
-
 import type { FSWatcher } from 'fs'
 import { watch } from 'fs'
 import { readdir, stat } from 'fs/promises'
@@ -17,9 +15,17 @@ export async function watchSkillFiles(
     const roots = await getSkillRoots(ctx, cfg)
     const recursive =
         process.platform === 'win32' || process.platform === 'darwin'
-    const dirs = recursive
-        ? await filterExisting(roots)
-        : await getAllDirs(roots)
+
+    const dirs: string[] = []
+    if (recursive) {
+        for (const r of roots) {
+            if ((await stat(r).catch(() => undefined))?.isDirectory()) {
+                dirs.push(r)
+            }
+        }
+    } else {
+        dirs.push(...(await getAllDirs(roots)))
+    }
 
     const watchers: FSWatcher[] = []
     let timer: NodeJS.Timeout | undefined
@@ -75,23 +81,15 @@ export async function watchSkillFiles(
     }
 }
 
-async function filterExisting(roots: string[]) {
-    const dirs: string[] = []
-    for (const dir of roots) {
-        const info = await stat(dir).catch(() => undefined)
-        if (info?.isDirectory()) dirs.push(dir)
-    }
-    return dirs
-}
-
 async function getAllDirs(roots: string[]) {
     const seen = new Set<string>()
     const queue: string[] = []
     const dirs: string[] = []
 
-    for (const dir of roots) {
-        const info = await stat(dir).catch(() => undefined)
-        if (info?.isDirectory()) queue.push(dir)
+    for (const r of roots) {
+        if ((await stat(r).catch(() => undefined))?.isDirectory()) {
+            queue.push(r)
+        }
     }
 
     while (queue.length) {

@@ -5,9 +5,6 @@ import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
-const MSG_EDITING = '编辑文件'
-const MSG_DONE = '完成编辑'
-
 export class EditFileTool extends ComputerToolBase {
     name = 'file_edit'
 
@@ -42,7 +39,7 @@ Usage:
     ) {
         const computer = await this.getSession(toolConfig)
 
-        this.log(computer, `${MSG_EDITING}: ${input.filePath}`)
+        this.log(computer, `编辑文件: ${input.filePath}`)
 
         try {
             const result = await computer.editFile(
@@ -58,7 +55,7 @@ Usage:
 
             this.log(
                 computer,
-                `${MSG_DONE}: ${input.filePath} (替换 ${result.replacements} 处)`
+                `完成编辑: ${input.filePath} (替换 ${result.replacements} 处)`
             )
             return this.withBackend(
                 computer,

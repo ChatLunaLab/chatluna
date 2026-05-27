@@ -225,19 +225,17 @@ export class ChatLunaAgentComputerService {
             )
         }
 
-        const cwd = options.workdir
         const marker = `__CHATLUNA_BACKGROUND_EXIT__${randomUUID().replaceAll('-', '')}`
-        const userSession = options.runConfig?.configurable?.session
         const wrapped = session.prepareBackgroundCommand
             ? await session.prepareBackgroundCommand(command, marker, {
-                  workdir: cwd,
-                  session: userSession
+                  workdir: options.workdir,
+                  session: options.runConfig?.configurable?.session
               })
             : `${command}\n`
         const terminal = await this.createManagedTerminal(
             session,
             {
-                cwd,
+                cwd: options.workdir,
                 cols: 120,
                 rows: 30
             },
@@ -251,7 +249,7 @@ export class ChatLunaAgentComputerService {
             url: terminal.info.url,
             token: terminal.info.token,
             command,
-            cwd,
+            cwd: options.workdir,
             state: 'running',
             startedAt: Date.now(),
             timeout: options.timeout,
@@ -306,8 +304,8 @@ export class ChatLunaAgentComputerService {
         terminalId: string,
         state?: Extract<ComputerBackgroundJobState, 'killed' | 'timed_out'>
     ) {
-        const session = this._terminals.get(sessionId)
-        const terminal = session?.get(terminalId)
+        const map = this._terminals.get(sessionId)
+        const terminal = map?.get(terminalId)
         if (!terminal) {
             return
         }
@@ -321,8 +319,8 @@ export class ChatLunaAgentComputerService {
         }
 
         await terminal.terminal.kill()
-        session?.delete(terminalId)
-        if (session && session.size < 1) {
+        map?.delete(terminalId)
+        if (map && map.size < 1) {
             this._terminals.delete(sessionId)
         }
     }
@@ -339,23 +337,25 @@ export class ChatLunaAgentComputerService {
         )
         if (!backend) {
             if (!options.allowedBackends) {
-                const type =
-                    options.backend ?? this.config.computer.defaultProvider
-                const status = this._status.backends[type]
-                throw new Error(formatBackendUnavailable(status))
+                throw new Error(
+                    formatBackendUnavailable(
+                        this._status.backends[
+                            options.backend ??
+                                this.config.computer.defaultProvider
+                        ]
+                    )
+                )
             }
 
             throw new Error('No supported computer backend is available.')
         }
 
-        const key = buildComputerSessionKey({
-            backend,
-            conversationId: options.conversationId,
-            userId: options.userId
-        })
-
         const session = await this._sessions.getOrCreate(
-            key,
+            buildComputerSessionKey({
+                backend,
+                conversationId: options.conversationId,
+                userId: options.userId
+            }),
             {
                 backend,
                 conversationId: options.conversationId,
@@ -401,8 +401,9 @@ export class ChatLunaAgentComputerService {
 
     getCapabilities(type?: ComputerBackendType) {
         if (type) {
-            const status = this._status.backends[type]
-            return !isAvailableBackend(status) ? [] : [...status.capabilities]
+            return !isAvailableBackend(this._status.backends[type])
+                ? []
+                : [...this._status.backends[type].capabilities]
         }
 
         return Array.from(
@@ -441,26 +442,26 @@ export class ChatLunaAgentComputerService {
             }
 
             if (process.platform === 'win32') {
-                const bin = name.toLowerCase()
+                const lower = name.toLowerCase()
                 if (
-                    bin === 'bash' ||
-                    bin === 'bash.exe' ||
-                    bin === 'sh' ||
-                    bin === 'sh.exe'
+                    lower === 'bash' ||
+                    lower === 'bash.exe' ||
+                    lower === 'sh' ||
+                    lower === 'sh.exe'
                 ) {
                     return (await findGitBash()) != null
                 }
 
                 if (
-                    bin === 'pwsh' ||
-                    bin === 'pwsh.exe' ||
-                    bin === 'powershell' ||
-                    bin === 'powershell.exe'
+                    lower === 'pwsh' ||
+                    lower === 'pwsh.exe' ||
+                    lower === 'powershell' ||
+                    lower === 'powershell.exe'
                 ) {
                     return findPowerShell() != null
                 }
 
-                if (bin === 'cmd' || bin === 'cmd.exe') {
+                if (lower === 'cmd' || lower === 'cmd.exe') {
                     return true
                 }
             }
@@ -478,9 +479,7 @@ export class ChatLunaAgentComputerService {
         const result = await session
             .execute(
                 `sh -lc ${quoteShell(`command -v ${name} >/dev/null 2>&1`)}`,
-                {
-                    timeout: 5000
-                }
+                { timeout: 5000 }
             )
             .catch(() => undefined)
 
@@ -558,11 +557,11 @@ export class ChatLunaAgentComputerService {
             }
         }
         const token = randomUUID()
-        const list =
+        const map =
             this._terminals.get(session.sessionId) ??
             new Map<string, ManagedTerminal>()
-        list.set(terminal.id, { terminal, persistent, token })
-        this._terminals.set(session.sessionId, list)
+        map.set(terminal.id, { terminal, persistent, token })
+        this._terminals.set(session.sessionId, map)
 
         return {
             info: {
@@ -663,15 +662,16 @@ export class ChatLunaAgentComputerService {
         offset?: number,
         limit?: number
     ) {
-        const normalized = filePath.replaceAll('\\', '/')
-        const marker = '.chatluna/skills/'
-        const index = normalized.indexOf(marker)
-        if (index === -1) {
+        const idx = filePath.replaceAll('\\', '/').indexOf('.chatluna/skills/')
+        if (idx === -1) {
             throw new Error('Not a materialized skill path.')
         }
 
-        const rest = normalized.slice(index + marker.length)
-        const [name, ...parts] = rest.split('/').filter(Boolean)
+        const [name, ...parts] = filePath
+            .replaceAll('\\', '/')
+            .slice(idx + '.chatluna/skills/'.length)
+            .split('/')
+            .filter(Boolean)
         if (!name) {
             throw new Error('Invalid materialized skill path.')
         }
@@ -687,9 +687,13 @@ export class ChatLunaAgentComputerService {
             session,
             this.ctx
         )
-        const target =
-            parts.length > 0 ? `${root}/${parts.join('/')}` : `${root}/SKILL.md`
-        return await session.readFile(target, offset, limit)
+        return await session.readFile(
+            parts.length > 0
+                ? `${root}/${parts.join('/')}`
+                : `${root}/SKILL.md`,
+            offset,
+            limit
+        )
     }
 
     async getDesktopState(
@@ -697,27 +701,12 @@ export class ChatLunaAgentComputerService {
         backend?: ComputerBackendType
     ): Promise<ComputerDesktopState> {
         const session = await this.getOrCreateUiSession(clientId, backend)
-        const info = await session.getDesktopInfo?.()
-        const screenshot = session.screenshot
-            ? await session.screenshot().catch(() => undefined)
-            : undefined
         return {
             sessionId: session.sessionId,
             backend: session.backend,
-            info: info
-                ? {
-                      width: info.width,
-                      height: info.height,
-                      streamUrl: info.streamUrl
-                  }
-                : undefined,
-            screenshot: screenshot
-                ? {
-                      data: screenshot.data,
-                      mimeType: screenshot.mimeType,
-                      width: screenshot.width,
-                      height: screenshot.height
-                  }
+            info: await session.getDesktopInfo?.(),
+            screenshot: session.screenshot
+                ? await session.screenshot().catch(() => undefined)
                 : undefined
         }
     }
@@ -763,23 +752,22 @@ export class ChatLunaAgentComputerService {
         filePaths: string[],
         runConfig?: ChatLunaToolRunnable
     ): Promise<{ url: string; name: string }[]> {
-        const storage = this.ctx.chatluna_storage
-        if (!storage) {
+        if (!this.ctx.chatluna_storage) {
             throw new Error('chatluna-storage-service is not available.')
         }
 
-        const computer = await this.getToolSession(runConfig)
+        const session = await this.getToolSession(runConfig)
         return await Promise.all(
             filePaths.map(async (filePath) => {
-                if (!computer.isInScope(filePath)) {
+                if (!session.isInScope(filePath)) {
                     throw new Error(`Path is outside scope: ${filePath}`)
                 }
 
                 const fileName = path.posix.basename(
                     filePath.replaceAll('\\', '/')
                 )
-                const asset = await computer.openAsset(filePath)
-                return await storage.createTempFileFromStream(
+                const asset = await session.openAsset(filePath)
+                return await this.ctx.chatluna_storage!.createTempFileFromStream(
                     asset.stream,
                     fileName,
                     {
@@ -817,35 +805,33 @@ export class ChatLunaAgentComputerService {
         })
     }
 
-    private async removeRemoteEntry(path: string) {
+    private async removeRemoteEntry(entryPath: string) {
         const session = await this.getRemoteScanSession()
         if (!session) {
             throw new Error('Remote computer backend is not available.')
         }
 
-        const target = path.replaceAll('\\', '/')
+        const target = entryPath.replaceAll('\\', '/')
         if (
             target.length < 2 ||
             target === '/' ||
             target === '~' ||
             /^~?\/?\.?$/.test(target)
         ) {
-            throw new Error(`Refusing to remove unsafe path: ${path}`)
+            throw new Error(`Refusing to remove unsafe path: ${entryPath}`)
         }
 
         const quoted = quoteShellPath(target)
         const result = await session.execute(
             `if [ -d ${quoted} ]; then rm -rf ${quoted}; elif [ -e ${quoted} ]; then rm -f ${quoted}; fi`,
-            {
-                timeout: 15000
-            }
+            { timeout: 15000 }
         )
 
         if (result.exitCode !== 0) {
             throw new Error(
                 result.stderr.trim() ||
                     result.stdout.trim() ||
-                    `Failed to remove ${path}`
+                    `Failed to remove ${entryPath}`
             )
         }
     }
@@ -854,9 +840,7 @@ export class ChatLunaAgentComputerService {
         runConfig?: ChatLunaToolRunnable,
         backend?: ComputerBackendType
     ) {
-        const session = runConfig?.configurable?.session
-        const context = runConfig?.configurable?.agentContext
-        const sub = context?.subagentContext
+        const sub = runConfig?.configurable?.agentContext?.subagentContext
         const info = sub
             ? this.ctx.chatluna_agent?.subAgent
                   .getCatalogSync()
@@ -872,9 +856,11 @@ export class ChatLunaAgentComputerService {
                 : undefined,
             conversationId:
                 sub?.parentConversationId ??
-                context?.conversationId ??
+                runConfig?.configurable?.agentContext?.conversationId ??
                 runConfig?.configurable?.conversationId,
-            userId: runConfig?.configurable?.userId ?? session?.userId
+            userId:
+                runConfig?.configurable?.userId ??
+                runConfig?.configurable?.session?.userId
         }
     }
 
@@ -945,27 +931,14 @@ export class ChatLunaAgentComputerService {
         const timeout = this.config.computer.idleTimeoutMs
         this._idleDispose = this.ctx.setInterval(
             async () => {
-                const items = this._sessions.list().filter((item) => {
+                for (const item of this._sessions.list()) {
                     if (this._sessions.isBusy(item.id)) {
-                        return false
-                    }
-
-                    if (this.hasRunningJobs(item.id)) {
-                        return false
-                    }
-
-                    return Date.now() - item.lastActiveAt >= timeout
-                })
-
-                for (const item of items) {
-                    const info = this.getSessionInfo(item.id)
-                    if (!info || this._sessions.isBusy(item.id)) {
                         continue
                     }
                     if (this.hasRunningJobs(item.id)) {
                         continue
                     }
-                    if (Date.now() - info.lastActiveAt < timeout) {
+                    if (Date.now() - item.lastActiveAt < timeout) {
                         continue
                     }
 
@@ -1017,10 +990,10 @@ export class ChatLunaAgentComputerService {
         preferred?: ComputerBackendType,
         allowedBackends?: ComputerBackendType[]
     ) {
-        const backends = allowedBackends ?? COMPUTER_BACKENDS
+        const list = allowedBackends ?? COMPUTER_BACKENDS
         const target = preferred ?? this.config.computer.defaultProvider
         if (
-            backends.includes(target) &&
+            list.includes(target) &&
             isAvailableBackend(this._status.backends[target])
         ) {
             return target
@@ -1030,7 +1003,7 @@ export class ChatLunaAgentComputerService {
             return undefined
         }
 
-        for (const item of backends) {
+        for (const item of list) {
             if (item === target) {
                 continue
             }
@@ -1053,10 +1026,9 @@ export class ChatLunaAgentComputerService {
         }
 
         for (const item of COMPUTER_TOOLS) {
-            const tool = item.factory(this)
             this._toolDispose.push(
                 this.ctx.chatluna.platform.registerTool(item.name, {
-                    description: tool.description,
+                    description: item.factory(this).description,
                     selector: () => this._status.enabled,
                     createTool: () => item.factory(this),
                     meta: {
@@ -1091,11 +1063,11 @@ export class ChatLunaAgentComputerService {
                 const mask = (runtime.configurable as { toolMask?: ToolMask })
                     ?.toolMask
                 const registry = this.ctx.chatluna.platform.getToolRegistry()
-                const names =
+                const capabilities = (
                     mask != null
                         ? this.ctx.chatluna.platform.getFilteredTools(mask)
                         : Object.keys(registry)
-                const capabilities = names.filter((name) =>
+                ).filter((name) =>
                     registry[name]?.meta?.tags?.includes('computer')
                 )
                 if (capabilities.length < 1) {
@@ -1127,11 +1099,7 @@ export class ChatLunaAgentComputerService {
     private refreshStatus() {
         const status = this.buildStatus()
         const sessions = this._sessions.list()
-        const counts: Record<ComputerBackendType, number> = {
-            local: 0,
-            e2b: 0,
-            'open-terminal': 0
-        }
+        const counts = { local: 0, e2b: 0, 'open-terminal': 0 }
 
         for (const item of sessions) {
             counts[item.backend] += 1
@@ -1149,14 +1117,13 @@ export class ChatLunaAgentComputerService {
         const local = buildBackendStatus(
             'local',
             this.config.computer.local.enabled,
-            [...BASE_CAPABILITIES],
-            undefined
+            BASE_CAPABILITIES
         )
 
         const openTerminal = buildBackendStatus(
             'open-terminal',
             this.config.computer.openTerminal.enabled,
-            [...BASE_CAPABILITIES],
+            BASE_CAPABILITIES,
             this.config.computer.openTerminal.enabled &&
                 !this.config.computer.openTerminal.baseUrl
                 ? 'open-terminal baseUrl is empty.'
@@ -1168,7 +1135,7 @@ export class ChatLunaAgentComputerService {
             this.config.computer.e2b.enabled,
             this.config.computer.e2b.desktopTemplate
                 ? [...BASE_CAPABILITIES, ...E2B_EXTRA]
-                : [...BASE_CAPABILITIES],
+                : BASE_CAPABILITIES,
             this.config.computer.e2b.enabled &&
                 !this.resolveSecret(this.config.computer.e2b.apiKey)
                 ? 'E2B apiKey is empty.'
@@ -1191,10 +1158,9 @@ export class ChatLunaAgentComputerService {
     }
 
     private async closeAllTerminals(sessionId?: string) {
-        const entries: [string, Map<string, ManagedTerminal> | undefined][] =
-            sessionId
-                ? [[sessionId, this._terminals.get(sessionId)]]
-                : Array.from(this._terminals.entries())
+        const entries = sessionId
+            ? [[sessionId, this._terminals.get(sessionId)] as const]
+            : Array.from(this._terminals.entries())
         for (const [id, items] of entries) {
             if (!items) {
                 continue

@@ -46,17 +46,17 @@ export const cronTriggerProvider: TriggerProvider = {
             throw new Error('Cron expression is required')
         }
 
-        const base = Math.max(
-            currentDate?.valueOf() ?? 0,
-            firedAt?.valueOf() ?? 0,
-            Date.now()
-        )
-
         return {
             enabled: true,
             nextFireAt: new Date(
                 CronExpressionParser.parse(expression, {
-                    currentDate: new Date(base)
+                    currentDate: new Date(
+                        Math.max(
+                            currentDate?.valueOf() ?? 0,
+                            firedAt?.valueOf() ?? 0,
+                            Date.now()
+                        )
+                    )
                 })
                     .next()
                     .getTime()

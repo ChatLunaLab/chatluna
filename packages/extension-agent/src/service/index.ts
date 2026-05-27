@@ -60,23 +60,22 @@ export class ChatLunaAgentService extends Service {
         public args: { config: AgentConfig; plugin: ChatLunaPlugin }
     ) {
         super(ctx, 'chatluna_agent')
-        const { config, plugin } = args
 
-        this.permission = new ChatLunaAgentPermissionService(ctx, config)
-        this.computer = new ChatLunaAgentComputerService(ctx, config)
-        this.mcp = new ChatLunaAgentMcpService(ctx, config, plugin)
+        this.permission = new ChatLunaAgentPermissionService(ctx, args.config)
+        this.computer = new ChatLunaAgentComputerService(ctx, args.config)
+        this.mcp = new ChatLunaAgentMcpService(ctx, args.config, args.plugin)
         this.runtimeSync = new ChatLunaAgentRuntimeSyncService(ctx, () => this)
         this.skills = new ChatLunaAgentSkillsService(
             ctx,
-            config,
+            args.config,
             this.permission
         )
         this.subAgent = new ChatLunaAgentSubAgentService(
             ctx,
-            config,
+            args.config,
             this.permission
         )
-        this.trigger = new ChatLunaAgentTriggerService(ctx, config.trigger)
+        this.trigger = new ChatLunaAgentTriggerService(ctx, args.config.trigger)
     }
 
     async start() {
@@ -162,10 +161,9 @@ export class ChatLunaAgentService extends Service {
     }
 
     async saveConfig(cfg: AgentConfig) {
-        const next = cfg
-        await writeConfig(this.ctx, next)
-        this._setConfig(next)
-        await this.reload(next)
+        await writeConfig(this.ctx, cfg)
+        this._setConfig(cfg)
+        await this.reload(cfg)
     }
 
     async saveMcpConfig(mcp: AgentConfig['mcp']) {
@@ -210,16 +208,17 @@ export class ChatLunaAgentService extends Service {
 
     async importSkills(input: SkillImportInput): Promise<SkillImportResult> {
         const result = await this.skills.importSkills(input)
-        const skills = {
-            dirs: [...this.args.config.skills.dirs],
-            items: { ...this.args.config.skills.items },
-            githubToken: this.args.config.skills.githubToken ?? ''
-        }
-
-        await this.updateConfig('skills', skills, async () => {
-            await this.skills.reload()
-        })
-
+        await this.updateConfig(
+            'skills',
+            {
+                dirs: [...this.args.config.skills.dirs],
+                items: { ...this.args.config.skills.items },
+                githubToken: this.args.config.skills.githubToken ?? ''
+            },
+            async () => {
+                await this.skills.reload()
+            }
+        )
         return result
     }
 
@@ -284,7 +283,7 @@ export class ChatLunaAgentService extends Service {
             ...skills.items[id],
             enabled: mode !== 'off',
             mode,
-            remote: info?.remote === true || skills.items[id]?.remote === true
+            remote: info?.remote || skills.items[id]?.remote === true
         }
         await this.updateConfig('skills', skills, async () => {
             await this.skills.reload()
@@ -306,7 +305,6 @@ export class ChatLunaAgentService extends Service {
     }
 
     async setSubAgentEnabled(id: string, enabled: boolean) {
-        const subAgent = structuredClone(this.args.config.subAgent)
         const info = this.subAgent
             .getCatalogSync()
             .find((item) => item.id === id)
@@ -314,13 +312,16 @@ export class ChatLunaAgentService extends Service {
             throw new Error(`Sub-agent not found: ${id}`)
         }
 
+        if (info.source === 'manual') {
+            await this.subAgent.setManualAgentEnabled(id, enabled)
+            return
+        }
+
+        const subAgent = structuredClone(this.args.config.subAgent)
         if (info.source === 'builtin') {
             subAgent.builtin[info.name] = itemFromInfo(info, enabled)
         } else if (info.source === 'preset') {
             subAgent.presetAgents[info.name] = itemFromInfo(info, enabled)
-        } else if (info.source === 'manual') {
-            await this.subAgent.setManualAgentEnabled(id, enabled)
-            return
         } else {
             subAgent.items[id] = itemFromInfo(info, enabled)
         }
@@ -351,10 +352,10 @@ export class ChatLunaAgentService extends Service {
         await this.subAgent.reload()
         await this.refreshConsoleData()
 
-        const path = resolve(file)
+        const resolved = resolve(file)
         const info = this.subAgent
             .getCatalogSync()
-            .find((item) => item.path && resolve(item.path) === path)
+            .find((item) => item.path && resolve(item.path) === resolved)
 
         if (!info) {
             throw new Error(
@@ -420,15 +421,15 @@ export class ChatLunaAgentService extends Service {
         await this.subAgent.reload()
         await this.refreshConsoleData()
 
-        const path = resolve(info.path)
-        const next = this.subAgent
+        const resolved = resolve(info.path)
+        const updated = this.subAgent
             .getCatalogSync()
-            .find((item) => item.path && resolve(item.path) === path)
-        if (!next) {
+            .find((item) => item.path && resolve(item.path) === resolved)
+        if (!updated) {
             throw new Error(`Sub-agent was saved but not found: ${id}`)
         }
 
-        return next
+        return updated
     }
 
     async exportSubAgent(
@@ -608,9 +609,7 @@ export class ChatLunaAgentService extends Service {
         outputDir?: string
     }) {
         const limit = input.limit ?? 8000
-        if (input.text.length <= limit) {
-            return input.text
-        }
+        if (input.text.length <= limit) return input.text
 
         if (input.session) {
             const base =
@@ -622,8 +621,9 @@ export class ChatLunaAgentService extends Service {
                 : base === '/'
                   ? '/'
                   : base.replace(/[\\/]+$/, '')
-            const sep = root.endsWith('/') ? '' : '/'
-            const filePath = `${root}${sep}.tmp-chatluna-${input.name}-${Date.now()}-${randomUUID()}.txt`
+            const filePath =
+                `${root}${root.endsWith('/') ? '' : '/'}` +
+                `.tmp-chatluna-${input.name}-${Date.now()}-${randomUUID()}.txt`
 
             try {
                 await input.session.writeFile(filePath, input.text)

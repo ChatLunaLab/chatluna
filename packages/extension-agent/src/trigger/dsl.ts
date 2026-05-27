@@ -43,7 +43,6 @@ export function parseDsl(src: string): DslCall {
     if (typeof verbToken.value !== 'string') {
         throw new Error(`Expected verb identifier at ${verbToken.pos}`)
     }
-    const verb = verbToken.value
     need('LPAREN')
 
     const positional: DslValue[] = []
@@ -58,9 +57,8 @@ export function parseDsl(src: string): DslCall {
                 if (typeof token.value !== 'string') {
                     throw new Error(`Expected named argument at ${token.pos}`)
                 }
-                const key = token.value
                 take()
-                named[key] = readValue(take())
+                named[token.value] = readValue(take())
             } else {
                 if (sawNamed) {
                     throw new Error(
@@ -80,7 +78,7 @@ export function parseDsl(src: string): DslCall {
         throw new Error(`Unexpected token at ${peek().pos}`)
     }
 
-    return { verb, positional, named }
+    return { verb: verbToken.value as string, positional, named }
 }
 
 export function valueToString(v: DslValue): string {
@@ -96,16 +94,12 @@ export function valueToNumber(v: DslValue): number {
 }
 
 export function valueToDurationMs(v: DslValue): number {
-    if (typeof v === 'object' && 'kind' in v && v.kind === 'duration') {
-        return v.ms
-    }
+    if (typeof v === 'object' && v.kind === 'duration') return v.ms
     throw new Error('Expected duration')
 }
 
 export function valueToIdent(v: DslValue): string {
-    if (typeof v === 'object' && 'kind' in v && v.kind === 'ident') {
-        return v.name
-    }
+    if (typeof v === 'object' && v.kind === 'ident') return v.name
     throw new Error('Expected identifier')
 }
 

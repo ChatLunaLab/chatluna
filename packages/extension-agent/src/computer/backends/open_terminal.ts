@@ -8,7 +8,7 @@ import { Context } from 'koishi'
 import type {} from '@koishijs/plugin-proxy-agent'
 import mimeTypes from 'mime-types'
 import { quoteShell } from './types'
-import { OpenTerminalBackendConfig } from '../../types'
+import { ComputerCapability, OpenTerminalBackendConfig } from '../../types'
 import {
     ComputerSessionApi,
     ExecuteOptions,
@@ -22,7 +22,16 @@ import {
 export class OpenTerminalComputerSession implements ComputerSessionApi {
     readonly backend = 'open-terminal' as const
     readonly sessionId: string
-    readonly capabilities = [...CAPABILITIES]
+    readonly capabilities = [
+        'file_read',
+        'file_write',
+        'file_publish',
+        'file_edit',
+        'grep',
+        'glob',
+        'bash',
+        'terminal_pty'
+    ] as ComputerCapability[]
 
     private _connected = false
     private _home = '/'
@@ -50,22 +59,22 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             throw new Error('open-terminal baseUrl is empty.')
         }
 
-        const current = readOpenTerminalData<OpenTerminalCwdData>(
-            await this.ctx.http(this.url('/files/cwd'), {
-                method: 'GET',
-                proxyAgent: '',
-                headers: this.headers()
-            })
-        )
-        const root = current.cwd || '/'
+        const root =
+            readOpenTerminalData<OpenTerminalCwdData>(
+                await this.ctx.http(this.url('/files/cwd'), {
+                    method: 'GET',
+                    proxyAgent: '',
+                    headers: this.headers()
+                })
+            ).cwd || '/'
         this._home = root
 
-        const home = await this.execute('printf %s "$HOME"', {
+        const homeResult = await this.execute('printf %s "$HOME"', {
             workdir: root,
             timeout: 5000
         }).catch(() => undefined)
-        if (home?.stdout?.startsWith('/')) {
-            this._home = home.stdout.trim()
+        if (homeResult?.stdout?.startsWith('/')) {
+            this._home = homeResult.stdout.trim()
         }
 
         if (this.options.cwd) {
@@ -121,9 +130,8 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 })
             )
             const dir = result.dir || target
-            const entries = Array.isArray(result.entries) ? result.entries : []
 
-            return entries
+            return (Array.isArray(result.entries) ? result.entries : [])
                 .map((item) => {
                     if (typeof item?.name !== 'string') {
                         return undefined
@@ -173,25 +181,25 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
         const start = offset ?? 1
         const lines = text.split('\n')
-        const resultLines = lines.map((line, idx) => `${start + idx}: ${line}`)
         const total =
             typeof result.total_lines === 'number'
                 ? result.total_lines
                 : start + lines.length - 1
+        const numbered = lines.map((line, idx) => `${start + idx}: ${line}`)
+
         if (start + lines.length - 1 >= total) {
-            return resultLines.join('\n')
+            return numbered.join('\n')
         }
 
-        return `${resultLines.join('\n')}\n\n(Showing lines ${start}-${start + lines.length - 1} of ${total}. Use offset=${start + lines.length} to continue.)`
+        return `${numbered.join('\n')}\n\n(Showing lines ${start}-${start + lines.length - 1} of ${total}. Use offset=${start + lines.length} to continue.)`
     }
 
     async writeFile(filePath: string, content: FileContent) {
         if (typeof content !== 'string') {
             const target = this.resolvePath(filePath)
-            const dir = posix.dirname(target)
             const tmp = `${target}.${randomUUID()}.base64`
 
-            await this.execute(`mkdir -p ${quoteShell(dir)}`)
+            await this.execute(`mkdir -p ${quoteShell(posix.dirname(target))}`)
             await this.writeFile(tmp, Buffer.from(content).toString('base64'))
 
             try {
@@ -241,11 +249,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
         if (replaceCount === 1) {
             const firstIdx = content.indexOf(oldString)
-            const secondIdx = content.indexOf(
-                oldString,
-                firstIdx + oldString.length
-            )
-            if (secondIdx !== -1) {
+            if (content.indexOf(oldString, firstIdx + 1) !== -1) {
                 throw new Error(
                     `Found multiple matches for oldString in ${filePath}. ` +
                         'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
@@ -286,13 +290,12 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const lines = next.split('\n')
         const row = lines.findIndex((line) => line.includes(newString))
         const start = Math.max(0, row - 10)
-        const end = Math.min(lines.length, row + 11)
 
         return {
             success: true,
             replacements,
             context: lines
-                .slice(start, end)
+                .slice(start, Math.min(lines.length, row + 11))
                 .map(
                     (line, idx) =>
                         `${start + idx + 1 === row + 1 ? '>' : ' '} ${start + idx + 1}: ${line}`
@@ -323,9 +326,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             })
         )
 
-        const matches = Array.isArray(result.matches) ? result.matches : []
-
-        return matches
+        return (Array.isArray(result.matches) ? result.matches : [])
             .map((item) => {
                 if (typeof item?.file !== 'string') {
                     return undefined
@@ -356,9 +357,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             })
         )
 
-        const matches = Array.isArray(result.matches) ? result.matches : []
-
-        return matches
+        return (Array.isArray(result.matches) ? result.matches : [])
             .map((item) => {
                 if (typeof item?.path !== 'string') {
                     return undefined
@@ -386,12 +385,15 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         const end = `__CHATLUNA_OPEN_TERMINAL_END__${id}`
         const stdoutPath = `/tmp/chatluna-${id}.stdout`
         const stderrPath = `/tmp/chatluna-${id}.stderr`
-        const env = options.env
-            ? Object.entries(options.env)
-                  .map(([key, value]) => `export ${key}=${quoteShell(value)}`)
-                  .join('\n')
-            : ''
-        const wrapped = `${env ? `${env}\n` : ''}stty -echo 2>/dev/null
+        const wrapped = `${
+            options.env
+                ? Object.entries(options.env)
+                      .map(
+                          ([key, value]) => `export ${key}=${quoteShell(value)}`
+                      )
+                      .join('\n') + '\n'
+                : ''
+        }stty -echo 2>/dev/null
 export PS1=''
 __chatluna_stdout=${quoteShell(stdoutPath)}
 __chatluna_stderr=${quoteShell(stderrPath)}
@@ -518,8 +520,12 @@ exit
     }
 
     async readAsset(filePath: string) {
-        const asset = await this.openAsset(filePath)
-        return (await readOpenTerminalAsset(asset.stream)).toString('base64')
+        const { stream } = await this.openAsset(filePath)
+        const chunks: Buffer[] = []
+        for await (const chunk of stream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        }
+        return Buffer.concat(chunks).toString('base64')
     }
 
     async openAsset(filePath: string) {
@@ -537,13 +543,14 @@ exit
             throw new Error(`Failed to open asset: ${result.status}`)
         }
 
-        const mimeType = result.headers.get('content-type')
-        const fallback = mimeTypes.lookup(target)
         const size = Number(result.headers.get('content-length') ?? '')
+        const fallback = mimeTypes.lookup(target)
         return {
             stream: Readable.from(Buffer.from(result.data)),
             size: Number.isFinite(size) ? size : undefined,
-            mimeType: mimeType ?? (fallback === false ? undefined : fallback)
+            mimeType:
+                result.headers.get('content-type') ??
+                (fallback === false ? undefined : fallback)
         }
     }
 
@@ -673,9 +680,9 @@ exit
         }
 
         const headers: Record<string, string> = {}
-        const apiKey = this.resolveSecret(this.cfg.apiKey)
-        if (apiKey) {
-            headers.Authorization = `Bearer ${apiKey}`
+        const key = this.resolveSecret(this.cfg.apiKey)
+        if (key) {
+            headers.Authorization = `Bearer ${key}`
         }
         if (this.options.userId) {
             headers['X-User-Id'] = this.options.userId
@@ -686,9 +693,10 @@ exit
     }
 
     private url(pathname: string) {
+        const base = this.cfg.baseUrl
         return new URL(
             pathname,
-            ensureTrailingSlash(this.cfg.baseUrl)
+            base.endsWith('/') ? base : `${base}/`
         ).toString()
     }
 
@@ -842,18 +850,8 @@ async function openOpenTerminal(
     } satisfies OpenTerminalSocket
 }
 
-function ensureTrailingSlash(url: string) {
-    return url.endsWith('/') ? url : `${url}/`
-}
-
 function toWebSocketUrl(url: string) {
-    if (url.startsWith('https://')) {
-        return `wss://${url.slice('https://'.length)}`
-    }
-    if (url.startsWith('http://')) {
-        return `ws://${url.slice('http://'.length)}`
-    }
-    return url
+    return url.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://')
 }
 
 function joinPath(dir: string, path: string) {
@@ -907,22 +905,3 @@ async function readOpenTerminalMessage(value: unknown) {
 function escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
-
-async function readOpenTerminalAsset(stream: Readable) {
-    const chunks: Buffer[] = []
-    for await (const chunk of stream) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-    }
-    return Buffer.concat(chunks)
-}
-
-const CAPABILITIES = [
-    'file_read',
-    'file_write',
-    'file_publish',
-    'file_edit',
-    'grep',
-    'glob',
-    'bash',
-    'terminal_pty'
-] as const

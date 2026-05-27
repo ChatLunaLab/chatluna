@@ -26,16 +26,12 @@ export class ComputerSessionStore {
         return this._items.get(key)?.session
     }
 
-    getBySessionId(sessionId: string) {
-        return Array.from(this._items.values()).find(
-            (item) => item.info.id === sessionId
-        )?.session
+    getBySessionId(id: string) {
+        return this._findBySessionId(id)?.session
     }
 
-    getInfoBySessionId(sessionId: string) {
-        return Array.from(this._items.values()).find(
-            (item) => item.info.id === sessionId
-        )?.info
+    getInfoBySessionId(id: string) {
+        return this._findBySessionId(id)?.info
     }
 
     async getOrCreate(
@@ -89,71 +85,48 @@ export class ComputerSessionStore {
         return task
     }
 
-    touchBySessionId(sessionId: string) {
-        const item = Array.from(this._items.values()).find(
-            (item) => item.info.id === sessionId
-        )
-        if (!item) {
-            return
-        }
-
+    touchBySessionId(id: string) {
+        const item = this._findBySessionId(id)
+        if (!item) return
         item.info.lastActiveAt = Date.now()
         item.info.cwd = item.session.cwd
     }
 
-    enterBySessionId(sessionId: string) {
-        const item = Array.from(this._items.values()).find(
-            (item) => item.info.id === sessionId
-        )
-        if (!item) {
-            return
-        }
+    enterBySessionId(id: string) {
+        const item = this._findBySessionId(id)
+        if (!item) return
 
         item.active += 1
         item.info.lastActiveAt = Date.now()
         item.info.cwd = item.session.cwd
     }
 
-    leaveBySessionId(sessionId: string) {
-        const item = Array.from(this._items.values()).find(
-            (item) => item.info.id === sessionId
-        )
-        if (!item) {
-            return
-        }
+    leaveBySessionId(id: string) {
+        const item = this._findBySessionId(id)
+        if (!item) return
 
         item.active = Math.max(0, item.active - 1)
         item.info.lastActiveAt = Date.now()
         item.info.cwd = item.session.cwd
     }
 
-    isBusy(sessionId: string) {
-        return (
-            (Array.from(this._items.values()).find(
-                (item) => item.info.id === sessionId
-            )?.active ?? 0) > 0
-        )
+    isBusy(id: string) {
+        return (this._findBySessionId(id)?.active ?? 0) > 0
     }
 
     async destroy(key: string) {
         const item = this._items.get(key)
-        if (!item) {
-            return
-        }
+        if (!item) return
 
         this._items.delete(key)
         await item.session.disconnect()
     }
 
-    async destroyBySessionId(sessionId: string) {
+    async destroyBySessionId(id: string) {
         const entry = Array.from(this._items.entries()).find(
-            ([, item]) => item.info.id === sessionId
+            ([, item]) => item.info.id === id
         )
-        if (!entry) {
-            return
-        }
-
-        await this.destroy(entry[0])
+        if (entry) await this.destroy(entry[0])
     }
 
     async clear() {
@@ -161,13 +134,17 @@ export class ComputerSessionStore {
         this._items.clear()
         await Promise.all(items.map((item) => item.session.disconnect()))
     }
+
+    private _findBySessionId(id: string) {
+        for (const item of this._items.values()) {
+            if (item.info.id === id) return item
+        }
+        return undefined
+    }
 }
 
-export function buildComputerSessionKey(options: ComputerSessionKeyOptions) {
-    return [
-        options.backend,
-        options.conversationId ?? options.userId ?? randomUUID()
-    ].join(':')
+export function buildComputerSessionKey(opts: ComputerSessionKeyOptions) {
+    return `${opts.backend}:${opts.conversationId ?? opts.userId ?? randomUUID()}`
 }
 
 export interface ComputerSessionKeyOptions {

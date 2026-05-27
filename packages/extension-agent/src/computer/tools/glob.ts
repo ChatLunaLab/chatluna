@@ -5,9 +5,6 @@ import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
-const MSG_FINDING = '查找文件'
-const MSG_FOUND = '找到'
-
 export class GlobTool extends ComputerToolBase {
     name = 'glob'
 
@@ -34,7 +31,7 @@ export class GlobTool extends ComputerToolBase {
 
         this.log(
             computer,
-            `${MSG_FINDING}: ${input.pattern}${input.path ? ` in ${input.path}` : ''}`
+            `查找文件: ${input.pattern}${input.path ? ` in ${input.path}` : ''}`
         )
 
         try {
@@ -43,7 +40,7 @@ export class GlobTool extends ComputerToolBase {
                 return 'No files matched.'
             }
 
-            this.log(computer, `${MSG_FOUND} ${results.length} 个文件`)
+            this.log(computer, `找到 ${results.length} 个文件`)
             return this.withBackend(
                 computer,
                 await this.formatLargeResult(

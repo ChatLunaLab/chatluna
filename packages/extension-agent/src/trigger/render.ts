@@ -116,7 +116,9 @@ function renderType(schema: ZodTypeAny, indent: number): string {
         const pad = '  '.repeat(indent)
         const closePad = '  '.repeat(indent - 1)
         const entries = Object.entries(shape).map(([key, value]) => {
-            const optional = isOptional(value)
+            const typeName = value._def?.typeName as string | undefined
+            const optional =
+                typeName === 'ZodOptional' || typeName === 'ZodDefault'
             const desc = value.description
                 ? `  // ${value.description.replaceAll('\n', ' ')}`
                 : ''
@@ -154,10 +156,4 @@ function renderType(schema: ZodTypeAny, indent: number): string {
         return `[${items.join(', ')}]`
     }
     return 'unknown'
-}
-
-function isOptional(schema: ZodTypeAny): boolean {
-    const name = schema._def?.typeName as string | undefined
-    if (name === 'ZodOptional' || name === 'ZodDefault') return true
-    return false
 }

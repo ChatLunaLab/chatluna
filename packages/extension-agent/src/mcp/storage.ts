@@ -13,13 +13,14 @@ export async function putResourceToChatLunaStorage(
         return
     }
 
-    const buffer = typeof blob === 'string' ? Buffer.from(blob, 'base64') : blob
-    const extension = mimeTypes.extension(mimeType)
+    const ext = mimeTypes.extension(mimeType)
 
-    if (!extension) {
+    if (!ext) {
         throw new Error(`Unsupported mime type: ${mimeType}`)
     }
 
-    const fileName = `file.${extension}`
-    return await ctx.chatluna_storage.createTempFile(buffer, fileName)
+    return await ctx.chatluna_storage.createTempFile(
+        typeof blob === 'string' ? Buffer.from(blob, 'base64') : blob,
+        `file.${ext}`
+    )
 }

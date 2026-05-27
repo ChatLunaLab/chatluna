@@ -40,21 +40,19 @@ export function createTransport(
         headers.set(k, v)
     }
 
-    const proxyFetch: FetchLike = (url, init) => {
-        return plugin.fetch(
-            url as Parameters<typeof plugin.fetch>[0],
-            init as Parameters<typeof plugin.fetch>[1],
-            config.proxy
-        ) as unknown as ReturnType<FetchLike>
-    }
-
     const transportConfig = {
         ...config,
         requestInit: {
             ...requestInit,
             headers
         },
-        fetch: proxyFetch
+        fetch: ((url, init) => {
+            return plugin.fetch(
+                url as Parameters<typeof plugin.fetch>[0],
+                init as Parameters<typeof plugin.fetch>[1],
+                config.proxy
+            ) as unknown as ReturnType<FetchLike>
+        }) as FetchLike
     }
 
     if (type === 'sse') {

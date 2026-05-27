@@ -5,9 +5,6 @@ import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
-const MSG_SEARCHING = '搜索'
-const MSG_FOUND = '找到'
-
 export class GrepTool extends ComputerToolBase {
     name = 'grep'
 
@@ -44,7 +41,7 @@ export class GrepTool extends ComputerToolBase {
 
         this.log(
             computer,
-            `${MSG_SEARCHING}: ${input.pattern}${input.include ? ` (${input.include})` : ''}${input.path ? ` in ${input.path}` : ''}`
+            `搜索: ${input.pattern}${input.include ? ` (${input.include})` : ''}${input.path ? ` in ${input.path}` : ''}`
         )
 
         try {
@@ -57,7 +54,7 @@ export class GrepTool extends ComputerToolBase {
                 return 'No matches found.'
             }
 
-            this.log(computer, `${MSG_FOUND} ${results.length} 条匹配`)
+            this.log(computer, `找到 ${results.length} 条匹配`)
             return this.withBackend(
                 computer,
                 await this.formatLargeResult(

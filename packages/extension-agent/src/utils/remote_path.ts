@@ -25,11 +25,7 @@ export function computeRemoteDir(scope: string, dir: string) {
     }
 
     const next = value.replace(/^\.\//, '').replace(/^\//, '')
-    if (scope === '~') {
-        return `~/${next}`
-    }
-
-    if (scope.startsWith('~/')) {
+    if (scope === '~' || scope.startsWith('~/')) {
         return `${scope.replace(/\/+$/, '')}/${next}`
     }
 

@@ -1,5 +1,3 @@
-/** @module sub-agent/render */
-
 import {
     renderAvailableAgents,
     SubagentContext
@@ -20,13 +18,9 @@ export function renderSubAgentSystemPrompt(
     skills?: string,
     computer?: { enabled: boolean; backends: string[]; capabilities: string[] }
 ) {
-    const lines = [info.promptContent.trim()]
-
-    if (skills) {
-        lines.push('', skills)
-    }
-
-    lines.push(
+    return [
+        info.promptContent.trim(),
+        ...(skills ? ['', skills] : []),
         '',
         '<sub-agent-context>',
         `Sub-agent "${info.name}" | depth: ${context.depth} | parent: ${context.traceInfo.parentAgent} | run: ${context.traceInfo.runId}`,
@@ -34,16 +28,15 @@ export function renderSubAgentSystemPrompt(
         'If the task exceeds your scope, summarize findings and return to the parent.',
         'If shell or computer work may take a while, use managed background execution and inspect it later instead of waiting for the default timeout.',
         'When complete, provide a clear summary of results.',
-        '</sub-agent-context>'
-    )
-
-    if (computer?.enabled) {
-        lines.push(
-            '',
-            'Computer-use capabilities are available for this sub-agent.',
-            `Available capabilities: ${computer.capabilities.join(', ')}`
-        )
-    }
-
-    return lines.join('\n').trim()
+        '</sub-agent-context>',
+        ...(computer?.enabled
+            ? [
+                  '',
+                  'Computer-use capabilities are available for this sub-agent.',
+                  `Available capabilities: ${computer.capabilities.join(', ')}`
+              ]
+            : [])
+    ]
+        .join('\n')
+        .trim()
 }

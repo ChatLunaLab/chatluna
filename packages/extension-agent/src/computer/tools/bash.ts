@@ -101,7 +101,6 @@ When to use:
         _runManager: unknown,
         toolConfig: ChatLunaToolRunnable
     ) {
-        const session = toolConfig?.configurable?.session
         const action = input.action ?? (input.jobId ? 'status' : 'run')
 
         try {
@@ -117,7 +116,12 @@ When to use:
                         : 'No background jobs.'
                 }
 
-                return formatJobList(jobs)
+                return jobs
+                    .map(
+                        (job) =>
+                            `${job.id} [${job.state}] ${job.backend} timeout=${job.timeout == null ? 'none' : `${job.timeout}ms`} ${job.command}`
+                    )
+                    .join('\n')
             }
 
             if (action === 'status') {
@@ -153,23 +157,32 @@ When to use:
             }
 
             const raw = input.command?.trim()
-            const backgroundCommand = raw
-                ? stripBackgroundSuffix(raw)
-                : undefined
-            const background =
-                input.background === true || backgroundCommand != null
-            const command = backgroundCommand ?? raw ?? ''
+            const bgCmd =
+                raw && raw.endsWith('&') && !raw.endsWith('&&')
+                    ? raw.slice(0, -1).trimEnd()
+                    : undefined
+            const command = bgCmd ?? raw ?? ''
 
             this.log(computer, `执行命令: \`${command}\``)
 
-            if (background) {
+            if (input.background === true || bgCmd != null) {
                 const job = await this.computer.runBackgroundCommand(command, {
                     runConfig: toolConfig,
                     workdir: input.workdir,
                     timeout: input.timeout
                 })
 
-                return formatJobStart(job)
+                return [
+                    `Background job started: ${job.id}`,
+                    `State: ${job.state}`,
+                    `Backend: ${job.backend}`,
+                    `Terminal: ${job.sessionId}/${job.terminalId}`,
+                    `Working directory: ${job.cwd}`,
+                    `Timeout: ${job.timeout == null ? 'none' : `${job.timeout}ms`}`,
+                    `Command: ${job.command}`,
+                    `Terminal URL: ${job.url}`,
+                    `Use bash with {"action":"status","jobId":"${job.id}"} to inspect it or {"action":"list","state":"running"} to query running jobs.`
+                ].join('\n')
             }
 
             const timeout =
@@ -178,7 +191,7 @@ When to use:
             const result = await computer.execute(command, {
                 workdir: input.workdir,
                 timeout,
-                session
+                session: toolConfig?.configurable?.session
             })
 
             if (result.timedOut) {
@@ -223,38 +236,6 @@ When to use:
             )
         }
     }
-}
-
-function stripBackgroundSuffix(command: string) {
-    const trimmed = command.trimEnd()
-    if (!trimmed.endsWith('&') || trimmed.endsWith('&&')) {
-        return undefined
-    }
-
-    return trimmed.slice(0, -1).trimEnd()
-}
-
-function formatJobStart(job: ComputerBackgroundJobInfo) {
-    return [
-        `Background job started: ${job.id}`,
-        `State: ${job.state}`,
-        `Backend: ${job.backend}`,
-        `Terminal: ${job.sessionId}/${job.terminalId}`,
-        `Working directory: ${job.cwd}`,
-        `Timeout: ${job.timeout == null ? 'none' : `${job.timeout}ms`}`,
-        `Command: ${job.command}`,
-        `Terminal URL: ${job.url}`,
-        `Use bash with {"action":"status","jobId":"${job.id}"} to inspect it or {"action":"list","state":"running"} to query running jobs.`
-    ].join('\n')
-}
-
-function formatJobList(jobs: ComputerBackgroundJobInfo[]) {
-    return jobs
-        .map(
-            (job) =>
-                `${job.id} [${job.state}] ${job.backend} timeout=${job.timeout == null ? 'none' : `${job.timeout}ms`} ${job.command}`
-        )
-        .join('\n')
 }
 
 function formatJobDetail(job: ComputerBackgroundJobInfo) {

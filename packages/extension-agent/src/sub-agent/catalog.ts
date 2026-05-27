@@ -15,19 +15,16 @@ export async function buildSubAgentCatalog(
     manual: Iterable<ManualSubAgentInput>,
     extra: SubAgentInfo[] = []
 ) {
-    const items = [
-        ...[...manual].map((item) => createManualAgent(ctx, item)),
-        ...getBuiltinAgents(cfg),
-        ...(await scanMarkdownAgents(ctx, cfg)),
-        ...extra,
-        ...getPresetAgents(ctx, cfg)
-    ].map((item) => ({
-        ...item,
-        permissions: permission.mergePermissions(item.permissions)
-    }))
-
-    return applyShadowing(items).sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority
-        return a.name.localeCompare(b.name)
-    })
+    return applyShadowing(
+        [
+            ...[...manual].map((item) => createManualAgent(ctx, item)),
+            ...getBuiltinAgents(cfg),
+            ...(await scanMarkdownAgents(ctx, cfg)),
+            ...extra,
+            ...getPresetAgents(ctx, cfg)
+        ].map((item) => ({
+            ...item,
+            permissions: permission.mergePermissions(item.permissions)
+        }))
+    ).sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))
 }

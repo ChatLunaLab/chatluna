@@ -27,28 +27,30 @@ export function applyShadowing<
 
     const result: (T & { shadowedBy?: string })[] = []
     for (const list of groups.values()) {
-        const candidates = list.filter((item) => {
-            if (item.enabled === false) return false
-            if (item.disabled === true) return false
-            if (item.hidden === true) return false
-            if (item.invalid === true) return false
-            if (item.state != null && item.state !== 'ready') return false
-            return item.available !== false
-        })
+        const valid = list.filter(
+            (item) =>
+                item.enabled !== false &&
+                item.disabled !== true &&
+                item.hidden !== true &&
+                item.invalid !== true &&
+                (item.state == null || item.state === 'ready') &&
+                item.available !== false
+        )
 
-        candidates.sort((a, b) => {
+        valid.sort((a, b) => {
             if ((a.remote === true) !== (b.remote === true)) {
-                if (preferRemote) {
-                    return a.remote === true ? -1 : 1
-                }
-
-                return a.remote === true ? 1 : -1
+                return a.remote === true
+                    ? preferRemote
+                        ? -1
+                        : 1
+                    : preferRemote
+                      ? 1
+                      : -1
             }
-
             return a.priority - b.priority
         })
-        const winner = candidates[0]
 
+        const winner = valid[0]
         for (const item of list) {
             result.push({
                 ...item,

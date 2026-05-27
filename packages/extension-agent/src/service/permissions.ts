@@ -59,19 +59,8 @@ export class ChatLunaAgentPermissionService {
     }
 
     mergeRule(rule: PermissionRule, fallback: PermissionRule): PermissionRule {
-        if (rule.mode !== 'inherit') {
-            return {
-                mode: rule.mode,
-                allow: [...rule.allow],
-                deny: [...rule.deny]
-            }
-        }
-
-        return {
-            mode: fallback.mode,
-            allow: [...fallback.allow],
-            deny: [...fallback.deny]
-        }
+        const src = rule.mode !== 'inherit' ? rule : fallback
+        return { mode: src.mode, allow: [...src.allow], deny: [...src.deny] }
     }
 
     mergePermissions(
@@ -120,19 +109,18 @@ export class ChatLunaAgentPermissionService {
     }
 
     filterComputerBackends(info: SubAgentInfo, names: ComputerBackendType[]) {
-        const raw = info.permissions.computer
         const rule =
-            raw.mode === 'inherit'
+            info.permissions.computer.mode === 'inherit'
                 ? this.config.subAgent.defaults.computer
-                : raw
-        const allow = rule.allow.filter(isComputerBackend)
-        const deny = rule.deny.filter(isComputerBackend)
+                : info.permissions.computer
 
         if (rule.mode === 'allow') {
+            const allow = rule.allow.filter(isComputerBackend)
             return names.filter((name) => allow.includes(name))
         }
 
         if (rule.mode === 'deny') {
+            const deny = rule.deny.filter(isComputerBackend)
             return names.filter((name) => !deny.includes(name))
         }
 
@@ -157,43 +145,30 @@ export class ChatLunaAgentPermissionService {
         const list = Object.values(registry)
             .map((item) => {
                 const saved = this.config.tool.items[item.name]
-                const defaultAvailability = createToolDefaultAvailability(
-                    item.meta
-                )
+                const avail = createToolDefaultAvailability(item.meta)
                 const cfg = createToolItemConfig(
                     {
                         ...saved,
-                        enabled:
-                            saved?.enabled ??
-                            defaultAvailability?.enabled ??
-                            true,
-                        main: saved?.main ?? defaultAvailability?.main ?? true,
-                        chatluna:
-                            saved?.chatluna ??
-                            defaultAvailability?.chatluna ??
-                            true,
+                        enabled: saved?.enabled ?? avail?.enabled ?? true,
+                        main: saved?.main ?? avail?.main ?? true,
+                        chatluna: saved?.chatluna ?? avail?.chatluna ?? true,
                         character:
                             saved?.character ??
-                            (defaultAvailability?.characterScope == null
+                            (avail?.characterScope == null
                                 ? true
-                                : defaultAvailability.characterScope !==
-                                  'none'),
+                                : avail.characterScope !== 'none'),
                         characterGroup:
                             saved?.characterGroup ??
-                            (defaultAvailability?.characterScope == null
+                            (avail?.characterScope == null
                                 ? true
-                                : defaultAvailability.characterScope ===
-                                      'all' ||
-                                  defaultAvailability.characterScope ===
-                                      'group'),
+                                : avail.characterScope === 'all' ||
+                                  avail.characterScope === 'group'),
                         characterPrivate:
                             saved?.characterPrivate ??
-                            (defaultAvailability?.characterScope == null
+                            (avail?.characterScope == null
                                 ? true
-                                : defaultAvailability.characterScope ===
-                                      'all' ||
-                                  defaultAvailability.characterScope ===
-                                      'private'),
+                                : avail.characterScope === 'all' ||
+                                  avail.characterScope === 'private'),
                         characterGroupMode: saved?.characterGroupMode ?? 'all',
                         characterPrivateMode:
                             saved?.characterPrivateMode ?? 'all',
@@ -282,17 +257,12 @@ export class ChatLunaAgentPermissionService {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
         const allow = tools
-            .filter((item) => {
-                if (!item.enabled) {
-                    return false
-                }
-
-                if (!item.main) {
-                    return false
-                }
-
-                return this.isSessionAllowed(session, source, item)
-            })
+            .filter(
+                (item) =>
+                    item.enabled &&
+                    item.main &&
+                    this.isSessionAllowed(session, source, item)
+            )
             .map((item) => item.name)
 
         return buildToolMask(allNames, allow)
@@ -330,10 +300,11 @@ export class ChatLunaAgentPermissionService {
     }
 
     hasAuthority(session?: Session, authority = 0) {
-        const auth =
-            (session as Session<User.Field> | undefined)?.user?.['authority'] ??
-            0
-        return auth >= authority
+        return (
+            ((session as Session<User.Field> | undefined)?.user?.[
+                'authority'
+            ] ?? 0) >= authority
+        )
     }
 
     isSessionAllowed(
@@ -442,9 +413,13 @@ export class ChatLunaAgentPermissionService {
         }
 
         if (tool.tags?.includes('computer')) {
-            const backends =
-                this.ctx.chatluna_agent?.computer.listAvailableBackends() ?? []
-            if (this.filterComputerBackends(info, backends).length < 1) {
+            if (
+                this.filterComputerBackends(
+                    info,
+                    this.ctx.chatluna_agent?.computer.listAvailableBackends() ??
+                        []
+                ).length < 1
+            ) {
                 return false
             }
         }
@@ -460,35 +435,36 @@ export class ChatLunaAgentPermissionService {
     }
 
     getRegistry() {
-        const registry = this.ctx.chatluna.platform.getToolRegistry()
         return Object.fromEntries(
-            Object.values(registry).map((item) => {
-                const saved = this.config.tool.registry?.[item.name]
-                const defaultAvailability = {
-                    ...(createToolDefaultAvailability(item.meta) ?? {}),
-                    ...(createToolDefaultAvailability(saved) ?? {})
-                }
-                return [
-                    item.name,
-                    {
-                        name: item.name,
-                        description: item.description,
-                        meta: {
-                            ...item.meta,
-                            source: saved?.source ?? item.meta?.source,
-                            group: saved?.group ?? item.meta?.group,
-                            tags:
-                                saved?.tags && saved.tags.length > 0
-                                    ? saved.tags
-                                    : item.meta?.tags,
-                            defaultAvailability:
-                                Object.keys(defaultAvailability).length > 0
-                                    ? defaultAvailability
-                                    : undefined
-                        }
+            Object.values(this.ctx.chatluna.platform.getToolRegistry()).map(
+                (item) => {
+                    const saved = this.config.tool.registry?.[item.name]
+                    const avail = {
+                        ...(createToolDefaultAvailability(item.meta) ?? {}),
+                        ...(createToolDefaultAvailability(saved) ?? {})
                     }
-                ]
-            })
+                    return [
+                        item.name,
+                        {
+                            name: item.name,
+                            description: item.description,
+                            meta: {
+                                ...item.meta,
+                                source: saved?.source ?? item.meta?.source,
+                                group: saved?.group ?? item.meta?.group,
+                                tags:
+                                    saved?.tags && saved.tags.length > 0
+                                        ? saved.tags
+                                        : item.meta?.tags,
+                                defaultAvailability:
+                                    Object.keys(avail).length > 0
+                                        ? avail
+                                        : undefined
+                            }
+                        }
+                    ]
+                }
+            )
         )
     }
 

@@ -122,8 +122,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async reload() {
         await syncBundledSkills(this.ctx)
-        const local = await scanSkills(this.ctx, this.config)
-        const scanned = local
+        const scanned = await scanSkills(this.ctx, this.config)
         this._skills = new Map(scanned.map((s) => [s.id, s]))
         this._catalog = buildSkillCatalog(scanned, this.config.skills.items)
         this.ctx.chatluna_agent?.computer.materializer.clear()
@@ -140,17 +139,17 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     }
 
     getStatus(): SkillsStatus {
-        const catalog = this.getDisplayCatalog()
+        const items = this.getDisplayCatalog()
         return {
             enabled: true,
             root: getSkillsRootPath(this.ctx),
-            total: catalog.length,
-            visible: catalog.filter((s) => s.visible).length,
-            modelEnabled: catalog.filter((s) => s.modelEnabled).length,
+            total: items.length,
+            visible: items.filter((s) => s.visible).length,
+            modelEnabled: items.filter((s) => s.modelEnabled).length,
             activeConversations: Array.from(this._active.values()).filter(
                 (s) => s.size > 0
             ).length,
-            catalog: Object.fromEntries(catalog.map((s) => [s.id, s]))
+            catalog: Object.fromEntries(items.map((s) => [s.id, s]))
         }
     }
 
@@ -174,19 +173,13 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     hasActiveSkill(conversationId: string, name: string) {
         const skill = this.getVisibleSkillByName(name)
-        if (!skill) {
-            return false
-        }
-
+        if (!skill) return false
         return this._active.get(conversationId)?.has(skill.id) === true
     }
 
     listActiveSkills(conversationId: string) {
         const active = this._active.get(conversationId)
-        if (!active) {
-            return [] as SkillInfo[]
-        }
-
+        if (!active) return [] as SkillInfo[]
         return this._catalog.filter((item) => active.has(item.id))
     }
 
@@ -214,17 +207,17 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
     async previewImport(
         input: SkillImportInput
     ): Promise<SkillImportPreviewResult> {
-        return await previewSkillsImport(this.ctx, input)
+        return previewSkillsImport(this.ctx, input)
     }
 
     async importSkills(input: SkillImportInput): Promise<SkillImportResult> {
-        return await runImportSkills(this.ctx, input)
+        return runImportSkills(this.ctx, input)
     }
 
     async exportSkill(id: string): Promise<SkillExportResult | undefined> {
         const skill = this._skills.get(id)
         if (!skill?.path || skill.remote) return undefined
-        return await exportSkillArchive(id, skill.dir)
+        return exportSkillArchive(id, skill.dir)
     }
 
     async removeSkill(id: string): Promise<string | undefined> {
@@ -312,17 +305,13 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
             this._active.set(conversationId, active)
         }
 
-        return await this.renderActivatedSkill(skill, {
-            conversationId,
-            runConfig
-        })
+        return this.renderActivatedSkill(skill, { conversationId, runConfig })
     }
 
     async renderSkill(name: string, loaded = false) {
         const skill = this.getVisibleSkillByName(name)
         if (!skill?.enabled || skill.state !== 'ready') return undefined
-
-        return await renderSkillContent(skill, loaded)
+        return renderSkillContent(skill, loaded)
     }
 
     private hasComputer() {
@@ -337,7 +326,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         session?: Session,
         source: 'chatluna' | 'character' = 'chatluna'
     ) {
-        const item = this._catalog.find((skill) => skill.id === id)
+        const item = this._catalog.find((s) => s.id === id)
         if (!item || !item.enabled || item.state !== 'ready' || !item.main) {
             return false
         }
@@ -387,7 +376,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 ? await listRemoteSkillResources(session, skillDir ?? skill.dir)
                 : undefined
 
-        return await renderSkillContent(skill, input.loaded ?? true, {
+        return renderSkillContent(skill, input.loaded ?? true, {
             skillDir,
             resources
         })
@@ -398,21 +387,17 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         remote: boolean
     ) {
         const current = this._active.get(conversationId)
-        if (!current) {
-            return [] as SkillInfo[]
-        }
+        if (!current) return [] as SkillInfo[]
 
         const items = this._catalog.filter((item) => current.has(item.id))
-        if (!remote) {
-            return items
-        }
+        if (!remote) return items
 
         const computer = this.ctx.chatluna_agent?.computer
         const session = await computer
             ?.getOrCreateSession({ conversationId })
             .catch(() => undefined)
 
-        return await Promise.all(
+        return Promise.all(
             items.map(async (item) => {
                 if (item.remote || !session || !computer) {
                     return {
@@ -450,15 +435,15 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 .map((s) => s.id)
         )
 
-        for (const [conversationId, current] of this._active.entries()) {
+        for (const [id, current] of this._active.entries()) {
             const next = new Set(
-                Array.from(current).filter((id) => loadable.has(id))
+                Array.from(current).filter((sid) => loadable.has(sid))
             )
 
             if (next.size > 0) {
-                this._active.set(conversationId, next)
+                this._active.set(id, next)
             } else {
-                this._active.delete(conversationId)
+                this._active.delete(id)
             }
         }
     }

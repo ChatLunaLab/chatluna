@@ -308,7 +308,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 ) {
                     if (hasChunk) {
                         logger.debug(
-                            'Stream failed after yielding chunks, cannot retry'
+                            'Stream failed after yielding chunks, cannot retry',
+                            error
                         )
                     }
                     if (reportUsage) {
@@ -322,7 +323,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 }
 
                 logger.debug(
-                    `Stream failed before first chunk (attempt ${attempt + 1}/${maxRetries}), retrying...`
+                    `Stream failed before first chunk (attempt ${attempt + 1}/${maxRetries}), retrying...`,
+                    error
                 )
                 await sleep(2000 * 2 ** attempt)
             }

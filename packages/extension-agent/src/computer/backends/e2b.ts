@@ -16,7 +16,7 @@ import {
 import mimeTypes from 'mime-types'
 import { Context } from 'koishi'
 import { buildPosixBackgroundCommand, quoteShell } from './types'
-import { E2BBackendConfig } from '../../types'
+import { ComputerCapability, E2BBackendConfig } from '../../types'
 import { getErrorMessage } from '../../utils/shell'
 import {
     ComputerSessionApi,
@@ -40,13 +40,24 @@ interface SandboxWrapper {
     setTimeout(timeoutMs: number): Promise<void>
     pause(apiKey?: string): Promise<void>
     kill(): Promise<void>
-    desktop?: never
 }
 
 export class E2BComputerSession implements ComputerSessionApi {
     readonly backend = 'e2b' as const
     readonly sessionId: string
-    readonly capabilities = [...CAPABILITIES]
+    readonly capabilities: ComputerCapability[] = [
+        'file_read',
+        'file_write',
+        'file_edit',
+        'file_publish',
+        'grep',
+        'glob',
+        'bash',
+        'terminal_pty',
+        'desktop_stream',
+        'desktop_screenshot',
+        'desktop_action'
+    ]
 
     private _connected = false
     private _connecting?: Promise<void>
@@ -123,22 +134,20 @@ export class E2BComputerSession implements ComputerSessionApi {
                 }
 
                 await sandbox.setTimeout(this.cfg.timeoutMs)
-                const current = await this.run(
-                    'pwd',
-                    {
-                        timeoutMs: 5000
-                    } as CommandStartOpts,
-                    sandbox
-                )
-                this._home = current.stdout.trim() || '/'
+                this._home =
+                    (
+                        await this.run(
+                            'pwd',
+                            { timeoutMs: 5000 } as CommandStartOpts,
+                            sandbox
+                        )
+                    ).stdout.trim() || '/'
 
                 if (this.options.cwd) {
                     const cwd = this.resolvePath(this.options.cwd)
                     const stat = await this.run(
                         `if [ -d ${quoteShell(cwd)} ]; then printf __dir__; fi`,
-                        {
-                            timeoutMs: 5000
-                        } as CommandStartOpts,
+                        { timeoutMs: 5000 } as CommandStartOpts,
                         sandbox
                     )
                     if (stat.stdout.trim() === '__dir__') {
@@ -184,11 +193,6 @@ export class E2BComputerSession implements ComputerSessionApi {
             return
         }
 
-        const desktop = this.ensureDesktopSandbox()
-        if (desktop) {
-            await desktop.stream.stop().catch(() => undefined)
-        }
-
         try {
             if (this.cfg.keepAlive) {
                 await this._sandbox.pause(this.resolveSecret(this.cfg.apiKey))
@@ -226,8 +230,9 @@ export class E2BComputerSession implements ComputerSessionApi {
                 return result.stdout.trim()
             }
 
-            const raw = await (await this.ensureSandbox()).files.read(target)
-            const text = String(raw)
+            const text = String(
+                await (await this.ensureSandbox()).files.read(target)
+            )
             if (offset == null && limit == null) {
                 return text
             }
@@ -256,10 +261,9 @@ export class E2BComputerSession implements ComputerSessionApi {
                 return
             }
 
-            const dir = posix.dirname(target)
             const tmp = `${target}.${randomUUID()}.base64`
 
-            await this.execute(`mkdir -p ${quoteShell(dir)}`)
+            await this.execute(`mkdir -p ${quoteShell(posix.dirname(target))}`)
             await sandbox.files.write(
                 tmp,
                 Buffer.from(content).toString('base64')
@@ -298,8 +302,7 @@ export class E2BComputerSession implements ComputerSessionApi {
 
         if (replaceCount === 1) {
             const firstIdx = content.indexOf(oldString)
-            const secondIdx = content.indexOf(oldString, firstIdx + 1)
-            if (secondIdx !== -1) {
+            if (content.indexOf(oldString, firstIdx + 1) !== -1) {
                 throw new Error(
                     `Found multiple matches for oldString in ${filePath}. ` +
                         'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
@@ -403,16 +406,15 @@ export class E2BComputerSession implements ComputerSessionApi {
             const sandbox = await this.ensureSandbox()
             const target = this.resolvePath(filePath)
             const info = await sandbox.files.getInfo(target)
-            const stream = await sandbox.files.read(target, {
-                format: 'stream'
-            })
-            const mimeType = mimeTypes.lookup(filePath)
+            const mime = mimeTypes.lookup(filePath)
             return {
                 stream: Readable.fromWeb(
-                    stream as unknown as globalThis.ReadableStream<Uint8Array>
+                    (await sandbox.files.read(target, {
+                        format: 'stream'
+                    })) as unknown as globalThis.ReadableStream<Uint8Array>
                 ),
                 size: info.size,
-                mimeType: mimeType === false ? undefined : mimeType
+                mimeType: mime === false ? undefined : mime
             }
         } catch (err) {
             this.ctx.logger.error(err)
@@ -434,8 +436,8 @@ export class E2BComputerSession implements ComputerSessionApi {
                 timeoutMs: this.cfg.timeoutMs,
                 onData: (data) => {
                     const text = Buffer.from(data).toString('utf8')
-                    for (const callback of callbacks) {
-                        callback(text)
+                    for (const cb of callbacks) {
+                        cb(text)
                     }
                 }
             })
@@ -500,116 +502,20 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 
     async getDesktopInfo(): Promise<DesktopInfo | undefined> {
-        // const desktop = this.ensureDesktopSandbox()
-        // if (!desktop) {
-        //     return undefined
-        // }
-
-        // await desktop.stream.start().catch(() => undefined)
-        // const size = await desktop.getScreenSize()
-        // return {
-        //     width: size.width,
-        //     height: size.height,
-        //     streamUrl: desktop.stream.getUrl({
-        //         autoConnect: true,
-        //         resize: 'scale'
-        //     })
-        // }
-        return null
+        return undefined
     }
 
     async screenshot(): Promise<ScreenshotResult> {
-        // const desktop = this.ensureDesktopSandbox()
-        // if (!desktop) {
         throw new Error('Desktop is not enabled for this E2B session.')
-        // }
-
-        // const bytes = await desktop.screenshot('bytes')
-        // const size = await desktop.getScreenSize()
-        // return {
-        //     data: Buffer.from(bytes).toString('base64'),
-        //     mimeType: 'image/png',
-        //     width: size.width,
-        //     height: size.height
-        // }
-        //
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async desktopAction(action: DesktopAction) {
-        const desktop = this.ensureDesktopSandbox()
-        if (!desktop) {
-            throw new Error('Desktop is not enabled for this E2B session.')
-        }
-
-        // if (action.type === 'click') {
-        //     if (action.button === 'right') {
-        //         await desktop.rightClick(action.x, action.y)
-        //         return
-        //     }
-        //     if (action.button === 'middle') {
-        //         await desktop.middleClick(action.x, action.y)
-        //         return
-        //     }
-        //     await desktop.leftClick(action.x, action.y)
-        //     return
-        // }
-
-        // if (action.type === 'type') {
-        //     await desktop.write(action.text)
-        //     return
-        // }
-
-        // if (action.type === 'key') {
-        //     await desktop.press(action.key)
-        //     return
-        // }
-
-        // if (action.type === 'scroll') {
-        //     const direction = action.deltaY < 0 ? 'up' : 'down'
-        //     await desktop.scroll(
-        //         direction,
-        //         Math.max(1, Math.abs(action.deltaY))
-        //     )
-        //     return
-        // }
-
-        // await desktop.drag(
-        //     [action.startX, action.startY],
-        //     [action.endX, action.endY]
-        // )
+        throw new Error('Desktop is not enabled for this E2B session.')
     }
 
     async getDesktopStream(): Promise<StreamHandle | undefined> {
-        const desktop = this.ensureDesktopSandbox()
-        if (!desktop) {
-            return undefined
-        }
-
-        try {
-            await desktop.stream.start()
-            const ctx = this.ctx
-            return {
-                url: desktop.stream.getUrl({
-                    autoConnect: true,
-                    resize: 'scale'
-                }),
-                async stop() {
-                    try {
-                        await desktop.stream.stop()
-                    } catch (err) {
-                        ctx.logger.error(err)
-                        throw new Error(
-                            `Failed to stop desktop stream: ${getErrorMessage(err)}`
-                        )
-                    }
-                }
-            }
-        } catch (err) {
-            this.ctx.logger.error(err)
-            throw new Error(
-                `Failed to start desktop stream: ${getErrorMessage(err)}`
-            )
-        }
+        return undefined
     }
 
     isInScope() {
@@ -691,15 +597,13 @@ export class E2BComputerSession implements ComputerSessionApi {
             throw new Error('Command finished without a result.')
         }
 
-        return mapCommandResult(result, timedOut)
-    }
-
-    private ensureDesktopSandbox() {
-        return undefined
-    }
-
-    private usesDesktop() {
-        return this.cfg.desktopTemplate.length > 0
+        return {
+            exitCode: result.exitCode ?? 0,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            signal: undefined,
+            timedOut
+        }
     }
 
     private resolvePath(value: string) {
@@ -727,19 +631,6 @@ export class E2BComputerSession implements ComputerSessionApi {
     }
 }
 
-function mapCommandResult(
-    result: CommandResult | CommandHandle,
-    timedOut = false
-) {
-    return {
-        exitCode: result.exitCode ?? 0,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        signal: undefined,
-        timedOut
-    }
-}
-
 function isMissingSandboxError(err: unknown) {
     if (err instanceof NotFoundError) {
         return true
@@ -764,20 +655,5 @@ function wrapSandbox(sandbox: E2BSandbox): SandboxWrapper {
         },
         kill: () => sandbox.kill(),
         internal: sandbox
-        // desktop: sandbox instanceof DesktopSandbox ? sandbox : undefined
     }
 }
-
-const CAPABILITIES = [
-    'file_read',
-    'file_write',
-    'file_edit',
-    'file_publish',
-    'grep',
-    'glob',
-    'bash',
-    'terminal_pty',
-    'desktop_stream',
-    'desktop_screenshot',
-    'desktop_action'
-] as const

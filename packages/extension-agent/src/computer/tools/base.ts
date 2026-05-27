@@ -15,8 +15,8 @@ export abstract class ComputerToolBase extends StructuredTool {
     }
 
     /** 获取当前 tool 对应的 computer session。 */
-    protected async getSession(runConfig?: ChatLunaToolRunnable) {
-        return await this.computer.getToolSession(runConfig)
+    protected getSession(runConfig?: ChatLunaToolRunnable) {
+        return this.computer.getToolSession(runConfig)
     }
 
     protected log(session: ComputerSessionApi, message: string) {

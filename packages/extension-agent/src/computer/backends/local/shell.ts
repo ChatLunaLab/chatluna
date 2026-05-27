@@ -11,6 +11,55 @@ export interface ResolvedShellCommand {
     env?: NodeJS.ProcessEnv
 }
 
+function gitBashEnv(): NodeJS.ProcessEnv {
+    return {
+        ...process.env,
+        CHERE_INVOKING: '1',
+        LANG: process.env['LANG'] || 'C.UTF-8',
+        LC_ALL: process.env['LC_ALL'] || 'C.UTF-8'
+    }
+}
+
+function buildUtf8Env(): NodeJS.ProcessEnv {
+    return {
+        ...process.env,
+        PYTHONUTF8: '1',
+        PYTHONIOENCODING: 'utf-8'
+    }
+}
+
+export function findPowerShell(): string | undefined {
+    return (
+        which.sync('pwsh.exe', { nothrow: true }) ??
+        which.sync('pwsh', { nothrow: true }) ??
+        which.sync('powershell.exe', { nothrow: true })
+    )
+}
+
+function resolvePowerShellCommand(command: string): ResolvedShellCommand {
+    return {
+        file: findPowerShell() ?? 'powershell.exe',
+        args: [
+            '-NoLogo',
+            '-NoProfile',
+            '-NonInteractive',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-Command',
+            [
+                '$OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+                '[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)',
+                '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+                "$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'",
+                "$PSDefaultParameterValues['*:Encoding'] = 'utf8'",
+                'chcp.com 65001 > $null',
+                command
+            ].join('; ')
+        ],
+        env: buildUtf8Env()
+    }
+}
+
 export async function resolveInteractiveShellCommand(
     cfg: LocalBackendConfig
 ): Promise<ResolvedShellCommand> {
@@ -37,18 +86,9 @@ export async function resolveInteractiveShellCommand(
         }
     }
 
-    const gitBashPath = await findGitBash()
-    if (gitBashPath) {
-        return {
-            file: gitBashPath,
-            args: ['-i'],
-            env: {
-                ...process.env,
-                CHERE_INVOKING: '1',
-                LANG: process.env['LANG'] || 'C.UTF-8',
-                LC_ALL: process.env['LC_ALL'] || 'C.UTF-8'
-            }
-        }
+    const gitBash = await findGitBash()
+    if (gitBash) {
+        return { file: gitBash, args: ['-i'], env: gitBashEnv() }
     }
 
     return {
@@ -82,96 +122,23 @@ export async function resolveShellCommand(
     }
 
     if (cfg.preferredShell === 'git-bash') {
-        const gitBashPath = await findGitBash()
-        if (gitBashPath) {
-            return {
-                file: gitBashPath,
-                args: ['-lc', command],
-                env: {
-                    ...process.env,
-                    CHERE_INVOKING: '1',
-                    LANG: process.env['LANG'] || 'C.UTF-8',
-                    LC_ALL: process.env['LC_ALL'] || 'C.UTF-8'
-                }
-            }
+        const gitBash = await findGitBash()
+        if (gitBash) {
+            return { file: gitBash, args: ['-lc', command], env: gitBashEnv() }
         }
     }
 
-    const gitBashPath = await findGitBash()
-    if (gitBashPath) {
-        return {
-            file: gitBashPath,
-            args: ['-lc', command],
-            env: {
-                ...process.env,
-                CHERE_INVOKING: '1',
-                LANG: process.env['LANG'] || 'C.UTF-8',
-                LC_ALL: process.env['LC_ALL'] || 'C.UTF-8'
-            }
-        }
+    const gitBash = await findGitBash()
+    if (gitBash) {
+        return { file: gitBash, args: ['-lc', command], env: gitBashEnv() }
     }
 
     return resolvePowerShellCommand(command)
 }
 
-function resolvePowerShellCommand(command: string): ResolvedShellCommand {
-    return {
-        file: findPowerShell() ?? 'powershell.exe',
-        args: [
-            '-NoLogo',
-            '-NoProfile',
-            '-NonInteractive',
-            '-ExecutionPolicy',
-            'Bypass',
-            '-Command',
-            buildWindowsPowerShellCommand(command)
-        ],
-        env: buildUtf8Env()
-    }
-}
-
-function buildWindowsPowerShellCommand(command: string) {
-    return [
-        '$OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
-        '[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)',
-        '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
-        "$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'",
-        "$PSDefaultParameterValues['*:Encoding'] = 'utf8'",
-        'chcp.com 65001 > $null',
-        command
-    ].join('; ')
-}
-
-export function findPowerShell(): string | undefined {
-    return (
-        which.sync('pwsh.exe', { nothrow: true }) ??
-        which.sync('pwsh', { nothrow: true }) ??
-        which.sync('powershell.exe', { nothrow: true })
-    )
-}
-
-function buildUtf8Env(
-    base: NodeJS.ProcessEnv = process.env
-): NodeJS.ProcessEnv {
-    return {
-        ...base,
-        PYTHONUTF8: '1',
-        PYTHONIOENCODING: 'utf-8'
-    }
-}
-
 export async function findGitBash(): Promise<string | null> {
     if (process.platform !== 'win32') {
         return null
-    }
-
-    const exists = async (targetPath: string) => {
-        try {
-            await fs.access(targetPath)
-            return true
-        } catch {
-            return false
-        }
     }
 
     const roots = new Set<string>()
@@ -180,8 +147,8 @@ export async function findGitBash(): Promise<string | null> {
         which.sync('git', { nothrow: true })
     ].filter((item): item is string => item != null)
 
-    for (const gitPath of gitPaths) {
-        const dir = path.dirname(gitPath)
+    for (const p of gitPaths) {
+        const dir = path.dirname(p)
         roots.add(path.resolve(dir, '..'))
         roots.add(path.resolve(dir, '..', '..'))
     }
@@ -199,11 +166,12 @@ export async function findGitBash(): Promise<string | null> {
     }
 
     for (const root of roots) {
-        for (const relativePath of ['bin\\bash.exe', 'usr\\bin\\bash.exe']) {
-            const candidate = path.resolve(root, relativePath)
-            if (await exists(candidate)) {
-                return candidate
-            }
+        for (const rel of ['bin\\bash.exe', 'usr\\bin\\bash.exe']) {
+            const p = path.resolve(root, rel)
+            try {
+                await fs.access(p)
+                return p
+            } catch {}
         }
     }
 

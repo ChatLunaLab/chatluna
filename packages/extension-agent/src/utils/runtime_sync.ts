@@ -20,7 +20,7 @@ import {
 } from '../config/path'
 import { REMOTE_SUBAGENTS_ROOT } from '../sub-agent/scan'
 import type { ChatLunaAgentService } from '../service'
-import { resolveTildeDir } from './path'
+import { expandDir } from './path'
 import { quoteShellPath } from './shell'
 
 interface RuntimeSyncFile {
@@ -203,12 +203,12 @@ async function syncRuntimeSession(
             [
                 getSkillsRootPath(agent.ctx),
                 ...DEFAULT_SKILL_DIRS.map((item) =>
-                    resolveTildeDir(agent.ctx.baseDir, item)
+                    expandDir(agent.ctx.baseDir, item)
                 ),
                 ...agent.args.config.skills.dirs
                     .map((item) => item.trim())
                     .filter(Boolean)
-                    .map((item) => resolveTildeDir(agent.ctx.baseDir, item))
+                    .map((item) => expandDir(agent.ctx.baseDir, item))
             ].map((item) => [item.replaceAll('\\', '/').toLowerCase(), item])
         ).values()
     )
@@ -257,8 +257,7 @@ async function collectSyncFiles(
     }
 
     for (const file of remoteFiles) {
-        const sourcePath = posix.join(remoteRoot, file)
-        const content = await session.readFile(sourcePath)
+        const content = await session.readFile(posix.join(remoteRoot, file))
 
         for (const localRoot of localRoots) {
             const targetPath = join(localRoot, ...file.split('/'))

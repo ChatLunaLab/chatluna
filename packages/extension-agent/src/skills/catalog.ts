@@ -13,28 +13,25 @@ export function buildSkillCatalog(
     const skillMap = new Map(skills.map((s) => [s.id, s]))
     const list = applyShadowing(skills, preferRemote)
     const localByName = new Map(
-        list
-            .filter((item) => item.remote !== true)
-            .filter((item) => !item.shadowedBy)
-            .map((item) => [item.name, item])
+        list.filter((s) => !s.remote && !s.shadowedBy).map((s) => [s.name, s])
     )
     const catalog: SkillInfo[] = []
 
     for (const skill of list) {
-        const base =
+        const cfg = createSkillItemConfig(
             configItems[skill.id] ??
-            (skill.remote
-                ? configItems[localByName.get(skill.name)?.id ?? '']
-                : undefined)
-        const cfg = createSkillItemConfig(base)
-        const mode = cfg.mode
+                (skill.remote
+                    ? configItems[localByName.get(skill.name)?.id ?? '']
+                    : undefined)
+        )
         const visible =
             !skill.shadowedBy &&
             skill.enabled &&
             skill.available &&
             skill.state === 'ready' &&
             cfg.enabled &&
-            mode === 'description'
+            cfg.mode === 'description'
+
         catalog.push({
             id: skill.id,
             name: skill.name,
@@ -46,7 +43,7 @@ export function buildSkillCatalog(
             scope: skill.scope,
             state: skill.state,
             enabled: cfg.enabled,
-            mode,
+            mode: cfg.mode,
             authority: cfg.authority ?? 0,
             main: cfg.main,
             chatlunaEnabled: cfg.chatluna,
@@ -78,61 +75,9 @@ export function buildSkillCatalog(
         })
     }
 
-    for (const [id, item] of Object.entries(configItems)) {
-        if (skillMap.has(id)) {
-            continue
-        }
-
-        if (item.remote) {
-            continue
-        }
-
-        const cfg = createSkillItemConfig(item)
-        const mode = cfg.mode
-        if (!cfg.enabled && cfg.mode !== 'description' && cfg.mode !== 'full') {
-            continue
-        }
-
-        catalog.push({
-            id,
-            name: id,
-            description: '',
-            path: '',
-            dir: '',
-            remote: false,
-            source: 'chatluna',
-            scope: 'data',
-            state: 'missing',
-            enabled: cfg.enabled,
-            mode,
-            authority: cfg.authority ?? 0,
-            main: cfg.main,
-            chatlunaEnabled: cfg.chatluna,
-            characterEnabled: cfg.character,
-            characterGroupEnabled: cfg.characterGroup,
-            characterPrivateEnabled: cfg.characterPrivate,
-            characterGroupMode: cfg.characterGroupMode,
-            characterPrivateMode: cfg.characterPrivateMode,
-            characterGroupIds: cfg.characterGroupIds,
-            characterPrivateIds: cfg.characterPrivateIds,
-            subAgents: cfg.subAgents,
-            available: false,
-            visible: false,
-            modelEnabled: false,
-            userInvocable: false,
-            implicitInvocation: false,
-            diagnostics: ['Configured skill was not found during scan']
-        })
-    }
-
     return catalog.sort((a, b) => {
-        const aPriority = skillMap.get(a.id)?.priority ?? 9999
-        const bPriority = skillMap.get(b.id)?.priority ?? 9999
-
-        if (aPriority !== bPriority) {
-            return aPriority - bPriority
-        }
-
-        return a.path.localeCompare(b.path)
+        const ap = skillMap.get(a.id)?.priority ?? 9999
+        const bp = skillMap.get(b.id)?.priority ?? 9999
+        return ap !== bp ? ap - bp : a.path.localeCompare(b.path)
     })
 }

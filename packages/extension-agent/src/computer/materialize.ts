@@ -24,14 +24,8 @@ export class SkillMaterializer {
     }
 
     getPath(skill: ScannedSkill, session: ComputerSessionApi) {
-        if (session.backend === 'local') {
-            return skill.dir
-        }
-
-        if (skill.remote) {
-            return skill.dir
-        }
-
+        if (session.backend === 'local') return skill.dir
+        if (skill.remote) return skill.dir
         return getRemoteSkillDir(skill.name)
     }
 
@@ -44,7 +38,9 @@ export class SkillMaterializer {
         if (session.backend === 'local') {
             if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
                 const target = path.join(root, 'config.json')
-                if (!(await fileExists(target))) {
+                try {
+                    await access(target)
+                } catch {
                     await writeFile(target, await readHostConfigBytes(ctx))
                 }
             }
@@ -60,19 +56,27 @@ export class SkillMaterializer {
         }
 
         const current = this._items.get(session.sessionId)?.get(skill.id)
-        if (current) {
-            return current
+        if (current) return current
+
+        const quoted = quoteShellPath(root)
+        const result = await session.execute(
+            `if [ -d ${quoted} ]; then rm -rf ${quoted}; elif [ -e ${quoted} ]; then rm -f ${quoted}; fi`,
+            { timeout: 15000 }
+        )
+        if (result.exitCode !== 0) {
+            throw new Error(
+                result.stderr.trim() ||
+                    result.stdout.trim() ||
+                    `Failed to reset remote skill dir: ${root}`
+            )
         }
 
-        await resetRemoteSkillDir(root, session)
         const files = await listSkillResources(skill.dir)
-
         await session.writeFile(posix.join(root, 'SKILL.md'), skill.raw)
         for (const file of files) {
-            const hostPath = path.join(skill.dir, file)
-            const data = await readFile(hostPath)
+            const data = await readFile(path.join(skill.dir, file))
             await session.writeFile(
-                posix.join(root, normalizeRemotePath(file)),
+                posix.join(root, file.replaceAll('\\', '/')),
                 data
             )
         }
@@ -118,46 +122,13 @@ export function getRemoteSkillDir(name: string) {
     return posix.join(REMOTE_SKILLS_ROOT, name)
 }
 
-async function resetRemoteSkillDir(root: string, session: ComputerSessionApi) {
-    const quoted = quoteShellPath(root)
-    const result = await session.execute(
-        `if [ -d ${quoted} ]; then rm -rf ${quoted}; elif [ -e ${quoted} ]; then rm -f ${quoted}; fi`,
-        {
-            timeout: 15000
-        }
-    )
-
-    if (result.exitCode !== 0) {
-        throw new Error(
-            result.stderr.trim() ||
-                result.stdout.trim() ||
-                `Failed to reset remote skill dir: ${root}`
-        )
-    }
-}
-
-function normalizeRemotePath(value: string) {
-    return value.replaceAll('\\', '/')
-}
-
-async function fileExists(p: string) {
-    try {
-        await access(p)
-        return true
-    } catch {
-        return false
-    }
-}
-
 async function readHostConfigBytes(ctx: Context) {
-    const configPath = getConfigPath(ctx)
     try {
-        return await readFile(configPath)
+        return await readFile(getConfigPath(ctx))
     } catch (err) {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
             return Buffer.from('{}\n', 'utf-8')
         }
-
         throw err
     }
 }

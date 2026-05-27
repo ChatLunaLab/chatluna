@@ -26,20 +26,6 @@ import { Context } from 'koishi'
 import { putResourceToChatLunaStorage } from './storage'
 import { ToolException } from './types'
 
-function isResourceReference(
-    resource:
-        | EmbeddedResource['resource']
-        | ReadResourceResult['contents'][number]
-) {
-    return (
-        typeof resource === 'object' &&
-        resource !== null &&
-        resource.uri != null &&
-        resource['blob'] == null &&
-        resource['text'] == null
-    )
-}
-
 async function collectResourceBlocks(
     resource:
         | EmbeddedResource['resource']
@@ -51,7 +37,11 @@ async function collectResourceBlocks(
         | (StandardFileBlock & PlainTextContentBlock)
     )[]
 > {
-    if (isResourceReference(resource)) {
+    if (
+        resource.uri != null &&
+        resource['blob'] == null &&
+        resource['text'] == null
+    ) {
         const response: ReadResourceResult = await client.readResource({
             uri: resource.uri
         })
@@ -91,19 +81,6 @@ async function collectResourceBlocks(
     }
 
     return blocks
-}
-
-function convertTextBlock(
-    content: Extract<CallToolResult['content'][0], { type: 'text' }>,
-    useStandardContentBlocks: boolean | undefined
-): MessageContentText[] {
-    return [
-        {
-            type: 'text',
-            ...(useStandardContentBlocks ? { source_type: 'text' } : {}),
-            text: content.text
-        } as MessageContentText
-    ]
 }
 
 async function convertImageBlock(
@@ -147,45 +124,28 @@ async function convertImageBlock(
     ]
 }
 
-function convertAudioBlock(
-    content: Extract<CallToolResult['content'][0], { type: 'audio' }>
-): StandardAudioBlock[] {
-    return [
-        {
-            type: 'audio',
-            source_type: 'base64',
-            data: content.data,
-            mime_type: content.mimeType
-        } as StandardAudioBlock
-    ]
-}
-
 async function convertResourceBlock(
     content: Extract<CallToolResult['content'][0], { type: 'resource' }>,
     client: Client,
     ctx: Context
 ): Promise<(MessageContentComplex | DataContentBlock)[]> {
     const blocks = await collectResourceBlocks(content['resource'], client)
-    const files = await Promise.all(
-        blocks.map(async (value) => {
-            const buffer =
-                value.source_type === 'text'
-                    ? Buffer.from(value.text, 'utf-8')
-                    : value.source_type === 'base64'
-                      ? Buffer.from(value.data, 'base64')
-                      : undefined
+    const files = (
+        await Promise.all(
+            blocks.map(async (value) => {
+                const buffer =
+                    value.source_type === 'text'
+                        ? Buffer.from(value.text, 'utf-8')
+                        : Buffer.from(value.data, 'base64')
 
-            if (buffer == null) {
-                return undefined
-            }
-
-            return await putResourceToChatLunaStorage(
-                ctx,
-                buffer,
-                value.mime_type
-            )
-        })
-    ).then((list) => list.filter(Boolean))
+                return await putResourceToChatLunaStorage(
+                    ctx,
+                    buffer,
+                    value.mime_type
+                )
+            })
+        )
+    ).filter(Boolean)
 
     if (files.length > 0) {
         return files.map((file) => ({
@@ -207,7 +167,15 @@ async function toolOutputToContentBlocks(
 ): Promise<(MessageContentComplex | DataContentBlock)[]> {
     switch (content.type) {
         case 'text':
-            return convertTextBlock(content, useStandardContentBlocks)
+            return [
+                {
+                    type: 'text',
+                    ...(useStandardContentBlocks
+                        ? { source_type: 'text' }
+                        : {}),
+                    text: content.text
+                } as MessageContentText
+            ]
         case 'image':
             return await convertImageBlock(
                 content,
@@ -215,7 +183,14 @@ async function toolOutputToContentBlocks(
                 ctx
             )
         case 'audio':
-            return convertAudioBlock(content)
+            return [
+                {
+                    type: 'audio',
+                    source_type: 'base64',
+                    data: content.data,
+                    mime_type: content.mimeType
+                } as StandardAudioBlock
+            ]
         case 'resource':
             return await convertResourceBlock(content, client, ctx)
         default:
@@ -260,7 +235,7 @@ export async function convertCallToolResult(
         )
     }
 
-    const convertedContent: (MessageContentComplex | DataContentBlock)[] = (
+    const blocks: (MessageContentComplex | DataContentBlock)[] = (
         await Promise.all(
             result.content.map((content) =>
                 toolOutputToContentBlocks(
@@ -275,9 +250,9 @@ export async function convertCallToolResult(
         )
     ).flat()
 
-    if (convertedContent.length === 1 && convertedContent[0].type === 'text') {
-        return [convertedContent[0].text, []]
+    if (blocks.length === 1 && blocks[0].type === 'text') {
+        return [blocks[0].text, []]
     }
 
-    return [convertedContent, []]
+    return [blocks, []]
 }

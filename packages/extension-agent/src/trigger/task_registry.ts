@@ -137,15 +137,10 @@ export class ChatLunaAgentTriggerTaskRegistry {
                 ) {
                     return false
                 }
-
-                if (
-                    filter?.enabled !== undefined &&
-                    task.enabled !== filter.enabled
-                ) {
-                    return false
-                }
-
-                return true
+                return (
+                    filter?.enabled === undefined ||
+                    task.enabled === filter.enabled
+                )
             })
             .sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())
     }
@@ -158,8 +153,9 @@ export class ChatLunaAgentTriggerTaskRegistry {
         await this._load()
         const ids = new Set<number>(this._bindingKeys.get(bindingKey) ?? [])
         if (includeAllScope) {
-            const baseKey = getBaseBindingKey(bindingKey)
-            const baseIds = this._baseBindingKeys.get(baseKey)
+            const baseIds = this._baseBindingKeys.get(
+                getBaseBindingKey(bindingKey)
+            )
             if (baseIds != null) {
                 for (const id of baseIds) {
                     const task = this._tasks.get(id)
@@ -170,27 +166,17 @@ export class ChatLunaAgentTriggerTaskRegistry {
             }
         }
 
-        if (ids.size < 1) {
-            return []
-        }
+        if (ids.size < 1) return []
 
         return [...ids]
             .map((id) => this._tasks.get(id))
             .filter((task): task is TriggerTask => task != null)
-            .filter((task) => {
-                if (enabled === undefined) {
-                    return true
-                }
-
-                return task.enabled === enabled
-            })
+            .filter((task) => enabled === undefined || task.enabled === enabled)
             .sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())
     }
 
     private async _load() {
-        if (this._loaded) {
-            return
-        }
+        if (this._loaded) return
 
         this._ensureDatabase()
         this._bindingKeys.clear()

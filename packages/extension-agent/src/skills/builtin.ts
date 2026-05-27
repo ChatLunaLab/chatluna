@@ -9,9 +9,8 @@ import { getSkillsRootPath } from '../config/path'
 export async function syncBundledSkills(ctx: Context) {
     const src = join(__dirname, '../resources/skills')
     const dest = getSkillsRootPath(ctx)
-    const root = await stat(src).catch(() => undefined)
 
-    if (!root?.isDirectory()) {
+    if (!(await stat(src).catch(() => undefined))?.isDirectory()) {
         ctx.logger.warn('Bundled skills directory not found')
         return
     }
@@ -21,32 +20,30 @@ export async function syncBundledSkills(ctx: Context) {
     const entries = await readdir(src, { withFileTypes: true }).catch(() => [])
 
     for (const entry of entries) {
-        if (!entry.isDirectory()) {
-            continue
-        }
+        if (!entry.isDirectory()) continue
 
         const from = join(src, entry.name)
-        const file = join(from, 'SKILL.md')
-        const skill = await stat(file).catch(() => undefined)
 
-        if (!skill?.isFile()) {
+        if (
+            !(
+                await stat(join(from, 'SKILL.md')).catch(() => undefined)
+            )?.isFile()
+        )
             continue
-        }
 
         const to = join(dest, entry.name)
         const force = entry.name === AGENTCLI_SKILL_NAME
-        const current = await stat(join(to, 'SKILL.md')).catch(() => undefined)
+        const exists = (
+            await stat(join(to, 'SKILL.md')).catch(() => undefined)
+        )?.isFile()
 
-        if (current?.isFile() && !force) {
+        if (exists && !force) continue
+
+        if (!(await syncSkillDir(from, to, force && exists)) && force && exists)
             continue
-        }
 
-        const synced = await syncSkillDir(from, to, force && current?.isFile())
-
-        if (!synced && force && current?.isFile()) continue
-
-        ctx.logger[force && current?.isFile() ? 'debug' : 'info'](
-            `${force && current?.isFile() ? 'Refreshed' : 'Copied'} bundled skill '${entry.name}' to ${to}`
+        ctx.logger[force && exists ? 'debug' : 'info'](
+            `${force && exists ? 'Refreshed' : 'Copied'} bundled skill '${entry.name}' to ${to}`
         )
     }
 }
@@ -54,25 +51,24 @@ export async function syncBundledSkills(ctx: Context) {
 async function syncSkillDir(from: string, to: string, preserveConfig: boolean) {
     const files = await collectFiles(from)
     const current = await collectFiles(to).catch(() => [])
-    const source = new Set(files)
+    const src = new Set(files)
     let changed = false
 
     for (const file of files) {
         if (preserveConfig && file === 'config.json') continue
 
-        const src = join(from, file)
         const dest = join(to, file)
-        const data = await readFile(src)
-        const old = await readFile(dest).catch(() => undefined)
-        if (old?.equals(data)) continue
+        const data = await readFile(join(from, file))
+        if ((await readFile(dest).catch(() => undefined))?.equals(data))
+            continue
 
         await mkdir(dirname(dest), { recursive: true })
-        await copyFile(src, dest)
+        await copyFile(join(from, file), dest)
         changed = true
     }
 
     for (const file of current) {
-        if (source.has(file)) continue
+        if (src.has(file)) continue
         if (preserveConfig && file === 'config.json') continue
 
         await rm(join(to, file), { force: true })

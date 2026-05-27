@@ -8,36 +8,32 @@ import {
     SkillConfig,
     SubAgentConfig,
     SubAgentItemConfig,
+    ToolCharacterScope,
     ToolConfig,
     ToolItemConfig,
+    ToolMetaOverride,
     TriggerConfig
 } from '../types'
 import { DEFAULT_SKILL_DIRS } from './path'
 
-export function getDefaultToolAuthority(name?: string) {
-    if (
-        name === 'bash' ||
-        name === 'file_edit' ||
-        name === 'file_read' ||
-        name === 'file_write' ||
-        name === 'glob' ||
-        name === 'grep' ||
-        name === 'trigger'
-    ) {
-        return 3
-    }
+const HIGH_AUTHORITY_TOOLS = new Set([
+    'bash',
+    'file_edit',
+    'file_read',
+    'file_write',
+    'glob',
+    'grep',
+    'trigger'
+])
 
-    return 0
+export function getDefaultToolAuthority(name?: string) {
+    return name && HIGH_AUTHORITY_TOOLS.has(name) ? 3 : 0
 }
 
 export function createPermissionRule(
     mode: PermissionRule['mode'] = 'inherit'
 ): PermissionRule {
-    return {
-        mode,
-        allow: [],
-        deny: []
-    }
+    return { mode, allow: [], deny: [] }
 }
 
 function copyRule(rule?: PermissionRule, mode: PermissionRule['mode'] = 'all') {
@@ -149,341 +145,103 @@ export function createSkillItemConfig(
     }
 }
 
+// -- Tool registry helpers --
+
+function toolEntry(
+    source: string,
+    group: string,
+    tags: string[],
+    scope: ToolCharacterScope = 'all',
+    enabled = true
+): ToolMetaOverride {
+    return createToolMetaOverride({
+        source,
+        group,
+        tags,
+        defaultAvailability: {
+            enabled,
+            main: enabled,
+            chatluna: enabled,
+            characterScope: scope
+        }
+    })
+}
+
+function builtinEntry(scope: ToolCharacterScope = 'all'): ToolMetaOverride {
+    return createToolMetaOverride({
+        defaultAvailability: {
+            enabled: true,
+            main: true,
+            chatluna: true,
+            characterScope: scope
+        }
+    })
+}
+
+function buildBrowserRegistry(): Record<string, ToolMetaOverride> {
+    const web = ['browser', 'web']
+    const debug = ['browser', 'web', 'debug']
+    const input = ['browser', 'web', 'input']
+
+    const entries: [string, string[]][] = [
+        ['browser_open', web],
+        ['browser_list_pages', web],
+        ['browser_select_page', web],
+        ['browser_close_page', web],
+        ['browser_navigate', web],
+        ['browser_read_text', web],
+        ['browser_get_html', web],
+        ['browser_get_links', web],
+        ['browser_summarize', web],
+        ['browser_snapshot', web],
+        ['browser_wait_for', web],
+        ['browser_screenshot', debug],
+        ['browser_click', input],
+        ['browser_hover', input],
+        ['browser_fill', input],
+        ['browser_fill_form', input],
+        ['browser_type', input],
+        ['browser_press_key', input],
+        ['browser_upload_file', input],
+        ['browser_console', debug],
+        ['browser_network', debug]
+    ]
+
+    const registry: Record<string, ToolMetaOverride> = {}
+    for (const [name, tags] of entries) {
+        registry[name] = toolEntry('extension', 'browser', tags)
+    }
+    // browser_evaluate is disabled by default
+    registry.browser_evaluate = toolEntry(
+        'extension',
+        'browser',
+        debug,
+        'none',
+        false
+    )
+    return registry
+}
+
 export function createDefaultToolConfig(): ToolConfig {
     return {
         items: {},
         registry: {
-            web_search: createToolMetaOverride({
-                source: 'extension',
-                group: 'search',
-                tags: ['search', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_open: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_list_pages: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_select_page: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_close_page: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_navigate: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_read_text: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_get_html: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_get_links: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_summarize: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_snapshot: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_wait_for: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_screenshot: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'debug'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_click: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'input'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_hover: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'input'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_fill: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'input'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_fill_form: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'input'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_type: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'input'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_press_key: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'input'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_upload_file: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'input'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_evaluate: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'debug'],
-                defaultAvailability: {
-                    enabled: false,
-                    main: false,
-                    chatluna: false,
-                    characterScope: 'none'
-                }
-            }),
-            browser_console: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'debug'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            browser_network: createToolMetaOverride({
-                source: 'extension',
-                group: 'browser',
-                tags: ['browser', 'web', 'debug'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            group_mute: createToolMetaOverride({
-                source: 'extension',
-                group: 'plugin-common',
-                tags: ['plugin-common', 'group', 'moderation'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'group'
-                }
-            }),
-            file_read: createToolMetaOverride({
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            file_write: createToolMetaOverride({
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            file_edit: createToolMetaOverride({
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            file_publish: createToolMetaOverride({
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            grep: createToolMetaOverride({
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            glob: createToolMetaOverride({
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            bash: createToolMetaOverride({
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            }),
-            task: createToolMetaOverride({
-                source: 'extension',
-                group: 'agent',
-                tags: ['handoff'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'all'
-                }
-            })
+            web_search: toolEntry('extension', 'search', ['search', 'web']),
+            ...buildBrowserRegistry(),
+            group_mute: toolEntry(
+                'extension',
+                'plugin-common',
+                ['plugin-common', 'group', 'moderation'],
+                'group'
+            ),
+            file_read: builtinEntry(),
+            file_write: builtinEntry(),
+            file_edit: builtinEntry(),
+            file_publish: builtinEntry(),
+            grep: builtinEntry(),
+            glob: builtinEntry(),
+            bash: builtinEntry(),
+            task: toolEntry('extension', 'agent', ['handoff'])
         }
     }
 }

@@ -38,9 +38,6 @@ export function isRunnable(info: SubAgentInfo) {
 }
 
 export function clearDisposers(store: Map<string, () => void>) {
-    for (const dispose of store.values()) {
-        dispose()
-    }
-
+    for (const fn of store.values()) fn()
     store.clear()
 }
