@@ -55,11 +55,8 @@ export function toBackgroundJobInfo(
 
 export function appendBackgroundOutput(current: string, data: string) {
     const next = current + data
-    if (next.length <= 16000) {
-        return next
-    }
-
-    return next.slice(next.length - 16000)
+    if (next.length <= 16000) return next
+    return next.slice(-16000)
 }
 
 export function readBackgroundExit(
@@ -67,14 +64,11 @@ export function readBackgroundExit(
     data: string,
     marker: string
 ) {
-    const text = `${pending}${data}`
-    const lines = text.split(/\r?\n/)
-    const rest = lines.pop() ?? ''
+    const lines = (pending + data).split(/\r?\n/)
+    const rest = lines.pop()
 
     for (const line of lines) {
-        if (!line.startsWith(`${marker}:`)) {
-            continue
-        }
+        if (!line.startsWith(`${marker}:`)) continue
 
         const code = Number(line.slice(marker.length + 1))
         return {
@@ -87,8 +81,8 @@ export function readBackgroundExit(
 }
 
 export function stripBackgroundMarker(output: string, marker: string) {
-    const lines = output.split('\n')
-    return lines
+    return output
+        .split('\n')
         .filter((line) => !line.includes(`${marker}:`))
         .join('\n')
         .replace(/\n+$/, '\n')

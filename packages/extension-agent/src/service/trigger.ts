@@ -270,9 +270,10 @@ export class ChatLunaAgentTriggerService {
         sourceOrInput: Session | WakeupRouting | TriggerCreateTaskInput,
         opts?: CreateTaskFromSessionOptions
     ) {
-        const input = this._deriveCreateInput(sourceOrInput, opts)
-        const prepared = await this._prepareTaskInput(input)
-        const task = await this._registry.create(prepared)
+        const input = await this._prepareTaskInput(
+            this._deriveCreateInput(sourceOrInput, opts)
+        )
+        const task = await this._registry.create(input)
         await this._providers.get(task.providerKind)?.onTaskCreate?.({ task })
         this._scheduler.sync(task)
         await this._afterMutate()
@@ -303,7 +304,7 @@ export class ChatLunaAgentTriggerService {
     async fire(id: number, session?: Session) {
         const result = await this._fireTask(
             id,
-            session == null ? undefined : { target: session },
+            session ? { target: session } : undefined,
             false
         )
         await this._afterMutate()
@@ -403,18 +404,11 @@ export class ChatLunaAgentTriggerService {
             [kind]: { enabled }
         }
 
-        if (!enabled) {
-            // Remove scheduled timers for all tasks of this provider so disabled
-            // providers don't continue to fire from the existing schedule.
-            for (const task of await this._registry.list({
-                providerKind: kind
-            })) {
+        const tasks = await this._registry.list({ providerKind: kind })
+        for (const task of tasks) {
+            if (!enabled) {
                 this._scheduler.remove(task.id)
-            }
-        } else {
-            for (const task of await this._registry.list({
-                providerKind: kind
-            })) {
+            } else {
                 this._scheduler.sync(task)
             }
         }
@@ -462,18 +456,18 @@ export class ChatLunaAgentTriggerService {
         const routing = isSession
             ? routingFromSession(sourceOrInput as Session)
             : (sourceOrInput as WakeupRouting)
-        const bindingKey =
-            o.bindingKey ??
-            bindingKeyFromRouting(routing, o.scope ?? 'personal')
-        const createdBy =
-            o.createdBy ??
-            (isSession ? (sourceOrInput as Session).userId : routing.userId)
 
         return {
             ...o,
             ...routing,
-            bindingKey,
-            createdBy,
+            bindingKey:
+                o.bindingKey ??
+                bindingKeyFromRouting(routing, o.scope ?? 'personal'),
+            createdBy:
+                o.createdBy ??
+                (isSession
+                    ? (sourceOrInput as Session).userId
+                    : routing.userId),
             wakeupTemplate: o.wakeupTemplate ?? {}
         } as TriggerCreateTaskInput
     }
@@ -485,22 +479,17 @@ export class ChatLunaAgentTriggerService {
 
         const target = copy.target
         if (target == null) return copy
-        if (this._isSession(target)) {
+        if (
+            typeof target === 'object' &&
+            'bot' in target &&
+            'platform' in target
+        ) {
             return {
                 ...copy,
                 target: routingFromSession(target as Session)
             }
         }
         return copy
-    }
-
-    private _isSession(target: WakeupTarget): target is Session {
-        return (
-            typeof target === 'object' &&
-            target != null &&
-            'bot' in target &&
-            'platform' in target
-        )
     }
 
     private async _afterMutate() {
@@ -523,9 +512,7 @@ export class ChatLunaAgentTriggerService {
             task.providerKind === 'cron' &&
             task.nextFireAt != null &&
             task.nextFireAt.valueOf() < Date.now()
-        const missedRunPolicy =
-            task.params?.missedRunPolicy === 'fire_once' ? 'fire_once' : 'skip'
-        if (overdue && missedRunPolicy === 'skip') {
+        if (overdue && task.params?.missedRunPolicy !== 'fire_once') {
             const requestId = randomUUID()
             const provider = this._providers.get(task.providerKind)
             const result: WakeupResult = {
@@ -561,11 +548,10 @@ export class ChatLunaAgentTriggerService {
                 : undefined
         const target =
             override?.target ??
-            (taskRouting != null
-                ? taskRouting
-                : task.bindingKey != null
-                  ? { bindingKey: task.bindingKey }
-                  : undefined)
+            taskRouting ??
+            (task.bindingKey != null
+                ? { bindingKey: task.bindingKey }
+                : undefined)
         const requestId = override?.requestId ?? randomUUID()
         const merged: WakeupAction = {
             ...task.wakeupTemplate,
@@ -610,13 +596,6 @@ export class ChatLunaAgentTriggerService {
 
         const provider = this._providers.get(task.providerKind)
         const firedAt = new Date()
-        const persistConversationId =
-            task.wakeupTemplate.newConversation === true &&
-            task.conversationId == null &&
-            result.ok &&
-            result.conversation != null
-                ? result.conversation.id
-                : undefined
         const latest = await this._registry.get(id)
         if (latest == null) return result
 
@@ -693,8 +672,11 @@ export class ChatLunaAgentTriggerService {
         const updated = await this._registry.update(id, {
             lastFiredAt: firedAt,
             fireCount: task.fireCount + 1,
-            ...(persistConversationId != null
-                ? { conversationId: persistConversationId }
+            ...(task.wakeupTemplate.newConversation === true &&
+            task.conversationId == null &&
+            result.ok &&
+            result.conversation != null
+                ? { conversationId: result.conversation.id }
                 : {}),
             ...schedule,
             lastError: result.ok ? null : err
@@ -712,19 +694,19 @@ export class ChatLunaAgentTriggerService {
         pendingKey: string,
         item: DeferredWakeup
     ) {
-        const items =
-            this._deferred.get(pendingKey) ?? new Map<string, DeferredWakeup>()
-        items.set(key, item)
-        this._deferred.set(pendingKey, items)
+        if (!this._deferred.has(pendingKey)) {
+            this._deferred.set(pendingKey, new Map())
+        }
+        this._deferred.get(pendingKey).set(key, item)
     }
 
     private async _replayDeferred(platform: string, selfId: string) {
-        const pendingKey = `${platform}:${selfId}`
-        const items = this._deferred.get(pendingKey)
+        const key = `${platform}:${selfId}`
+        const items = this._deferred.get(key)
         if (items == null || items.size < 1) return
 
         let changed = false
-        this._deferred.delete(pendingKey)
+        this._deferred.delete(key)
         for (const item of items.values()) {
             try {
                 if (item.taskId == null) {
@@ -790,9 +772,7 @@ export class ChatLunaAgentTriggerService {
         this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
             'after_system_prompts',
             async (runtime: PromptContextRuntime, next) => {
-                const conversationId = runtime.configurable?.conversationId
-                if (!conversationId) return next()
-
+                if (!runtime.configurable?.conversationId) return next()
                 if (runtime.configurable?.subagentContext) return next()
 
                 const mask = (runtime.configurable as { toolMask?: ToolMask })
@@ -806,23 +786,25 @@ export class ChatLunaAgentTriggerService {
                     return next()
                 }
 
-                const current = this.getEnabledProviders()
-                if (current.length < 1) return next()
+                const providers = this.getEnabledProviders()
+                if (providers.length < 1) return next()
 
-                const msg = renderTriggerProviders(current)
+                const msg = renderTriggerProviders(providers)
                 runtime.result.push(msg)
                 runtime.usedTokens += await countMessageTokens(
                     msg,
                     runtime.tokenCounter
                 )
 
-                const requestId = (
-                    runtime.configurable as {
-                        agentContext?: { requestId?: string }
-                    }
-                ).agentContext?.requestId
-                const id = this.getRunningTaskId(requestId)
-                const task = id == null ? undefined : await this.getTask(id)
+                const taskId = this.getRunningTaskId(
+                    (
+                        runtime.configurable as {
+                            agentContext?: { requestId?: string }
+                        }
+                    ).agentContext?.requestId
+                )
+                const task =
+                    taskId == null ? undefined : await this.getTask(taskId)
                 if (task != null) {
                     const self = renderTriggerSelfControl(task, new Date())
                     runtime.result.push(self)
@@ -910,8 +892,9 @@ export class ChatLunaAgentTriggerService {
         task: TriggerTask,
         patch: Partial<TriggerTask>
     ) {
-        const kind = patch.providerKind ?? task.providerKind
-        const provider = this._providers.get(kind)
+        const provider = this._providers.get(
+            patch.providerKind ?? task.providerKind
+        )
         if (provider == null) return patch
 
         const merged = {
@@ -944,8 +927,7 @@ export class ChatLunaAgentTriggerService {
 function hasMessage(input: {
     wakeupTemplate?: { message?: string | MessageContentComplex[] }
 }) {
-    const m = input.wakeupTemplate?.message
-    if (m == null) return false
-    if (typeof m === 'string') return m.trim().length > 0
-    return true
+    const msg = input.wakeupTemplate?.message
+    if (msg == null) return false
+    return typeof msg !== 'string' || msg.trim().length > 0
 }

@@ -5,9 +5,6 @@ import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
-const MSG_READING = '读取文件'
-const MSG_DONE = '完成读取'
-
 export class ReadFileTool extends ComputerToolBase {
     name = 'file_read'
 
@@ -41,7 +38,7 @@ Usage:
     ) {
         const computer = await this.getSession(toolConfig)
 
-        this.log(computer, `${MSG_READING}: ${input.filePath}`)
+        this.log(computer, `读取文件: ${input.filePath}`)
 
         try {
             const result = await computer.readFile(
@@ -51,7 +48,7 @@ Usage:
             )
             this.log(
                 computer,
-                `${MSG_DONE}: ${input.filePath} (${result.split('\n').length} 行)`
+                `完成读取: ${input.filePath} (${result.split('\n').length} 行)`
             )
             return this.withBackend(
                 computer,

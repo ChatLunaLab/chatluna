@@ -19,11 +19,11 @@ export class SkillTool extends StructuredTool {
         this.description = service.buildToolDescription()
     }
 
-    async _call(
+    _call(
         input: z.infer<typeof this.schema>,
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
-        return await this.service.activateSkill(input.name, runConfig)
+        return this.service.activateSkill(input.name, runConfig)
     }
 }

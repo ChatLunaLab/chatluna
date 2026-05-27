@@ -36,7 +36,16 @@ import {
 export class LocalComputerSession implements ComputerSessionApi {
     readonly backend = 'local' as const
     readonly sessionId: string
-    readonly capabilities = CAPABILITIES
+    readonly capabilities: ComputerCapability[] = [
+        'file_read',
+        'file_write',
+        'file_edit',
+        'file_publish',
+        'grep',
+        'glob',
+        'bash',
+        'terminal_pty'
+    ]
 
     private _connected = false
     private _cwd: string
@@ -56,7 +65,10 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async connect() {
-        await fs.mkdir(tmpdir(this._cfg), { recursive: true })
+        await fs.mkdir(
+            path.join(this._cfg.scopePath || process.cwd(), '.tmp'),
+            { recursive: true }
+        )
         this._connected = true
     }
 
@@ -110,7 +122,7 @@ export class LocalComputerSession implements ComputerSessionApi {
     async execute(command: string, options: ExecuteOptions = {}) {
         ensureCommandAllowed(command, this._cfg)
 
-        const tmp = tmpdir(this._cfg)
+        const tmp = path.join(this._cfg.scopePath || process.cwd(), '.tmp')
         const workdir = options.workdir || this._cfg.scopePath || process.cwd()
 
         ensureWorkdirInScope(workdir, this._cfg)
@@ -122,15 +134,18 @@ export class LocalComputerSession implements ComputerSessionApi {
 
         await fs.mkdir(tmp, { recursive: true })
 
-        const timeout = options.timeout ?? this._cfg.commandTimeoutMs
         const shell = await resolveShellCommand(
             wrapCommandWithSandbox(command, workdir, this._cfg, tmp),
             this._cfg
         )
-        const env = { ...shell.env, ...tmpEnv(tmp), ...options.env }
 
         this._cwd = path.resolve(workdir)
-        return await runChildProcess(shell, workdir, env, timeout)
+        return await runChildProcess(
+            shell,
+            workdir,
+            { ...shell.env, TMP: tmp, TEMP: tmp, TMPDIR: tmp, ...options.env },
+            options.timeout ?? this._cfg.commandTimeoutMs
+        )
     }
 
     async prepareBackgroundCommand(
@@ -140,7 +155,7 @@ export class LocalComputerSession implements ComputerSessionApi {
     ) {
         ensureCommandAllowed(command, this._cfg)
 
-        const tmp = tmpdir(this._cfg)
+        const tmp = path.join(this._cfg.scopePath || process.cwd(), '.tmp')
         const workdir = options.workdir || this._cfg.scopePath || process.cwd()
 
         ensureWorkdirInScope(workdir, this._cfg)
@@ -161,14 +176,29 @@ export class LocalComputerSession implements ComputerSessionApi {
         }
 
         if (shell.file.toLowerCase().includes('cmd.exe')) {
-            return buildCmdBackgroundCommand(wrapped, marker)
+            return (
+                [
+                    wrapped,
+                    'set "__chatluna_code=%errorlevel%"',
+                    'echo.',
+                    `echo ${marker}:%__chatluna_code%`,
+                    'exit /b %__chatluna_code%'
+                ].join('\r\n') + '\r\n'
+            )
         }
 
         if (shell.file.toLowerCase().includes('bash')) {
             return buildPosixBackgroundCommand(wrapped, marker)
         }
 
-        return buildPowerShellBackgroundCommand(wrapped, marker)
+        return (
+            [
+                wrapped,
+                '$__chatluna_code = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }',
+                `Write-Output "\`n${marker}:$($__chatluna_code)"`,
+                'exit $__chatluna_code'
+            ].join('\r\n') + '\r\n'
+        )
     }
 
     async readAsset(filePath: string) {
@@ -198,13 +228,17 @@ export class LocalComputerSession implements ComputerSessionApi {
     async createTerminal(
         options: { cwd?: string; cols?: number; rows?: number } = {}
     ) {
-        const tmp = tmpdir(this._cfg)
+        const tmp = path.join(this._cfg.scopePath || process.cwd(), '.tmp')
         const cwd = options.cwd || this._cwd
         ensureWorkdirInScope(cwd, this._cfg)
         const shell = await resolveInteractiveShellCommand(this._cfg)
-        const env = { ...shell.env, ...tmpEnv(tmp) }
         this._cwd = path.resolve(cwd)
-        return createLocalTerminal(shell, cwd, env)
+        return createLocalTerminal(shell, cwd, {
+            ...shell.env,
+            TMP: tmp,
+            TEMP: tmp,
+            TMPDIR: tmp
+        })
     }
 }
 
@@ -240,8 +274,12 @@ async function runChildProcess(
                 ? setTimeout(() => {
                       finish({
                           exitCode: 1,
-                          stdout: decodeOutput(stdoutChunks),
-                          stderr: decodeOutput(stderrChunks),
+                          stdout: Buffer.concat(stdoutChunks)
+                              .toString('utf8')
+                              .replace(/\r\n/g, '\n'),
+                          stderr: Buffer.concat(stderrChunks)
+                              .toString('utf8')
+                              .replace(/\r\n/g, '\n'),
                           timedOut: true
                       })
                       killLocalChild(child).catch(() => undefined)
@@ -273,8 +311,12 @@ async function runChildProcess(
         child.on('close', (code, signal) => {
             finish({
                 exitCode: code ?? 0,
-                stdout: decodeOutput(stdoutChunks),
-                stderr: decodeOutput(stderrChunks),
+                stdout: Buffer.concat(stdoutChunks)
+                    .toString('utf8')
+                    .replace(/\r\n/g, '\n'),
+                stderr: Buffer.concat(stderrChunks)
+                    .toString('utf8')
+                    .replace(/\r\n/g, '\n'),
                 signal: signal ?? undefined,
                 timedOut: false
             })
@@ -355,53 +397,3 @@ async function killLocalChild(child: ReturnType<typeof spawn>) {
         killer.on('close', () => resolve())
     })
 }
-
-function buildCmdBackgroundCommand(command: string, marker: string) {
-    return (
-        [
-            command,
-            'set "__chatluna_code=%errorlevel%"',
-            'echo.',
-            `echo ${marker}:%__chatluna_code%`,
-            'exit /b %__chatluna_code%'
-        ].join('\r\n') + '\r\n'
-    )
-}
-
-function buildPowerShellBackgroundCommand(command: string, marker: string) {
-    return (
-        [
-            command,
-            '$__chatluna_code = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }',
-            `Write-Output "\`n${marker}:$($__chatluna_code)"`,
-            'exit $__chatluna_code'
-        ].join('\r\n') + '\r\n'
-    )
-}
-
-function decodeOutput(chunks: Buffer[]): string {
-    return Buffer.concat(chunks).toString('utf8').replace(/\r\n/g, '\n')
-}
-
-function tmpdir(cfg: LocalBackendConfig) {
-    return path.join(cfg.scopePath || process.cwd(), '.tmp')
-}
-
-function tmpEnv(tmp: string): NodeJS.ProcessEnv {
-    return {
-        TMP: tmp,
-        TEMP: tmp,
-        TMPDIR: tmp
-    }
-}
-
-const CAPABILITIES: ComputerCapability[] = [
-    'file_read',
-    'file_write',
-    'file_edit',
-    'file_publish',
-    'grep',
-    'glob',
-    'bash',
-    'terminal_pty'
-]

@@ -6,17 +6,15 @@ import {
     type AgentToolOptions,
     applyToolMask,
     type ChatLunaAgent,
-    createAgentTool,
-    type ToolMask
+    createAgentTool
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     ChatLunaBaseEmbeddings,
     ChatLunaChatModel
 } from 'koishi-plugin-chatluna/llm-core/platform/model'
-import { ChatLunaTool } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { computed, ComputedRef } from 'koishi-plugin-chatluna'
+import { computed } from 'koishi-plugin-chatluna'
 import { Context, h, Session } from 'koishi'
 import { getRemoteSkillsRoot } from '../computer/materialize'
 import { getSkillsRootPath } from '../config/path'
@@ -85,20 +83,67 @@ async function createInnerAgent(
     options: CreateSubAgentOptions,
     input: AgentGenerateOptions
 ) {
-    const source = input.source ?? 'chatluna'
     const toolMask = await options.permission.createSubAgentToolMask(
         options.info,
         input.session,
-        source
+        input.source ?? 'chatluna'
     )
-    const llm = await resolveModel(options.ctx, options.info, options.model)
-    const embeddings = await resolveEmbeddings(options.ctx)
-    const skills = await resolveSkillPrompt(
-        options.ctx,
-        options.permission,
-        options.info,
-        toolMask
+
+    let llm: ChatLunaChatModel
+    if (!options.info.model) {
+        if (!options.model) {
+            throw new Error('Parent model is missing for sub-agent inheritance')
+        }
+        llm = options.model
+    } else {
+        const ref = await options.ctx.chatluna.createChatModel(
+            options.info.model
+        )
+        if (!ref.value) {
+            throw new Error(`Model not found: ${options.info.model}`)
+        }
+        llm = ref.value
+    }
+
+    const [platform, embModel] = parseRawModelName(
+        options.ctx.chatluna.config.defaultEmbeddings
     )
+    const embeddings = (
+        await options.ctx.chatluna.createEmbeddings(platform, embModel)
+    ).value as ChatLunaBaseEmbeddings
+
+    const service = options.ctx.chatluna_agent?.skills
+    const toolCallMask = toolMask.toolCallMask ?? toolMask
+    let skills: string | undefined
+    if (
+        service &&
+        applyToolMask('skill', toolCallMask) &&
+        options.permission.canUseTool(options.info, 'skill')
+    ) {
+        const filtered = options.permission.filterSkills(
+            options.info,
+            service.listSkills().filter((item) => item.modelEnabled)
+        )
+        if (filtered.length > 0) {
+            const cwd = options.ctx.chatluna_agent?.computer.getPromptWorkdir()
+            const status = options.ctx.chatluna_agent?.computer.getStatus()
+            const remote = status != null && status.defaultProvider !== 'local'
+            skills = getMessageContent(
+                renderAvailableSkills(
+                    filtered.map((item) =>
+                        remote ? { ...item, dir: '' } : item
+                    ),
+                    [],
+                    remote
+                        ? getRemoteSkillsRoot()
+                        : getSkillsRootPath(options.ctx),
+                    cwd,
+                    remote ? 'remote' : 'local'
+                ).content
+            )
+        }
+    }
+
     const computer = options.ctx.chatluna_agent?.computer
     const backends = computer
         ? options.permission.filterComputerBackends(
@@ -106,10 +151,25 @@ async function createInnerAgent(
               computer.listAvailableBackends()
           )
         : []
+
     const subCtx =
         input.subagentContext != null
             ? { ...input.subagentContext, toolMask }
-            : createFallbackSubagentContext(options.info, input, toolMask)
+            : {
+                  agentId: options.info.id,
+                  agentName: options.info.name,
+                  parentConversationId: input.conversationId ?? '',
+                  depth: 1,
+                  maxDepth: 1,
+                  toolMask,
+                  disableHandoff: true,
+                  traceInfo: {
+                      runId: options.info.id,
+                      parentAgent: 'main',
+                      startedAt: Date.now()
+                  }
+              }
+
     const system = renderSubAgentSystemPrompt(
         options.info,
         subCtx,
@@ -129,6 +189,8 @@ async function createInnerAgent(
             : undefined
     )
 
+    const tools = options.ctx.chatluna.platform.getTools()
+
     return {
         llm,
         toolMask,
@@ -139,7 +201,13 @@ async function createInnerAgent(
             description: options.info.description,
             model: llm,
             embeddings,
-            tools: createTools(options.ctx, options.permission, options.info),
+            tools: computed(() =>
+                tools.value
+                    .filter((name) =>
+                        options.permission.canUseTool(options.info, name)
+                    )
+                    .map((name) => options.ctx.chatluna.platform.getTool(name))
+            ),
             system,
             preset:
                 options.info.promptMode === 'preset'
@@ -151,102 +219,6 @@ async function createInnerAgent(
             toolMask
         })
     }
-}
-
-function createFallbackSubagentContext(
-    info: SubAgentInfo,
-    input: AgentGenerateOptions,
-    toolMask: ToolMask
-) {
-    return {
-        agentId: info.id,
-        agentName: info.name,
-        parentConversationId: input.conversationId ?? '',
-        depth: 1,
-        maxDepth: 1,
-        toolMask,
-        disableHandoff: true,
-        traceInfo: {
-            runId: info.id,
-            parentAgent: 'main',
-            startedAt: Date.now()
-        }
-    }
-}
-
-function createTools(
-    ctx: Context,
-    permission: ChatLunaAgentPermissionService,
-    info: SubAgentInfo
-): ComputedRef<ChatLunaTool[]> {
-    const tools = ctx.chatluna.platform.getTools()
-
-    return computed(() =>
-        tools.value
-            .filter((name) => permission.canUseTool(info, name))
-            .map((name) => ctx.chatluna.platform.getTool(name))
-    )
-}
-
-async function resolveModel(
-    ctx: Context,
-    info: SubAgentInfo,
-    parent?: ChatLunaChatModel
-) {
-    if (!info.model) {
-        if (!parent) {
-            throw new Error('Parent model is missing for sub-agent inheritance')
-        }
-
-        return parent
-    }
-
-    const ref = await ctx.chatluna.createChatModel(info.model)
-    if (!ref.value) {
-        throw new Error(`Model not found: ${info.model}`)
-    }
-    return ref.value
-}
-
-async function resolveEmbeddings(ctx: Context) {
-    const [platform, model] = parseRawModelName(
-        ctx.chatluna.config.defaultEmbeddings
-    )
-    const ref = await ctx.chatluna.createEmbeddings(platform, model)
-    return ref.value as ChatLunaBaseEmbeddings
-}
-
-async function resolveSkillPrompt(
-    ctx: Context,
-    permission: ChatLunaAgentPermissionService,
-    info: SubAgentInfo,
-    toolMask: ToolMask
-) {
-    const service = ctx.chatluna_agent?.skills
-    const toolCallMask = toolMask.toolCallMask ?? toolMask
-    if (!service) return undefined
-    if (!applyToolMask('skill', toolCallMask)) return undefined
-    if (!permission.canUseTool(info, 'skill')) return undefined
-
-    const skills = permission.filterSkills(
-        info,
-        service.listSkills().filter((item) => item.modelEnabled)
-    )
-    if (skills.length < 1) return undefined
-
-    const cwd = ctx.chatluna_agent?.computer.getPromptWorkdir()
-    const status = ctx.chatluna_agent?.computer.getStatus()
-    const remote = status != null && status.defaultProvider !== 'local'
-
-    return getMessageContent(
-        renderAvailableSkills(
-            skills.map((item) => (remote ? { ...item, dir: '' } : item)),
-            [],
-            remote ? getRemoteSkillsRoot() : getSkillsRootPath(ctx),
-            cwd,
-            remote ? 'remote' : 'local'
-        ).content
-    )
 }
 
 async function createPromptMessage(

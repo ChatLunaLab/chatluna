@@ -19,7 +19,7 @@ import {
 import { collectFilesRecursive } from '../utils/fs'
 import { extractFrontmatter } from '../utils/frontmatter'
 import { createHashId } from '../utils/id'
-import { isPathInside, resolveTildeDir, toPathKey } from '../utils/path'
+import { expandDir, isPathInside, toPathKey } from '../utils/path'
 import { quoteShellPath } from '../utils/shell'
 
 const execFileAsync = promisify(execFile)
@@ -84,17 +84,16 @@ export async function scanSkills(
 ): Promise<ScannedSkill[]> {
     const targets = await getScanTargets(ctx, cfg.skills)
     const bins = new Map<string, boolean>()
-    const skills = (
-        await Promise.all(
-            targets.map((target) => scanTarget(ctx, target, cfg, bins))
-        )
-    ).flat()
 
-    return skills.sort((a, b) =>
-        a.priority !== b.priority
-            ? a.priority - b.priority
-            : a.path.localeCompare(b.path)
+    return (
+        await Promise.all(targets.map((t) => scanTarget(ctx, t, cfg, bins)))
     )
+        .flat()
+        .sort((a, b) =>
+            a.priority !== b.priority
+                ? a.priority - b.priority
+                : a.path.localeCompare(b.path)
+        )
 }
 
 export async function getSkillRoots(ctx: Context, cfg: AgentConfig['skills']) {
@@ -110,12 +109,12 @@ export async function scanSkillRoot(
     const dirs = Array.from(
         new Set(
             files
-                .filter((file) => basename(file) === 'SKILL.md')
-                .map((file) => dirname(file))
+                .filter((f) => basename(f) === 'SKILL.md')
+                .map((f) => dirname(f))
         )
     ).sort((a, b) => a.localeCompare(b))
 
-    return await Promise.all(
+    return Promise.all(
         dirs.map((dir) =>
             parseSkill(
                 join(dir, 'SKILL.md'),
@@ -126,10 +125,7 @@ export async function scanSkillRoot(
                     priority: 0,
                     remote: false
                 },
-                {
-                    dirs: [],
-                    items: {}
-                },
+                { dirs: [], items: {} },
                 undefined,
                 bins,
                 ctx
@@ -139,7 +135,7 @@ export async function scanSkillRoot(
 }
 
 export async function listSkillResources(dir: string): Promise<string[]> {
-    return await collectFilesRecursive(dir, {
+    return collectFilesRecursive(dir, {
         limit: 200,
         excludeNames: ['SKILL.md'],
         relative: true
@@ -169,7 +165,7 @@ export async function listRemoteSkillResources(
 
     return result.stdout
         .split('\n')
-        .map((item) => item.trim())
+        .map((s) => s.trim())
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b))
 }
@@ -180,20 +176,20 @@ async function scanTarget(
     cfg: AgentConfig,
     bins: Map<string, boolean>
 ): Promise<ScannedSkill[]> {
-    const root = await stat(target.root).catch(() => undefined)
-    if (!root?.isDirectory()) return []
+    const info = await stat(target.root).catch(() => undefined)
+    if (!info?.isDirectory()) return []
 
     const entries = await readdir(target.root, { withFileTypes: true })
     const skills = await Promise.all(
         entries.map(async (entry) => {
             const file = join(target.root, entry.name, 'SKILL.md')
-            const info = await stat(file).catch(() => undefined)
-            if (!info?.isFile()) return undefined
+            const fi = await stat(file).catch(() => undefined)
+            if (!fi?.isFile()) return undefined
             return parseSkill(file, target, cfg.skills, cfg, bins, ctx)
         })
     )
 
-    return skills.filter((skill): skill is ScannedSkill => skill != null)
+    return skills.filter((s): s is ScannedSkill => s != null)
 }
 
 async function parseSkill(
@@ -207,7 +203,7 @@ async function parseSkill(
     const dir = dirname(file)
     const raw = await readFile(file, 'utf-8').catch(() => '')
 
-    return await parseSkillText({
+    return parseSkillText({
         file,
         dir,
         target,
@@ -235,7 +231,6 @@ async function parseSkillText(input: {
     extra?: string
 }): Promise<ScannedSkill> {
     const diagnostics: string[] = []
-    const fallbackName = basename(input.dir)
 
     if (!input.raw) {
         return createInvalidSkill({
@@ -290,7 +285,7 @@ async function parseSkillText(input: {
     const name =
         typeof frontmatter.name === 'string' && frontmatter.name
             ? frontmatter.name
-            : fallbackName
+            : basename(input.dir)
     const description =
         typeof frontmatter.description === 'string'
             ? frontmatter.description.trim()
@@ -308,25 +303,17 @@ async function parseSkillText(input: {
         diagnostics.push('Skill description is required')
     }
 
-    const metadata = pickMetadata(frontmatter.metadata)
     const allowedTools = parseAllowedTools(frontmatter['allowed-tools'])
-    const availableResult = await checkAvailability(
+    const availability = await checkAvailability(
         openclaw,
         input.agentCfg,
         input.bins,
         input.ctx
     )
-    const implicitInvocation =
-        frontmatter['disable-model-invocation'] === true
-            ? false
-            : extra.allowImplicitInvocation !== false
-    const userInvocable = frontmatter['user-invocable'] !== false
-    const id = createSkillId(input.file)
+    const id = createHashId(input.file)
     const mode = input.cfg.items[id]?.mode ?? 'description'
-    const enabled = mode !== 'off'
-    const state: SkillState = description ? 'ready' : 'invalid'
 
-    diagnostics.push(...availableResult.diagnostics)
+    diagnostics.push(...availability.diagnostics)
 
     return {
         id,
@@ -337,11 +324,14 @@ async function parseSkillText(input: {
         source: input.target.source,
         scope: input.target.scope,
         remote: input.target.remote,
-        state,
-        enabled,
-        available: availableResult.available,
-        userInvocable,
-        implicitInvocation,
+        state: description ? 'ready' : 'invalid',
+        enabled: mode !== 'off',
+        available: availability.available,
+        userInvocable: frontmatter['user-invocable'] !== false,
+        implicitInvocation:
+            frontmatter['disable-model-invocation'] === true
+                ? false
+                : extra.allowImplicitInvocation !== false,
         emoji: openclaw.emoji,
         homepage:
             typeof frontmatter.homepage === 'string'
@@ -357,9 +347,9 @@ async function parseSkillText(input: {
             typeof frontmatter.license === 'string'
                 ? frontmatter.license
                 : undefined,
-        metadata,
+        metadata: pickMetadata(frontmatter.metadata),
         requires: openclaw.requires,
-        install: availableResult.install,
+        install: availability.install,
         allowedTools,
         diagnostics,
         body: parsed.body,
@@ -377,8 +367,7 @@ function createInvalidSkill(input: {
     raw: string
     body: string
 }): ScannedSkill {
-    const id = createSkillId(input.file)
-    const mode = input.cfg.items[id]?.mode ?? 'description'
+    const id = createHashId(input.file)
 
     return {
         id,
@@ -390,7 +379,7 @@ function createInvalidSkill(input: {
         scope: input.target.scope,
         remote: input.target.remote,
         state: 'invalid',
-        enabled: mode !== 'off',
+        enabled: (input.cfg.items[id]?.mode ?? 'description') !== 'off',
         available: false,
         userInvocable: true,
         implicitInvocation: false,
@@ -405,9 +394,7 @@ function parseExtraMetadata(content?: string): {
     allowImplicitInvocation?: boolean
     diagnostics: string[]
 } {
-    const diagnostics: string[] = []
-
-    if (!content) return { diagnostics }
+    if (!content) return { diagnostics: [] }
 
     try {
         const extra = (load(content) as Record<string, unknown>) ?? {}
@@ -416,24 +403,21 @@ function parseExtraMetadata(content?: string): {
         return {
             allowImplicitInvocation:
                 policy?.allow_implicit_invocation === false ? false : undefined,
-            diagnostics
+            diagnostics: []
         }
     } catch (error) {
-        diagnostics.push(
-            `Failed to parse agents/openai.yaml: ${error instanceof Error ? error.message : String(error)}`
-        )
-        return { diagnostics }
+        return {
+            diagnostics: [
+                `Failed to parse agents/openai.yaml: ${error instanceof Error ? error.message : String(error)}`
+            ]
+        }
     }
 }
 
 function parseAllowedTools(value: unknown) {
     if (typeof value !== 'string' || !value.trim()) return undefined
 
-    const items = value
-        .split(/\s*,\s*|\s+/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-
+    const items = value.split(/\s*,\s*|\s+/).filter(Boolean)
     return items.length > 0 ? items : undefined
 }
 
@@ -441,11 +425,11 @@ function pickMetadata(value: unknown) {
     if (typeof value !== 'object' || value == null) return undefined
 
     const result = Object.fromEntries(
-        Object.entries(value).flatMap(([key, item]) =>
-            typeof item === 'string' ||
-            typeof item === 'number' ||
-            typeof item === 'boolean'
-                ? [[key, String(item)]]
+        Object.entries(value).flatMap(([k, v]) =>
+            typeof v === 'string' ||
+            typeof v === 'number' ||
+            typeof v === 'boolean'
+                ? [[k, String(v)]]
                 : []
         )
     )
@@ -461,22 +445,22 @@ function parseOpenClawMetadata(value: unknown): OpenClawMetadata {
         return { always: false }
     }
 
-    const item = openclaw as Record<string, unknown>
-    const install = Array.isArray(item.install)
-        ? item.install
+    const oc = openclaw as Record<string, unknown>
+    const install = Array.isArray(oc.install)
+        ? oc.install
               .map((entry) => parseInstallAction(entry))
               .filter((entry): entry is SkillInstallAction => entry != null)
         : undefined
 
     return {
-        always: item.always === true,
-        emoji: typeof item.emoji === 'string' ? item.emoji : undefined,
-        homepage: typeof item.homepage === 'string' ? item.homepage : undefined,
-        skillKey: typeof item.skillKey === 'string' ? item.skillKey : undefined,
+        always: oc.always === true,
+        emoji: typeof oc.emoji === 'string' ? oc.emoji : undefined,
+        homepage: typeof oc.homepage === 'string' ? oc.homepage : undefined,
+        skillKey: typeof oc.skillKey === 'string' ? oc.skillKey : undefined,
         primaryEnv:
-            typeof item.primaryEnv === 'string' ? item.primaryEnv : undefined,
-        os: parseStringList(item.os),
-        requires: parseRequires(item.requires),
+            typeof oc.primaryEnv === 'string' ? oc.primaryEnv : undefined,
+        os: parseStringList(oc.os),
+        requires: parseRequires(oc.requires),
         install: install?.length ? install : undefined
     }
 }
@@ -484,44 +468,41 @@ function parseOpenClawMetadata(value: unknown): OpenClawMetadata {
 function parseRequires(value: unknown) {
     if (typeof value !== 'object' || value == null) return undefined
 
-    const item = value as Record<string, unknown>
+    const v = value as Record<string, unknown>
     const result: SkillRequires = {
-        bins: parseStringList(item.bins),
-        anyBins: parseStringList(item.anyBins),
-        env: parseStringList(item.env),
-        config: parseStringList(item.config)
+        bins: parseStringList(v.bins),
+        anyBins: parseStringList(v.anyBins),
+        env: parseStringList(v.env),
+        config: parseStringList(v.config)
     }
 
-    return Object.values(result).some((entry) => entry?.length)
-        ? result
-        : undefined
+    return Object.values(result).some((e) => e?.length) ? result : undefined
 }
 
 function parseInstallAction(value: unknown): SkillInstallAction | undefined {
     if (typeof value !== 'object' || value == null) return undefined
 
-    const item = value as Record<string, unknown>
-    if (typeof item.id !== 'string' || typeof item.kind !== 'string') {
+    const v = value as Record<string, unknown>
+    if (typeof v.id !== 'string' || typeof v.kind !== 'string') {
         return undefined
     }
 
     return {
-        id: item.id,
-        kind: item.kind,
-        label: typeof item.label === 'string' ? item.label : undefined,
-        bins: parseStringList(item.bins),
-        os: parseStringList(item.os),
-        formula: typeof item.formula === 'string' ? item.formula : undefined,
-        package: typeof item.package === 'string' ? item.package : undefined,
-        url: typeof item.url === 'string' ? item.url : undefined,
-        archive: typeof item.archive === 'string' ? item.archive : undefined,
-        extract: typeof item.extract === 'boolean' ? item.extract : undefined,
+        id: v.id,
+        kind: v.kind,
+        label: typeof v.label === 'string' ? v.label : undefined,
+        bins: parseStringList(v.bins),
+        os: parseStringList(v.os),
+        formula: typeof v.formula === 'string' ? v.formula : undefined,
+        package: typeof v.package === 'string' ? v.package : undefined,
+        url: typeof v.url === 'string' ? v.url : undefined,
+        archive: typeof v.archive === 'string' ? v.archive : undefined,
+        extract: typeof v.extract === 'boolean' ? v.extract : undefined,
         stripComponents:
-            typeof item.stripComponents === 'number'
-                ? item.stripComponents
+            typeof v.stripComponents === 'number'
+                ? v.stripComponents
                 : undefined,
-        targetDir:
-            typeof item.targetDir === 'string' ? item.targetDir : undefined
+        targetDir: typeof v.targetDir === 'string' ? v.targetDir : undefined
     }
 }
 
@@ -530,36 +511,35 @@ function parseStringList(value: unknown) {
 
     const result = value
         .map(String)
-        .map((item) => item.trim())
+        .map((s) => s.trim())
         .filter(Boolean)
-
     return result.length ? result : undefined
 }
 
 async function checkAvailability(
-    metadata: OpenClawMetadata,
+    meta: OpenClawMetadata,
     cfg?: AgentConfig,
     bins = new Map<string, boolean>(),
     ctx?: Context
 ) {
     const diagnostics: string[] = []
-    const install = metadata.install?.filter(
+    const install = meta.install?.filter(
         (item) => !item.os || item.os.includes(process.platform)
     )
 
-    if (metadata.always) {
+    if (meta.always) {
         return { available: true, diagnostics, install }
     }
 
-    if (metadata.os && !metadata.os.includes(process.platform)) {
+    if (meta.os && !meta.os.includes(process.platform)) {
         diagnostics.push(
-            `Unsupported OS: ${process.platform} (requires ${metadata.os.join(', ')})`
+            `Unsupported OS: ${process.platform} (requires ${meta.os.join(', ')})`
         )
     }
 
-    if (metadata.requires?.bins?.length) {
+    if (meta.requires?.bins?.length) {
         const missing: string[] = []
-        for (const bin of metadata.requires.bins) {
+        for (const bin of meta.requires.bins) {
             if (!(await hasBin(bin, bins, ctx))) missing.push(bin)
         }
         if (missing.length) {
@@ -567,9 +547,9 @@ async function checkAvailability(
         }
     }
 
-    if (metadata.requires?.anyBins?.length) {
+    if (meta.requires?.anyBins?.length) {
         let matched = false
-        for (const bin of metadata.requires.anyBins) {
+        for (const bin of meta.requires.anyBins) {
             if (await hasBin(bin, bins, ctx)) {
                 matched = true
                 break
@@ -577,13 +557,13 @@ async function checkAvailability(
         }
         if (!matched) {
             diagnostics.push(
-                `Need one available binary: ${metadata.requires.anyBins.join(', ')}`
+                `Need one available binary: ${meta.requires.anyBins.join(', ')}`
             )
         }
     }
 
-    if (metadata.requires?.env?.length) {
-        const missing = metadata.requires.env.filter(
+    if (meta.requires?.env?.length) {
+        const missing = meta.requires.env.filter(
             (key) => !process.env[key]?.trim()
         )
         if (missing.length) {
@@ -591,8 +571,8 @@ async function checkAvailability(
         }
     }
 
-    if (metadata.requires?.config?.length) {
-        const missing = metadata.requires.config.filter(
+    if (meta.requires?.config?.length) {
+        const missing = meta.requires.config.filter(
             (key) => !hasConfigPath(cfg, key)
         )
         if (missing.length) {
@@ -691,7 +671,7 @@ async function getScanTargets(
         const item = dirs[idx].trim()
         if (!item) continue
 
-        const dir = resolveTildeDir(ctx.baseDir, item)
+        const dir = expandDir(ctx.baseDir, item)
         const key = toPathKey(dir)
         if (seen.has(key)) continue
 
@@ -708,30 +688,26 @@ async function getScanTargets(
     return targets
 }
 
+const SOURCE_PATTERNS: [string, SkillSource][] = [
+    ['/claude/skills', 'claude'],
+    ['/openclaw/skills', 'openclaw'],
+    ['/agents/skills', 'universal'],
+    ['/codex/skills', 'codex'],
+    ['/opencode/skills', 'opencode']
+]
+
 function detectSkillSource(raw: string, dir: string): SkillSource {
     const value = `${raw}\n${dir}`.replaceAll('\\', '/').toLowerCase()
 
-    if (value.includes('/.claude/skills') || value.endsWith('/claude/skills')) {
-        return 'claude'
+    for (const [pattern, source] of SOURCE_PATTERNS) {
+        if (
+            value.includes(`/.${pattern.slice(1)}`) ||
+            value.endsWith(pattern)
+        ) {
+            return source
+        }
     }
-    if (
-        value.includes('/.openclaw/skills') ||
-        value.endsWith('/openclaw/skills')
-    ) {
-        return 'openclaw'
-    }
-    if (value.includes('/.agents/skills') || value.endsWith('/agents/skills')) {
-        return 'universal'
-    }
-    if (value.includes('/.codex/skills') || value.endsWith('/codex/skills')) {
-        return 'codex'
-    }
-    if (
-        value.includes('/.opencode/skills') ||
-        value.endsWith('/opencode/skills')
-    ) {
-        return 'opencode'
-    }
+
     return 'custom'
 }
 
@@ -739,8 +715,4 @@ function detectSkillScope(ctx: Context, dir: string): SkillScope {
     if (isPathInside(dir, getSkillsRootPath(ctx))) return 'data'
     if (isPathInside(dir, ctx.baseDir)) return 'project'
     return 'user'
-}
-
-function createSkillId(file: string) {
-    return createHashId(file)
 }

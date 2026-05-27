@@ -15,6 +15,60 @@ import {
     getDefaultConfig
 } from './defaults'
 
+function mergeSkills(base: AgentConfig['skills'], cfg: AgentConfig['skills']) {
+    return {
+        ...base,
+        ...cfg,
+        items: Object.fromEntries(
+            Object.entries({
+                ...(base.items ?? {}),
+                ...(cfg?.items ?? {})
+            }).map(([id, item]) => [id, createSkillItemConfig(item)])
+        ),
+        dirs: [...(cfg?.dirs ?? base.dirs)]
+    }
+}
+
+function mergeToolRegistry(
+    base: AgentConfig['tool']['registry'],
+    saved: AgentConfig['tool']['registry']
+) {
+    const keys = Object.keys({ ...(base ?? {}), ...(saved ?? {}) })
+    return Object.fromEntries(
+        keys.map((name) => {
+            const b = base?.[name]
+            const s = saved?.[name]
+            return [
+                name,
+                createToolMetaOverride({
+                    ...(b ?? {}),
+                    ...(s ?? {}),
+                    defaultAvailability: {
+                        ...(createToolDefaultAvailability(b) ?? {}),
+                        ...(createToolDefaultAvailability(s) ?? {})
+                    }
+                })
+            ]
+        })
+    )
+}
+
+function mergeTool(
+    base: AgentConfig['tool'],
+    cfg?: Partial<AgentConfig['tool']>
+) {
+    return {
+        ...base,
+        registry: mergeToolRegistry(base.registry, cfg?.registry),
+        items: Object.fromEntries(
+            Object.entries(cfg?.items ?? {}).map(([name, item]) => [
+                name,
+                createToolItemConfig(item, name)
+            ])
+        )
+    }
+}
+
 export async function readConfig(ctx: Context): Promise<AgentConfig> {
     const path = getConfigPath(ctx)
     try {
@@ -24,51 +78,8 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
         return {
             ...base,
             ...cfg,
-            skills: {
-                ...base.skills,
-                ...(cfg.skills ?? {}),
-                items: Object.fromEntries(
-                    Object.entries({
-                        ...(base.skills.items ?? {}),
-                        ...(cfg.skills?.items ?? {})
-                    }).map(([id, item]) => [id, createSkillItemConfig(item)])
-                ),
-                dirs: [...(cfg.skills?.dirs ?? base.skills.dirs)]
-            },
-            tool: {
-                ...base.tool,
-                registry: Object.fromEntries(
-                    Object.keys({
-                        ...(base.tool.registry ?? {}),
-                        ...(cfg.tool?.registry ?? {})
-                    }).map((name) => {
-                        const baseItem = base.tool.registry?.[name]
-                        const saved = cfg.tool?.registry?.[name]
-                        return [
-                            name,
-                            createToolMetaOverride({
-                                ...(baseItem ?? {}),
-                                ...(saved ?? {}),
-                                defaultAvailability: {
-                                    ...(createToolDefaultAvailability(
-                                        baseItem
-                                    ) ?? {}),
-                                    ...(createToolDefaultAvailability(saved) ??
-                                        {})
-                                }
-                            })
-                        ]
-                    })
-                ),
-                items: Object.fromEntries(
-                    Object.entries(cfg.tool?.items ?? {}).map(
-                        ([name, item]) => [
-                            name,
-                            createToolItemConfig(item, name)
-                        ]
-                    )
-                )
-            },
+            skills: mergeSkills(base.skills, cfg.skills),
+            tool: mergeTool(base.tool, cfg.tool),
             trigger: deepAssign({}, base.trigger, cfg.trigger ?? {}),
             computer: deepAssign({}, base.computer, cfg.computer ?? {}),
             subAgent: deepAssign({}, base.subAgent, cfg.subAgent ?? {})

@@ -1,5 +1,3 @@
-/** @module computer/proxy */
-
 import { IncomingMessage } from 'http'
 import { WebSocket } from 'ws'
 import { Context } from 'koishi'
@@ -39,22 +37,18 @@ export class ChatLunaAgentComputerProxy {
 
     private async acceptTerminal(socket: WebSocket, request: IncomingMessage) {
         const url = new URL(request.url ?? '/', 'http://127.0.0.1')
-        const match = url.pathname.match(
-            /^\/chatluna\/computer\/terminal\/([^/]+)\/([^/]+)$/
-        )
-        if (!match) {
-            socket.close()
-            return
-        }
+        const seg = url.pathname.split('/')
+        const sid = seg[4]
+        const tid = seg[5]
 
-        const item = this.service.getTerminal(match[1], match[2])
+        const item = this.service.getTerminal(sid, tid)
         if (!item || url.searchParams.get('token') !== item.token) {
             socket.close()
             return
         }
         const terminal = item.terminal
 
-        this.service.touchSession(match[1])
+        this.service.touchSession(sid)
 
         const offData = await terminal.onData((data) => {
             if (socket.readyState === socket.OPEN) {
@@ -67,19 +61,19 @@ export class ChatLunaAgentComputerProxy {
                 ? chunk.toString('utf8')
                 : String(chunk)
             try {
-                const data = JSON.parse(text)
-                if (data.type === 'input') {
-                    terminal.sendInput(String(data.data ?? ''))
+                const msg = JSON.parse(text)
+                if (msg.type === 'input') {
+                    terminal.sendInput(String(msg.data ?? ''))
                     return
                 }
-                if (data.type === 'resize') {
+                if (msg.type === 'resize') {
                     terminal.resize(
-                        Number(data.cols) || 80,
-                        Number(data.rows) || 24
+                        Number(msg.cols) || 80,
+                        Number(msg.rows) || 24
                     )
                     return
                 }
-                if (data.type === 'kill') {
+                if (msg.type === 'kill') {
                     terminal.kill()
                 }
             } catch {
@@ -89,9 +83,7 @@ export class ChatLunaAgentComputerProxy {
 
         socket.on('close', () => {
             offData()
-            this.service
-                .handleTerminalSocketClose(match[1], match[2])
-                .catch(() => {})
+            this.service.handleTerminalSocketClose(sid, tid).catch(() => {})
         })
     }
 }

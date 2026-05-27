@@ -1,8 +1,3 @@
-/**
- * @module utils/fs
- * @description 安全路径解析与递归文件收集工具。
- */
-
 import { readdir } from 'fs/promises'
 import { join, relative, resolve } from 'path'
 import { isPathInside } from './path'
@@ -30,10 +25,7 @@ export async function collectFilesRecursive(
     const limit = options.limit ?? Infinity
 
     while (queue.length > 0 && result.length < limit) {
-        const current = queue.shift()
-        if (!current) {
-            continue
-        }
+        const current = queue.shift()!
 
         const entries = await readdir(current, { withFileTypes: true }).catch(
             () => []

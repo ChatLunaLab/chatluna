@@ -42,7 +42,13 @@ export function ensureLocalPathAccess(
         throw new Error(`Path "${filePath}" is denied by configuration.`)
     }
 
-    if (mode === 'write' && containsProtectedName(resolved)) {
+    if (
+        mode === 'write' &&
+        resolved
+            .replaceAll('\\', '/')
+            .split('/')
+            .some((s) => PROTECTED_NAMES.includes(s))
+    ) {
         throw new Error(
             `Path "${filePath}" is protected and cannot be modified.`
         )
@@ -80,12 +86,17 @@ export function ensureLocalCommandAccess(
 
     if (
         cfg.sandboxMode === 'read-only' &&
-        WRITE_COMMAND_PATTERNS.some((item) => item.test(command))
+        WRITE_COMMAND_PATTERNS.some((p) => p.test(command))
     ) {
         throw new Error('Local backend is running in read-only mode.')
     }
 
-    if (containsProtectedName(command)) {
+    if (
+        command
+            .replaceAll('\\', '/')
+            .split('/')
+            .some((s) => PROTECTED_NAMES.includes(s))
+    ) {
         throw new Error('Command references a protected path.')
     }
 
@@ -113,93 +124,65 @@ export function wrapCommandWithSandbox(
         )
     }
 
-    const bwrapError = getBubblewrapError(bwrap, tmp)
-    if (bwrapError) {
-        throw new Error(
-            `Local backend sandbox requires bubblewrap, but the startup probe failed: ${bwrapError}`
+    if (!BWRAP_PROBE_CACHE.has(bwrap)) {
+        const result = spawnSync(
+            bwrap,
+            [
+                '--ro-bind',
+                '/',
+                '/',
+                '--bind',
+                tmp,
+                '/tmp',
+                '--dev',
+                '/dev',
+                '--proc',
+                '/proc',
+                'sh',
+                '-lc',
+                'true'
+            ],
+            { encoding: 'utf8' }
         )
+
+        if (result.status === 0) {
+            BWRAP_PROBE_CACHE.add(bwrap)
+        } else {
+            const err =
+                result.stderr?.trim() ||
+                result.error?.message ||
+                'bubblewrap startup probe failed.'
+            throw new Error(
+                `Local backend sandbox requires bubblewrap, but the startup probe failed: ${err}`
+            )
+        }
     }
 
+    const ro = cfg.sandboxMode === 'read-only'
     const scope = cfg.scopePath || workdir || process.cwd()
-    const binds =
-        cfg.sandboxMode === 'read-only'
-            ? [`--ro-bind ${quote(scope)} ${quote(scope)}`]
-            : [`--bind ${quote(scope)} ${quote(scope)}`]
-    const temp =
-        cfg.sandboxMode === 'read-only'
-            ? [`--ro-bind ${quote(tmp)} /tmp`]
-            : [`--bind ${quote(tmp)} /tmp`]
-    const net = cfg.networkPolicy === 'block' ? ['--unshare-net'] : []
 
     return [
         quote(bwrap),
         '--ro-bind / /',
-        ...binds,
-        ...temp,
+        ro
+            ? `--ro-bind ${quote(scope)} ${quote(scope)}`
+            : `--bind ${quote(scope)} ${quote(scope)}`,
+        ro ? `--ro-bind ${quote(tmp)} /tmp` : `--bind ${quote(tmp)} /tmp`,
         '--dev /dev',
         '--proc /proc',
         '--die-with-parent',
-        ...net,
+        ...(cfg.networkPolicy === 'block' ? ['--unshare-net'] : []),
         'sh -lc',
         quote(command)
     ].join(' ')
 }
 
 function isInsideRoot(target: string, root: string) {
-    const resolvedTarget = path.resolve(target)
-    const resolvedRoot = path.resolve(root)
-    return (
-        resolvedTarget === resolvedRoot ||
-        resolvedTarget.startsWith(resolvedRoot + path.sep)
-    )
+    const t = path.resolve(target)
+    const r = path.resolve(root)
+    return t === r || t.startsWith(r + path.sep)
 }
 
-function containsProtectedName(value: string) {
-    return value
-        .replaceAll('\\', '/')
-        .split('/')
-        .some((item) => PROTECTED_NAMES.includes(item))
-}
-
-function quote(value: string) {
-    return `'${value.replaceAll("'", `'\\''`)}'`
-}
-
-function getBubblewrapError(bwrap: string, tmp: string) {
-    if (BWRAP_PROBE_CACHE.has(bwrap)) {
-        return ''
-    }
-
-    const result = spawnSync(
-        bwrap,
-        [
-            '--ro-bind',
-            '/',
-            '/',
-            '--bind',
-            tmp,
-            '/tmp',
-            '--dev',
-            '/dev',
-            '--proc',
-            '/proc',
-            'sh',
-            '-lc',
-            'true'
-        ],
-        {
-            encoding: 'utf8'
-        }
-    )
-
-    if (result.status === 0) {
-        BWRAP_PROBE_CACHE.add(bwrap)
-        return ''
-    }
-
-    return (
-        result.stderr?.trim() ||
-        result.error?.message ||
-        'bubblewrap startup probe failed.'
-    )
+function quote(v: string) {
+    return `'${v.replaceAll("'", `'\\''`)}'`
 }

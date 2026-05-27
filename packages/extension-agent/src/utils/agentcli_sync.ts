@@ -146,10 +146,8 @@ function sortKeys(value: unknown): unknown {
 }
 
 function isMissingFileError(err: unknown): boolean {
-    if (!err) return false
-    const code = (err as NodeJS.ErrnoException).code
-    if (code === 'ENOENT') return true
-    const msg = ((err as Error).message ?? '').toLowerCase()
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return true
+    const msg = (err as Error).message.toLowerCase()
     return (
         msg.includes('no such file') ||
         msg.includes('not found') ||

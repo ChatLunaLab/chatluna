@@ -5,8 +5,6 @@ import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
-const MSG_PUBLISHING = '发布文件'
-
 export class PublishFileTool extends ComputerToolBase {
     name = 'file_publish'
 
@@ -29,7 +27,7 @@ Usage:
         toolConfig: ChatLunaToolRunnable
     ) {
         const computer = await this.getSession(toolConfig)
-        this.log(computer, `${MSG_PUBLISHING}: ${input.paths.join(', ')}`)
+        this.log(computer, `发布文件: ${input.paths.join(', ')}`)
 
         try {
             const files = await this.computer.publishFile(

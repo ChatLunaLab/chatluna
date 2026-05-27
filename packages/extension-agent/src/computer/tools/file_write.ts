@@ -5,9 +5,6 @@ import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
 import { ComputerToolBase } from './base'
 
-const MSG_WRITING = '写入文件'
-const MSG_DONE = '完成写入'
-
 export class WriteFileTool extends ComputerToolBase {
     name = 'file_write'
 
@@ -34,11 +31,11 @@ Usage:
     ) {
         const computer = await this.getSession(toolConfig)
 
-        this.log(computer, `${MSG_WRITING}: ${input.filePath}`)
+        this.log(computer, `写入文件: ${input.filePath}`)
 
         try {
             await computer.writeFile(input.filePath, input.content)
-            this.log(computer, `${MSG_DONE}: ${input.filePath}`)
+            this.log(computer, `完成写入: ${input.filePath}`)
             return this.withBackend(
                 computer,
                 this.formatResult(true, `Wrote ${input.filePath}`)

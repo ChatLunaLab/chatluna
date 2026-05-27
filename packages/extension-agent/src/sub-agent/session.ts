@@ -61,29 +61,23 @@ export function appendTaskMessage(
     message: BaseMessage
 ) {
     task.messages.push(message)
-    touchTaskSession(task)
+    task.updatedAt = Date.now()
 }
 
 export function appendTaskMessages(
     task: SubAgentTaskSession,
     messages: BaseMessage[]
 ) {
-    if (messages.length < 1) {
-        return
-    }
-
+    if (messages.length < 1) return
     task.messages.push(...messages)
-    touchTaskSession(task)
+    task.updatedAt = Date.now()
 }
 
 export function appendTaskToolBatch(
     task: SubAgentTaskSession,
     steps: AgentStep[]
 ) {
-    if (steps.length < 1) {
-        return
-    }
-
+    if (steps.length < 1) return
     appendTaskMessages(task, createAgentToolMessages(steps))
 }
 
@@ -232,27 +226,21 @@ function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
 
 function formatTaskHistory(messages: BaseMessage[]) {
     const lines = messages
-        .map((message) => {
-            const text = getMessageContent(message.content)
+        .map((msg) => {
+            const text = getMessageContent(msg.content)
                 .replace(/\s+/g, ' ')
                 .trim()
-            if (!text) {
-                return undefined
-            }
-
-            return `${message.getType()}: ${text.length > 280 ? `${text.slice(0, 277)}...` : text}`
+            if (!text) return undefined
+            return `${msg.getType()}: ${text.length > 280 ? `${text.slice(0, 277)}...` : text}`
         })
         .filter((item): item is string => item != null)
 
-    if (lines.length < 1) {
-        return '(no messages yet)'
-    }
-
+    if (lines.length < 1) return '(no messages yet)'
     return lines.slice(-6).join('\n')
 }
 
 export function isHumanMessages(
     messages: BaseMessage[]
 ): messages is HumanMessage[] {
-    return messages.every((message) => message.getType() === 'human')
+    return messages.every((msg) => msg.getType() === 'human')
 }

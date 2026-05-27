@@ -29,7 +29,7 @@ export function renderAvailableSkills(
         )
     }
 
-    if (skills.length > 0) {
+    if (skills.length) {
         lines.push(
             'You can load extra instructions with the skill tool when the current task matches one of the skills below.',
             'Use a skill early when it gives you a better workflow, checklist, or domain-specific procedure.',
@@ -49,7 +49,7 @@ export function renderAvailableSkills(
         }
     }
 
-    if (active.length > 0) {
+    if (active.length) {
         lines.push('', '<loaded_skills>')
 
         for (const skill of active) {
@@ -69,7 +69,7 @@ export function renderAvailableSkills(
         )
     }
 
-    if (skills.length > 0) {
+    if (skills.length) {
         lines.push('', 'Use the exact skill name when calling the skill tool.')
     }
 
@@ -81,19 +81,19 @@ export function renderAvailableSkills(
 export async function renderSkillContent(
     skill: ScannedSkill,
     loaded = false,
-    options: {
+    opts: {
         skillDir?: string
         resources?: string[]
     } = {}
 ) {
-    const resources = options.resources ?? (await listSkillResources(skill.dir))
+    const res = opts.resources ?? (await listSkillResources(skill.dir))
     const lines = [
         `<skill_content name="${escapeXml(skill.name)}">`,
         loaded
             ? 'The following skill is now active for the current conversation.'
             : 'The following skill remains active for the current conversation.',
         `Description: ${skill.description}`,
-        ...(options.skillDir ? [`Directory: ${options.skillDir}`] : []),
+        ...(opts.skillDir ? [`Directory: ${opts.skillDir}`] : []),
         ...(skill.homepage ? [`Homepage: ${skill.homepage}`] : []),
         ...(skill.requires
             ? [
@@ -115,23 +115,21 @@ export async function renderSkillContent(
                       .join(' | ')}`
               ]
             : []),
-        ...(skill.install && skill.install.length > 0
+        ...(skill.install?.length
             ? [
                   `Install options: ${skill.install.map((item) => item.label ?? item.id).join('; ')}`
               ]
             : []),
-        ...(skill.allowedTools && skill.allowedTools.length > 0
+        ...(skill.allowedTools?.length
             ? [`Allowed tools: ${skill.allowedTools.join(', ')}`]
             : []),
         '',
-        skill.body.length > 0 ? skill.body : skill.raw,
+        skill.body.length ? skill.body : skill.raw,
         '',
-        ...(resources.length > 0
+        ...(res.length
             ? [
                   '<skill_resources>',
-                  ...resources.map(
-                      (file) => `  <file>${escapeXml(file)}</file>`
-                  ),
+                  ...res.map((file) => `  <file>${escapeXml(file)}</file>`),
                   '</skill_resources>'
               ]
             : []),

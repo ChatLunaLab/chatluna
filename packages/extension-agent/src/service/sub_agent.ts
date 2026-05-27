@@ -61,11 +61,11 @@ export class ChatLunaAgentSubAgentService {
     }
 
     getStatus(): SubAgentStatus {
-        const catalog = this.getCatalogSync()
+        const items = this.getCatalogSync()
         return {
-            enabled: catalog.length > 0,
-            total: catalog.length,
-            catalog: Object.fromEntries(catalog.map((item) => [item.id, item])),
+            enabled: items.length > 0,
+            total: items.length,
+            catalog: Object.fromEntries(items.map((item) => [item.id, item])),
             runs: this.getRuns()
         }
     }
@@ -130,10 +130,7 @@ export class ChatLunaAgentSubAgentService {
         } satisfies ManualSubAgentInput
         const info = createManualAgent(this.ctx, next)
 
-        this._manual.set(info.id, {
-            ...next,
-            id: info.id
-        })
+        this._manual.set(info.id, { ...next, id: info.id })
 
         await this.refreshCatalog()
         await this.ctx.chatluna_agent?.refreshConsoleData()
@@ -226,8 +223,7 @@ export class ChatLunaAgentSubAgentService {
         this._toolDispose?.()
         this._toolDispose = undefined
 
-        const names = this.listRunnableAgents().map((item) => item.name)
-        if (names.length < 1) return
+        if (this.listRunnableAgents().length < 1) return
 
         this._toolDispose = this.ctx.chatluna.platform.registerTool('task', {
             description: this.buildToolDescription(),
@@ -256,9 +252,7 @@ export class ChatLunaAgentSubAgentService {
         this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
             'after_system_prompts',
             async (runtime: PromptContextRuntime, next) => {
-                const conversationId = runtime.configurable?.conversationId
-                if (!conversationId) return next()
-
+                if (!runtime.configurable?.conversationId) return next()
                 if (runtime.configurable?.subagentContext) return next()
 
                 const session = runtime.configurable?.session

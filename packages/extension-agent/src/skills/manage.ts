@@ -11,40 +11,37 @@ export async function exportSkillArchive(
     id: string,
     dir: string
 ): Promise<SkillExportResult> {
-    const info = await stat(dir).catch(() => undefined)
-    if (!info?.isDirectory()) {
+    if (!(await stat(dir).catch(() => undefined))?.isDirectory()) {
         throw new Error('Skill directory was not found')
     }
 
     const name = basename(dir)
-    const files = await collectFilesRecursive(dir)
-    const archive = zipSync(
-        Object.fromEntries(
-            await Promise.all(
-                files.map(async (file) => {
-                    const rel = relative(dir, file).replaceAll('\\', '/')
-                    return [`${name}/${rel}`, await readFile(file)]
-                })
-            )
-        )
-    )
 
     return {
         id,
         name,
         fileName: `${name}.zip`,
-        data: Buffer.from(archive).toString('base64')
+        data: Buffer.from(
+            zipSync(
+                Object.fromEntries(
+                    await Promise.all(
+                        (await collectFilesRecursive(dir)).map(async (file) => [
+                            `${name}/${relative(dir, file).replaceAll('\\', '/')}`,
+                            await readFile(file)
+                        ])
+                    )
+                )
+            )
+        ).toString('base64')
     }
 }
 
 export async function removeSkillDirectory(root: string, dir: string) {
-    const target = resolve(dir)
-
-    if (!isPathInside(target, root)) {
+    if (!isPathInside(resolve(dir), root)) {
         throw new Error(
             'Only skills inside data/chatluna/skills can be removed'
         )
     }
 
-    await rm(target, { recursive: true, force: true })
+    await rm(resolve(dir), { recursive: true, force: true })
 }

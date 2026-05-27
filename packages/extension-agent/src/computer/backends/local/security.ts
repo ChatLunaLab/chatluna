@@ -1,6 +1,5 @@
 import { randomBytes } from 'crypto'
 import path from 'path'
-/** @module computer/backends/local/security */
 
 import { Session } from 'koishi'
 import { LocalBackendConfig } from '../../../types'
@@ -33,45 +32,32 @@ const HIGH_RISK_PATTERNS: RegExp[] = [
     /\bdiskpart\b/i
 ]
 
-export function isHighRisk(command: string) {
-    return HIGH_RISK_PATTERNS.some((pattern) => pattern.test(command))
-}
+export function ensureCommandAllowed(cmd: string, cfg: LocalBackendConfig) {
+    if (cfg.dangerouslySkipPermissions) return
 
-export function ensureCommandAllowed(command: string, cfg: LocalBackendConfig) {
-    if (cfg.dangerouslySkipPermissions) {
-        return
-    }
+    const base = cmd.trim().split(/\s+/)[0]?.toLowerCase()
+    if (!base) throw new Error('Command is empty.')
 
-    const baseCmd = command.trim().split(/\s+/)[0]?.toLowerCase()
-    if (!baseCmd) {
-        throw new Error('Command is empty.')
-    }
-
-    if (cfg.blockedCommands.some((item) => baseCmd === item.toLowerCase())) {
-        throw new Error(`Command "${baseCmd}" is blocked by configuration.`)
+    if (cfg.blockedCommands.some((item) => base === item.toLowerCase())) {
+        throw new Error(`Command "${base}" is blocked by configuration.`)
     }
 
     if (
         cfg.allowedCommands.length > 0 &&
-        !cfg.allowedCommands.some((item) => baseCmd === item.toLowerCase())
+        !cfg.allowedCommands.some((item) => base === item.toLowerCase())
     ) {
         throw new Error(
-            `Command "${baseCmd}" is not in the allowed commands list.`
+            `Command "${base}" is not in the allowed commands list.`
         )
     }
 }
 
 export function ensureWorkdirInScope(workdir: string, cfg: LocalBackendConfig) {
-    if (cfg.dangerouslySkipPermissions || !cfg.scopePath) {
-        return
-    }
+    if (cfg.dangerouslySkipPermissions || !cfg.scopePath) return
 
-    const resolvedWorkdir = path.resolve(workdir)
-    const resolvedScope = path.resolve(cfg.scopePath)
-    if (
-        resolvedWorkdir !== resolvedScope &&
-        !resolvedWorkdir.startsWith(resolvedScope + path.sep)
-    ) {
+    const resolved = path.resolve(workdir)
+    const scope = path.resolve(cfg.scopePath)
+    if (resolved !== scope && !resolved.startsWith(scope + path.sep)) {
         throw new Error(
             `Working directory "${workdir}" is outside the configured scope path "${cfg.scopePath}".`
         )
@@ -83,17 +69,15 @@ export function ensureCommandPathsInScope(
     cfg: LocalBackendConfig,
     isInScope: (filePath: string) => boolean
 ) {
-    if (cfg.dangerouslySkipPermissions || !cfg.scopePath) {
-        return
-    }
+    if (cfg.dangerouslySkipPermissions || !cfg.scopePath) return
 
-    const absolutePathPattern =
+    for (const match of command.matchAll(
         /(?:^|[\s="'`:(\[{;<>@,])((?:\/|[A-Za-z]:)[^\s"'`)\]}<>;,@]*)/g
-    for (const match of command.matchAll(absolutePathPattern)) {
-        const filePath = match[1]
-        if (!isInScope(path.resolve(filePath))) {
+    )) {
+        const fp = match[1]
+        if (!isInScope(path.resolve(fp))) {
             throw new Error(
-                `Command references path "${filePath}" which is outside the scope path "${cfg.scopePath}".`
+                `Command references path "${fp}" which is outside the scope path "${cfg.scopePath}".`
             )
         }
     }
@@ -107,7 +91,7 @@ export async function confirmHighRiskCommand(
     if (
         cfg.dangerouslySkipPermissions ||
         cfg.approvalMode === 'never' ||
-        !isHighRisk(command)
+        !HIGH_RISK_PATTERNS.some((p) => p.test(command))
     ) {
         return
     }
@@ -122,8 +106,7 @@ export async function confirmHighRiskCommand(
     await session.send(
         `模型请求执行高危命令：\n\`${command}\`\n如需同意，请输入以下字符：${token}`
     )
-    const reply = await session.prompt()
-    if (reply?.trim() !== token) {
+    if ((await session.prompt())?.trim() !== token) {
         throw new Error(
             'Command execution cancelled: user did not confirm the high-risk operation.'
         )

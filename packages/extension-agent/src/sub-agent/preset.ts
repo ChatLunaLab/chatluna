@@ -45,7 +45,7 @@ export function getPresetAgents(
                     state: 'missing' as const,
                     promptContent: '',
                     diagnostics: ['Referenced preset was not found']
-                } satisfies SubAgentInfo
+                }
             }
 
             return {
@@ -53,14 +53,14 @@ export function getPresetAgents(
                 state: 'ready' as const,
                 promptContent: preset.rawText,
                 diagnostics: []
-            } satisfies SubAgentInfo
+            }
         } catch (err) {
             return {
                 ...base,
                 state: 'missing' as const,
                 promptContent: '',
                 diagnostics: [err instanceof Error ? err.message : String(err)]
-            } satisfies SubAgentInfo
+            }
         }
     })
 }
