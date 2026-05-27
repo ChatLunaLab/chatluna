@@ -282,16 +282,20 @@ async function parseSkillText(input: {
     diagnostics.push(...extra.diagnostics)
     const openclaw = parseOpenClawMetadata(frontmatter.metadata)
 
-    const name =
-        typeof frontmatter.name === 'string' && frontmatter.name
-            ? frontmatter.name
-            : basename(input.dir)
+    const rawName =
+        typeof frontmatter.name === 'string' ? frontmatter.name.trim() : ''
+    const name = rawName || basename(input.dir)
+    const validName = /^[a-z0-9]+(-[a-z0-9]+)*$/.test(rawName)
     const description =
         typeof frontmatter.description === 'string'
             ? frontmatter.description.trim()
             : ''
 
-    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) {
+    if (!rawName) {
+        diagnostics.push('Skill name is required')
+    }
+
+    if (rawName && !validName) {
         diagnostics.push('Skill name should match ^[a-z0-9]+(-[a-z0-9]+)*$')
     }
 
@@ -324,7 +328,10 @@ async function parseSkillText(input: {
         source: input.target.source,
         scope: input.target.scope,
         remote: input.target.remote,
-        state: description ? 'ready' : 'invalid',
+        state:
+            rawName && validName && name.length <= 64 && description
+                ? 'ready'
+                : 'invalid',
         enabled: mode !== 'off',
         available: availability.available,
         userInvocable: frontmatter['user-invocable'] !== false,

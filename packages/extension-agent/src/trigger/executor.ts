@@ -13,7 +13,12 @@ import {
 import type { Message, RenderType } from 'koishi-plugin-chatluna'
 import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { parseBindingKey, type WakeupAction, type WakeupResult } from '../types'
+import {
+    parseBindingKey,
+    type WakeupAction,
+    type WakeupResult,
+    type WakeupRouting
+} from '../types'
 import { buildVirtualSession } from './session'
 
 export class ChatLunaAgentTriggerExecutor {
@@ -273,6 +278,7 @@ export class ChatLunaAgentTriggerExecutor {
 
         if (
             typeof target === 'object' &&
+            target != null &&
             'bot' in target &&
             'platform' in target
         ) {
@@ -311,7 +317,7 @@ export class ChatLunaAgentTriggerExecutor {
                 requestId
             )
             if ('result' in routed) return { result: routed.result }
-            session = buildVirtualSession(routed.bot, target, {
+            session = buildVirtualSession(routed.bot, target as WakeupRouting, {
                 message: action.message,
                 messageName: action.messageName,
                 requestId

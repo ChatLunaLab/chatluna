@@ -538,6 +538,8 @@ function ensureSkillEntry(cfg, key) {
     for (const [id, item] of Object.entries(cfg.skills.items)) {
         if (item.name === key) return { id, item }
     }
+    const scanned = scanSkillDirs(cfg)
+    if (!scanned.includes(key)) throw new Error(`Skill not found: ${key}`)
     cfg.skills.items[key] = { enabled: true, mode: 'description' }
     return { id: key, item: cfg.skills.items[key] }
 }

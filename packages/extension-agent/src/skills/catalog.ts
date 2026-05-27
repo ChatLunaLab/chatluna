@@ -75,46 +75,6 @@ export function buildSkillCatalog(
         })
     }
 
-    for (const [id, item] of Object.entries(configItems)) {
-        if (skillMap.has(id) || item.remote) continue
-
-        const cfg = createSkillItemConfig(item)
-        if (!cfg.enabled && cfg.mode !== 'description' && cfg.mode !== 'full') {
-            continue
-        }
-
-        catalog.push({
-            id,
-            name: id,
-            description: '',
-            path: '',
-            dir: '',
-            remote: false,
-            source: 'chatluna',
-            scope: 'data',
-            state: 'missing',
-            enabled: cfg.enabled,
-            mode: cfg.mode,
-            authority: cfg.authority ?? 0,
-            main: cfg.main,
-            chatlunaEnabled: cfg.chatluna,
-            characterEnabled: cfg.character,
-            characterGroupEnabled: cfg.characterGroup,
-            characterPrivateEnabled: cfg.characterPrivate,
-            characterGroupMode: cfg.characterGroupMode,
-            characterPrivateMode: cfg.characterPrivateMode,
-            characterGroupIds: cfg.characterGroupIds,
-            characterPrivateIds: cfg.characterPrivateIds,
-            subAgents: cfg.subAgents,
-            available: false,
-            visible: false,
-            modelEnabled: false,
-            userInvocable: false,
-            implicitInvocation: false,
-            diagnostics: ['Configured skill was not found during scan']
-        })
-    }
-
     return catalog.sort((a, b) => {
         const ap = skillMap.get(a.id)?.priority ?? 9999
         const bp = skillMap.get(b.id)?.priority ?? 9999
