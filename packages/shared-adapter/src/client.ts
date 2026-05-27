@@ -153,7 +153,10 @@ function createGlobMatcher(pattern: string): (text: string) => boolean {
         return (text: string) => text.includes(pattern)
     }
 
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$')
+    const source = pattern
+        .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*')
+    const regex = new RegExp(`(^|[:/_-])${source}($|[:/_-])`)
     return (text: string) => regex.test(text)
 }
 
@@ -182,10 +185,7 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'gpt-4.1',
     'gpt-5',
     'glm-*v',
-    'glm-4.1v',
-    'glm-4.6v',
-    'glm-5v',
-    'kimi-k2.5',
+    'kimi-k2.*',
     'step3',
     'grok-4',
     'ocr'
