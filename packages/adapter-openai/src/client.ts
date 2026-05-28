@@ -85,15 +85,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                         name: model,
                         type,
                         capabilities: [
-                            type === ModelType.llm
-                                ? ModelCapabilities.ToolCall
-                                : undefined,
-                            supportImageInput(model)
-                                ? ModelCapabilities.ImageInput
-                                : undefined,
-                            supportAudioInput(model)
-                                ? ModelCapabilities.AudioInput
-                                : undefined
+                            type === ModelType.llm &&
+                                ModelCapabilities.ToolCall,
+                            supportImageInput(model) &&
+                                ModelCapabilities.ImageInput,
+                            supportAudioInput(model) &&
+                                ModelCapabilities.AudioInput
                         ].filter(Boolean)
                     } as ModelInfo
                 })

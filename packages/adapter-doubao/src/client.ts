@@ -119,10 +119,9 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 type,
                 maxTokens: token,
                 capabilities: [
-                    type !== ModelType.llm ||
-                    unsupportedFunctionCallModels.includes(model)
-                        ? undefined
-                        : ModelCapabilities.ToolCall,
+                    type === ModelType.llm &&
+                        !unsupportedFunctionCallModels.includes(model) &&
+                        ModelCapabilities.ToolCall,
                     imageInputSupportModels.some((pattern) =>
                         model.match(pattern)
                     )
