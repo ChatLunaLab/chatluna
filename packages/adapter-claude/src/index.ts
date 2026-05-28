@@ -6,6 +6,8 @@ import { ClaudeClient } from './client'
 import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export let logger: Logger
+export const reusable = true
+
 export function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-claude-adapter')
 
