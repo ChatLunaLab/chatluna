@@ -706,12 +706,12 @@ export class ConversationService {
         const merged = new Set(filtered.map((c) => c.bindingKey)).size > 1
 
         return filtered.sort((a, b) => {
+            const seq = (a.seq ?? 0) - (b.seq ?? 0)
+            if (seq !== 0) return seq
             if (merged) {
                 const key = a.bindingKey.localeCompare(b.bindingKey)
                 if (key !== 0) return key
             }
-            const seq = (a.seq ?? 0) - (b.seq ?? 0)
-            if (seq !== 0) return seq
             const created = a.createdAt.getTime() - b.createdAt.getTime()
             if (created !== 0) return created
             return a.id.localeCompare(b.id)
@@ -2038,7 +2038,10 @@ function formatToolCalls(toolCalls: unknown[]): string[] {
 }
 
 async function formatMessage(message: MessageRecord) {
-    const content = JSON.parse(await gzipDecode(message.content))
+    const content =
+        message.content == null
+            ? null
+            : JSON.parse(await gzipDecode(message.content))
 
     const text =
         content == null

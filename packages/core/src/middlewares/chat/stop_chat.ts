@@ -23,16 +23,20 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const targetConversation = getTargetConversation(context)
             const resolved =
-                await ctx.chatluna.conversation.resolveConversation(session, {
-                    targetConversation,
-                    presetLane: context.options.presetLane,
-                    allPresetLanes: context.options.allPresetLanes,
-                    permission: 'manage',
-                    useRoutePresetLane:
-                        context.options.presetLane == null &&
-                        targetConversation == null,
-                    mode: 'target'
-                })
+                targetConversation == null
+                    ? context.options.conversation
+                    : await ctx.chatluna.conversation.resolveConversation(
+                          session,
+                          {
+                              targetConversation,
+                              presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
+                              permission: 'manage',
+                              useRoutePresetLane:
+                                  context.options.presetLane == null,
+                              mode: 'target'
+                          }
+                      )
             const conversation = resolved.conversation
 
             if (conversation == null) {

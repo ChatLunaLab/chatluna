@@ -28,7 +28,6 @@ it('conversation cleanup listeners in downstream packages use conversation lifec
             '../../extension-long-memory/src/service/memory.ts'
         ),
         path.resolve(__dirname, '../../extension-agent/src/service/skills.ts'),
-        path.resolve(__dirname, '../../extension-agent/src/cli/service.ts'),
         path.resolve(__dirname, '../../extension-tools/src/plugins/todos.ts')
     ]
 

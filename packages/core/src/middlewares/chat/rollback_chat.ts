@@ -21,13 +21,6 @@ function getTargetConversation(context: ChainMiddlewareContext) {
     )
 }
 
-function getConversationId(context: ChainMiddlewareContext) {
-    return (
-        context.options.conversation?.conversationId ??
-        context.options.conversation?.conversation?.id
-    )
-}
-
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('rollback_chat', async (session, context) => {
@@ -37,23 +30,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const rollbackRound = context.options.rollback_round ?? 1
             const targetConversation = getTargetConversation(context)
-            const conversationId =
-                targetConversation == null
-                    ? getConversationId(context)
-                    : undefined
             const resolved =
-                await ctx.chatluna.conversation.resolveConversation(session, {
-                    targetConversation,
-                    conversationId,
-                    presetLane: context.options.presetLane,
-                    allPresetLanes: context.options.allPresetLanes,
-                    permission: 'manage',
-                    useRoutePresetLane:
-                        context.options.presetLane == null &&
-                        targetConversation == null &&
-                        conversationId == null,
-                    mode: 'target'
-                })
+                targetConversation == null
+                    ? context.options.conversation
+                    : await ctx.chatluna.conversation.resolveConversation(
+                          session,
+                          {
+                              targetConversation,
+                              presetLane: context.options.presetLane,
+                              allPresetLanes: context.options.allPresetLanes,
+                              permission: 'manage',
+                              useRoutePresetLane:
+                                  context.options.presetLane == null,
+                              mode: 'target'
+                          }
+                      )
             const conversation = resolved.conversation
 
             if (conversation == null) {

@@ -214,7 +214,10 @@ it('stop_chat re-resolves when conversation state is partial', async () => {
         let resolveOpts: any
         let stoppedId: string | undefined
 
-        ctx.chatluna.conversation.resolveConversation = async (_session, opts) => {
+        ctx.chatluna.conversation.resolveConversation = async (
+            _session,
+            opts
+        ) => {
             resolveCalls += 1
             resolveOpts = opts
             return {
@@ -352,6 +355,134 @@ it('rollback_chat does not fall back to current conversation for an explicit mis
                 })
             )[0].latestMessageId,
             'message-current'
+        )
+    } finally {
+        await app.stop()
+    }
+})
+
+it('rollback_chat resolves explicit target over pre-resolved conversation', async () => {
+    const current = createConversation({
+        id: 'conversation-current-explicit',
+        latestMessageId: 'message-current-explicit'
+    })
+    const target = createConversation({
+        id: 'conversation-target-explicit',
+        seq: 2,
+        latestMessageId: 'message-target-explicit'
+    })
+    const { app, database, ctx } = await createMemoryService({
+        tables: {
+            chatluna_conversation: [
+                current as unknown as TableRow,
+                target as unknown as TableRow
+            ],
+            chatluna_message: [
+                createMessage({
+                    id: 'message-current-explicit',
+                    conversationId: current.id,
+                    text: 'current',
+                    content: null
+                }) as unknown as TableRow,
+                createMessage({
+                    id: 'message-target-explicit',
+                    conversationId: target.id,
+                    text: 'target',
+                    content: null
+                }) as unknown as TableRow
+            ]
+        }
+    })
+
+    try {
+        const session = createSession() as any
+        const resolve = ctx.chatluna.conversation.resolveConversation.bind(
+            ctx.chatluna.conversation
+        )
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        const resolveOpts: unknown[] = []
+
+        ctx.chatluna.conversation.resolveConversation = async (
+            currentSession,
+            opts
+        ) => {
+            resolveOpts.push(opts)
+            return resolve(currentSession, opts)
+        }
+        ctx.chatluna.messageTransformer.transform = async () => 'target'
+        session.text = (key, params) =>
+            key === '.rollback_success' ? `${key}:${params?.[0]}` : key
+        session.send = async () => {}
+
+        apply(
+            ctx as never,
+            {
+                includeQuoteReply: false
+            } as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const status = await run!(session, {
+            command: 'rollback',
+            message: '',
+            options: {
+                rollback_round: 1,
+                targetConversation: target.id,
+                conversation: {
+                    bindingKey: current.bindingKey,
+                    constraint: {
+                        manageMode: 'anyone',
+                        lockConversation: false
+                    },
+                    effectiveModel: 'test-platform/test-model',
+                    effectivePreset: 'default-preset',
+                    effectiveChatMode: 'plugin',
+                    conversationId: current.id,
+                    conversation: current,
+                    mode: 'target'
+                }
+            }
+        })
+
+        assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+        assert.equal(
+            resolveOpts.some(
+                (opts) => (opts as any).targetConversation === target.id
+            ),
+            true
+        )
+        assert.equal(
+            (
+                await database.get('chatluna_conversation', {
+                    id: current.id
+                })
+            )[0].latestMessageId,
+            'message-current-explicit'
+        )
+        assert.equal(
+            (
+                await database.get('chatluna_conversation', {
+                    id: target.id
+                })
+            )[0].latestMessageId,
+            null
         )
     } finally {
         await app.stop()
@@ -615,6 +746,101 @@ it('rollback_chat falls back to the active preset lane conversation', async () =
             1
         )
         assert.deepEqual(sent, ['.rollback_success:1'])
+    } finally {
+        await app.stop()
+    }
+})
+
+it('stop_chat resolves explicit target over pre-resolved conversation', async () => {
+    const current = createConversation({
+        id: 'conversation-current-stop-explicit'
+    })
+    const target = createConversation({
+        id: 'conversation-target-stop-explicit',
+        seq: 2
+    })
+    const { app, ctx } = await createMemoryService({
+        tables: {
+            chatluna_conversation: [
+                current as unknown as TableRow,
+                target as unknown as TableRow
+            ]
+        }
+    })
+
+    try {
+        const session = createSession() as any
+        const resolve = ctx.chatluna.conversation.resolveConversation.bind(
+            ctx.chatluna.conversation
+        )
+        let run:
+            | ((
+                  session: any,
+                  context: any
+              ) => Promise<ChainMiddlewareRunStatus>)
+            | undefined
+        const resolveOpts: unknown[] = []
+        let stoppedId: string | undefined
+
+        ctx.chatluna.conversation.resolveConversation = async (
+            currentSession,
+            opts
+        ) => {
+            resolveOpts.push(opts)
+            return resolve(currentSession, opts)
+        }
+        ctx.chatluna.conversationRuntime.stopConversationRequest = (id) => {
+            stoppedId = id
+            return true
+        }
+        session.text = (key) => key
+
+        applyStop(
+            ctx as never,
+            {} as never,
+            {
+                middleware: (_name, fn) => {
+                    run = fn as never
+                    return {
+                        after() {
+                            return this
+                        },
+                        before() {
+                            return this
+                        }
+                    }
+                }
+            } as never
+        )
+
+        const status = await run!(session, {
+            command: 'stop_chat',
+            options: {
+                targetConversation: target.id,
+                conversation: {
+                    bindingKey: current.bindingKey,
+                    constraint: {
+                        manageMode: 'anyone',
+                        lockConversation: false
+                    },
+                    effectiveModel: 'test-platform/test-model',
+                    effectivePreset: 'default-preset',
+                    effectiveChatMode: 'plugin',
+                    conversationId: current.id,
+                    conversation: current,
+                    mode: 'target'
+                }
+            }
+        })
+
+        assert.equal(status, ChainMiddlewareRunStatus.STOP)
+        assert.equal(
+            resolveOpts.some(
+                (opts) => (opts as any).targetConversation === target.id
+            ),
+            true
+        )
+        assert.equal(stoppedId, target.id)
     } finally {
         await app.stop()
     }
