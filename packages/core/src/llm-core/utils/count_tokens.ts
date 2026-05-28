@@ -227,11 +227,20 @@ export async function countMessageTokens(
         content = content.replaceAll(/!\[.*?\]\(.*?\)/g, '')
     }
 
-    return (
+    let tokens =
         (await tokenCounter(content)) +
         (await tokenCounter(messageTypeToOpenAIRole(message.getType()))) +
         (message.name ? await tokenCounter(message.name) : 0)
-    )
+
+    // Account for tool_calls payload on AI messages
+    const toolCalls =
+        (message as AIMessage).tool_calls ??
+        (message.additional_kwargs?.tool_calls as unknown[] | undefined)
+    if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+        tokens += await tokenCounter(JSON.stringify(toolCalls))
+    }
+
+    return tokens
 }
 
 /**
