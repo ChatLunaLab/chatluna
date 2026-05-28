@@ -141,35 +141,46 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
         })
 
         const additionalModels = this._config.additionalModels.map(
-            ({ model, modelType, contextSize, modelCapabilities }) =>
-                ({
+            ({ model, modelType, contextSize, modelCapabilities }) => {
+                const type =
+                    modelType === 'Embeddings 嵌入模型'
+                        ? ModelType.embeddings
+                        : ModelType.llm
+
+                return {
                     name: model,
-                    type:
-                        modelType === 'Embeddings 嵌入模型'
-                            ? ModelType.embeddings
-                            : ModelType.llm,
-                    capabilities: modelCapabilities,
+                    type,
+                    capabilities:
+                        type === ModelType.llm
+                            ? modelCapabilities
+                            : modelCapabilities.filter(
+                                  (cap) => cap !== ModelCapabilities.ToolCall
+                              ),
                     maxTokens: contextSize ?? 4096
-                }) as ModelInfo
+                } as ModelInfo
+            }
         )
 
         return expandedModels
             .map(([model, token]) => {
+                const type = model.includes('embedding')
+                    ? ModelType.embeddings
+                    : ModelType.llm
+
                 return {
                     name: model,
-                    type: model.includes('embedding')
-                        ? ModelType.embeddings
-                        : ModelType.llm,
+                    type,
                     maxTokens: token,
                     capabilities: [
-                        (model.includes('qwen-plus') ||
-                            model.includes('qwen-max') ||
-                            model.includes('qwen-turbo') ||
-                            model.includes('qwen3') ||
-                            model.includes('qwen2.5') ||
-                            model.includes('omni') ||
-                            model.includes('Kimi-K2') ||
-                            model.includes('deepseek')) &&
+                        type === ModelType.llm &&
+                            (model.includes('qwen-plus') ||
+                                model.includes('qwen-max') ||
+                                model.includes('qwen-turbo') ||
+                                model.includes('qwen3') ||
+                                model.includes('qwen2.5') ||
+                                model.includes('omni') ||
+                                model.includes('Kimi-K2') ||
+                                model.includes('deepseek')) &&
                             ModelCapabilities.ToolCall,
                         imageInputSupportModels.some((pattern) =>
                             model.includes(pattern)

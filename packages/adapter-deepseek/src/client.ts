@@ -73,12 +73,17 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                 )
 
                 .map((model) => {
+                    const type = model.includes('deepseek')
+                        ? ModelType.llm
+                        : ModelType.embeddings
+
                     return {
                         name: model,
-                        type: model.includes('deepseek')
-                            ? ModelType.llm
-                            : ModelType.embeddings,
-                        capabilities: [ModelCapabilities.ToolCall]
+                        type,
+                        capabilities:
+                            type === ModelType.llm
+                                ? [ModelCapabilities.ToolCall]
+                                : []
                     } as ModelInfo
                 })
         } catch (e) {

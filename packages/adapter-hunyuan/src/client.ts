@@ -61,13 +61,16 @@ export class HunyuanClient extends PlatformModelAndEmbeddingsClient<ClientConfig
         ] as [string, number][]
 
         return rawModels.map(([model, token]) => {
+            const type = model.includes('embedding')
+                ? ModelType.embeddings
+                : ModelType.llm
+
             return {
                 name: model,
-                type: model.includes('embedding')
-                    ? ModelType.embeddings
-                    : ModelType.llm,
+                type,
                 maxTokens: token,
-                capabilities: [ModelCapabilities.ToolCall]
+                capabilities:
+                    type === ModelType.llm ? [ModelCapabilities.ToolCall] : []
             } as ModelInfo
         })
     }
