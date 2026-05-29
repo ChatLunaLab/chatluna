@@ -223,9 +223,7 @@ async function processGeminiImageContent(
     const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
     const data = url.replace(/^data:image\/\w+;base64,/, '')
 
-    return {
-        inline_data: { data, mime_type: mineType }
-    }
+    return createGeminiInlineDataPart(plugin, data, mineType)
 }
 
 type GeminiFileLikeContent = MessageContentComplex &
@@ -254,18 +252,33 @@ function isGeminiFileLikeContent(
     )
 }
 
+function createGeminiInlineDataPart(
+    plugin: ChatLunaPlugin,
+    data: string,
+    mimeType: string
+) {
+    if ((plugin.config as Config).useCamelCaseMediaFields) {
+        return {
+            inlineData: { data, mimeType }
+        }
+    }
+
+    return {
+        inline_data: { data, mime_type: mimeType }
+    }
+}
+
 async function processGeminiFileLikeContent(
     plugin: ChatLunaPlugin,
     part: GeminiFileLikeContent
 ) {
     try {
         const { buffer, mimeType } = await fetchFileLikeUrl(plugin, part)
-        return {
-            inline_data: {
-                data: buffer.toString('base64'),
-                mime_type: mimeType
-            }
-        }
+        return createGeminiInlineDataPart(
+            plugin,
+            buffer.toString('base64'),
+            mimeType
+        )
     } catch (e) {
         logger.warn(`Failed to fetch ${part.type}`, e)
         return null

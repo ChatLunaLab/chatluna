@@ -22,4 +22,5 @@ $inner:
       codeExecution: '为模型启用代码执行工具。（开启后将无法使用工具调用）'
       urlContext: '为模型启用 URL 内容获取工具。（开启后将无法使用工具调用）'
       useCamelCaseSystemInstruction: 使用大写的 systemInstruction 而不是小写的 system_instruction
+      useCamelCaseMediaFields: 使用大写的 inlineData 和 mimeType，而不是小写的 inline_data 和 mime_type
       nonStreaming: 强制不启用流式返回。开启后，将总是以非流式发起请求，即便配置了 stream 参数。
