@@ -10,6 +10,7 @@ import { apply as applyResolve } from '../src/middlewares/conversation/resolve_c
 import { apply as applyRequest } from '../src/middlewares/conversation/request_conversation'
 import { apply as applyManage } from '../src/middlewares/system/conversation_manage'
 import { apply as applyLifecycle } from '../src/middlewares/system/lifecycle'
+import { apply as applyCommands } from '../src/commands/conversation'
 import { ConversationResolutionError } from '../src/types'
 import {
     createConfig,
@@ -723,6 +724,97 @@ it('conversation_switch accepts resolved direct conversation ids', async () => {
     } finally {
         await app.stop()
     }
+})
+
+it('chatluna.delete removes range and list selectors', async () => {
+    const conversations = [
+        createConversation({ id: 'conversation-first', title: 'First Topic' }),
+        createConversation({
+            id: 'conversation-second',
+            title: 'Second Topic'
+        }),
+        createConversation({ id: 'conversation-third', title: 'Third Topic' })
+    ]
+    const actions = new Map<string, (...args: any[]) => Promise<void>>()
+    const deleted: string[] = []
+    const messages: string[] = []
+    let run:
+        | ((session: any, context: any) => Promise<ChainMiddlewareRunStatus>)
+        | undefined
+    const ctx = {
+        command: (decl: string) => {
+            const cmd = {
+                alias: () => cmd,
+                option: () => cmd,
+                action: (fn: (...args: any[]) => Promise<void>) => {
+                    actions.set(decl, fn)
+                    return cmd
+                }
+            }
+            return cmd
+        },
+        chatluna: {
+            conversation: {
+                listConversationEntries: async () =>
+                    conversations.map((conversation, idx) => ({
+                        conversation,
+                        displaySeq: idx + 1
+                    })),
+                deleteConversation: async (_session, opts) => {
+                    deleted.push(opts.conversationId)
+                    return conversations.find(
+                        (item) => item.id === opts.conversationId
+                    )
+                }
+            }
+        }
+    }
+    const chain = {
+        middleware: (name, fn) => {
+            if (name === 'conversation_delete') run = fn
+            return {
+                after() {
+                    return this
+                },
+                before() {
+                    return this
+                }
+            }
+        }
+    }
+
+    applyManage(ctx as never, {} as never, chain as never)
+    applyCommands(
+        ctx as never,
+        {} as never,
+        {
+            receiveCommand: async (session, name, opts) => {
+                await run!(session, { command: name, options: opts })
+            }
+        } as never
+    )
+
+    const session = createSession() as any
+    session.text = (key, params) => {
+        const msg = params == null ? key : `${key}:${params.join(',')}`
+        messages.push(msg)
+        return msg
+    }
+
+    const action = actions.get('chatluna.delete [conversation:string]')!
+    await action({ options: {}, session }, '1..2')
+    await action({ options: {}, session }, '1,3')
+
+    assert.deepEqual(deleted, [
+        'conversation-first',
+        'conversation-second',
+        'conversation-first',
+        'conversation-third'
+    ])
+    assert.deepEqual(messages, [
+        'chatluna.conversation.messages.delete_success:First Topic\nSecond Topic',
+        'chatluna.conversation.messages.delete_success:First Topic\nThird Topic'
+    ])
 })
 
 it('conversation_switch preserves explicit chain conversation through middleware order', async () => {
