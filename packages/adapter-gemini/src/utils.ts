@@ -146,7 +146,7 @@ function parseJsonArgs(args: string) {
 }
 
 async function processFunctionMessage(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     message: AIMessage | ToolMessage,
     removeId: boolean
 ): Promise<ChatCompletionResponseMessage> {
@@ -205,7 +205,7 @@ async function processFunctionMessage(
 }
 
 async function processGeminiImageContent(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     part: MessageContentImageUrl
 ) {
     let url: string
@@ -253,11 +253,11 @@ function isGeminiFileLikeContent(
 }
 
 function createGeminiInlineDataPart(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     data: string,
     mimeType: string
 ) {
-    if ((plugin.config as Config).useCamelCaseMediaFields) {
+    if (plugin.config.useCamelCaseMediaFields) {
         return {
             inlineData: { data, mimeType }
         }
@@ -269,7 +269,7 @@ function createGeminiInlineDataPart(
 }
 
 async function processGeminiFileLikeContent(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     part: GeminiFileLikeContent
 ) {
     try {
@@ -286,7 +286,7 @@ async function processGeminiFileLikeContent(
 }
 
 async function processGeminiContentParts(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     content: MessageContentComplex[],
     thoughtData: Record<string, any> = {}
 ) {
