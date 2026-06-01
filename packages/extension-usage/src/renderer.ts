@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { Context, Time } from 'koishi'
+import { Context } from 'koishi'
 import type {} from 'koishi-plugin-puppeteer'
 import type { ChatLunaUsage } from './index'
 
@@ -238,7 +238,9 @@ export async function renderTokenTrend(
     theme: 'light' | 'dark' = 'light'
 ) {
     const dirname =
-        __dirname?.length > 0 ? __dirname : fileURLToPath(import.meta.url)
+        typeof __dirname !== 'undefined'
+            ? __dirname
+            : path.dirname(fileURLToPath(import.meta.url))
     const templatePath = path.resolve(
         dirname,
         '../resources/token-trend/template.html'
@@ -275,9 +277,7 @@ export async function renderTokenTrend(
         return '图表渲染失败，请检查日志。'
     } finally {
         await page?.close().catch((err) => ctx.logger.warn(err))
-        ctx.setTimeout(() => {
-            fs.unlink(out).catch((err) => ctx.logger.warn(err))
-        }, 3 * Time.minute)
+        await fs.unlink(out).catch((err) => ctx.logger.warn(err))
     }
 }
 

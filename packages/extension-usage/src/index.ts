@@ -63,9 +63,11 @@ function createTokenReport(
     withPlugins = false
 ): ChatLunaUsage.TokenReport {
     const sorted = rows.slice().sort((a, b) => +a.createdAt - +b.createdAt)
-    const from = range === 'all' ? sorted[0]?.createdAt ?? end : start
+    const from = range === 'all' ? (sorted[0]?.createdAt ?? end) : start
     const minutes = new Map<number, { tokens: number; calls: number }>()
     let totalTokens = 0
+    let tpm = 0
+    let rpm = 0
 
     for (const row of sorted) {
         const tokens = row.usageMetadata.total_tokens
@@ -74,6 +76,8 @@ function createTokenReport(
         item.tokens += tokens
         item.calls += 1
         totalTokens += tokens
+        if (item.tokens > tpm) tpm = item.tokens
+        if (item.calls > rpm) rpm = item.calls
         minutes.set(key, item)
     }
 
@@ -84,8 +88,8 @@ function createTokenReport(
         end,
         totalTokens,
         calls: sorted.length,
-        tpm: Math.max(0, ...[...minutes.values()].map((item) => item.tokens)),
-        rpm: Math.max(0, ...[...minutes.values()].map((item) => item.calls)),
+        tpm,
+        rpm,
         points: tokenPoints(range, from, end, sorted),
         plugins: withPlugins ? pluginUsage(sorted) : undefined
     }
