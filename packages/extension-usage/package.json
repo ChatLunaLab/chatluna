@@ -7,7 +7,8 @@
     "typings": "lib/index.d.ts",
     "files": [
         "lib",
-        "dist"
+        "dist",
+        "resources"
     ],
     "exports": {
         ".": {
@@ -54,12 +55,19 @@
     "devDependencies": {
         "@koishijs/client": "^5.30.11",
         "atsc": "^2.1.0",
-        "koishi": "^4.18.9"
+        "koishi": "^4.18.9",
+        "koishi-plugin-puppeteer": "^3.9.0"
     },
     "peerDependencies": {
         "@koishijs/plugin-console": "^5.30.11",
         "koishi": "^4.18.9",
-        "koishi-plugin-chatluna": "^1.4.0-alpha.20"
+        "koishi-plugin-chatluna": "^1.4.0-alpha.20",
+        "koishi-plugin-puppeteer": "^3.9.0"
+    },
+    "peerDependenciesMeta": {
+        "koishi-plugin-puppeteer": {
+            "optional": true
+        }
     },
     "koishi": {
         "description": {
@@ -72,7 +80,8 @@
                 "database"
             ],
             "optional": [
-                "console"
+                "console",
+                "puppeteer"
             ]
         }
     }

@@ -1,10 +1,159 @@
-import { Context, Logger, Schema, Time } from 'koishi'
+import { resolve } from 'path'
+import { Context, h, Logger, Schema, Time } from 'koishi'
 import { DataService } from '@koishijs/plugin-console'
 import type { UsageMetadata } from '@langchain/core/messages'
-import { resolve } from 'path'
 import type { ModelUsageCallType } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import type {} from 'koishi-plugin-puppeteer'
+import { renderTokenTrend } from './renderer'
 
 const logger = new Logger('chatluna-usage')
+
+const RANGE_ALIASES: Record<string, ChatLunaUsage.TokenRange> = {
+    d: 'day',
+    day: 'day',
+    w: 'week',
+    week: 'week',
+    m: 'month',
+    month: 'month',
+    a: 'all',
+    all: 'all'
+}
+
+// Normalize a bare token like "d" / "day" / "-d" into a TokenRange.
+function toTokenRange(value: string): ChatLunaUsage.TokenRange | undefined {
+    return RANGE_ALIASES[value.replace(/^-+/, '').trim().toLowerCase()]
+}
+
+function label(range: ChatLunaUsage.TokenRange) {
+    if (range === 'day') return '天'
+    if (range === 'week') return '周'
+    if (range === 'month') return '月'
+    return '全部'
+}
+
+function formatNumber(value: number) {
+    return value.toLocaleString('en-US')
+}
+
+function formatDate(date: Date) {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    const h = String(date.getHours()).padStart(2, '0')
+    const min = String(date.getMinutes()).padStart(2, '0')
+    return `${y}-${m}-${d} ${h}:${min}`
+}
+
+function formatTokenReport(report: ChatLunaUsage.TokenReport) {
+    return [
+        `Chatluna token 用量（${report.label}）`,
+        `时间范围：${formatDate(report.start)} 至 ${formatDate(report.end)}`,
+        `累计 token：${formatNumber(report.totalTokens)}`,
+        `累计请求：${formatNumber(report.calls)}次`,
+        `TPM：${formatNumber(report.tpm)}`,
+        `RPM：${formatNumber(report.rpm)}次`
+    ].join('\n')
+}
+
+function createTokenReport(
+    range: ChatLunaUsage.TokenRange,
+    start: Date,
+    end: Date,
+    rows: ChatLunaUsage.Record[],
+    withPlugins = false
+): ChatLunaUsage.TokenReport {
+    const sorted = rows.slice().sort((a, b) => +a.createdAt - +b.createdAt)
+    const from = range === 'all' ? sorted[0]?.createdAt ?? end : start
+    const minutes = new Map<number, { tokens: number; calls: number }>()
+    let totalTokens = 0
+
+    for (const row of sorted) {
+        const tokens = row.usageMetadata.total_tokens
+        const key = Math.floor(+row.createdAt / Time.minute) * Time.minute
+        const item = minutes.get(key) ?? { tokens: 0, calls: 0 }
+        item.tokens += tokens
+        item.calls += 1
+        totalTokens += tokens
+        minutes.set(key, item)
+    }
+
+    return {
+        range,
+        label: label(range),
+        start: from,
+        end,
+        totalTokens,
+        calls: sorted.length,
+        tpm: Math.max(0, ...[...minutes.values()].map((item) => item.tokens)),
+        rpm: Math.max(0, ...[...minutes.values()].map((item) => item.calls)),
+        points: tokenPoints(range, from, end, sorted),
+        plugins: withPlugins ? pluginUsage(sorted) : undefined
+    }
+}
+
+function pluginUsage(
+    rows: ChatLunaUsage.Record[]
+): ChatLunaUsage.PluginUsage[] {
+    const map = new Map<string, ChatLunaUsage.PluginUsage>()
+
+    for (const row of rows) {
+        const source = row.source || 'unknown'
+        const item = map.get(source) ?? { source, tokens: 0, calls: 0 }
+        item.tokens += row.usageMetadata.total_tokens
+        item.calls += 1
+        map.set(source, item)
+    }
+
+    return [...map.values()].sort((a, b) => b.tokens - a.tokens)
+}
+
+function tokenPoints(
+    range: ChatLunaUsage.TokenRange,
+    start: Date,
+    end: Date,
+    rows: ChatLunaUsage.Record[]
+) {
+    if (!rows.length) return []
+
+    // d buckets by 2 hours; w by day; m by 2 days; a by dynamic days.
+    const hourly = range === 'day'
+    const step =
+        range === 'day'
+            ? 2 * Time.hour
+            : range === 'month'
+              ? 2 * Time.day
+              : range === 'all'
+                ? Math.max(
+                      Time.day,
+                      Math.ceil((+end - +start) / Time.day / 15) * Time.day
+                  )
+                : Time.day
+    const result: ChatLunaUsage.TokenPoint[] = []
+
+    for (let at = +start; at < +end; at += step) {
+        const date = new Date(at)
+        const m = String(date.getMonth() + 1).padStart(2, '0')
+        const d = String(date.getDate()).padStart(2, '0')
+        const h = String(date.getHours()).padStart(2, '0')
+        result.push({
+            label: hourly ? `${m}-${d} ${h}:00` : `${m}-${d}`,
+            tokens: 0,
+            inputTokens: 0,
+            outputTokens: 0
+        })
+    }
+
+    for (const row of rows) {
+        const idx = Math.floor((+row.createdAt - +start) / step)
+        if (result[idx]) {
+            result[idx].tokens += row.usageMetadata.total_tokens
+            result[idx].inputTokens += row.usageMetadata.input_tokens
+            result[idx].outputTokens += row.usageMetadata.output_tokens
+        }
+    }
+
+    return result
+}
 
 class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
     constructor(
@@ -70,6 +219,71 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 logger.error(e)
             }
         })
+
+        ctx.command(
+            'tokens [...args:string]',
+            '查看 ChatLuna 整体 token 消耗趋势',
+            { authority: 1 }
+        )
+            .alias('/tokens')
+            .option('day', '-d 按天统计')
+            .option('week', '-w 按一周统计')
+            .option('month', '-m 按一月统计')
+            .option('all', '-a 统计全部')
+            .option('plugin', '-p 附带各插件用量明细')
+            .usage(
+                '示例：/tokens / /tokens day / /tokens -d / /tokens d，附带插件明细 /tokens -p'
+            )
+            .action(async ({ session, options }, ...args) => {
+                let range: ChatLunaUsage.TokenRange | undefined
+                if (options.all) range = 'all'
+                else if (options.month) range = 'month'
+                else if (options.week) range = 'week'
+                else if (options.day) range = 'day'
+
+                let plugin = Boolean(options.plugin)
+
+                for (const arg of args) {
+                    const resolved = toTokenRange(arg)
+                    if (resolved) {
+                        range = resolved
+                        continue
+                    }
+                    const keyword = arg.replace(/^-+/, '').trim().toLowerCase()
+                    if (keyword === 'p' || keyword === 'plugin') {
+                        plugin = true
+                        continue
+                    }
+                    return '参数只能是 day、week、month、all（或简写 d/w/m/a），以及 plugin（或 p）。'
+                }
+
+                try {
+                    const report = await this.tokenReport(
+                        range ?? 'day',
+                        plugin
+                    )
+                    await session.send(formatTokenReport(report))
+
+                    if (!ctx.puppeteer) {
+                        await session.send('图表渲染需要启用 puppeteer 服务。')
+                        return
+                    }
+
+                    const image = await renderTokenTrend(
+                        ctx,
+                        report,
+                        this.config.tokensTheme
+                    )
+                    await session.send(
+                        typeof image === 'string'
+                            ? h.text(image)
+                            : h.image(image, 'image/png')
+                    )
+                } catch (e) {
+                    logger.error(e)
+                    return 'ChatLuna token 用量统计失败，请检查日志。'
+                }
+            })
 
         if (!config.webui) return
 
@@ -250,6 +464,27 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             'chatluna_usage',
             before ? { createdAt: { $lt: before } } : {}
         )
+    }
+
+    private async tokenReport(
+        range: ChatLunaUsage.TokenRange,
+        withPlugins = false
+    ) {
+        const end = new Date()
+        const start =
+            range === 'day'
+                ? new Date(+end - Time.day)
+                : range === 'week'
+                  ? new Date(+end - 7 * Time.day)
+                  : range === 'month'
+                    ? new Date(+end - 30 * Time.day)
+                    : end
+        const time = range === 'all' ? { $lt: end } : { $gte: start, $lt: end }
+        const rows = (await this.ctx.database.get('chatluna_usage', {
+            createdAt: time
+        })) as ChatLunaUsage.Record[]
+
+        return createTokenReport(range, start, end, rows, withPlugins)
     }
 
     private async search(input: ChatLunaUsage.Query) {
@@ -455,6 +690,7 @@ namespace ChatLunaUsage {
     }
 
     export type Period = 'day' | 'month' | 'year'
+    export type TokenRange = 'day' | 'week' | 'month' | 'all'
     export type GroupBy =
         | 'source'
         | 'model'
@@ -546,6 +782,32 @@ namespace ChatLunaUsage {
         rows: ListRow[]
     }
 
+    export interface TokenPoint {
+        label: string
+        tokens: number
+        inputTokens: number
+        outputTokens: number
+    }
+
+    export interface PluginUsage {
+        source: string
+        tokens: number
+        calls: number
+    }
+
+    export interface TokenReport {
+        range: TokenRange
+        label: string
+        start: Date
+        end: Date
+        totalTokens: number
+        calls: number
+        tpm: number
+        rpm: number
+        points: TokenPoint[]
+        plugins?: PluginUsage[]
+    }
+
     export interface Payload {
         query: Required<
             Pick<
@@ -576,6 +838,7 @@ namespace ChatLunaUsage {
         recentDays: number
         pageSize: number
         webui: boolean
+        tokensTheme: 'light' | 'dark'
     }
 
     export interface ActionResult {
@@ -591,7 +854,14 @@ namespace ChatLunaUsage {
             .default(50),
         webui: Schema.boolean()
             .description('启用 Web UI 控制台用量面板。')
-            .default(true)
+            .default(true),
+        tokensTheme: Schema.union([
+            Schema.const('light').description('浅色主题'),
+            Schema.const('dark').description('深色主题')
+        ])
+            .description('tokens命令渲染主题。')
+            .default('light')
+            .role('select')
     })
 
     export const inject = ['chatluna', 'database']
@@ -618,7 +888,7 @@ export const Config = ChatLunaUsage.Config
 
 export const inject = {
     required: ['chatluna', 'database'],
-    optional: ['console']
+    optional: ['console', 'puppeteer']
 }
 
 export const name = 'chatluna-usage'
