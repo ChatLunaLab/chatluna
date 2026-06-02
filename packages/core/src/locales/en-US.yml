@@ -579,6 +579,7 @@ chatluna:
             rename_success: 'Renamed to: {0}'
             rename_failed: 'Failed to rename conversation: {0}'
             delete_success: 'Deleted conversation: {0}'
+            delete_success_multi: 'Deleted conversations:\n{0}'
             delete_failed: 'Failed to delete conversation: {0}'
             use_model_success: '{1} now uses model {0}.'
             use_model_failed: 'Failed to switch model: {0}'

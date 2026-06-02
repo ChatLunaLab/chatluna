@@ -812,8 +812,8 @@ it('chatluna.delete removes range and list selectors', async () => {
         'conversation-third'
     ])
     assert.deepEqual(messages, [
-        'chatluna.conversation.messages.delete_success:First Topic\nSecond Topic',
-        'chatluna.conversation.messages.delete_success:First Topic\nThird Topic'
+        'chatluna.conversation.messages.delete_success_multi:First Topic\nSecond Topic',
+        'chatluna.conversation.messages.delete_success_multi:First Topic\nThird Topic'
     ])
 })
 

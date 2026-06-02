@@ -433,6 +433,7 @@ function parseSeqs(input: string) {
             seq += 1
         ) {
             seqs.add(seq)
+            if (seqs.size > 100) return undefined
         }
     }
 
