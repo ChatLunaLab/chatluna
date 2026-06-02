@@ -36,6 +36,7 @@ export interface SubAgentItemConfig {
 
 export interface SubAgentConfig {
     dirs: string[]
+    dedupeTools: boolean
     items: Record<string, SubAgentItemConfig>
     builtin: {
         plan: SubAgentItemConfig

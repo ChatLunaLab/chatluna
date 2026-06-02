@@ -39,6 +39,13 @@
                         >
                             {{ hideDesc ? '显示描述' : '隐藏描述' }}
                         </el-button>
+                        <div class="dedupe-switch">
+                            <span>主 LLM 去重重复工具</span>
+                            <el-switch
+                                :model-value="props.config.dedupeTools === true"
+                                @change="saveDedupeTools($event as boolean)"
+                            />
+                        </div>
                     </template>
                 </div>
             </div>
@@ -250,6 +257,7 @@ const props = withDefaults(
     {
         config: () => ({
             dirs: ['~/.claude/agents', '~/.config/opencode/agents'],
+            dedupeTools: false,
             items: {},
             builtin: {
                 plan: {
@@ -696,6 +704,21 @@ async function saveSelected() {
     }
 }
 
+async function saveDedupeTools(enabled: boolean) {
+    try {
+        busy.value = true
+        await send('chatluna-agent/saveSubAgentConfig', {
+            ...structuredClone(toRaw(props.config)),
+            dedupeTools: enabled
+        })
+        ElMessage.success(enabled ? '已启用工具去重。' : '已关闭工具去重。')
+    } catch {
+        ElMessage.error('保存工具去重配置失败，请稍后重试。')
+    } finally {
+        busy.value = false
+    }
+}
+
 async function removeSelected() {
     const item = selectedAgent.value
     if (!item) return
@@ -976,6 +999,14 @@ function canRemoveAgent(item: SubAgentInfo) {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.dedupe-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--k-text-light);
 }
 
 .tabs {

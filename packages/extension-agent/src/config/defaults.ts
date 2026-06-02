@@ -249,6 +249,7 @@ export function createDefaultToolConfig(): ToolConfig {
 export function createDefaultSubAgentConfig(): SubAgentConfig {
     return {
         dirs: ['~/.claude/agents', '~/.config/opencode/agents'],
+        dedupeTools: false,
         items: {},
         builtin: {
             plan: createSubAgentItemConfig({

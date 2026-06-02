@@ -256,12 +256,31 @@ export class ChatLunaAgentPermissionService {
     ): ToolMask {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
+        const dupes = new Set(
+            this.config.subAgent.dedupeTools === true
+                ? (
+                      this.ctx.chatluna_agent?.subAgent.listRunnableAgents(
+                          session,
+                          source
+                      ) ?? []
+                  ).flatMap((agent) =>
+                      tools
+                          .filter(
+                              (item) =>
+                                  this.canUseTool(agent, item.name) &&
+                                  this.isSessionAllowed(session, source, item)
+                          )
+                          .map((item) => item.name)
+                  )
+                : []
+        )
         const allow = tools
             .filter(
                 (item) =>
                     item.enabled &&
                     item.main &&
-                    this.isSessionAllowed(session, source, item)
+                    this.isSessionAllowed(session, source, item) &&
+                    !dupes.has(item.name)
             )
             .map((item) => item.name)
 
