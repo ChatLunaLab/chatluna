@@ -12,6 +12,7 @@ export interface SubAgentPermissionConfig {
 
 export interface SubAgentItemConfig {
     enabled: boolean
+    dedupeTools: boolean
     name: string
     description: string
     chatluna: boolean
@@ -36,7 +37,6 @@ export interface SubAgentItemConfig {
 
 export interface SubAgentConfig {
     dirs: string[]
-    dedupeTools: boolean
     items: Record<string, SubAgentItemConfig>
     builtin: {
         plan: SubAgentItemConfig
@@ -51,6 +51,7 @@ export interface SubAgentInfo {
     id: string
     name: string
     description: string
+    dedupeTools: boolean
     source: 'builtin' | 'markdown' | 'preset' | 'manual'
     format: 'chatluna' | 'claude' | 'opencode'
     state: 'ready' | 'invalid' | 'missing'
@@ -144,6 +145,7 @@ export interface ManualSubAgentInput {
     id?: string
     name: string
     description?: string
+    dedupeTools?: boolean
     promptContent?: string
     chatluna?: boolean
     character?: boolean

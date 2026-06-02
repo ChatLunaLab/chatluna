@@ -481,6 +481,7 @@ export class ChatLunaAgentService extends Service {
         const subAgent = structuredClone(this.args.config.subAgent)
         subAgent.presetAgents[name] = createSubAgentItemConfig({
             enabled: config.enabled ?? true,
+            dedupeTools: config.dedupeTools,
             name,
             description: config.description ?? name,
             chatluna: config.chatluna,
@@ -773,6 +774,7 @@ ${truncateOutput(input.text, limit)}`
 function itemFromInfo(info: SubAgentInfo, enabled: boolean) {
     return createSubAgentItemConfig({
         enabled,
+        dedupeTools: info.dedupeTools,
         name: info.name,
         description: info.description,
         chatluna: info.chatlunaEnabled,

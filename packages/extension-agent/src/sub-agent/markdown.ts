@@ -15,6 +15,7 @@ export function createSubAgentMarkdown(input: ManualSubAgentInput) {
             description: input.description?.trim() || input.name.trim(),
             format: 'chatluna',
             enabled: input.enabled ?? true,
+            dedupeTools: input.dedupeTools === true,
             chatluna: input.chatluna ?? true,
             character: input.character ?? true,
             characterGroup: input.characterGroup ?? true,

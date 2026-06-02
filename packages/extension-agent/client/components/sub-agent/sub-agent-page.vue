@@ -39,13 +39,6 @@
                         >
                             {{ hideDesc ? '显示描述' : '隐藏描述' }}
                         </el-button>
-                        <div class="dedupe-switch">
-                            <span>主 LLM 去重重复工具</span>
-                            <el-switch
-                                :model-value="props.config.dedupeTools === true"
-                                @change="saveDedupeTools($event as boolean)"
-                            />
-                        </div>
                     </template>
                 </div>
             </div>
@@ -257,11 +250,11 @@ const props = withDefaults(
     {
         config: () => ({
             dirs: ['~/.claude/agents', '~/.config/opencode/agents'],
-            dedupeTools: false,
             items: {},
             builtin: {
                 plan: {
                     enabled: false,
+                    dedupeTools: false,
                     name: 'plan',
                     description: '',
                     chatluna: true,
@@ -288,6 +281,7 @@ const props = withDefaults(
                 },
                 general: {
                     enabled: false,
+                    dedupeTools: false,
                     name: 'general',
                     description: '',
                     chatluna: true,
@@ -314,6 +308,7 @@ const props = withDefaults(
                 },
                 explore: {
                     enabled: false,
+                    dedupeTools: false,
                     name: 'explore',
                     description: '',
                     chatluna: true,
@@ -392,6 +387,7 @@ const previewDraft = reactive({
 
 const draft = reactive({
     enabled: false,
+    dedupeTools: false,
     name: '',
     description: '',
     promptContent: '',
@@ -446,6 +442,7 @@ watch(
         if (!value) return
 
         draft.enabled = value.enabled
+        draft.dedupeTools = value.dedupeTools === true
         draft.name = value.name ?? ''
         draft.description = value.description ?? ''
         draft.promptContent = value.promptContent ?? ''
@@ -652,6 +649,7 @@ async function saveSelected() {
         const next = structuredClone(toRaw(props.config))
         const saved = {
             enabled: draft.enabled,
+            dedupeTools: draft.dedupeTools,
             name: draft.name,
             description: draft.description,
             chatluna: draft.chatluna,
@@ -704,21 +702,6 @@ async function saveSelected() {
     }
 }
 
-async function saveDedupeTools(enabled: boolean) {
-    try {
-        busy.value = true
-        await send('chatluna-agent/saveSubAgentConfig', {
-            ...structuredClone(toRaw(props.config)),
-            dedupeTools: enabled
-        })
-        ElMessage.success(enabled ? '已启用工具去重。' : '已关闭工具去重。')
-    } catch {
-        ElMessage.error('保存工具去重配置失败，请稍后重试。')
-    } finally {
-        busy.value = false
-    }
-}
-
 async function removeSelected() {
     const item = selectedAgent.value
     if (!item) return
@@ -758,20 +741,20 @@ async function removeAgent(item: SubAgentInfo) {
 async function createPresetAgent(
     name: string,
     preset: string,
-        options: {
-            description: string
-            chatluna?: boolean
-            character?: boolean
-            characterGroup?: boolean
-            characterPrivate?: boolean
-            characterGroupMode?: 'all' | 'allow' | 'deny'
-            characterPrivateMode?: 'all' | 'allow' | 'deny'
-            characterGroupIds?: string[]
-            characterPrivateIds?: string[]
-            authority?: number
-            model: string | undefined
-            maxTurns: number
-            hidden: boolean
+    options: {
+        description: string
+        chatluna?: boolean
+        character?: boolean
+        characterGroup?: boolean
+        characterPrivate?: boolean
+        characterGroupMode?: 'all' | 'allow' | 'deny'
+        characterPrivateMode?: 'all' | 'allow' | 'deny'
+        characterGroupIds?: string[]
+        characterPrivateIds?: string[]
+        authority?: number
+        model: string | undefined
+        maxTurns: number
+        hidden: boolean
         allowKoishiMessageTransform: boolean
     }
 ) {
@@ -864,6 +847,7 @@ async function savePreview() {
             name: previewDraft.name.trim(),
             description: previewDraft.description.trim(),
             promptContent: previewDraft.promptContent.trim(),
+            dedupeTools: item.dedupeTools,
             chatluna: item.chatlunaEnabled,
             character: item.characterEnabled,
             characterGroup: item.characterGroupEnabled,
@@ -999,14 +983,6 @@ function canRemoveAgent(item: SubAgentInfo) {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-}
-
-.dedupe-switch {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--k-text-light);
 }
 
 .tabs {

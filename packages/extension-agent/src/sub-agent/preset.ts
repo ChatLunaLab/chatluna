@@ -12,6 +12,7 @@ export function getPresetAgents(
             id: `preset:${name}`,
             name,
             description: item.description,
+            dedupeTools: item.dedupeTools,
             source: 'preset' as const,
             format: 'chatluna' as const,
             enabled: item.enabled,

@@ -257,22 +257,19 @@ export class ChatLunaAgentPermissionService {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
         const dupes = new Set(
-            this.config.subAgent.dedupeTools === true
-                ? (
-                      this.ctx.chatluna_agent?.subAgent.listRunnableAgents(
-                          session,
-                          source
-                      ) ?? []
-                  ).flatMap((agent) =>
-                      tools
-                          .filter(
-                              (item) =>
-                                  this.canUseTool(agent, item.name) &&
-                                  this.isSessionAllowed(session, source, item)
-                          )
-                          .map((item) => item.name)
-                  )
-                : []
+            (
+                this.ctx.chatluna_agent?.subAgent
+                    .listRunnableAgents(session, source)
+                    .filter((agent) => agent.dedupeTools) ?? []
+            ).flatMap((agent) =>
+                tools
+                    .filter(
+                        (item) =>
+                            this.canUseTool(agent, item.name) &&
+                            this.isSessionAllowed(session, source, item)
+                    )
+                    .map((item) => item.name)
+            )
         )
         const allow = tools
             .filter(
