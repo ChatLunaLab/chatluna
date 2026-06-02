@@ -146,7 +146,7 @@ function parseJsonArgs(args: string) {
 }
 
 async function processFunctionMessage(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     message: AIMessage | ToolMessage,
     removeId: boolean
 ): Promise<ChatCompletionResponseMessage> {
@@ -205,7 +205,7 @@ async function processFunctionMessage(
 }
 
 async function processGeminiImageContent(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     part: MessageContentImageUrl
 ) {
     let url: string
@@ -223,9 +223,7 @@ async function processGeminiImageContent(
     const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
     const data = url.replace(/^data:image\/\w+;base64,/, '')
 
-    return {
-        inline_data: { data, mime_type: mineType }
-    }
+    return createGeminiInlineDataPart(plugin, data, mineType)
 }
 
 type GeminiFileLikeContent = MessageContentComplex &
@@ -254,18 +252,33 @@ function isGeminiFileLikeContent(
     )
 }
 
+function createGeminiInlineDataPart(
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
+    data: string,
+    mimeType: string
+) {
+    if (plugin.config.useCamelCaseMediaFields) {
+        return {
+            inlineData: { data, mimeType }
+        }
+    }
+
+    return {
+        inline_data: { data, mime_type: mimeType }
+    }
+}
+
 async function processGeminiFileLikeContent(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     part: GeminiFileLikeContent
 ) {
     try {
         const { buffer, mimeType } = await fetchFileLikeUrl(plugin, part)
-        return {
-            inline_data: {
-                data: buffer.toString('base64'),
-                mime_type: mimeType
-            }
-        }
+        return createGeminiInlineDataPart(
+            plugin,
+            buffer.toString('base64'),
+            mimeType
+        )
     } catch (e) {
         logger.warn(`Failed to fetch ${part.type}`, e)
         return null
@@ -273,7 +286,7 @@ async function processGeminiFileLikeContent(
 }
 
 async function processGeminiContentParts(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     content: MessageContentComplex[],
     thoughtData: Record<string, any> = {}
 ) {
