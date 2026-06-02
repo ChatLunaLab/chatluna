@@ -1,18 +1,27 @@
-import { Context, Logger, Schema, Time } from 'koishi'
-import { DataService } from '@koishijs/plugin-console'
-import type { UsageMetadata } from '@langchain/core/messages'
 import { resolve } from 'path'
+import type { UsageMetadata } from '@langchain/core/messages'
+import { DataService } from '@koishijs/plugin-console'
+import type { Client } from '@koishijs/plugin-console'
+import { Context, Logger, Schema, Time } from 'koishi'
 import type { ModelUsageCallType } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
 const logger = new Logger('chatluna-usage')
 
-class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
+type AuthClient = Client & {
+    auth?: {
+        authority: number
+        expiredAt: number
+    }
+}
+
+class ChatLunaUsage extends DataService<ChatLunaUsage.Payload | null> {
     constructor(
         ctx: Context,
         public config: ChatLunaUsage.Config
     ) {
         super(ctx, 'chatluna_usage', {
-            immediate: true
+            immediate: true,
+            authority: 1
         })
 
         ctx.database.extend(
@@ -73,13 +82,17 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
 
         if (!config.webui) return
 
-        ctx.inject(['console'], (ctx) => {
-            ctx.console.addListener('chatluna-usage/query', async (input) =>
-                this.query(input)
+        ctx.inject(['console', 'auth'], (ctx) => {
+            ctx.console.addListener(
+                'chatluna-usage/query',
+                async (input) => this.query(input),
+                { authority: 1 }
             )
 
-            ctx.console.addListener('chatluna-usage/list', async (input) =>
-                this.list(input)
+            ctx.console.addListener(
+                'chatluna-usage/list',
+                async (input) => this.list(input),
+                { authority: 1 }
             )
 
             ctx.console.addListener(
@@ -88,7 +101,8 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                     await this.cleanup(before ? new Date(before) : undefined)
                     await this.refresh()
                     return { success: true }
-                }
+                },
+                { authority: 1 }
             )
 
             ctx.console.addEntry({
@@ -98,7 +112,18 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         })
     }
 
-    async get() {
+    async get(forced?: boolean, client?: Client) {
+        if (client) {
+            const auth = (client as AuthClient).auth
+            if (
+                !this.config.webui ||
+                !auth ||
+                auth.expiredAt <= Date.now() ||
+                auth.authority < 1
+            ) {
+                return null
+            }
+        }
         return await this.query()
     }
 
@@ -618,7 +643,7 @@ export const Config = ChatLunaUsage.Config
 
 export const inject = {
     required: ['chatluna', 'database'],
-    optional: ['console']
+    optional: ['console', 'auth']
 }
 
 export const name = 'chatluna-usage'

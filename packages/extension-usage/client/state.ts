@@ -3,6 +3,10 @@ import { send, store } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { ChatLunaUsage } from 'koishi-plugin-chatluna-usage'
 
+type AuthStore = typeof store & {
+    user?: { authority: number; expiredAt: number }
+}
+
 export type Scope = 'all' | 'year' | 'month' | 'week' | 'day'
 
 export const scopes: { label: string; value: Scope }[] = [
@@ -32,6 +36,12 @@ export const list = ref<ChatLunaUsage.List>()
 
 let reqId = 0
 let listReqId = 0
+const authStore = store as AuthStore
+
+export const loggedIn = computed(() => {
+    const user = authStore.user
+    return !!user && user.expiredAt > Date.now() && user.authority >= 1
+})
 
 function scopeRange(value: Scope): [Date, Date] | undefined {
     if (value === 'all') return
@@ -56,7 +66,9 @@ export function setScope(value: Scope) {
     }
 }
 
-export const usage = computed(() => store.chatluna_usage)
+export const usage = computed(() =>
+    loggedIn.value ? store.chatluna_usage : undefined
+)
 
 let timer: ReturnType<typeof setTimeout> | undefined
 let listTimer: ReturnType<typeof setTimeout> | undefined
@@ -78,6 +90,7 @@ function refreshListSoon() {
 }
 
 export async function refresh() {
+    if (!loggedIn.value) return
     if (timer) {
         clearTimeout(timer)
         timer = undefined
@@ -96,6 +109,7 @@ export async function refresh() {
 }
 
 export async function refreshList() {
+    if (!loggedIn.value) return
     if (listTimer) {
         clearTimeout(listTimer)
         listTimer = undefined
@@ -143,6 +157,8 @@ export function resetFilters() {
 }
 
 export async function clearHistory() {
+    if (!loggedIn.value) return
+
     try {
         await ElMessageBox.confirm(
             '这会删除所有 ChatLuna 用量历史数据，无法撤销。',
@@ -157,6 +173,8 @@ export async function clearHistory() {
     } catch {
         return
     }
+
+    if (!loggedIn.value) return
 
     const id = ++reqId
     const listId = ++listReqId
@@ -204,6 +222,34 @@ export function time(value?: string | Date) {
 }
 
 watch(
+    loggedIn,
+    (ok) => {
+        if (ok) {
+            refreshSoon()
+            refreshListSoon()
+        } else {
+            if (timer) {
+                clearTimeout(timer)
+                timer = undefined
+            }
+            if (listTimer) {
+                clearTimeout(listTimer)
+                listTimer = undefined
+            }
+            // Invalidate any in-flight requests so their late responses are
+            // discarded by the reqId checks instead of writing stale data back.
+            reqId += 1
+            listReqId += 1
+            store.chatluna_usage = null
+            list.value = undefined
+            loading.value = false
+            listLoading.value = false
+        }
+    },
+    { immediate: true }
+)
+
+watch(
     () => [
         query.period,
         query.groupBy,
@@ -212,8 +258,7 @@ watch(
         query.start,
         query.end
     ],
-    () => refreshSoon(),
-    { immediate: true }
+    () => refreshSoon()
 )
 
 watch(
@@ -236,8 +281,7 @@ watch(
     () => {
         listQuery.page = 1
         refreshListSoon()
-    },
-    { immediate: true }
+    }
 )
 
 watch(

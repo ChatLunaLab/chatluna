@@ -2,6 +2,7 @@ import { Context } from '@koishijs/client'
 import type {} from 'koishi-plugin-chatluna-usage'
 import charts from './charts'
 import home from './home.vue'
+import { loggedIn } from './state'
 
 export default (ctx: Context) => {
     ctx.plugin(charts)
@@ -9,6 +10,7 @@ export default (ctx: Context) => {
     ctx.slot({
         type: 'home',
         component: home,
-        order: -1000
+        order: -1000,
+        disabled: () => !loggedIn.value
     })
 }
