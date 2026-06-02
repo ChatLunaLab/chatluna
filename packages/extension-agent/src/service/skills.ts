@@ -42,6 +42,7 @@ import { buildSkillCatalog } from '../skills/catalog'
 import { getRemoteSkillDir, getRemoteSkillsRoot } from '../computer/materialize'
 import { ChatLunaAgentPermissionService } from './permissions'
 import { ComputerSessionApi } from '../computer/types'
+import { isPathInside } from '../utils/path'
 
 export class ChatLunaAgentSkillsService implements SkillToolService {
     private _catalog: SkillInfo[] = []
@@ -191,12 +192,8 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async saveSkillContent(id: string, content: string) {
         const skill = this._skills.get(id)
-        if (!skill) {
-            throw new Error(`Skill not found: ${id}`)
-        }
-
-        if (skill.remote) {
-            throw new Error('Cannot edit remote skill content')
+        if (!skill || !isPathInside(skill.dir, getSkillsRootPath(this.ctx))) {
+            return
         }
 
         await writeFile(skill.path, content, 'utf-8')
@@ -224,13 +221,8 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         const skill = this._skills.get(id)
         if (!skill) return undefined
 
-        if (skill.remote) {
-            await this.ctx.chatluna_agent?.computer.removeRemoteSkill(skill.dir)
-            return skill.name
-        }
-
-        if (skill.source !== 'chatluna' || skill.scope !== 'data') {
-            throw new Error('Only imported local skills can be removed here')
+        if (!isPathInside(skill.dir, getSkillsRootPath(this.ctx))) {
+            return undefined
         }
 
         await removeSkillDirectory(getSkillsRootPath(this.ctx), skill.dir)

@@ -44,6 +44,7 @@ import { ChatLunaAgentRuntimeSyncService } from '../utils/runtime_sync'
 import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 import { ChatLunaAgentTriggerService } from './trigger'
+import { isPathInside } from '../utils/path'
 
 export class ChatLunaAgentService extends Service {
     public computer: ChatLunaAgentComputerService
@@ -291,7 +292,9 @@ export class ChatLunaAgentService extends Service {
     }
 
     async removeSkill(id: string) {
-        await this.skills.removeSkill(id)
+        if (!(await this.skills.removeSkill(id))) {
+            return
+        }
 
         const skills = {
             dirs: [...this.args.config.skills.dirs],
@@ -374,16 +377,13 @@ export class ChatLunaAgentService extends Service {
             throw new Error(`Sub-agent not found: ${id}`)
         }
 
-        if (info.source !== 'markdown') {
-            throw new Error('Only markdown sub-agents can save content here')
-        }
-
-        if (info.remote) {
-            throw new Error('Cannot edit remote sub-agent content')
-        }
-
-        if (!info.path) {
-            throw new Error('Sub-agent path is missing')
+        if (
+            info.source !== 'markdown' ||
+            info.remote ||
+            !info.path ||
+            !isPathInside(info.path, getSubAgentsRootPath(this.ctx))
+        ) {
+            return undefined
         }
 
         await writeFile(
@@ -526,12 +526,7 @@ export class ChatLunaAgentService extends Service {
         }
 
         if (info.source === 'markdown') {
-            if (!info.path) {
-                throw new Error('Sub-agent path is missing')
-            }
-
             if (info.remote) {
-                await this.computer.removeRemoteSubAgent(info.path)
                 const subAgent = structuredClone(this.args.config.subAgent)
                 delete subAgent.items[id]
                 await this.updateConfig('subAgent', subAgent, async () => {
@@ -540,12 +535,14 @@ export class ChatLunaAgentService extends Service {
                 return
             }
 
+            if (!info.path) {
+                return
+            }
+
             const root = resolve(getSubAgentsRootPath(this.ctx))
             const file = resolve(info.path)
-            if (!file.startsWith(root)) {
-                throw new Error(
-                    'Only sub-agents inside data/chatluna/agents can be removed here'
-                )
+            if (!isPathInside(file, root)) {
+                return
             }
 
             const dir = dirname(file)

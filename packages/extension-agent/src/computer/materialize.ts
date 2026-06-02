@@ -36,7 +36,12 @@ export class SkillMaterializer {
     ) {
         const root = this.getPath(skill, session)
         if (session.backend === 'local') {
-            if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
+            if (
+                skill.name === AGENTCLI_SKILL_NAME &&
+                skill.source === 'chatluna' &&
+                skill.scope === 'data' &&
+                ctx
+            ) {
                 const target = path.join(root, 'config.json')
                 try {
                     await access(target)

@@ -21,7 +21,7 @@ ctx.chatluna_agent.mcp.listTools()
 
 ## 配置
 
-配置文件位于 `data/chatluna/agent/config.json`。
+配置文件位于 `data/chatluna/agents/config.json`。
 
 ## License
 

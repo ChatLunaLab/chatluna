@@ -13,14 +13,9 @@ import { Context } from 'koishi'
 import { logger } from '..'
 import { getRemoteSkillsRoot } from '../computer/materialize'
 import type { ComputerSessionApi } from '../computer/types'
-import {
-    DEFAULT_SKILL_DIRS,
-    getSkillsRootPath,
-    getSubAgentsRootPath
-} from '../config/path'
+import { getSkillsRootPath, getSubAgentsRootPath } from '../config/path'
 import { REMOTE_SUBAGENTS_ROOT } from '../sub-agent/scan'
 import type { ChatLunaAgentService } from '../service'
-import { expandDir } from './path'
 import { quoteShellPath } from './shell'
 
 interface RuntimeSyncFile {
@@ -198,30 +193,19 @@ async function syncRuntimeSession(
     agent: ChatLunaAgentService,
     session: ComputerSessionApi
 ) {
-    const skillRoots = Array.from(
-        new Map(
-            [
-                getSkillsRootPath(agent.ctx),
-                ...DEFAULT_SKILL_DIRS.map((item) =>
-                    expandDir(agent.ctx.baseDir, item)
-                ),
-                ...agent.args.config.skills.dirs
-                    .map((item) => item.trim())
-                    .filter(Boolean)
-                    .map((item) => expandDir(agent.ctx.baseDir, item))
-            ].map((item) => [item.replaceAll('\\', '/').toLowerCase(), item])
-        ).values()
-    )
     const files = [
         ...(await collectSyncFiles(
             session,
             'skill',
             getRemoteSkillsRoot(),
-            skillRoots
+            getSkillsRootPath(agent.ctx)
         )),
-        ...(await collectSyncFiles(session, 'subagent', REMOTE_SUBAGENTS_ROOT, [
+        ...(await collectSyncFiles(
+            session,
+            'subagent',
+            REMOTE_SUBAGENTS_ROOT,
             getSubAgentsRootPath(agent.ctx)
-        ]))
+        ))
     ]
 
     for (const item of files) {
@@ -246,41 +230,38 @@ async function collectSyncFiles(
     session: ComputerSessionApi,
     kind: RuntimeSyncFile['kind'],
     remoteRoot: string,
-    localRoots: string[]
+    localRoot: string
 ) {
     const files: RuntimeSyncFile[] = []
     const remoteFiles = await listRemoteFiles(session, remoteRoot)
     if (remoteFiles.length > 0) {
         logger?.debug(
-            `collectSyncFiles kind=${kind} backend=${session.backend} remoteRoot=${remoteRoot} files=${remoteFiles.length} localRoots=${localRoots.length}`
+            `collectSyncFiles kind=${kind} backend=${session.backend} remoteRoot=${remoteRoot} files=${remoteFiles.length} localRoot=${localRoot}`
         )
     }
 
     for (const file of remoteFiles) {
         const content = await session.readFile(posix.join(remoteRoot, file))
-
-        for (const localRoot of localRoots) {
-            const targetPath = join(localRoot, ...file.split('/'))
-            const current = await readFile(targetPath, 'utf-8').catch(
-                (err: NodeJS.ErrnoException) => {
-                    if (err.code === 'ENOENT') {
-                        return undefined
-                    }
-
-                    throw err
+        const targetPath = join(localRoot, ...file.split('/'))
+        const current = await readFile(targetPath, 'utf-8').catch(
+            (err: NodeJS.ErrnoException) => {
+                if (err.code === 'ENOENT') {
+                    return undefined
                 }
-            )
 
-            if (current === content) {
-                continue
+                throw err
             }
+        )
 
-            files.push({
-                kind,
-                targetPath,
-                content
-            })
+        if (current === content) {
+            continue
         }
+
+        files.push({
+            kind,
+            targetPath,
+            content
+        })
     }
 
     if (files.length > 0) {

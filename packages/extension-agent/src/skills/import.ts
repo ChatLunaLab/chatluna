@@ -26,7 +26,7 @@ export async function previewSkillsImport(
 
     const tmp = resolve(
         ctx.baseDir,
-        'data/chatluna/agent/tmp',
+        'data/chatluna/agents/tmp',
         `skills-${randomUUID()}`
     )
 
@@ -53,7 +53,7 @@ export async function importSkills(
 ): Promise<SkillImportResult> {
     const tmp = resolve(
         ctx.baseDir,
-        'data/chatluna/agent/tmp',
+        'data/chatluna/agents/tmp',
         `skills-${randomUUID()}`
     )
 
@@ -356,7 +356,7 @@ async function previewGithub(ctx: Context, url: string) {
 
     const tmp = resolve(
         ctx.baseDir,
-        'data/chatluna/agent/tmp',
+        'data/chatluna/agents/tmp',
         `skills-${randomUUID()}`
     )
 

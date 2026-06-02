@@ -17,11 +17,11 @@ export const DEFAULT_SKILL_DIRS = [
 ]
 
 export function getConfigPath(ctx: Context): string {
-    return resolve(ctx.baseDir, 'data/chatluna/agent/config.json')
+    return resolve(ctx.baseDir, 'data/chatluna/agents/config.json')
 }
 
 export function getSkillsRootPath(ctx: Context): string {
-    return resolve(ctx.baseDir, 'data/chatluna/skills')
+    return resolve(ctx.baseDir, 'data/chatluna/agents/skills')
 }
 
 export function getSubAgentsRootPath(ctx: Context): string {
