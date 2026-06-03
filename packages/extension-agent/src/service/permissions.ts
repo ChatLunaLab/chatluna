@@ -263,24 +263,36 @@ export class ChatLunaAgentPermissionService {
                 this.isSessionAllowed(session, source, item)
         )
         const task = mainTools.find((item) => item.name === 'task')
-        const dupes = new Set(
-            task && this.hasAuthority(session, task.authority)
-                ? (
-                      this.ctx.chatluna_agent?.subAgent
-                          .listRunnableAgents(session, source)
-                          .filter((agent) => agent.dedupeTools) ?? []
-                  ).flatMap((agent) =>
-                      mainTools
-                          .filter((item) => this.canUseTool(agent, item.name))
-                          .map((item) => item.name)
-                  )
-                : []
-        )
-        const allow = mainTools
-            .filter((item) => !dupes.has(item.name))
-            .map((item) => item.name)
+        const mainNames = mainTools.map((item) => item.name)
 
-        return buildToolMask(allNames, allow)
+        if (!task || !this.hasAuthority(session, task.authority)) {
+            return buildToolMask(allNames, mainNames)
+        }
+
+        const agents =
+            this.ctx.chatluna_agent?.subAgent
+                .listRunnableAgents(session, source)
+                .filter((agent) => agent.dedupeTools) ?? []
+        if (agents.length < 1) {
+            return buildToolMask(allNames, mainNames)
+        }
+
+        const hidden = new Set(
+            agents.flatMap((agent) =>
+                mainTools
+                    .filter(
+                        (item) =>
+                            item.name !== 'task' &&
+                            this.canUseTool(agent, item.name)
+                    )
+                    .map((item) => item.name)
+            )
+        )
+
+        return buildToolMask(
+            allNames,
+            mainNames.filter((name) => !hidden.has(name))
+        )
     }
 
     async createSubAgentToolMask(

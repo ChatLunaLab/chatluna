@@ -102,7 +102,7 @@ export function parseAgentFrontmatter(
     let characterGroupIds: string[] = []
     let characterPrivateIds: string[] = []
     let authority = 0
-    let dedupeTools = false
+    const dedupeTools = frontmatter.dedupeTools === true
     let model: string | undefined
     let maxTurns: number | undefined
     let allowKoishiMessageTransform = false
@@ -252,7 +252,6 @@ export function parseAgentFrontmatter(
     } else {
         hidden = frontmatter.hidden === true
         enabled = frontmatter.enabled !== false
-        dedupeTools = frontmatter.dedupeTools === true
         chatluna = frontmatter.chatluna !== false
         character = frontmatter.character !== false
         characterGroup = frontmatter.characterGroup !== false
