@@ -728,16 +728,34 @@ it('conversation_switch accepts resolved direct conversation ids', async () => {
 
 it('chatluna.delete removes range and list selectors', async () => {
     const conversations = [
-        createConversation({ id: 'conversation-first', title: 'First Topic' }),
+        createConversation({
+            id: 'conversation-first',
+            title: 'First Topic',
+            seq: 1
+        }),
         createConversation({
             id: 'conversation-second',
-            title: 'Second Topic'
+            title: 'Second Topic',
+            seq: 2
         }),
-        createConversation({ id: 'conversation-third', title: 'Third Topic' })
+        createConversation({
+            id: 'conversation-third',
+            title: 'Third Topic',
+            seq: 3
+        })
     ]
     const actions = new Map<string, (...args: any[]) => Promise<void>>()
     const deleted: string[] = []
     const messages: string[] = []
+    const resolveTargets: (string | undefined)[] = []
+    const entries = () =>
+        conversations.map((conversation, idx) => ({
+            conversation,
+            displaySeq: idx + 1
+        }))
+    let resolve:
+        | ((session: any, context: any) => Promise<ChainMiddlewareRunStatus>)
+        | undefined
     let run:
         | ((session: any, context: any) => Promise<ChainMiddlewareRunStatus>)
         | undefined
@@ -755,11 +773,28 @@ it('chatluna.delete removes range and list selectors', async () => {
         },
         chatluna: {
             conversation: {
-                listConversationEntries: async () =>
-                    conversations.map((conversation, idx) => ({
-                        conversation,
-                        displaySeq: idx + 1
-                    })),
+                resolveConversation: async (_session, opts) => {
+                    resolveTargets.push(opts.targetConversation)
+                    const entry = entries().find(
+                        (item) =>
+                            opts.targetConversation === item.conversation.id ||
+                            opts.targetConversation ===
+                                String(item.displaySeq) ||
+                            opts.targetConversation === item.conversation.title
+                    )
+
+                    return {
+                        bindingKey: 'shared:discord:bot:guild',
+                        constraint: {},
+                        effectiveModel: 'test-platform/test-model',
+                        effectivePreset: 'default-preset',
+                        effectiveChatMode: 'plugin',
+                        conversation: entry?.conversation ?? null,
+                        conversationId: entry?.conversation.id ?? null,
+                        mode: opts.mode
+                    }
+                },
+                listConversationEntries: async () => entries(),
                 deleteConversation: async (_session, opts) => {
                     deleted.push(opts.conversationId)
                     return conversations.find(
@@ -771,6 +806,7 @@ it('chatluna.delete removes range and list selectors', async () => {
     }
     const chain = {
         middleware: (name, fn) => {
+            if (name === 'resolve_conversation') resolve = fn
             if (name === 'conversation_delete') run = fn
             return {
                 after() {
@@ -783,13 +819,18 @@ it('chatluna.delete removes range and list selectors', async () => {
         }
     }
 
+    applyResolve(ctx as never, {} as never, chain as never)
     applyManage(ctx as never, {} as never, chain as never)
     applyCommands(
         ctx as never,
         {} as never,
         {
             receiveCommand: async (session, name, opts) => {
-                await run!(session, { command: name, options: opts })
+                const state = { command: name, options: opts }
+                const status = await resolve!(session, state)
+                if (status !== ChainMiddlewareRunStatus.STOP) {
+                    await run!(session, state)
+                }
             }
         } as never
     )
@@ -804,16 +845,56 @@ it('chatluna.delete removes range and list selectors', async () => {
     const action = actions.get('chatluna.delete [conversation:string]')!
     await action({ options: {}, session }, '1..2')
     await action({ options: {}, session }, '1,3')
+    const validCount = deleted.length
+    await action({ options: {}, session }, '1,4')
+    assert.equal(deleted.length, validCount)
+
+    await action({ options: {}, session }, '1,1')
+    await action({ options: {}, session }, '3..1')
+
+    conversations.push(
+        createConversation({
+            id: 'conversation-range-title',
+            title: '1..101',
+            seq: 4
+        })
+    )
+    const beforeInvalid = deleted.length
+    await action({ options: {}, session }, '1..101')
+    await action(
+        { options: {}, session },
+        '999999999999999999999..999999999999999999999'
+    )
+    assert.equal(deleted.length, beforeInvalid)
 
     assert.deepEqual(deleted, [
         'conversation-first',
         'conversation-second',
         'conversation-first',
+        'conversation-third',
+        'conversation-first',
+        'conversation-first',
+        'conversation-second',
         'conversation-third'
     ])
+    assert.notInclude(deleted, 'conversation-range-title')
+    assert.deepEqual(resolveTargets, [
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+    ])
     assert.deepEqual(messages, [
-        'chatluna.conversation.messages.delete_success_multi:First Topic\nSecond Topic',
-        'chatluna.conversation.messages.delete_success_multi:First Topic\nThird Topic'
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nThird Topic (3)',
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)\nThird Topic (3)',
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.target_not_found'
     ])
 })
 

@@ -272,15 +272,65 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         try {
             const { presetLane, includeArchived, allPresetLanes } =
                 getManageOptions(context)
-            const seqs =
-                context.options.conversation_manage?.targetConversationSeqs
+            const target =
+                context.options.conversation_manage?.targetConversation
+            const parsed = parseDeleteTarget(target)
 
-            if (seqs != null) {
-                context.message = await deleteBySeqs(ctx, session, seqs, {
-                    presetLane,
-                    includeArchived,
-                    allPresetLanes
-                })
+            if (parsed.type === 'invalid') {
+                context.message = session.text(
+                    'chatluna.conversation.messages.target_not_found'
+                )
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            if (parsed.type === 'seqs') {
+                const entries =
+                    await ctx.chatluna.conversation.listConversationEntries(
+                        session,
+                        {
+                            presetLane,
+                            includeArchived,
+                            allPresetLanes
+                        }
+                    )
+                const seqSet = new Set(parsed.seqs)
+                const targets = entries.filter((item) =>
+                    seqSet.has(item.displaySeq)
+                )
+
+                if (targets.length !== parsed.seqs.length) {
+                    context.message = session.text(
+                        'chatluna.conversation.messages.target_not_found'
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                const deleted: ConversationRecord[] = []
+                for (const item of targets) {
+                    deleted.push(
+                        await ctx.chatluna.conversation.deleteConversation(
+                            session,
+                            {
+                                conversationId: item.conversation.id,
+                                presetLane,
+                                includeArchived,
+                                allPresetLanes
+                            }
+                        )
+                    )
+                }
+
+                context.message = session.text(
+                    'chatluna.conversation.messages.delete_success_multi',
+                    [
+                        deleted
+                            .map(
+                                (item) =>
+                                    `${item.title} (${item.seq ?? item.id})`
+                            )
+                            .join('\n')
+                    ]
+                )
                 return ChainMiddlewareRunStatus.STOP
             }
 
@@ -727,6 +777,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 }
 
+type DeleteTarget =
+    | { type: 'single'; target?: string }
+    | { type: 'seqs'; seqs: number[] }
+    | { type: 'invalid' }
+
 function resolvedConversationId(context: ChainMiddlewareContext) {
     return (
         context.options.conversation?.conversationId ??
@@ -760,34 +815,45 @@ function requireConversation(
     return conversation
 }
 
-async function deleteBySeqs(
-    ctx: Context,
-    session: Session,
-    seqs: number[],
-    opts: ReturnType<typeof getManageOptions>
-) {
-    const entries = await ctx.chatluna.conversation.listConversationEntries(
-        session,
-        opts
-    )
-    const targets = entries.filter((item) => seqs.includes(item.displaySeq))
-    if (targets.length !== seqs.length) {
-        return session.text('chatluna.conversation.messages.target_not_found')
+function parseDeleteTarget(input?: string): DeleteTarget {
+    if (input == null || input.length === 0) {
+        return { type: 'single', target: input }
+    }
+    if (!input.includes(',') && !input.includes('..')) {
+        return { type: 'single', target: input }
+    }
+    if (input.length > 512) return { type: 'invalid' }
+
+    const parts = input.split(',')
+    if (parts.length > 100) return { type: 'invalid' }
+
+    const seqs = new Set<number>()
+    for (const part of parts) {
+        const match = /^(\d+)(?:\.\.(\d+))?$/.exec(part)
+        if (match == null) return { type: 'invalid' }
+
+        const start = Number(match[1])
+        const end = Number(match[2] ?? match[1])
+        if (
+            !Number.isSafeInteger(start) ||
+            !Number.isSafeInteger(end) ||
+            start < 1 ||
+            end < 1
+        ) {
+            return { type: 'invalid' }
+        }
+
+        const min = Math.min(start, end)
+        const max = Math.max(start, end)
+        const count = max - min + 1
+        if (seqs.size + count > 100) return { type: 'invalid' }
+
+        for (let idx = 0; idx < count; idx += 1) {
+            seqs.add(min + idx)
+        }
     }
 
-    const deleted: ConversationRecord[] = []
-    for (const target of targets) {
-        deleted.push(
-            await ctx.chatluna.conversation.deleteConversation(session, {
-                conversationId: target.conversation.id,
-                ...opts
-            })
-        )
-    }
-
-    return session.text('chatluna.conversation.messages.delete_success_multi', [
-        deleted.map((item) => item.title).join('\n')
-    ])
+    return { type: 'seqs', seqs: Array.from(seqs) }
 }
 
 function conversationSummary(conversation: ConversationRecord) {

@@ -13,9 +13,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const { options } = context
             const presetLane =
                 options.conversation_manage?.presetLane ?? options.presetLane
-            const targetConversation =
+            const rawTarget =
                 options.conversation_manage?.targetConversation ??
                 options.targetConversation
+            const batchTarget =
+                context.command === 'conversation_delete' &&
+                rawTarget != null &&
+                (rawTarget.includes(',') || rawTarget.includes('..'))
+            const targetConversation = batchTarget ? undefined : rawTarget
             const explicitConversationId =
                 options.conversation?.conversationId ??
                 options.conversation?.conversation?.id

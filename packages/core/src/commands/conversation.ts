@@ -240,8 +240,6 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         .option('all', '--all')
         .action(async ({ options, session }, conversation) => {
             const presetLane = options.preset?.trim() || undefined
-            const target = conversation?.trim() || undefined
-            const seqs = target == null ? undefined : parseSeqs(target)
             const includeArchived =
                 options.archived === true || options.all === true
             await chain.receiveCommand(
@@ -250,8 +248,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                 {
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: seqs == null ? target : undefined,
-                        targetConversationSeqs: seqs,
+                        targetConversation: conversation?.trim() || undefined,
                         presetLane,
                         includeArchived
                     }
@@ -418,28 +415,6 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     })
 }
 
-function parseSeqs(input: string) {
-    if (!input.includes(',') && !input.includes('..')) return undefined
-    if (!/^\d+(?:\.\.\d+)?(?:,\d+(?:\.\.\d+)?)*$/.test(input)) {
-        return undefined
-    }
-
-    const seqs = new Set<number>()
-    for (const part of input.split(',')) {
-        const [start, end = start] = part.split('..').map(Number)
-        for (
-            let seq = Math.min(start, end);
-            seq <= Math.max(start, end);
-            seq += 1
-        ) {
-            seqs.add(seq)
-            if (seqs.size > 100) return undefined
-        }
-    }
-
-    return [...seqs]
-}
-
 declare module '../chains/chain' {
     interface ChainMiddlewareContextOptions {
         conversation_create?: {
@@ -450,7 +425,6 @@ declare module '../chains/chain' {
         }
         conversation_manage?: {
             targetConversation?: string
-            targetConversationSeqs?: number[]
             presetLane?: string
             includeArchived?: boolean
             title?: string
