@@ -112,6 +112,7 @@ async function scanTarget(target: ScanTarget, cfg: AgentConfig['subAgent']) {
 
             const base = createSubAgentItemConfig({
                 enabled: parsed.value?.enabled ?? true,
+                dedupeTools: parsed.value?.dedupeTools,
                 name: parsed.value?.name ?? name,
                 description: parsed.value?.description ?? '',
                 chatluna: parsed.value?.chatluna ?? true,
@@ -162,6 +163,7 @@ async function scanTarget(target: ScanTarget, cfg: AgentConfig['subAgent']) {
                 id,
                 name: item.name,
                 description: item.description,
+                dedupeTools: item.dedupeTools,
                 source: 'markdown',
                 format: item.format,
                 state: parsed.state,

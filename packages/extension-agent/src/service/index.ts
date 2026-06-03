@@ -407,6 +407,7 @@ export class ChatLunaAgentService extends Service {
                 characterPrivateIds:
                     input.characterPrivateIds ?? info.characterPrivateIds,
                 authority: input.authority ?? info.authority,
+                dedupeTools: input.dedupeTools ?? info.dedupeTools,
                 model: input.model ?? info.model,
                 maxTurns: input.maxTurns ?? info.maxTurns,
                 hidden: input.hidden ?? info.hidden,
@@ -458,6 +459,7 @@ export class ChatLunaAgentService extends Service {
                 characterGroupIds: info.characterGroupIds,
                 characterPrivateIds: info.characterPrivateIds,
                 authority: info.authority,
+                dedupeTools: info.dedupeTools,
                 promptContent: info.promptContent,
                 model: info.model,
                 maxTurns: info.maxTurns,
@@ -481,6 +483,7 @@ export class ChatLunaAgentService extends Service {
         const subAgent = structuredClone(this.args.config.subAgent)
         subAgent.presetAgents[name] = createSubAgentItemConfig({
             enabled: config.enabled ?? true,
+            dedupeTools: config.dedupeTools,
             name,
             description: config.description ?? name,
             chatluna: config.chatluna,
@@ -773,6 +776,7 @@ ${truncateOutput(input.text, limit)}`
 function itemFromInfo(info: SubAgentInfo, enabled: boolean) {
     return createSubAgentItemConfig({
         enabled,
+        dedupeTools: info.dedupeTools,
         name: info.name,
         description: info.description,
         chatluna: info.chatlunaEnabled,

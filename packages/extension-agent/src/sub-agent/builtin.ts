@@ -21,6 +21,7 @@ function createBuiltin(
         id: `builtin:${name}`,
         name,
         description: item.description,
+        dedupeTools: item.dedupeTools,
         source: 'builtin',
         format: 'chatluna',
         state: 'ready',

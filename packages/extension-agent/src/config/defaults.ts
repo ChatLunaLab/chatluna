@@ -49,6 +49,7 @@ export function createSubAgentItemConfig(
 ): SubAgentItemConfig {
     return {
         enabled: input.enabled ?? true,
+        dedupeTools: input.dedupeTools === true,
         name: input.name ?? '',
         description: input.description ?? '',
         chatluna: input.chatluna !== false,
