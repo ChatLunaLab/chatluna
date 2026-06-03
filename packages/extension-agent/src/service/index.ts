@@ -407,6 +407,7 @@ export class ChatLunaAgentService extends Service {
                 characterPrivateIds:
                     input.characterPrivateIds ?? info.characterPrivateIds,
                 authority: input.authority ?? info.authority,
+                dedupeTools: input.dedupeTools ?? info.dedupeTools,
                 model: input.model ?? info.model,
                 maxTurns: input.maxTurns ?? info.maxTurns,
                 hidden: input.hidden ?? info.hidden,
@@ -458,6 +459,7 @@ export class ChatLunaAgentService extends Service {
                 characterGroupIds: info.characterGroupIds,
                 characterPrivateIds: info.characterPrivateIds,
                 authority: info.authority,
+                dedupeTools: info.dedupeTools,
                 promptContent: info.promptContent,
                 model: info.model,
                 maxTurns: info.maxTurns,
