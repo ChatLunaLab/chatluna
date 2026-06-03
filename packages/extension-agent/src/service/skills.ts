@@ -192,13 +192,22 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async saveSkillContent(id: string, content: string) {
         const skill = this._skills.get(id)
-        if (!skill || !isPathInside(skill.dir, getSkillsRootPath(this.ctx))) {
-            return
+        if (!skill) {
+            throw new Error(`Skill not found: ${id}`)
+        }
+
+        if (skill.remote) {
+            throw new Error('Cannot edit remote skill content')
+        }
+
+        if (!isPathInside(skill.dir, getSkillsRootPath(this.ctx))) {
+            return false
         }
 
         await writeFile(skill.path, content, 'utf-8')
 
         await this.reload()
+        return true
     }
 
     async previewImport(
@@ -221,8 +230,14 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         const skill = this._skills.get(id)
         if (!skill) return undefined
 
+        if (skill.remote) {
+            return skill.name
+        }
+
         if (!isPathInside(skill.dir, getSkillsRootPath(this.ctx))) {
-            return undefined
+            throw new Error(
+                'Only skills inside data/chatluna/skills can be removed'
+            )
         }
 
         await removeSkillDirectory(getSkillsRootPath(this.ctx), skill.dir)

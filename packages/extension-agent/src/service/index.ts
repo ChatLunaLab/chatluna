@@ -377,13 +377,22 @@ export class ChatLunaAgentService extends Service {
             throw new Error(`Sub-agent not found: ${id}`)
         }
 
-        if (
-            info.source !== 'markdown' ||
-            info.remote ||
-            !info.path ||
-            !isPathInside(info.path, getSubAgentsRootPath(this.ctx))
-        ) {
-            return undefined
+        if (info.source !== 'markdown') {
+            throw new Error('Only markdown sub-agents can save content here')
+        }
+
+        if (info.remote) {
+            throw new Error('Cannot edit remote sub-agent content')
+        }
+
+        if (!info.path) {
+            throw new Error('Sub-agent path is missing')
+        }
+
+        if (!isPathInside(info.path, getSubAgentsRootPath(this.ctx))) {
+            throw new Error(
+                'Only sub-agents inside data/chatluna/agents can save content here'
+            )
         }
 
         await writeFile(
@@ -536,13 +545,15 @@ export class ChatLunaAgentService extends Service {
             }
 
             if (!info.path) {
-                return
+                throw new Error('Sub-agent path is missing')
             }
 
             const root = resolve(getSubAgentsRootPath(this.ctx))
             const file = resolve(info.path)
             if (!isPathInside(file, root)) {
-                return
+                throw new Error(
+                    'Only sub-agents inside data/chatluna/agents can be removed here'
+                )
             }
 
             const dir = dirname(file)

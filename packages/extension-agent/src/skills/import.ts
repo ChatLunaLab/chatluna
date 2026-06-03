@@ -24,11 +24,7 @@ export async function previewSkillsImport(
         return await previewGithub(ctx, input.url)
     }
 
-    const tmp = resolve(
-        ctx.baseDir,
-        'data/chatluna/agents/tmp',
-        `skills-${randomUUID()}`
-    )
+    const tmp = join(getSkillsRootPath(ctx), '.tmp', `skills-${randomUUID()}`)
 
     await mkdir(tmp, { recursive: true })
 
@@ -51,11 +47,7 @@ export async function importSkills(
     ctx: Context,
     input: SkillImportInput
 ): Promise<SkillImportResult> {
-    const tmp = resolve(
-        ctx.baseDir,
-        'data/chatluna/agents/tmp',
-        `skills-${randomUUID()}`
-    )
+    const tmp = join(getSkillsRootPath(ctx), '.tmp', `skills-${randomUUID()}`)
 
     await mkdir(tmp, { recursive: true })
 
@@ -354,11 +346,7 @@ async function previewGithub(ctx: Context, url: string) {
         diagnostics.push('GitHub 地址下没有找到可预览的文件。')
     }
 
-    const tmp = resolve(
-        ctx.baseDir,
-        'data/chatluna/agents/tmp',
-        `skills-${randomUUID()}`
-    )
+    const tmp = join(getSkillsRootPath(ctx), '.tmp', `skills-${randomUUID()}`)
 
     await mkdir(tmp, { recursive: true })
 

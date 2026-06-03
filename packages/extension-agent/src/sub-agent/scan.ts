@@ -20,7 +20,6 @@ interface ScanTarget {
     priority: number
     hint?: 'chatluna' | 'claude' | 'opencode'
     remote: boolean
-    excludeNames?: string[]
 }
 
 export const WRITE_TOOL_PATTERNS = [
@@ -62,8 +61,7 @@ function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
             scope: 'data',
             priority: 0,
             hint: 'chatluna',
-            remote: false,
-            excludeNames: ['skills', 'tmp']
+            remote: false
         }
     ]
 
@@ -109,8 +107,7 @@ async function scanTarget(target: ScanTarget, cfg: AgentConfig['subAgent']) {
     if (!info?.isDirectory()) return [] as SubAgentInfo[]
 
     const files = await collectFilesRecursive(target.root, {
-        extensionFilter: '.md',
-        excludeNames: target.excludeNames
+        extensionFilter: '.md'
     })
     return await Promise.all(
         files.map(async (file) => {

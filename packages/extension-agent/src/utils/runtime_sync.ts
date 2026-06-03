@@ -241,8 +241,21 @@ async function collectSyncFiles(
     }
 
     for (const file of remoteFiles) {
-        const content = await session.readFile(posix.join(remoteRoot, file))
-        const targetPath = join(localRoot, ...file.split('/'))
+        const name = file.replaceAll('\\', '/')
+        if (kind === 'subagent') {
+            const lower = name.toLowerCase()
+            if (
+                !lower.endsWith('.md') ||
+                lower === 'config.json' ||
+                lower.startsWith('skills/') ||
+                lower.startsWith('tmp/')
+            ) {
+                continue
+            }
+        }
+
+        const content = await session.readFile(posix.join(remoteRoot, name))
+        const targetPath = join(localRoot, ...name.split('/'))
         const current = await readFile(targetPath, 'utf-8').catch(
             (err: NodeJS.ErrnoException) => {
                 if (err.code === 'ENOENT') {

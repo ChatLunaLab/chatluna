@@ -259,7 +259,10 @@ function registerSkillsListeners(ctx: Context, agent: AgentRef) {
 
     ctx.console.addListener(
         'chatluna-agent/saveSkillContent',
-        ok((id, content) => agent().skills.saveSkillContent(id, content))
+        async (id, content) => ({
+            success:
+                (await agent().skills.saveSkillContent(id, content)) !== false
+        })
     )
 
     ctx.console.addListener('chatluna-agent/exportSkill', async (id) =>
