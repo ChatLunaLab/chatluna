@@ -852,13 +852,6 @@ it('chatluna.delete removes range and list selectors', async () => {
     await action({ options: {}, session }, '1,1')
     await action({ options: {}, session }, '3..1')
 
-    conversations.push(
-        createConversation({
-            id: 'conversation-range-title',
-            title: '1..101',
-            seq: 4
-        })
-    )
     const beforeInvalid = deleted.length
     await action({ options: {}, session }, '1..101')
     await action(
@@ -866,6 +859,15 @@ it('chatluna.delete removes range and list selectors', async () => {
         '999999999999999999999..999999999999999999999'
     )
     assert.equal(deleted.length, beforeInvalid)
+
+    conversations.push(
+        createConversation({
+            id: 'conversation-range-title',
+            title: '1..101',
+            seq: 4
+        })
+    )
+    await action({ options: {}, session }, '1..101')
 
     assert.deepEqual(deleted, [
         'conversation-first',
@@ -875,17 +877,18 @@ it('chatluna.delete removes range and list selectors', async () => {
         'conversation-first',
         'conversation-first',
         'conversation-second',
-        'conversation-third'
+        'conversation-third',
+        'conversation-range-title'
     ])
-    assert.notInclude(deleted, 'conversation-range-title')
     assert.deepEqual(resolveTargets, [
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined
+        '1..2',
+        '1,3',
+        '1,4',
+        '1,1',
+        '3..1',
+        '1..101',
+        '999999999999999999999..999999999999999999999',
+        '1..101'
     ])
     assert.deepEqual(messages, [
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)',
@@ -894,7 +897,8 @@ it('chatluna.delete removes range and list selectors', async () => {
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)',
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)\nThird Topic (3)',
         'chatluna.conversation.messages.target_not_found',
-        'chatluna.conversation.messages.target_not_found'
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.delete_success:1..101,4,conversation-range-title'
     ])
 })
 

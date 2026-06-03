@@ -274,69 +274,73 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 getManageOptions(context)
             const target =
                 context.options.conversation_manage?.targetConversation
-            const parsed = parseDeleteTarget(target)
+            const conversationId = resolvedConversationId(context)
 
-            if (parsed.type === 'invalid') {
-                context.message = session.text(
-                    'chatluna.conversation.messages.target_not_found'
-                )
-                return ChainMiddlewareRunStatus.STOP
-            }
+            if (conversationId == null) {
+                const parsed = parseDeleteTarget(target)
 
-            if (parsed.type === 'seqs') {
-                const entries =
-                    await ctx.chatluna.conversation.listConversationEntries(
-                        session,
-                        {
-                            presetLane,
-                            includeArchived,
-                            allPresetLanes
-                        }
-                    )
-                const seqSet = new Set(parsed.seqs)
-                const targets = entries.filter((item) =>
-                    seqSet.has(item.displaySeq)
-                )
-
-                if (targets.length !== parsed.seqs.length) {
+                if (parsed.type === 'invalid') {
                     context.message = session.text(
                         'chatluna.conversation.messages.target_not_found'
                     )
                     return ChainMiddlewareRunStatus.STOP
                 }
 
-                const deleted: ConversationRecord[] = []
-                for (const item of targets) {
-                    deleted.push(
-                        await ctx.chatluna.conversation.deleteConversation(
+                if (parsed.type === 'seqs') {
+                    const entries =
+                        await ctx.chatluna.conversation.listConversationEntries(
                             session,
                             {
-                                conversationId: item.conversation.id,
                                 presetLane,
                                 includeArchived,
                                 allPresetLanes
                             }
                         )
+                    const seqSet = new Set(parsed.seqs)
+                    const targets = entries.filter((item) =>
+                        seqSet.has(item.displaySeq)
                     )
-                }
 
-                context.message = session.text(
-                    'chatluna.conversation.messages.delete_success_multi',
-                    [
-                        deleted
-                            .map(
-                                (item) =>
-                                    `${item.title} (${item.seq ?? item.id})`
+                    if (targets.length !== parsed.seqs.length) {
+                        context.message = session.text(
+                            'chatluna.conversation.messages.target_not_found'
+                        )
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+
+                    const deleted: ConversationRecord[] = []
+                    for (const item of targets) {
+                        deleted.push(
+                            await ctx.chatluna.conversation.deleteConversation(
+                                session,
+                                {
+                                    conversationId: item.conversation.id,
+                                    presetLane,
+                                    includeArchived,
+                                    allPresetLanes
+                                }
                             )
-                            .join('\n')
-                    ]
-                )
-                return ChainMiddlewareRunStatus.STOP
+                        )
+                    }
+
+                    context.message = session.text(
+                        'chatluna.conversation.messages.delete_success_multi',
+                        [
+                            deleted
+                                .map(
+                                    (item) =>
+                                        `${item.title} (${item.seq ?? item.id})`
+                                )
+                                .join('\n')
+                        ]
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
             }
 
             const conversation =
                 await ctx.chatluna.conversation.deleteConversation(session, {
-                    conversationId: resolvedConversationId(context),
+                    conversationId,
                     presetLane,
                     includeArchived,
                     allPresetLanes
