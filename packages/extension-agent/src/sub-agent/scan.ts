@@ -56,7 +56,13 @@ function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
     const root = getSubAgentsRootPath(ctx)
     const seen = new Set([toPathKey(root)])
     const targets: ScanTarget[] = [
-        { root, scope: 'data', priority: 0, hint: 'chatluna', remote: false }
+        {
+            root,
+            scope: 'data',
+            priority: 0,
+            hint: 'chatluna',
+            remote: false
+        }
     ]
 
     for (let idx = 0; idx < cfg.dirs.length; idx++) {

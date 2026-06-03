@@ -4,6 +4,7 @@ import { Context, Logger, Schema } from 'koishi'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { ChatLunaAgentService } from './service'
+import { migrateAgentData } from './config/migrate'
 import { readConfig } from './config/read'
 import * as webui from './webui'
 import * as mcpCommands from './commands/mcp'
@@ -18,6 +19,7 @@ export async function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-agent')
 
     plugin = new ChatLunaPlugin(ctx, config, 'agent', false)
+    await migrateAgentData(ctx)
 
     ctx.plugin(ChatLunaAgentService, {
         config: await readConfig(ctx),
