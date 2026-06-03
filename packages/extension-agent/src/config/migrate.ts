@@ -32,10 +32,12 @@ export async function migrateAgentData(ctx: Context) {
     const oldSkills = join(old, 'skills')
     const oldAgents = join(old, 'agents')
     const hasConfig = (await stat(oldConfig).catch(() => undefined))?.isFile()
-    const hasSkills = (await stat(oldSkills).catch(() => undefined))
-        ?.isDirectory()
-    const hasAgents = (await stat(oldAgents).catch(() => undefined))
-        ?.isDirectory()
+    const hasSkills = (
+        await stat(oldSkills).catch(() => undefined)
+    )?.isDirectory()
+    const hasAgents = (
+        await stat(oldAgents).catch(() => undefined)
+    )?.isDirectory()
 
     if (!hasConfig && !hasSkills && !hasAgents) {
         return

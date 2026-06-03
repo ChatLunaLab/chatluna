@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 import { unzipSync } from 'fflate'
 import { cp, mkdir, rm, stat, writeFile } from 'fs/promises'
 import { Context } from 'koishi'
-import { basename, dirname, join, resolve } from 'path'
+import { basename, dirname, join } from 'path'
 import { getSkillsRootPath } from '../config/path'
 import {
     SkillImportInput,
