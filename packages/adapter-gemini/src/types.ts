@@ -12,6 +12,7 @@ export type ChatPart =
     | ChatInlineDataPart
     | (ChatFunctionCallingPart & BaseChatPart)
     | ChatFunctionResponsePart
+    | (ChatToolContextPart & BaseChatPart)
     | ChatUploadDataPart
     // Only used for token
     | ChatUsageMetadataPart
@@ -85,6 +86,17 @@ export type ChatFunctionResponsePart = {
         parts?: (ChatMessagePart | ChatInlineDataPart | ChatUploadDataPart)[]
         id?: string
     }
+}
+
+export type ChatToolContextPart = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    toolCall?: Record<string, any>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    toolResponse?: Record<string, any>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    executableCode?: Record<string, any>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    codeExecutionResult?: Record<string, any>
 }
 
 export interface ChatResponse {

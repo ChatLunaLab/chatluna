@@ -532,14 +532,15 @@ async function serializeMessage(
 
 function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
     const reasoning = steps[0]?.action.reasoningContent
+    const message = steps[0]?.action.messageLog?.[0]
 
     return [
         new AIMessage({
             content: '',
-            // DeepSeek-V4 thinking mode requires reasoning_content (possibly
-            // empty string) to be echoed back on every tool_call turn.
-            additional_kwargs:
-                reasoning != null ? { reasoning_content: reasoning } : {},
+            additional_kwargs: {
+                ...(message?.additional_kwargs ?? {}),
+                ...(reasoning != null ? { reasoning_content: reasoning } : {})
+            },
             tool_calls: steps.map((step) => ({
                 id: step.action.toolCallId,
                 name: step.action.tool,

@@ -44,81 +44,67 @@ export async function langchainMessageToGeminiMessage(
     plugin: ChatLunaPlugin<ClientConfig, Config>,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
-    const mappedMessages = await Promise.all(
-        messages.map(async (message) => {
-            const role = messageTypeToGeminiRole(message.getType())
-            const hasFunctionCall =
-                (message as AIMessage).tool_calls != null &&
-                (message as AIMessage).tool_calls.length > 0
-
-            if (
-                role === 'model' &&
-                Array.isArray(message.additional_kwargs['gemini_parts']) &&
-                message.additional_kwargs['gemini_parts'].length > 0
-            ) {
-                return {
-                    role,
-                    parts: message.additional_kwargs[
-                        'gemini_parts'
-                    ] as ChatPart[]
-                }
-            }
-
-            if (role === 'function' || hasFunctionCall) {
-                return await processFunctionMessage(
-                    plugin,
-                    message,
-                    // 如果使用 new api，我们应该去掉 id，，，
-                    plugin.config.useCamelCaseSystemInstruction
-                )
-            }
-
-            const result: ChatCompletionResponseMessage = {
-                role,
-                parts: []
-            }
-
-            const thoughtData: Record<string, any> =
-                message.additional_kwargs['thought_data'] ?? {}
-
-            result.parts =
-                typeof message.content === 'string'
-                    ? [{ text: message.content, ...thoughtData }]
-                    : await processGeminiContentParts(
-                          plugin,
-                          message.content,
-                          thoughtData
-                      )
-
-            if (message.additional_kwargs.images != null) {
-                logger.warn(
-                    'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
-                )
-            }
-
-            return result
-        })
-    )
-
-    const geminiMessages = mappedMessages.flatMap((item) =>
-        Array.isArray(item) ? item : [item]
-    )
-
     const result: ChatCompletionResponseMessage[] = []
-    for (const message of geminiMessages) {
-        const previous = result[result.length - 1]
-        if (
-            previous?.role === 'user' &&
-            message.role === 'user' &&
-            (previous.parts?.length ?? 0) > 0 &&
-            (message.parts?.length ?? 0) > 0 &&
-            previous.parts.every((part) => part['functionResponse'] != null) &&
-            message.parts.every((part) => part['functionResponse'] != null)
-        ) {
-            previous.parts.push(...message.parts)
+    for (let i = 0; i < messages.length; i++) {
+        const message = messages[i]
+        const role = messageTypeToGeminiRole(message.getType())
+        const hasFunctionCall =
+            (message as AIMessage).tool_calls != null &&
+            (message as AIMessage).tool_calls.length > 0
+
+        if (role === 'function') {
+            const parts: ChatPart[] = []
+            let j = i
+            while (j < messages.length) {
+                const msg = messages[j]
+                if (messageTypeToGeminiRole(msg.getType()) !== 'function') break
+                parts.push(
+                    ...(
+                        await processFunctionMessage(
+                            plugin,
+                            msg,
+                            plugin.config.useCamelCaseSystemInstruction
+                        )
+                    ).parts
+                )
+                j++
+            }
+            i = j - 1
+            result.push({ role: 'user', parts })
             continue
         }
-        result.push(message)
+
+        if (hasFunctionCall) {
+            result.push(
+                await processFunctionMessage(
+                    plugin,
+                    message,
+                    plugin.config.useCamelCaseSystemInstruction
+                )
+            )
+            continue
+        }
+
+        const item: ChatCompletionResponseMessage = { role, parts: [] }
+        const thoughtData: Record<string, any> =
+            message.additional_kwargs['thought_data'] ?? {}
+
+        item.parts =
+            typeof message.content === 'string'
+                ? [{ text: message.content, ...thoughtData }]
+                : await processGeminiContentParts(
+                      plugin,
+                      message.content,
+                      thoughtData
+                  )
+
+        if (message.additional_kwargs.images != null) {
+            logger.warn(
+                'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
+            )
+        }
+
+        result.push(item)
     }
 
     return result
@@ -182,23 +168,43 @@ async function processFunctionMessage(
     message: AIMessage | ToolMessage,
     removeId: boolean
 ): Promise<ChatCompletionResponseMessage> {
+    const thoughtData: Record<string, any> =
+        message.additional_kwargs['thought_data'] ?? {}
+
     if (message['tool_calls']) {
         message = message as AIMessage
         const toolCalls = message.tool_calls
+        const parts: ChatPart[] = []
+        for (const item of Object.values(thoughtData)) {
+            if (
+                typeof item === 'object' &&
+                item != null &&
+                (item['toolCall'] != null || item['toolResponse'] != null)
+            ) {
+                parts.push(item as ChatPart)
+            }
+        }
+
+        for (const toolCall of toolCalls) {
+            const functionCall: ChatFunctionCallingPart['functionCall'] = {
+                name: toolCall.name,
+                args: toolCall.args
+            }
+            if (!removeId || toolCall.id) {
+                functionCall.id = toolCall.id
+            }
+            const data = thoughtData[toolCall.id] ?? thoughtData
+            parts.push({
+                functionCall,
+                ...(typeof data.thoughtSignature === 'string'
+                    ? { thoughtSignature: data.thoughtSignature }
+                    : {})
+            })
+        }
+
         return {
             role: 'model',
-            parts: toolCalls.map((toolCall) => {
-                const functionCall: ChatFunctionCallingPart['functionCall'] = {
-                    name: toolCall.name,
-                    args: toolCall.args
-                }
-                if (!removeId) {
-                    functionCall.id = toolCall.id
-                }
-                return {
-                    functionCall
-                }
-            })
+            parts
         }
     }
 
@@ -218,7 +224,7 @@ async function processFunctionMessage(
                   response: parseJsonArgs(message.content as string)
               }
 
-    if (!removeId) {
+    if (!removeId || finalMessage.tool_call_id) {
         functionResponse.id = finalMessage.tool_call_id
     }
 
@@ -349,9 +355,7 @@ export function partAsTypeCheck<T extends ChatPart>(
 
 // 不支持 googleSearch / codeExecution / urlContext 的模型列表
 const CUSTOM_TOOLS_UNSUPPORTED_MODELS = [
-    'gemini-1.0',
     'gemini-2.0-flash-lite',
-    'gemini-1.5-flash',
     'gemini-2.0-flash-exp'
 ]
 
@@ -396,7 +400,6 @@ function isImageSearchSupported(model: string): boolean {
 
 /**
  * 将 googleSearch / codeExecution / urlContext 对应的工具项追加到 result 中。
- * - gemini-1 系列使用旧版 google_search_retrieval 格式
  * - 支持 imageSearch 的模型会在 google_search 中注入 searchTypes
  * - 其余模型使用标准的新版 google_search: {} 格式
  */
@@ -449,21 +452,12 @@ export function formatToolsToGeminiAITools(
     const functions = tools.map(formatToolToGeminiAITool)
     const result: Record<string, any>[] = []
 
-    const useCustomTools =
-        config.googleSearch || config.codeExecution || config.urlContext
-
-    // --- 处理 functionDeclarations（与自定义工具互斥）---
-    if (functions.length > 0 && !useCustomTools) {
-        result.push({ functionDeclarations: functions })
-    } else if (functions.length > 0 && useCustomTools) {
-        logger.warn('Use custom tools instead of tool calls.')
-    }
-
     // --- 处理内置工具（googleSearch / codeExecution / urlContext）---
     let { googleSearch, codeExecution, urlContext } = config
+    const useBuiltinTools = googleSearch || codeExecution || urlContext
 
     if (
-        useCustomTools &&
+        useBuiltinTools &&
         isCustomToolsUnsupported(model, config.imageGeneration)
     ) {
         logger.warn(
@@ -472,6 +466,10 @@ export function formatToolsToGeminiAITools(
         googleSearch = false
         codeExecution = false
         urlContext = false
+    }
+
+    if (functions.length > 0) {
+        result.push({ functionDeclarations: functions })
     }
 
     appendBuiltinTools(result, googleSearch, codeExecution, urlContext, model)
@@ -599,29 +597,27 @@ export function prepareModelConfig(
     }
 }
 
-export function createSafetySettings(model: string) {
-    const isNonGemini1 = !model.includes('gemini-1')
-
+export function createSafetySettings() {
     return [
         {
             category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         }
     ]
 }
@@ -680,10 +676,36 @@ export async function createChatGenerationParams(
     const systemInstructionKey = pluginConfig.useCamelCaseSystemInstruction
         ? 'systemInstruction'
         : 'system_instruction'
+    const tools =
+        params.tools != null ||
+        modelConfig.forceGoogleSearch ||
+        pluginConfig.googleSearch ||
+        pluginConfig.codeExecution ||
+        pluginConfig.urlContext
+            ? formatToolsToGeminiAITools(
+                  params.tools ?? [],
+                  {
+                      ...pluginConfig,
+                      googleSearch:
+                          pluginConfig.googleSearch ||
+                          modelConfig.forceGoogleSearch
+                  },
+                  modelConfig.model
+              )
+            : undefined
+    const hasFunctionDeclarations = tools?.some(
+        (tool) => tool.functionDeclarations != null
+    )
+    const hasBuiltinTools = tools?.some(
+        (tool) =>
+            tool.google_search != null ||
+            tool.code_execution != null ||
+            tool.urlContext != null
+    )
 
     return {
         contents: modelMessages,
-        safetySettings: createSafetySettings(modelConfig.model),
+        safetySettings: createSafetySettings(),
         generationConfig: createGenerationConfig(
             params,
             modelConfig,
@@ -691,22 +713,12 @@ export async function createChatGenerationParams(
         ),
         [systemInstructionKey]:
             systemInstruction != null ? systemInstruction : undefined,
-        tools:
-            params.tools != null ||
-            modelConfig.forceGoogleSearch ||
-            pluginConfig.googleSearch ||
-            pluginConfig.codeExecution ||
-            pluginConfig.urlContext
-                ? formatToolsToGeminiAITools(
-                      params.tools ?? [],
-                      {
-                          ...pluginConfig,
-                          googleSearch:
-                              pluginConfig.googleSearch ||
-                              modelConfig.forceGoogleSearch
-                      },
-                      modelConfig.model
-                  )
+        tools,
+        toolConfig:
+            modelConfig.model.includes('gemini-3') &&
+            hasFunctionDeclarations &&
+            hasBuiltinTools
+                ? { includeServerSideToolInvocations: true }
                 : undefined
     }
 }
@@ -734,13 +746,11 @@ export function createGeminiCapabilities(
     // - *-tts: text only
     // - *-image: image input only
     // - gemini-live native-audio: audio/video (no image/pdf)
-    // - gemini 1.5: image/audio/video (no pdf)
     // - newer flash/pro/flash-lite: image/audio/video/pdf
     const isTtsModel = modelNameLower.includes('-tts')
     const isImageOnlyModel = modelNameLower.includes('-image')
     const isLiveModel = modelNameLower.includes('gemini-live')
     const isNativeAudioLiveModel = modelNameLower.includes('native-audio')
-    const isGemini15Family = modelNameLower.startsWith('gemini-1.5-')
 
     const capabilities: ModelCapabilities[] = []
 
@@ -766,7 +776,7 @@ export function createGeminiCapabilities(
         ModelCapabilities.VideoInput
     )
 
-    if (!isGemini15Family && !isLiveModel) {
+    if (!isLiveModel) {
         capabilities.push(ModelCapabilities.FileInput)
     }
 
@@ -776,7 +786,9 @@ export function createGeminiCapabilities(
 export function shouldFilterOutGeminiModel(modelNameLower: string): boolean {
     return (
         modelNameLower.includes('-tts') ||
-        modelNameLower.includes('gemini-live-')
+        modelNameLower.includes('gemini-live-') ||
+        (modelNameLower.startsWith('gemini-') &&
+            Number(modelNameLower.split('-')[1]) < 2)
     )
 }
 

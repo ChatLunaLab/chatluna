@@ -375,15 +375,18 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
     private _hasResponse(message?: AIMessage | AIMessageChunk): boolean {
         const content = message?.content
+        const kwargs = message?.additional_kwargs
+        const hasContent =
+            typeof content === 'string'
+                ? content.trim().length > 0
+                : Array.isArray(content) && content.length > 0
 
         return (
-            (typeof content === 'string'
-                ? content.trim().length > 0
-                : Array.isArray(content) && content.length > 0) ||
+            hasContent ||
             this._hasToolCallChunk(message) ||
-            ((message?.additional_kwargs?.tool_calls as unknown[] | undefined)
-                ?.length ?? 0) > 0 ||
-            message?.additional_kwargs?.function_call != null
+            ((kwargs?.tool_calls as unknown[] | undefined)?.length ?? 0) > 0 ||
+            kwargs?.function_call != null ||
+            kwargs?.thought_data != null
         )
     }
 

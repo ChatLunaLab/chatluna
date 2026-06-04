@@ -426,13 +426,8 @@ export class GeminiRequester
                         : chunk
 
                 const usage = getUsage(transformValue)
-                if (usage != null) {
-                    controller.enqueue({
-                        usage
-                    })
-                }
-
                 if (!transformValue?.candidates) {
+                    if (usage != null) controller.enqueue({ usage })
                     return
                 }
 
@@ -445,6 +440,8 @@ export class GeminiRequester
                         currentGroundingIndex
                     )
                 }
+
+                if (usage != null) controller.enqueue({ usage })
             }
         })
     }
@@ -488,8 +485,6 @@ export class GeminiRequester
         let errorCount = 0
 
         let functionIndex = 0
-        let hasGeneration = false
-        let pendingUsage: ReturnType<typeof createUsageMetadata> | undefined
 
         for await (const chunk of iterable) {
             let parsedChunk: ChatUsageMetadataPart | undefined
@@ -511,22 +506,18 @@ export class GeminiRequester
                     reasoningTokens: parsedChunk.usage.reasoningTokens
                 })
 
-                if (hasGeneration) {
-                    yield {
-                        type: 'generation',
-                        generation: new ChatGenerationChunk({
-                            generationInfo: {
-                                usage_metadata: usageMetadata
-                            },
-                            message: new AIMessageChunk({
-                                content: '',
-                                usage_metadata: usageMetadata
-                            }),
-                            text: ''
-                        })
-                    }
-                } else {
-                    pendingUsage = usageMetadata
+                yield {
+                    type: 'generation',
+                    generation: new ChatGenerationChunk({
+                        generationInfo: {
+                            usage_metadata: usageMetadata
+                        },
+                        message: new AIMessageChunk({
+                            content: '',
+                            usage_metadata: usageMetadata
+                        }),
+                        text: ''
+                    })
                 }
                 continue
             }
@@ -546,27 +537,22 @@ export class GeminiRequester
                     continue
                 }
 
-                if (updatedContent || updatedToolCalling) {
-                    const usageMetadata = pendingUsage
+                if (
+                    updatedContent ||
+                    updatedToolCalling ||
+                    chunk['thoughtSignature'] != null
+                ) {
                     const messageChunk = this._createMessageChunk(
                         updatedContent,
                         updatedToolCalling,
-                        chunk,
-                        usageMetadata
+                        chunk
                     )
-                    pendingUsage = undefined
 
                     const generationChunk = new ChatGenerationChunk({
-                        generationInfo: usageMetadata
-                            ? {
-                                  usage_metadata: usageMetadata
-                              }
-                            : undefined,
                         message: messageChunk,
                         text: getMessageContent(messageChunk.content) ?? ''
                     })
 
-                    hasGeneration = true
                     yield { type: 'generation', generation: generationChunk }
                 }
 
@@ -689,8 +675,7 @@ export class GeminiRequester
     private _createMessageChunk(
         content: MessageContent,
         functionCall: ToolCallChunk | undefined,
-        chunk: ChatPart,
-        usageMetadata?: ReturnType<typeof createUsageMetadata>
+        chunk: ChatPart
     ) {
         const imagePart =
             this.ctx.chatluna_storage != null
@@ -701,13 +686,24 @@ export class GeminiRequester
                   )
         const messageChunk = new AIMessageChunk({
             content: content ?? '',
-            tool_call_chunks: [functionCall].filter(Boolean),
-            usage_metadata: usageMetadata
+            tool_call_chunks: [functionCall].filter(Boolean)
         })
-        const part =
-            chunk['functionCall'] || chunk['text'] || chunk['inlineData']
-                ? [chunk]
-                : undefined
+        const thoughtData =
+            chunk['thoughtSignature'] == null
+                ? undefined
+                : chunk['functionCall']?.id != null
+                  ? {
+                        [chunk['functionCall'].id]: {
+                            thoughtSignature: chunk['thoughtSignature']
+                        }
+                    }
+                  : {
+                        thoughtSignature: chunk['thoughtSignature'],
+                        toolCall: chunk['toolCall'],
+                        toolResponse: chunk['toolResponse'],
+                        executableCode: chunk['executableCode'],
+                        codeExecutionResult: chunk['codeExecutionResult']
+                    }
 
         messageChunk.additional_kwargs = {
             images: imagePart
@@ -715,10 +711,7 @@ export class GeminiRequester
                       `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data}`
                   ]
                 : undefined,
-            gemini_parts: part,
-            thought_data: {
-                thoughtSignature: chunk['thoughtSignature']
-            }
+            thought_data: thoughtData
         }
 
         return messageChunk

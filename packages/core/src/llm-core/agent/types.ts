@@ -1,5 +1,6 @@
 import type {
     AIMessage,
+    BaseMessage,
     HumanMessage,
     MessageContent,
     MessageContentImageUrl,
@@ -180,6 +181,7 @@ export type AgentAction = {
     log: string
     content?: MessageContent
     reasoningContent?: string
+    messageLog?: BaseMessage[]
 }
 
 export type AgentFinish = {
