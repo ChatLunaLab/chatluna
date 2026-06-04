@@ -330,7 +330,7 @@ export class GeminiRequester
         )
 
         if (finalChunk != null) {
-            result = result.concat(finalChunk)
+            result = result != null ? result.concat(finalChunk) : finalChunk
         }
 
         if (result == null) {
@@ -488,6 +488,8 @@ export class GeminiRequester
         let errorCount = 0
 
         let functionIndex = 0
+        let hasGeneration = false
+        let pendingUsage: ReturnType<typeof createUsageMetadata> | undefined
 
         for await (const chunk of iterable) {
             let parsedChunk: ChatUsageMetadataPart | undefined
@@ -497,6 +499,35 @@ export class GeminiRequester
                     (chunk) => chunk['usage'] != null
                 ))
             ) {
+                const usageMetadata = createUsageMetadata({
+                    inputTokens: parsedChunk.usage.promptTokens,
+                    outputTokens: parsedChunk.usage.completionTokens,
+                    totalTokens: parsedChunk.usage.totalTokens,
+                    inputImageTokens: parsedChunk.usage.inputImageTokens,
+                    outputImageTokens: parsedChunk.usage.outputImageTokens,
+                    inputAudioTokens: parsedChunk.usage.inputAudioTokens,
+                    outputAudioTokens: parsedChunk.usage.outputAudioTokens,
+                    cacheReadTokens: parsedChunk.usage.cacheReadTokens,
+                    reasoningTokens: parsedChunk.usage.reasoningTokens
+                })
+
+                if (hasGeneration) {
+                    yield {
+                        type: 'generation',
+                        generation: new ChatGenerationChunk({
+                            generationInfo: {
+                                usage_metadata: usageMetadata
+                            },
+                            message: new AIMessageChunk({
+                                content: '',
+                                usage_metadata: usageMetadata
+                            }),
+                            text: ''
+                        })
+                    }
+                } else {
+                    pendingUsage = usageMetadata
+                }
                 continue
             }
 
@@ -515,17 +546,26 @@ export class GeminiRequester
                 }
 
                 if (updatedContent || updatedToolCalling) {
+                    const usageMetadata = pendingUsage
                     const messageChunk = this._createMessageChunk(
                         updatedContent,
                         updatedToolCalling,
-                        chunk
+                        chunk,
+                        usageMetadata
                     )
+                    pendingUsage = undefined
 
                     const generationChunk = new ChatGenerationChunk({
+                        generationInfo: usageMetadata
+                            ? {
+                                  usage_metadata: usageMetadata
+                              }
+                            : undefined,
                         message: messageChunk,
                         text: getMessageContent(messageChunk.content) ?? ''
                     })
 
+                    hasGeneration = true
                     yield { type: 'generation', generation: generationChunk }
                 }
 
@@ -648,7 +688,8 @@ export class GeminiRequester
     private _createMessageChunk(
         content: MessageContent,
         functionCall: ToolCallChunk | undefined,
-        chunk: ChatPart
+        chunk: ChatPart,
+        usageMetadata?: ReturnType<typeof createUsageMetadata>
     ) {
         const imagePart =
             this.ctx.chatluna_storage != null
@@ -659,7 +700,8 @@ export class GeminiRequester
                   )
         const messageChunk = new AIMessageChunk({
             content: content ?? '',
-            tool_call_chunks: [functionCall].filter(Boolean)
+            tool_call_chunks: [functionCall].filter(Boolean),
+            usage_metadata: usageMetadata
         })
         const part =
             chunk['functionCall'] || chunk['text'] || chunk['inlineData']

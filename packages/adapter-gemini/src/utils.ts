@@ -58,7 +58,9 @@ export async function langchainMessageToGeminiMessage(
             ) {
                 return {
                     role,
-                    parts: message.additional_kwargs['gemini_parts'] as ChatPart[]
+                    parts: message.additional_kwargs[
+                        'gemini_parts'
+                    ] as ChatPart[]
                 }
             }
 
@@ -108,8 +110,8 @@ export async function langchainMessageToGeminiMessage(
         if (
             previous?.role === 'user' &&
             message.role === 'user' &&
-            previous.parts.length > 0 &&
-            message.parts.length > 0 &&
+            (previous.parts?.length ?? 0) > 0 &&
+            (message.parts?.length ?? 0) > 0 &&
             previous.parts.every((part) => part['functionResponse'] != null) &&
             message.parts.every((part) => part['functionResponse'] != null)
         ) {
@@ -182,16 +184,6 @@ async function processFunctionMessage(
 ): Promise<ChatCompletionResponseMessage> {
     if (message['tool_calls']) {
         message = message as AIMessage
-        if (
-            Array.isArray(message.additional_kwargs['gemini_parts']) &&
-            message.additional_kwargs['gemini_parts'].length > 0
-        ) {
-            return {
-                role: 'model',
-                parts: message.additional_kwargs['gemini_parts'] as ChatPart[]
-            }
-        }
-
         const toolCalls = message.tool_calls
         return {
             role: 'model',
