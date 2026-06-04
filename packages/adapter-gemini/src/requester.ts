@@ -324,20 +324,20 @@ export class GeminiRequester
             }
         }
 
+        if (result == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error('empty gemini response')
+            )
+        }
+
         const finalChunk = this._handleFinalContent(
             reasoningContent,
             groundingContent.value
         )
 
         if (finalChunk != null) {
-            result = result != null ? result.concat(finalChunk) : finalChunk
-        }
-
-        if (result == null) {
-            throw new ChatLunaError(
-                ChatLunaErrorCode.API_REQUEST_FAILED,
-                new Error('empty gemini response')
-            )
+            result = result.concat(finalChunk)
         }
 
         return result
@@ -532,9 +532,10 @@ export class GeminiRequester
             }
 
             try {
+                const part = Object.assign({}, chunk)
                 const { updatedContent, updatedReasoning, updatedToolCalling } =
                     await this._processChunk(
-                        chunk,
+                        part,
                         reasoningContent,
                         functionIndex
                     )
