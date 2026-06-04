@@ -61,22 +61,17 @@ export class ReadFilesTool extends StructuredTool {
                     }
                     return arg
                 },
-                z.union([
-                    z.object({
-                        url: z.string().url()
-                    }),
-                    z
-                        .array(
-                            z.object({
-                                url: z.string().url()
-                            })
-                        )
-                        .min(1)
-                        .max(10)
-                ])
+                z
+                    .array(
+                        z.object({
+                            url: z.string().url()
+                        })
+                    )
+                    .min(1)
+                    .max(10)
             )
             .describe(
-                'One file or a list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
+                'A list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
             )
     })
 
@@ -98,7 +93,7 @@ export class ReadFilesTool extends StructuredTool {
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
-        const files = Array.isArray(input.files) ? input.files : [input.files]
+        const files = input.files
         const model = runConfig?.configurable?.model
         const conversationId = runConfig?.configurable?.conversationId
         const fileConfig = model?.fileHandlingConfig
