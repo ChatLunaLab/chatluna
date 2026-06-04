@@ -88,15 +88,12 @@ export async function langchainMessageToGeminiMessage(
         const item: ChatCompletionResponseMessage = { role, parts: [] }
         const thoughtData: Record<string, any> =
             message.additional_kwargs['thought_data'] ?? {}
-
-        item.parts =
+        const parts =
             typeof message.content === 'string'
-                ? [{ text: message.content, ...thoughtData }]
-                : await processGeminiContentParts(
-                      plugin,
-                      message.content,
-                      thoughtData
-                  )
+                ? [{ text: message.content }]
+                : await processGeminiContentParts(plugin, message.content)
+
+        item.parts = [...getContextParts(thoughtData), ...parts]
 
         if (message.additional_kwargs.images != null) {
             logger.warn(
@@ -163,6 +160,27 @@ function parseJsonArgs(args: string) {
     }
 }
 
+function isContextPart(part: any): part is ChatPart {
+    return (
+        typeof part === 'object' &&
+        part != null &&
+        (part['toolCall'] != null ||
+            part['toolResponse'] != null ||
+            part['executableCode'] != null ||
+            part['codeExecutionResult'] != null)
+    )
+}
+
+function getContextParts(data: Record<string, any>, id?: string) {
+    const raw =
+        id != null
+            ? data[id]
+            : (data['parts'] ?? [data, ...Object.values(data)])
+    if (raw == null) return []
+
+    return (Array.isArray(raw) ? raw : [raw]).filter(isContextPart)
+}
+
 async function processFunctionMessage(
     plugin: ChatLunaPlugin<ClientConfig, Config>,
     message: AIMessage | ToolMessage,
@@ -176,19 +194,10 @@ async function processFunctionMessage(
         const toolCalls = message.tool_calls
         const parts: ChatPart[] = []
 
-        // tool context: preserve built-in tool context parts for Gemini 3.
-        for (const item of Object.values(thoughtData)) {
-            if (
-                typeof item === 'object' &&
-                item != null &&
-                (item['toolCall'] != null || item['toolResponse'] != null)
-            ) {
-                parts.push(item as ChatPart)
-            }
-        }
-
-        // tool calls: reattach custom tool calls with their thought signatures.
         for (const toolCall of toolCalls) {
+            // tool context: replay context tied to this tool call first.
+            parts.push(...getContextParts(thoughtData, toolCall.id))
+
             const functionCall: ChatFunctionCallingPart['functionCall'] = {
                 name: toolCall.name,
                 args: toolCall.args
@@ -197,11 +206,16 @@ async function processFunctionMessage(
                 functionCall.id = toolCall.id
             }
             const data = thoughtData[toolCall.id] ?? thoughtData
+            const sig = Array.isArray(data)
+                ? data.find(
+                      (item) => typeof item?.thoughtSignature === 'string'
+                  )?.thoughtSignature
+                : data.thoughtSignature
+
+            // tool calls: reattach custom tool calls with their thought signatures.
             parts.push({
                 functionCall,
-                ...(typeof data.thoughtSignature === 'string'
-                    ? { thoughtSignature: data.thoughtSignature }
-                    : {})
+                ...(typeof sig === 'string' ? { thoughtSignature: sig } : {})
             })
         }
 
@@ -324,13 +338,12 @@ async function processGeminiFileLikeContent(
 
 async function processGeminiContentParts(
     plugin: ChatLunaPlugin<ClientConfig, Config>,
-    content: MessageContentComplex[],
-    thoughtData: Record<string, any> = {}
+    content: MessageContentComplex[]
 ) {
     const mappedParts = await Promise.all(
         content.map(async (part) => {
             if (isMessageContentText(part)) {
-                return { text: part.text, ...thoughtData }
+                return { text: part.text }
             }
             if (isMessageContentImageUrl(part)) {
                 return await processGeminiImageContent(plugin, part)
@@ -790,11 +803,12 @@ export function createGeminiCapabilities(
 }
 
 export function shouldFilterOutGeminiModel(modelNameLower: string): boolean {
+    const name = modelNameLower.slice(modelNameLower.lastIndexOf('/') + 1)
+
     return (
-        modelNameLower.includes('-tts') ||
-        modelNameLower.includes('gemini-live-') ||
-        (modelNameLower.startsWith('gemini-') &&
-            Number(modelNameLower.split('-')[1]) < 2)
+        name.includes('-tts') ||
+        name.includes('gemini-live-') ||
+        (name.startsWith('gemini-') && Number(name.split('-')[1]) < 2)
     )
 }
 

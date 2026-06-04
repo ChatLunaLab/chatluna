@@ -699,13 +699,23 @@ export class GeminiRequester
                     }
                 }
             } else {
-                thoughtData = {
+                const part = {
                     thoughtSignature: sig,
                     toolCall: chunk['toolCall'],
                     toolResponse: chunk['toolResponse'],
                     executableCode: chunk['executableCode'],
                     codeExecutionResult: chunk['codeExecutionResult']
                 }
+                const contextId =
+                    chunk['toolCall']?.id ??
+                    chunk['toolResponse']?.id ??
+                    chunk['executableCode']?.id ??
+                    chunk['codeExecutionResult']?.id
+
+                thoughtData =
+                    contextId != null
+                        ? { [contextId]: [part] }
+                        : { parts: [part] }
             }
         }
 
