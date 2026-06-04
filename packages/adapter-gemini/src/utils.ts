@@ -175,6 +175,8 @@ async function processFunctionMessage(
         message = message as AIMessage
         const toolCalls = message.tool_calls
         const parts: ChatPart[] = []
+
+        // tool context: preserve built-in tool context parts for Gemini 3.
         for (const item of Object.values(thoughtData)) {
             if (
                 typeof item === 'object' &&
@@ -185,6 +187,7 @@ async function processFunctionMessage(
             }
         }
 
+        // tool calls: reattach custom tool calls with their thought signatures.
         for (const toolCall of toolCalls) {
             const functionCall: ChatFunctionCallingPart['functionCall'] = {
                 name: toolCall.name,
@@ -454,10 +457,9 @@ export function formatToolsToGeminiAITools(
 
     // --- 处理内置工具（googleSearch / codeExecution / urlContext）---
     let { googleSearch, codeExecution, urlContext } = config
-    const useBuiltinTools = googleSearch || codeExecution || urlContext
 
     if (
-        useBuiltinTools &&
+        (googleSearch || codeExecution || urlContext) &&
         isCustomToolsUnsupported(model, config.imageGeneration)
     ) {
         logger.warn(
@@ -468,8 +470,17 @@ export function formatToolsToGeminiAITools(
         urlContext = false
     }
 
-    if (functions.length > 0) {
+    const useBuiltinTools = googleSearch || codeExecution || urlContext
+
+    if (
+        functions.length > 0 &&
+        (!useBuiltinTools || model.includes('gemini-3'))
+    ) {
         result.push({ functionDeclarations: functions })
+    } else if (functions.length > 0) {
+        logger.warn(
+            `The model ${model} does not support combining built-in tools and function calling. Function calling will be disabled.`
+        )
     }
 
     appendBuiltinTools(result, googleSearch, codeExecution, urlContext, model)
@@ -693,9 +704,6 @@ export async function createChatGenerationParams(
                   modelConfig.model
               )
             : undefined
-    const hasFunctionDeclarations = tools?.some(
-        (tool) => tool.functionDeclarations != null
-    )
     const hasBuiltinTools = tools?.some(
         (tool) =>
             tool.google_search != null ||
@@ -715,9 +723,7 @@ export async function createChatGenerationParams(
             systemInstruction != null ? systemInstruction : undefined,
         tools,
         toolConfig:
-            modelConfig.model.includes('gemini-3') &&
-            hasFunctionDeclarations &&
-            hasBuiltinTools
+            modelConfig.model.includes('gemini-3') && hasBuiltinTools
                 ? { includeServerSideToolInvocations: true }
                 : undefined
     }

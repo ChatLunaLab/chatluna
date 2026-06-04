@@ -688,22 +688,26 @@ export class GeminiRequester
             content: content ?? '',
             tool_call_chunks: [functionCall].filter(Boolean)
         })
-        const thoughtData =
-            chunk['thoughtSignature'] == null
-                ? undefined
-                : chunk['functionCall']?.id != null
-                  ? {
-                        [chunk['functionCall'].id]: {
-                            thoughtSignature: chunk['thoughtSignature']
-                        }
+        const sig = chunk['thoughtSignature']
+        let thoughtData: Record<string, unknown> | undefined
+        if (sig != null) {
+            const id = chunk['functionCall']?.id
+            if (id != null) {
+                thoughtData = {
+                    [id]: {
+                        thoughtSignature: sig
                     }
-                  : {
-                        thoughtSignature: chunk['thoughtSignature'],
-                        toolCall: chunk['toolCall'],
-                        toolResponse: chunk['toolResponse'],
-                        executableCode: chunk['executableCode'],
-                        codeExecutionResult: chunk['codeExecutionResult']
-                    }
+                }
+            } else {
+                thoughtData = {
+                    thoughtSignature: sig,
+                    toolCall: chunk['toolCall'],
+                    toolResponse: chunk['toolResponse'],
+                    executableCode: chunk['executableCode'],
+                    codeExecutionResult: chunk['codeExecutionResult']
+                }
+            }
+        }
 
         messageChunk.additional_kwargs = {
             images: imagePart
