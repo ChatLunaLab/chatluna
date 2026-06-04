@@ -51,6 +51,17 @@ export async function langchainMessageToGeminiMessage(
                 (message as AIMessage).tool_calls != null &&
                 (message as AIMessage).tool_calls.length > 0
 
+            if (
+                role === 'model' &&
+                Array.isArray(message.additional_kwargs['gemini_parts']) &&
+                message.additional_kwargs['gemini_parts'].length > 0
+            ) {
+                return {
+                    role,
+                    parts: message.additional_kwargs['gemini_parts'] as ChatPart[]
+                }
+            }
+
             if (role === 'function' || hasFunctionCall) {
                 return await processFunctionMessage(
                     plugin,
@@ -87,9 +98,28 @@ export async function langchainMessageToGeminiMessage(
         })
     )
 
-    return mappedMessages.flatMap((item) =>
+    const geminiMessages = mappedMessages.flatMap((item) =>
         Array.isArray(item) ? item : [item]
     )
+
+    const result: ChatCompletionResponseMessage[] = []
+    for (const message of geminiMessages) {
+        const previous = result[result.length - 1]
+        if (
+            previous?.role === 'user' &&
+            message.role === 'user' &&
+            previous.parts.length > 0 &&
+            message.parts.length > 0 &&
+            previous.parts.every((part) => part['functionResponse'] != null) &&
+            message.parts.every((part) => part['functionResponse'] != null)
+        ) {
+            previous.parts.push(...message.parts)
+            continue
+        }
+        result.push(message)
+    }
+
+    return result
 }
 
 export function extractSystemMessages(
@@ -150,11 +180,18 @@ async function processFunctionMessage(
     message: AIMessage | ToolMessage,
     removeId: boolean
 ): Promise<ChatCompletionResponseMessage> {
-    const thoughtData: Record<string, any> =
-        message.additional_kwargs['thought_data'] ?? {}
-
     if (message['tool_calls']) {
         message = message as AIMessage
+        if (
+            Array.isArray(message.additional_kwargs['gemini_parts']) &&
+            message.additional_kwargs['gemini_parts'].length > 0
+        ) {
+            return {
+                role: 'model',
+                parts: message.additional_kwargs['gemini_parts'] as ChatPart[]
+            }
+        }
+
         const toolCalls = message.tool_calls
         return {
             role: 'model',
@@ -167,8 +204,7 @@ async function processFunctionMessage(
                     functionCall.id = toolCall.id
                 }
                 return {
-                    functionCall,
-                    ...thoughtData
+                    functionCall
                 }
             })
         }

@@ -333,6 +333,13 @@ export class GeminiRequester
             result = result.concat(finalChunk)
         }
 
+        if (result == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error('empty gemini response')
+            )
+        }
+
         return result
     }
 
@@ -490,30 +497,7 @@ export class GeminiRequester
                     (chunk) => chunk['usage'] != null
                 ))
             ) {
-                const usageMetadata = createUsageMetadata({
-                    inputTokens: parsedChunk.usage.promptTokens,
-                    outputTokens: parsedChunk.usage.completionTokens,
-                    totalTokens: parsedChunk.usage.totalTokens,
-                    inputImageTokens: parsedChunk.usage.inputImageTokens,
-                    outputImageTokens: parsedChunk.usage.outputImageTokens,
-                    inputAudioTokens: parsedChunk.usage.inputAudioTokens,
-                    outputAudioTokens: parsedChunk.usage.outputAudioTokens,
-                    cacheReadTokens: parsedChunk.usage.cacheReadTokens,
-                    reasoningTokens: parsedChunk.usage.reasoningTokens
-                })
-
-                const generationChunk = new ChatGenerationChunk({
-                    generationInfo: {
-                        usage_metadata: usageMetadata
-                    },
-                    message: new AIMessageChunk({
-                        content: '',
-                        usage_metadata: usageMetadata
-                    }),
-                    text: ''
-                })
-
-                yield { type: 'generation', generation: generationChunk }
+                continue
             }
 
             try {
@@ -677,6 +661,10 @@ export class GeminiRequester
             content: content ?? '',
             tool_call_chunks: [functionCall].filter(Boolean)
         })
+        const part =
+            chunk['functionCall'] || chunk['text'] || chunk['inlineData']
+                ? [chunk]
+                : undefined
 
         messageChunk.additional_kwargs = {
             images: imagePart
@@ -684,6 +672,7 @@ export class GeminiRequester
                       `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data}`
                   ]
                 : undefined,
+            gemini_parts: part,
             thought_data: {
                 thoughtSignature: chunk['thoughtSignature']
             }
