@@ -172,10 +172,8 @@ function isContextPart(part: any): part is ChatPart {
 }
 
 function getContextParts(data: Record<string, any>, id?: string) {
-    const raw =
-        id != null
-            ? data[id]
-            : (data['parts'] ?? [data, ...Object.values(data)])
+    const parts = data['parts'] ?? [data, ...Object.values(data)]
+    const raw = id != null ? data[id] : parts
     if (raw == null) return []
 
     return (Array.isArray(raw) ? raw : [raw]).filter(isContextPart)
