@@ -45,38 +45,25 @@ export class ReadFilesTool extends StructuredTool {
         files: z
             .preprocess(
                 (arg: unknown) => {
-                    if (typeof arg === 'string') {
-                        const base = JSON.parse(arg)
-                        if (
-                            typeof base === 'object' &&
-                            typeof base['files'] === 'string'
-                        ) {
-                            try {
-                                base['files'] = JSON.parse(base['files'])
-                                return base
-                            } catch {
-                                return base
-                            }
-                        }
-                    }
-                    return arg
+                    const value =
+                        typeof arg === 'string' ? JSON.parse(arg) : arg
+                    return typeof value === 'object' &&
+                        value != null &&
+                        !Array.isArray(value)
+                        ? [value]
+                        : value
                 },
-                z.union([
-                    z.object({
-                        url: z.string().url()
-                    }),
-                    z
-                        .array(
-                            z.object({
-                                url: z.string().url()
-                            })
-                        )
-                        .min(1)
-                        .max(10)
-                ])
+                z
+                    .array(
+                        z.object({
+                            url: z.string().url()
+                        })
+                    )
+                    .min(1)
+                    .max(10)
             )
             .describe(
-                'One file or a list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
+                'A list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
             )
     })
 
@@ -98,7 +85,7 @@ export class ReadFilesTool extends StructuredTool {
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
-        const files = Array.isArray(input.files) ? input.files : [input.files]
+        const files = input.files
         const model = runConfig?.configurable?.model
         const conversationId = runConfig?.configurable?.conversationId
         const fileConfig = model?.fileHandlingConfig
