@@ -17,7 +17,6 @@ $inner:
       groundingContentDisplay: 'Enable display of search results'
       imageGeneration: 'Enable image generation (only for `gemini-*-image-*` and `gemini-2.5-flash-image-preview` model)'
       imageModelSearch: 'Enable search for image generation models. When enabled, supported image models will generate additional variants with a `-search` suffix (e.g. `gemini-3-pro-image-search`).'
-      searchThreshold: 'Search confidence [threshold](https://ai.google.dev/gemini-api/docs/grounding?lang=rest#dynamic-retrieval) (0-1). Lower: more likely to use Google search'
       includeThoughts: 'Enable retrieval of model thoughts'
       codeExecution: 'Enable code execution tool'
       urlContext: 'Enable URL context retrieval tool'

@@ -201,9 +201,12 @@ export function formatTaskDetail(
 }
 
 function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
+    const message = steps[0]?.action.messageLog?.[0]
+
     return [
         new AIMessage({
             content: '',
+            additional_kwargs: message?.additional_kwargs ?? {},
             tool_calls: steps.map((step) => ({
                 id: step.action.toolCallId,
                 name: step.action.tool,
