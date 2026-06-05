@@ -605,9 +605,13 @@ export class GeminiRequester
             } else {
                 const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
 
+                const hash = await hashString(imagePart.inlineData.data, 8)
+                const type = (
+                    imagePart.inlineData.mimeType ?? 'image/png'
+                ).split('/')[1]
                 const file = await storageService.createTempFile(
                     buffer,
-                    `${await hashString(imagePart.inlineData.data, 8)}.${(imagePart.inlineData.mimeType ?? 'image/png').split('/')[1]}`
+                    `${hash}.${type}`
                 )
 
                 messagePart.text = '[image]'
