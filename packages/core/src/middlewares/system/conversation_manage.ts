@@ -800,7 +800,7 @@ function requireConversation(
 }
 
 function parseDeleteSeqs(input?: string) {
-    if (input == null || (!input.includes(',') && !input.includes('..'))) {
+    if (input == null || input.length === 0) {
         return
     }
 
@@ -825,10 +825,10 @@ function parseDeleteSeqs(input?: string) {
 
         const min = Math.min(start, end)
         const max = Math.max(start, end)
-        if (seqs.size + max - min + 1 > 100) return null
 
         for (let seq = min; seq <= max; seq += 1) {
             seqs.add(seq)
+            if (seqs.size > 100) return null
         }
     }
 
