@@ -70,7 +70,10 @@ async function executeTools(
             if (tool == null) {
                 return {
                     action,
-                    observation: `${action.tool} is not a valid tool, try another one.`
+                    observation:
+                        `${action.tool} is not a valid tool. Try another tool. ` +
+                        'If this happens repeatedly, stop the task and tell ' +
+                        'the user you cannot call these tools right now.'
                 } as AgentStep
             }
 
@@ -84,7 +87,13 @@ async function executeTools(
 
                 return {
                     action,
-                    observation: `Tool '${action.tool}' is not allowed for the current agent. Available tools: ${allowed.join(', ')}`
+                    observation:
+                        `Tool '${action.tool}' is not allowed for the ` +
+                        `current agent. Available tools: ${allowed.join(', ')}. ` +
+                        'Try another tool, and test whether it can be ' +
+                        'called first. If this happens repeatedly, stop ' +
+                        'the task and tell the user you cannot call these ' +
+                        'tools right now.'
                 } as AgentStep
             }
 
@@ -95,7 +104,12 @@ async function executeTools(
             if (callMask && !applyToolMask(action.tool, callMask)) {
                 return {
                     action,
-                    observation: `You do not have permission to call tool '${action.tool}'. Try another tool.`
+                    observation:
+                        `You do not have permission to call tool ` +
+                        `'${action.tool}'. Try another tool, and test ` +
+                        'whether it can be called first. If this happens ' +
+                        'repeatedly, stop the task and tell the user you ' +
+                        'cannot call these tools right now.'
                 } as AgentStep
             }
 
