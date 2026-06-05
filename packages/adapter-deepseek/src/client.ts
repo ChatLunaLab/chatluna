@@ -61,7 +61,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                 models.push(
                     `${model}-high-thinking`,
                     `${model}-max-thinking`,
-                    `${model}-instance`
+                    `${model}-instant`
                 )
             }
 
@@ -115,7 +115,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                 requester: this._requester,
                 model,
                 maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
+                    (info.maxTokens || 1_000_000) * this._config.maxContextRatio
                 ),
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
