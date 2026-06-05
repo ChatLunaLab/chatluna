@@ -862,9 +862,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     break
                 }
                 totalTokens += baselineTokens
-                for (let j = 0; j <= i; j++) {
-                    selectedRounds.unshift(conversationRounds[j])
-                }
+                selectedRounds.unshift(...conversationRounds.slice(0, i + 1))
                 break
             }
 
