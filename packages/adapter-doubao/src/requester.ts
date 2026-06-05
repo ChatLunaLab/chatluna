@@ -69,7 +69,12 @@ export class DoubaoRequester
             { ...params, model },
             this._plugin,
             false,
-            false
+            [
+                'doubao-seed-1-6',
+                'vision',
+                'doubao-seed-1-8',
+                'doubao-seed-2-0'
+            ].some((pattern) => model.includes(pattern))
         )) as Awaited<ReturnType<typeof buildChatCompletionParams>> & {
             thinking?: {
                 type: 'enabled' | 'disabled'
