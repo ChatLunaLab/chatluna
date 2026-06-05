@@ -45,29 +45,8 @@ export class ReadFilesTool extends StructuredTool {
         files: z
             .preprocess(
                 (arg: unknown) => {
-                    let value = arg
-                    if (typeof arg === 'string') {
-                        const base = JSON.parse(arg)
-                        if (
-                            typeof base === 'object' &&
-                            base != null &&
-                            typeof base['files'] === 'string'
-                        ) {
-                            try {
-                                value = JSON.parse(base['files'])
-                            } catch {
-                                value = base['files']
-                            }
-                        } else if (
-                            typeof base === 'object' &&
-                            base != null &&
-                            base['files'] != null
-                        ) {
-                            value = base['files']
-                        } else {
-                            value = base
-                        }
-                    }
+                    const value =
+                        typeof arg === 'string' ? JSON.parse(arg) : arg
                     return typeof value === 'object' &&
                         value != null &&
                         !Array.isArray(value)
