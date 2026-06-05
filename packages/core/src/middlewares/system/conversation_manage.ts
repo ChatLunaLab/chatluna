@@ -270,69 +270,56 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     middleware('conversation_delete', async (session, context) => {
         try {
-            const { presetLane, includeArchived, allPresetLanes } =
-                getManageOptions(context)
-            const target =
-                context.options.conversation_manage?.targetConversation
+            const opts = getManageOptions(context)
             const conversationId = resolvedConversationId(context)
 
             if (conversationId == null) {
-                const parsed = parseDeleteTarget(target)
+                const seqs = parseDeleteSeqs(
+                    context.options.conversation_manage?.targetConversation
+                )
 
-                if (parsed.type === 'invalid') {
+                if (seqs === null) {
                     context.message = session.text(
                         'chatluna.conversation.messages.target_not_found'
                     )
                     return ChainMiddlewareRunStatus.STOP
                 }
 
-                if (parsed.type === 'seqs') {
+                if (seqs != null) {
                     const entries =
                         await ctx.chatluna.conversation.listConversationEntries(
                             session,
-                            {
-                                presetLane,
-                                includeArchived,
-                                allPresetLanes
-                            }
+                            opts
                         )
-                    const seqSet = new Set(parsed.seqs)
                     const targets = entries.filter((item) =>
-                        seqSet.has(item.displaySeq)
+                        seqs.includes(item.displaySeq)
                     )
 
-                    if (targets.length !== parsed.seqs.length) {
+                    if (targets.length !== seqs.length) {
                         context.message = session.text(
                             'chatluna.conversation.messages.target_not_found'
                         )
                         return ChainMiddlewareRunStatus.STOP
                     }
 
-                    const deleted: ConversationRecord[] = []
+                    const deleted: string[] = []
                     for (const item of targets) {
-                        deleted.push(
+                        const conversation =
                             await ctx.chatluna.conversation.deleteConversation(
                                 session,
                                 {
-                                    conversationId: item.conversation.id,
-                                    presetLane,
-                                    includeArchived,
-                                    allPresetLanes
+                                    ...opts,
+                                    conversationId: item.conversation.id
                                 }
                             )
+                        deleted.push(
+                            `${conversation.title} (${conversation.seq ?? conversation.id})`
                         )
                     }
 
                     context.message = session.text(
                         'chatluna.conversation.messages.delete_success_multi',
-                        [
-                            deleted
-                                .map(
-                                    (item) =>
-                                        `${item.title} (${item.seq ?? item.id})`
-                                )
-                                .join('\n')
-                        ]
+                        [deleted.join('\n')]
                     )
                     return ChainMiddlewareRunStatus.STOP
                 }
@@ -340,10 +327,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             const conversation =
                 await ctx.chatluna.conversation.deleteConversation(session, {
-                    conversationId,
-                    presetLane,
-                    includeArchived,
-                    allPresetLanes
+                    ...opts,
+                    conversationId
                 })
 
             context.message = session.text(
@@ -781,11 +766,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 }
 
-type DeleteTarget =
-    | { type: 'single'; target?: string }
-    | { type: 'seqs'; seqs: number[] }
-    | { type: 'invalid' }
-
 function resolvedConversationId(context: ChainMiddlewareContext) {
     return (
         context.options.conversation?.conversationId ??
@@ -819,22 +799,18 @@ function requireConversation(
     return conversation
 }
 
-function parseDeleteTarget(input?: string): DeleteTarget {
-    if (input == null || input.length === 0) {
-        return { type: 'single', target: input }
+function parseDeleteSeqs(input?: string) {
+    if (input == null || (!input.includes(',') && !input.includes('..'))) {
+        return
     }
-    if (!input.includes(',') && !input.includes('..')) {
-        return { type: 'single', target: input }
-    }
-    if (input.length > 512) return { type: 'invalid' }
 
     const parts = input.split(',')
-    if (parts.length > 100) return { type: 'invalid' }
+    if (input.length > 512 || parts.length > 100) return null
 
     const seqs = new Set<number>()
     for (const part of parts) {
         const match = /^(\d+)(?:\.\.(\d+))?$/.exec(part)
-        if (match == null) return { type: 'invalid' }
+        if (match == null) return null
 
         const start = Number(match[1])
         const end = Number(match[2] ?? match[1])
@@ -844,20 +820,19 @@ function parseDeleteTarget(input?: string): DeleteTarget {
             start < 1 ||
             end < 1
         ) {
-            return { type: 'invalid' }
+            return null
         }
 
         const min = Math.min(start, end)
         const max = Math.max(start, end)
-        const count = max - min + 1
-        if (seqs.size + count > 100) return { type: 'invalid' }
+        if (seqs.size + max - min + 1 > 100) return null
 
-        for (let idx = 0; idx < count; idx += 1) {
-            seqs.add(min + idx)
+        for (let seq = min; seq <= max; seq += 1) {
+            seqs.add(seq)
         }
     }
 
-    return { type: 'seqs', seqs: Array.from(seqs) }
+    return Array.from(seqs)
 }
 
 function conversationSummary(conversation: ConversationRecord) {
