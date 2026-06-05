@@ -15,7 +15,6 @@ import {
     ConversationRecord,
     ConversationResolutionError,
     getBaseBindingKey,
-    getPresetLane,
     InvalidChatModeError,
     ResolvedConversationContext
 } from '../../types'
@@ -77,13 +76,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         for (const field of ['model', 'preset', 'chatMode'] as const) {
             const value = create?.[field]
-            const fixedKey =
-                field === 'model'
-                    ? 'fixedModel'
-                    : field === 'preset'
-                      ? 'fixedPreset'
-                      : 'fixedChatMode'
-            const fixed = resolved.constraint[fixedKey]
+            const fixed = resolved.constraint[FIXED_FIELD_KEY[field]]
             if (value != null && fixed != null && value !== fixed) {
                 context.message = session.text(
                     `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[field]}`,
@@ -199,7 +192,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     session,
                     item.conversation,
                     resolved,
-                    false,
                     item.displaySeq
                 ),
             formatString: {
@@ -278,14 +270,65 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     middleware('conversation_delete', async (session, context) => {
         try {
-            const { presetLane, includeArchived, allPresetLanes } =
-                getManageOptions(context)
+            const opts = getManageOptions(context)
+            const conversationId = resolvedConversationId(context)
+
+            if (conversationId == null) {
+                const seqs = parseDeleteSeqs(
+                    context.options.conversation_manage?.targetConversation
+                )
+
+                if (seqs === null) {
+                    context.message = session.text(
+                        'chatluna.conversation.messages.target_not_found'
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+
+                if (seqs != null) {
+                    const entries =
+                        await ctx.chatluna.conversation.listConversationEntries(
+                            session,
+                            opts
+                        )
+                    const targets = entries.filter((item) =>
+                        seqs.includes(item.displaySeq)
+                    )
+
+                    if (targets.length !== seqs.length) {
+                        context.message = session.text(
+                            'chatluna.conversation.messages.target_not_found'
+                        )
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+
+                    const deleted: string[] = []
+                    for (const item of targets) {
+                        const conversation =
+                            await ctx.chatluna.conversation.deleteConversation(
+                                session,
+                                {
+                                    ...opts,
+                                    conversationId: item.conversation.id
+                                }
+                            )
+                        deleted.push(
+                            `${conversation.title} (${conversation.seq ?? conversation.id})`
+                        )
+                    }
+
+                    context.message = session.text(
+                        'chatluna.conversation.messages.delete_success_multi',
+                        [deleted.join('\n')]
+                    )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+            }
+
             const conversation =
                 await ctx.chatluna.conversation.deleteConversation(session, {
-                    conversationId: resolvedConversationId(context),
-                    presetLane,
-                    includeArchived,
-                    allPresetLanes
+                    ...opts,
+                    conversationId
                 })
 
             context.message = session.text(
@@ -332,17 +375,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     }
 
     middleware('conversation_archive', async (session, context) => {
-        const conversation = context.options.conversation?.conversation
+        const conversation = requireConversation(session, context, 'archive')
 
         if (conversation == null) {
-            context.message = session.text(
-                'chatluna.conversation.messages.archive_failed',
-                [
-                    session.text(
-                        'chatluna.conversation.messages.target_not_found'
-                    )
-                ]
-            )
             return ChainMiddlewareRunStatus.STOP
         }
 
@@ -374,17 +409,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     middleware('conversation_restore', async (session, context) => {
-        const current = context.options.conversation?.conversation
+        const current = requireConversation(session, context, 'restore')
 
         if (current == null) {
-            context.message = session.text(
-                'chatluna.conversation.messages.restore_failed',
-                [
-                    session.text(
-                        'chatluna.conversation.messages.target_not_found'
-                    )
-                ]
-            )
             return ChainMiddlewareRunStatus.STOP
         }
 
@@ -414,17 +441,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     })
 
     middleware('conversation_export', async (session, context) => {
-        const conversation = context.options.conversation?.conversation
+        const conversation = requireConversation(session, context, 'export')
 
         if (conversation == null) {
-            context.message = session.text(
-                'chatluna.conversation.messages.export_failed',
-                [
-                    session.text(
-                        'chatluna.conversation.messages.target_not_found'
-                    )
-                ]
-            )
             return ChainMiddlewareRunStatus.STOP
         }
 
@@ -756,13 +775,64 @@ function resolvedConversationId(context: ChainMiddlewareContext) {
 
 function getManageOptions(context: ChainMiddlewareContext) {
     const presetLane = context.options.conversation_manage?.presetLane
-    const includeArchived =
-        context.options.conversation_manage?.includeArchived === true
     return {
         presetLane,
-        includeArchived: includeArchived || undefined,
+        includeArchived:
+            context.options.conversation_manage?.includeArchived === true ||
+            undefined,
         allPresetLanes: presetLane == null
     }
+}
+
+function requireConversation(
+    session: Session,
+    context: ChainMiddlewareContext,
+    action: string
+) {
+    const conversation = context.options.conversation?.conversation
+    if (conversation == null) {
+        context.message = session.text(
+            `chatluna.conversation.messages.${action}_failed`,
+            [session.text('chatluna.conversation.messages.target_not_found')]
+        )
+    }
+    return conversation
+}
+
+function parseDeleteSeqs(input?: string) {
+    if (input == null || input.length === 0) {
+        return
+    }
+
+    const parts = input.split(',')
+    if (input.length > 512 || parts.length > 100) return null
+
+    const seqs = new Set<number>()
+    for (const part of parts) {
+        const match = /^(\d+)(?:\.\.(\d+))?$/.exec(part)
+        if (match == null) return null
+
+        const start = Number(match[1])
+        const end = Number(match[2] ?? match[1])
+        if (
+            !Number.isSafeInteger(start) ||
+            !Number.isSafeInteger(end) ||
+            start < 1 ||
+            end < 1
+        ) {
+            return null
+        }
+
+        const min = Math.min(start, end)
+        const max = Math.max(start, end)
+
+        for (let seq = min; seq <= max; seq += 1) {
+            seqs.add(seq)
+            if (seqs.size > 100) return null
+        }
+    }
+
+    return Array.from(seqs)
 }
 
 function conversationSummary(conversation: ConversationRecord) {
@@ -893,7 +963,6 @@ function formatConversationLine(
     session: Session,
     conversation: ConversationRecord,
     resolved: ResolvedConversationContext,
-    showLane = false,
     seq: number | string = conversation.seq ?? '-'
 ) {
     const status = formatConversationStatus(
@@ -901,48 +970,33 @@ function formatConversationLine(
         conversation,
         resolved.binding?.activeConversationId
     )
-    const effectiveModel =
+    const model =
         ctx.chatluna.conversation.pickModel(
             resolved.constraint,
             conversation
         ) ?? '-'
-    const effectivePreset =
+    const preset =
         resolved.constraint.fixedPreset ??
         conversation.preset ??
         resolved.constraint.defaultPreset ??
         '-'
-    const lane = formatPresetLane(
-        session,
-        getPresetLane(conversation.bindingKey)
-    )
 
-    if (!showLane && status == null) {
+    if (status == null) {
         return session.text('chatluna.conversation.conversation_line', [
             seq,
             conversation.title,
-            effectiveModel,
-            effectivePreset
+            model,
+            preset
         ])
     }
 
-    if (!showLane) {
-        return session.text(
-            'chatluna.conversation.conversation_line_with_status',
-            [seq, conversation.title, effectiveModel, effectivePreset, status]
-        )
-    }
-
-    if (status == null) {
-        return session.text(
-            'chatluna.conversation.conversation_line_with_lane',
-            [seq, conversation.title, effectiveModel, effectivePreset, lane]
-        )
-    }
-
-    return session.text(
-        'chatluna.conversation.conversation_line_with_lane_status',
-        [seq, conversation.title, effectiveModel, effectivePreset, lane, status]
-    )
+    return session.text('chatluna.conversation.conversation_line_with_status', [
+        seq,
+        conversation.title,
+        model,
+        preset,
+        status
+    ])
 }
 
 function formatLockState(lock: boolean | null | undefined) {
@@ -992,6 +1046,12 @@ const RULE_FIELDS = [
         msgKey: 'rule_mode_status'
     }
 ] as const
+
+const FIXED_FIELD_KEY = {
+    model: 'fixedModel',
+    preset: 'fixedPreset',
+    chatMode: 'fixedChatMode'
+} as const
 
 const FIXED_FIELD_MSG_KEY = {
     model: 'fixed_model',

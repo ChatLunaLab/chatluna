@@ -16,6 +16,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const targetConversation =
                 options.conversation_manage?.targetConversation ??
                 options.targetConversation
+            const batchTarget =
+                context.command === 'conversation_delete' &&
+                targetConversation != null &&
+                targetConversation.length <= 512 &&
+                targetConversation.split(',').length <= 100 &&
+                /^\d+(?:\.\.\d+)?(?:,\d+(?:\.\.\d+)?)*$/.test(
+                    targetConversation
+                )
             const explicitConversationId =
                 options.conversation?.conversationId ??
                 options.conversation?.conversation?.id
@@ -46,6 +54,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     )
 
                 if (hasExplicitTarget && resolved.conversation == null) {
+                    if (batchTarget) {
+                        options.conversation = resolved
+                        return ChainMiddlewareRunStatus.CONTINUE
+                    }
+
                     context.message =
                         targetValue == null
                             ? notFoundMessage(session, context)

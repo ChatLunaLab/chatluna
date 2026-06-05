@@ -10,6 +10,7 @@ import { apply as applyResolve } from '../src/middlewares/conversation/resolve_c
 import { apply as applyRequest } from '../src/middlewares/conversation/request_conversation'
 import { apply as applyManage } from '../src/middlewares/system/conversation_manage'
 import { apply as applyLifecycle } from '../src/middlewares/system/lifecycle'
+import { apply as applyCommands } from '../src/commands/conversation'
 import { ConversationResolutionError } from '../src/types'
 import {
     createConfig,
@@ -723,6 +724,194 @@ it('conversation_switch accepts resolved direct conversation ids', async () => {
     } finally {
         await app.stop()
     }
+})
+
+it('chatluna.delete removes range and list selectors', async () => {
+    const conversations = [
+        createConversation({
+            id: 'conversation-first',
+            title: 'First Topic',
+            seq: 1
+        }),
+        createConversation({
+            id: 'conversation-second',
+            title: 'Second Topic',
+            seq: 2
+        }),
+        createConversation({
+            id: 'conversation-third',
+            title: 'Third Topic',
+            seq: 3
+        })
+    ]
+    const actions = new Map<string, (...args: any[]) => Promise<void>>()
+    const deleted: string[] = []
+    const messages: string[] = []
+    const resolveTargets: (string | undefined)[] = []
+    let listCalls = 0
+    const entries = () =>
+        conversations.map((conversation, idx) => ({
+            conversation,
+            displaySeq: idx + 1
+        }))
+    let resolve:
+        | ((session: any, context: any) => Promise<ChainMiddlewareRunStatus>)
+        | undefined
+    let run:
+        | ((session: any, context: any) => Promise<ChainMiddlewareRunStatus>)
+        | undefined
+    const ctx = {
+        command: (decl: string) => {
+            const cmd = {
+                alias: () => cmd,
+                option: () => cmd,
+                action: (fn: (...args: any[]) => Promise<void>) => {
+                    actions.set(decl, fn)
+                    return cmd
+                }
+            }
+            return cmd
+        },
+        chatluna: {
+            conversation: {
+                resolveConversation: async (_session, opts) => {
+                    resolveTargets.push(opts.targetConversation)
+                    const entry = entries().find(
+                        (item) =>
+                            opts.targetConversation === item.conversation.id ||
+                            opts.targetConversation ===
+                                String(item.displaySeq) ||
+                            opts.targetConversation === item.conversation.title
+                    )
+
+                    return {
+                        bindingKey: 'shared:discord:bot:guild',
+                        constraint: {},
+                        effectiveModel: 'test-platform/test-model',
+                        effectivePreset: 'default-preset',
+                        effectiveChatMode: 'plugin',
+                        conversation: entry?.conversation ?? null,
+                        conversationId: entry?.conversation.id ?? null,
+                        mode: opts.mode
+                    }
+                },
+                listConversationEntries: async () => {
+                    listCalls += 1
+                    return entries()
+                },
+                deleteConversation: async (_session, opts) => {
+                    deleted.push(opts.conversationId)
+                    return conversations.find(
+                        (item) => item.id === opts.conversationId
+                    )
+                }
+            }
+        }
+    }
+    const chain = {
+        middleware: (name, fn) => {
+            if (name === 'resolve_conversation') resolve = fn
+            if (name === 'conversation_delete') run = fn
+            return {
+                after() {
+                    return this
+                },
+                before() {
+                    return this
+                }
+            }
+        }
+    }
+
+    applyResolve(ctx as never, {} as never, chain as never)
+    applyManage(ctx as never, {} as never, chain as never)
+    applyCommands(
+        ctx as never,
+        {} as never,
+        {
+            receiveCommand: async (session, name, opts) => {
+                const state = { command: name, options: opts }
+                const status = await resolve!(session, state)
+                if (status !== ChainMiddlewareRunStatus.STOP) {
+                    await run!(session, state)
+                }
+            }
+        } as never
+    )
+
+    const session = createSession() as any
+    session.text = (key, params) => {
+        const msg = params == null ? key : `${key}:${params.join(',')}`
+        messages.push(msg)
+        return msg
+    }
+
+    const action = actions.get('chatluna.delete [conversation:string]')!
+    await action({ options: {}, session }, '1..2')
+    await action({ options: {}, session }, '1,3')
+    const validCount = deleted.length
+    await action({ options: {}, session }, '1,4')
+    assert.equal(deleted.length, validCount)
+
+    await action({ options: {}, session }, '1,1')
+    await action({ options: {}, session }, '3..1')
+
+    const beforeInvalid = deleted.length
+    await action({ options: {}, session }, '4')
+    const beforeOverlap = listCalls
+    await action({ options: {}, session }, '1..50,25..75')
+    assert.equal(listCalls, beforeOverlap + 1)
+    await action({ options: {}, session }, '1..101')
+    await action(
+        { options: {}, session },
+        '999999999999999999999..999999999999999999999'
+    )
+    assert.equal(deleted.length, beforeInvalid)
+
+    conversations.push(
+        createConversation({
+            id: 'conversation-range-title',
+            title: '1..101',
+            seq: 4
+        })
+    )
+    await action({ options: {}, session }, '1..101')
+
+    assert.deepEqual(deleted, [
+        'conversation-first',
+        'conversation-second',
+        'conversation-first',
+        'conversation-third',
+        'conversation-first',
+        'conversation-first',
+        'conversation-second',
+        'conversation-third',
+        'conversation-range-title'
+    ])
+    assert.deepEqual(resolveTargets, [
+        '1..2',
+        '1,3',
+        '1,4',
+        '1,1',
+        '3..1',
+        '4',
+        '1..50,25..75',
+        '1..101',
+        '999999999999999999999..999999999999999999999',
+        '1..101'
+    ])
+    assert.deepEqual(messages, [
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nThird Topic (3)',
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)\nThird Topic (3)',
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.delete_success:1..101,4,conversation-range-title'
+    ])
 })
 
 it('conversation_switch preserves explicit chain conversation through middleware order', async () => {
