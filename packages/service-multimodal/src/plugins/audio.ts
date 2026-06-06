@@ -60,38 +60,35 @@ export function apply(ctx: Context, config: Config) {
                     element.attrs['mime'] as string | null
                 )
 
-                let outBuffer = buffer
-                let outMime = detected ?? 'audio/mpeg'
-
-                if (!detected || !NATIVE_AUDIO_MIMES.has(detected)) {
-                    const converted = await convertAudioToMp3(ctx, buffer)
-                    if (!converted) {
-                        logger.warn(
-                            `Skip audio: format ${detected ?? 'unknown'} not natively supported and ffmpeg conversion failed.`
-                        )
-                        return false
-                    }
-                    outBuffer = converted
-                    outMime = 'audio/mpeg'
+                if (detected && NATIVE_AUDIO_MIMES.has(detected)) {
+                    return false
                 }
 
-                const dataUrl = `data:${outMime};base64,${outBuffer.toString('base64')}`
-                const ext = MIME_TO_EXT[outMime] ?? 'mp3'
+                const converted = await convertAudioToMp3(ctx, buffer)
+                if (!converted) {
+                    logger.warn(
+                        `Skip audio: format ${detected ?? 'unknown'} not natively supported and ffmpeg conversion failed.`
+                    )
+                    return false
+                }
+
+                const dataUrl = `data:audio/mpeg;base64,${converted.toString('base64')}`
+                const ext = MIME_TO_EXT['audio/mpeg']
                 const fileName = `${stripExtension(audioName(element))}.${ext}`
                 element.attrs['file'] = fileName
                 element.attrs['filename'] = fileName
                 element.attrs['chatluna_file_url'] = sourceUrl
 
-                ensureContentArray(message, `[voice:${fileName}]`)
+                ensureContentArray(message)
                 ;(message.content as MessageContentComplex[]).push({
                     type: 'audio_url',
-                    audio_url: { url: dataUrl, mimeType: outMime }
+                    audio_url: { url: dataUrl, mimeType: 'audio/mpeg' }
                 } as unknown as MessageContentComplex)
 
                 logger.debug(
-                    `Injected audio for ${model}: ${fileName} (${outMime}, ${outBuffer.byteLength} bytes)`
+                    `Injected audio for ${model}: ${fileName} (audio/mpeg, ${converted.byteLength} bytes)`
                 )
-                return true
+                return false
             },
             100
         )

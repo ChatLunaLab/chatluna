@@ -48,13 +48,11 @@ export async function apply(
                     if (isGif) {
                         await injectGifFrames(message, imageData.buffer, config)
                         addTextToContent(message, '[image: GIF]')
-                    } else if (imageData.base64Source) {
-                        addImageToContent(message, imageData.base64Source)
                     }
-                    return true
+                    return false
                 }
 
-                return describeAndInject(
+                await describeAndInject(
                     message,
                     imageData,
                     isGif,
@@ -62,6 +60,7 @@ export async function apply(
                     imageUnderstandModel.value,
                     url
                 )
+                return false
             },
             100
         )
