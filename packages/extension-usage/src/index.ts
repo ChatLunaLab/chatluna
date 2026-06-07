@@ -1,20 +1,12 @@
-import { resolve } from 'path'
-import type { UsageMetadata } from '@langchain/core/messages'
-import { DataService } from '@koishijs/plugin-console'
-import type { Client } from '@koishijs/plugin-console'
 import { Context, Logger, Schema, Time } from 'koishi'
+import { DataService } from '@koishijs/plugin-console'
+import type { UsageMetadata } from '@langchain/core/messages'
+import { resolve } from 'path'
 import type { ModelUsageCallType } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
 const logger = new Logger('chatluna-usage')
 
-type AuthClient = Client & {
-    auth?: {
-        authority: number
-        expiredAt: number
-    }
-}
-
-class ChatLunaUsage extends DataService<ChatLunaUsage.Payload | null> {
+class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
     constructor(
         ctx: Context,
         public config: ChatLunaUsage.Config
@@ -82,7 +74,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload | null> {
 
         if (!config.webui) return
 
-        ctx.inject(['console', 'auth'], (ctx) => {
+        ctx.inject(['console'], (ctx) => {
             ctx.console.addListener(
                 'chatluna-usage/query',
                 async (input) => this.query(input),
@@ -112,18 +104,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload | null> {
         })
     }
 
-    async get(forced?: boolean, client?: Client) {
-        if (client) {
-            const auth = (client as AuthClient).auth
-            if (
-                !this.config.webui ||
-                !auth ||
-                auth.expiredAt <= Date.now() ||
-                auth.authority < 1
-            ) {
-                return null
-            }
-        }
+    async get() {
         return await this.query()
     }
 
@@ -643,7 +624,7 @@ export const Config = ChatLunaUsage.Config
 
 export const inject = {
     required: ['chatluna', 'database'],
-    optional: ['console', 'auth']
+    optional: ['console']
 }
 
 export const name = 'chatluna-usage'

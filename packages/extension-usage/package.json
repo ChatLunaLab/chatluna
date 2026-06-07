@@ -72,8 +72,7 @@
                 "database"
             ],
             "optional": [
-                "console",
-                "auth"
+                "console"
             ]
         }
     }
