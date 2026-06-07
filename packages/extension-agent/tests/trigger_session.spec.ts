@@ -15,7 +15,6 @@ describe('buildVirtualSession', () => {
                 isDirect: false
             },
             {
-                requestId: 'req',
                 messageName: 'trigger',
                 message: [
                     { type: 'text', text: 'hello' },
@@ -39,7 +38,6 @@ describe('buildVirtualSession', () => {
                     name: string
                 }
                 message: {
-                    id: string
                     content: string
                     elements: Array<{ type: string }>
                 }
@@ -53,7 +51,7 @@ describe('buildVirtualSession', () => {
         expect(event.event.channel.type).to.equal(0)
         expect(event.event.user.id).to.equal('user')
         expect(event.event.user.name).to.equal('trigger')
-        expect(event.event.message.id).to.equal('req')
+        expect(event.event.message).to.not.have.property('id')
         expect(event.event.message.content).to.equal('hello')
         expect(event.event.message.elements).to.have.length(2)
         expect(event.event.message.elements[0].type).to.equal('text')
@@ -73,7 +71,6 @@ describe('buildVirtualSession', () => {
                 isDirect: false
             },
             {
-                requestId: 'req',
                 message: 'hello'
             }
         ) as {
@@ -116,7 +113,6 @@ describe('buildVirtualSession', () => {
                 isDirect: true
             },
             {
-                requestId: 'req',
                 message: 'hello'
             }
         ) as {

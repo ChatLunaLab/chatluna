@@ -6,7 +6,7 @@ import type { WakeupAction, WakeupRouting } from '../types'
 export function buildVirtualSession(
     bot: Session['bot'],
     routing: WakeupRouting,
-    action: Pick<WakeupAction, 'message' | 'messageName' | 'requestId'>
+    action: Pick<WakeupAction, 'message' | 'messageName'>
 ) {
     const event: Partial<Universal.Event> = {
         type: 'message',
@@ -23,7 +23,6 @@ export function buildVirtualSession(
             name: routing.username ?? action.messageName ?? 'trigger'
         },
         message: {
-            id: action.requestId,
             content: getMessageContent(action.message),
             elements:
                 typeof action.message === 'string'
