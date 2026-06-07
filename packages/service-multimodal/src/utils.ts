@@ -15,6 +15,7 @@ import type {} from 'koishi-plugin-ffmpeg-path'
 import { Config, logger } from '.'
 import { GifReader } from 'omggif'
 import { Jimp } from 'jimp'
+import fileType from 'file-type'
 
 // ---------------------------------------------------------------------------
 // MIME helpers
@@ -28,69 +29,22 @@ export const IMAGE_MIME_TYPES = new Set([
     'image/gif'
 ])
 
-const FILE_EXTENSION_TO_MIME_TYPE: Record<string, string> = {
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.bmp': 'image/bmp',
-    '.webp': 'image/webp',
-    '.gif': 'image/gif',
-    '.pdf': 'application/pdf',
-    '.txt': 'text/plain',
-    '.md': 'text/markdown',
-    '.html': 'text/html',
-    '.htm': 'text/html',
-    '.css': 'text/css',
-    '.xml': 'text/xml',
-    '.csv': 'text/csv',
-    '.rtf': 'text/rtf',
-    '.js': 'text/javascript',
-    '.mjs': 'text/javascript',
-    '.json': 'application/json',
-    '.mp4': 'video/mp4',
-    '.mpeg': 'video/mpeg',
-    '.mov': 'video/mov',
-    '.avi': 'video/avi',
-    '.flv': 'video/x-flv',
-    '.webm': 'video/webm',
-    '.wmv': 'video/wmv',
-    '.3gp': 'video/3gpp',
-    '.3gpp': 'video/3gpp',
-    '.mp3': 'audio/mpeg',
-    '.aiff': 'audio/aiff',
-    '.aac': 'audio/aac',
-    '.flac': 'audio/flac',
-    '.wav': 'audio/wav',
-    '.ogg': 'audio/ogg',
-    '.m4a': 'audio/mp4'
-}
-
-export function inferMimeTypeFromUrl(url: string): string | null {
-    try {
-        const path = new URL(url).pathname.toLowerCase()
-        const dot = path.lastIndexOf('.')
-        return dot < 0
-            ? null
-            : (FILE_EXTENSION_TO_MIME_TYPE[path.slice(dot)] ?? null)
-    } catch {
-        return null
-    }
-}
-
-export function normalizeMimeType(
-    raw: string | null | undefined
-): string | null {
-    return raw?.split(';')[0]?.trim()?.toLowerCase() || null
+export async function detectFileType(
+    buffer: Buffer
+): Promise<{ mime: string; ext: string } | undefined> {
+    const result = await fileType.fromBuffer(buffer)
+    if (!result) return undefined
+    return { mime: result.mime, ext: result.ext }
 }
 
 /**
- * Detect audio MIME from buffer header. Recognises QQ Silk + AMR + common
- * audio container magic bytes. Falls back to the declared MIME otherwise.
+ * Detect audio MIME from buffer header. Recognises QQ Silk + AMR, then uses
+ * file-type and falls back to the declared MIME otherwise.
  */
-export function detectAudioMimeType(
+export async function detectAudioMimeType(
     buffer: Buffer,
     declared?: string | null
-): string | null {
+): Promise<string | null> {
     const head = buffer.subarray(0, 16).toString('latin1')
 
     if (head.startsWith('#!AMR')) return 'audio/amr'
@@ -102,23 +56,8 @@ export function detectAudioMimeType(
     ) {
         return 'audio/silk'
     }
-    // MP3 frame sync: 0xFFEx. Reject JPEG (0xFFD8) by checking the full sync word.
-    if (
-        head.startsWith('ID3') ||
-        (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0)
-    ) {
-        return 'audio/mpeg'
-    }
-    if (
-        head.startsWith('RIFF') &&
-        buffer.subarray(8, 12).toString('latin1') === 'WAVE'
-    ) {
-        return 'audio/wav'
-    }
-    if (head.startsWith('fLaC')) return 'audio/flac'
-    if (head.startsWith('OggS')) return 'audio/ogg'
 
-    return declared ?? null
+    return (await detectFileType(buffer))?.mime ?? declared ?? null
 }
 
 // ---------------------------------------------------------------------------

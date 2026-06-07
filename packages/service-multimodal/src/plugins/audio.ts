@@ -55,7 +55,7 @@ export function apply(ctx: Context, config: Config) {
                 const buffer = await downloadAudio(ctx, sourceUrl)
                 if (!buffer) return false
 
-                const detected = detectAudioMimeType(
+                const detected = await detectAudioMimeType(
                     buffer,
                     element.attrs['mime'] as string | null
                 )

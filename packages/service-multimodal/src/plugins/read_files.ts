@@ -19,8 +19,6 @@ import {
     convertAudioToMp3,
     detectAudioMimeType,
     IMAGE_MIME_TYPES,
-    inferMimeTypeFromUrl,
-    normalizeMimeType,
     parseGifToFrames,
     processImageWithModel
 } from '../utils'
@@ -63,7 +61,7 @@ export class ReadFilesTool extends StructuredTool {
                     .max(10)
             )
             .describe(
-                'A list of files to read (max 10). File format: { url: string }. MIME type is inferred from response headers, then URL extension.'
+                'A list of files to read (max 10). File format: { url: string }. MIME type is inferred from file content and response headers.'
             )
     })
 
@@ -118,14 +116,11 @@ export class ReadFilesTool extends StructuredTool {
                     continue
                 }
 
-                const declared =
-                    normalizeMimeType(fetched.contentType) ??
-                    inferMimeTypeFromUrl(sourceUrl)
-                const detectedAudio = detectAudioMimeType(
-                    fetched.buffer,
-                    declared
-                )
-                const mime = detectedAudio ?? declared
+                const declared = fetched.contentType
+                    ?.split(';')[0]
+                    ?.trim()
+                    ?.toLowerCase()
+                const mime = await detectAudioMimeType(fetched.buffer, declared)
 
                 if (!mime) {
                     pushError(

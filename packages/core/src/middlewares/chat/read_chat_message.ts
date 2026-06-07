@@ -308,15 +308,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ? await ctx.chatluna_storage.createTempFile(buffer, fileName)
                 : null
             const imageUrl = tempFile?.url ?? image.base64Source
+            const imageText = tempFile?.url ?? hash
 
             if (tempFile) setElementUrl(element, tempFile.url)
 
             if (!supportsImage) {
-                addTextPart(message, `[image:${imageUrl}]`)
+                addTextPart(message, `[image:${imageText}]`)
                 return false
             }
 
-            addTextPart(message, `[image:${imageUrl}]`)
+            addTextPart(message, `[image:${imageText}]`)
             ;(message.content as MessageContentComplex[]).push({
                 type: 'image_url',
                 image_url: { url: imageUrl }
@@ -558,12 +559,17 @@ async function handleFileElement(
 
     const mimeType = responseMimeType ?? getMimeTypeFromSource(sourceUrl, name)
     const fileName = name ?? 'attachment'
-    const label =
-        elementType === 'audio'
-            ? 'voice'
-            : elementType === 'video'
-              ? 'video'
-              : 'file'
+    let label: 'file' | 'video' | 'voice'
+    switch (elementType) {
+        case 'audio':
+            label = 'voice'
+            break
+        case 'video':
+            label = 'video'
+            break
+        default:
+            label = 'file'
+    }
 
     const file = ctx.chatluna_storage
         ? await ctx.chatluna_storage.createTempFile(buffer, fileName)
@@ -778,15 +784,22 @@ function modelSupportsElement(
     const info = model != null ? ctx.chatluna.platform.findModel(model) : null
     if (info?.value == null) return true
 
-    return info.value.capabilities.includes(
-        type === 'img'
-            ? ModelCapabilities.ImageInput
-            : type === 'audio'
-              ? ModelCapabilities.AudioInput
-              : type === 'video'
-                ? ModelCapabilities.VideoInput
-                : ModelCapabilities.FileInput
-    )
+    switch (type) {
+        case 'img':
+            return info.value.capabilities.includes(
+                ModelCapabilities.ImageInput
+            )
+        case 'audio':
+            return info.value.capabilities.includes(
+                ModelCapabilities.AudioInput
+            )
+        case 'video':
+            return info.value.capabilities.includes(
+                ModelCapabilities.VideoInput
+            )
+        default:
+            return info.value.capabilities.includes(ModelCapabilities.FileInput)
+    }
 }
 
 function setElementUrl(element: h, url: string) {

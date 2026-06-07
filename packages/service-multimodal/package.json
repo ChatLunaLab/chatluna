@@ -49,6 +49,7 @@
     ],
     "dependencies": {
         "@langchain/core": "^0.3.80",
+        "file-type": "16.5.4",
         "jimp": "^1.6.0",
         "omggif": "^1.0.10",
         "zod": "3.25.76"
