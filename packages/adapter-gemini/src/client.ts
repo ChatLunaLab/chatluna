@@ -126,9 +126,11 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         let rawModels: GeminiModelInfo[] = []
 
         try {
-            rawModels = await this._requester.getModels(config)
+            rawModels = this._config.pullModels
+                ? await this._requester.getModels(config)
+                : []
 
-            if (rawModels.length === 0) {
+            if (this._config.pullModels && rawModels.length === 0) {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.MODEL_INIT_ERROR,
                     new Error('No model found')
@@ -141,6 +143,32 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
         // --- 将原始模型转换并展开为变体列表 ---
         const models: ModelInfo[] = []
+
+        for (const model of this._config.additionalModels) {
+            const modelNameLower = model.model.toLowerCase()
+            const isEmbedding = model.modelType === 'Embeddings 嵌入模型'
+
+            const baseInfo: ModelInfo = {
+                name: model.model,
+                maxTokens: model.contextSize,
+                type: isEmbedding ? ModelType.embeddings : ModelType.llm,
+                capabilities: isEmbedding
+                    ? []
+                    : modelNameLower.includes('gemini')
+                      ? createGeminiCapabilities(modelNameLower, false)
+                      : model.modelCapabilities
+            }
+
+            if (
+                !expandModelVariants(
+                    models,
+                    baseInfo,
+                    this._config.imageModelSearch
+                )
+            ) {
+                models.push(baseInfo)
+            }
+        }
 
         for (const model of rawModels) {
             const modelNameLower = model.name.toLowerCase()
@@ -162,14 +190,21 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             }
 
             // 尝试展开特殊变体；未命中则直接加入
+            const items: ModelInfo[] = []
             if (
                 !expandModelVariants(
-                    models,
+                    items,
                     baseInfo,
                     this._config.imageModelSearch
                 )
             ) {
-                models.push(baseInfo)
+                items.push(baseInfo)
+            }
+
+            for (const item of items) {
+                if (models.findIndex((info) => info.name === item.name) < 0) {
+                    models.push(item)
+                }
             }
         }
 

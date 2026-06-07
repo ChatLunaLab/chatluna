@@ -2,6 +2,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Context, Logger, Schema } from 'koishi'
 import { GeminiClient } from './client'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export let logger: Logger
 export const reusable = true
@@ -38,6 +39,13 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string, boolean][]
+    pullModels: boolean
+    additionalModels: {
+        model: string
+        modelType: string
+        modelCapabilities: ModelCapabilities[]
+        contextSize: number
+    }[]
     maxContextRatio: number
     platform: string
     temperature: number
@@ -58,6 +66,35 @@ export const Config: Schema<Config> = Schema.intersect([
     ChatLunaPlugin.Config,
     Schema.object({
         platform: Schema.string().default('gemini'),
+        pullModels: Schema.boolean().default(true),
+        additionalModels: Schema.array(
+            Schema.object({
+                model: Schema.string(),
+                modelType: Schema.union([
+                    'LLM 大语言模型',
+                    'Embeddings 嵌入模型'
+                ]).default('LLM 大语言模型'),
+                modelCapabilities: Schema.array(
+                    Schema.union([
+                        ModelCapabilities.TextInput,
+                        ModelCapabilities.ToolCall,
+                        ModelCapabilities.ImageInput,
+                        ModelCapabilities.ImageGeneration,
+                        ModelCapabilities.AudioInput,
+                        ModelCapabilities.VideoInput,
+                        ModelCapabilities.FileInput
+                    ])
+                )
+                    .default([
+                        ModelCapabilities.TextInput,
+                        ModelCapabilities.ToolCall
+                    ])
+                    .role('checkbox'),
+                contextSize: Schema.number().default(128000)
+            })
+        )
+            .default([])
+            .role('table'),
         apiKeys: Schema.array(
             Schema.tuple([
                 Schema.string().role('secret').default(''),

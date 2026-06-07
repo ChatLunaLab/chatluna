@@ -2,6 +2,23 @@ $inner:
     - {}
     - $desc: 'API Configuration'
       platform: 'Adapter platform name. (Do not modify if you do not understand)'
+      pullModels: 'Auto-fetch model list. If disabled, use only specified models.'
+      additionalModels:
+          $desc: 'Additional models. Gemini models use adapter suffix variants automatically, and non-Gemini models are requested with the exact configured name.'
+          $inner:
+              model: 'Model name.'
+              modelType: 'Model type.'
+              contextSize: 'Context size.'
+              modelCapabilities:
+                $desc: 'Capabilities for non-Gemini models.'
+                $inner:
+                    - 'Text input'
+                    - 'Tool calling'
+                    - 'Visual image input'
+                    - 'Image generation'
+                    - 'Audio input'
+                    - 'Video input'
+                    - 'File input'
       apiKeys:
           $inner:
               - 'Gemini API Key'

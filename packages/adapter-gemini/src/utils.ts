@@ -547,6 +547,23 @@ export function prepareModelConfig(
     let imageSize: string | undefined
     let forceGoogleSearch = false
 
+    const extra = pluginConfig.additionalModels.find(
+        (item) =>
+            item.model === model && !item.model.toLowerCase().includes('gemini')
+    )
+
+    if (extra) {
+        return {
+            model,
+            enabledThinking,
+            thinkingBudget: pluginConfig.thinkingBudget ?? -1,
+            imageGeneration: pluginConfig.imageGeneration ?? false,
+            thinkingLevel: undefined,
+            imageSize,
+            forceGoogleSearch
+        }
+    }
+
     if (model.toLowerCase().endsWith('-search')) {
         forceGoogleSearch = true
         model = model.slice(0, -'-search'.length)
