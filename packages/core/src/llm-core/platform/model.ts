@@ -232,7 +232,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         runManager?: CallbackManagerForLLMRun,
         reportUsage = true
     ): AsyncGenerator<ChatGenerationChunk> {
-        const maxAttempts = Math.max(1, (this._options.maxRetries ?? 1) + 1)
+        const maxAttempts = Math.max(1, (this._options.maxRetries ?? 0) + 1)
         let promptTokens = 0
 
         if (reportUsage) {
@@ -630,7 +630,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         options: this['ParsedCallOptions'],
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatGeneration> {
-        const maxAttempts = Math.max(1, (this._options.maxRetries ?? 1) + 1)
+        const maxAttempts = Math.max(1, (this._options.maxRetries ?? 0) + 1)
 
         const generateWithRetry = async () => {
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
