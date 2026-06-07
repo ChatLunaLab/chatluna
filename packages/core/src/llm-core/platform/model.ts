@@ -232,7 +232,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         runManager?: CallbackManagerForLLMRun,
         reportUsage = true
     ): AsyncGenerator<ChatGenerationChunk> {
-        const maxRetries = Math.max(1, this._options.maxRetries ?? 1)
+        const maxAttempts = Math.max(1, (this._options.maxRetries ?? 1) + 1)
         let promptTokens = 0
 
         if (reportUsage) {
@@ -247,7 +247,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             input: messages
         }
 
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const latestTokenUsage = this._createTokenUsageTracker()
             let stream: AsyncGenerator<ChatGenerationChunk> | null = null
             let hasChunk = false
@@ -303,7 +303,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         error,
                         hasChunk,
                         attempt,
-                        maxRetries
+                        maxAttempts
                     )
                 ) {
                     if (hasChunk) {
@@ -323,7 +323,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 }
 
                 logger.debug(
-                    `Stream failed before first chunk (attempt ${attempt + 1}/${maxRetries}), retrying...`,
+                    `Stream failed before first chunk (attempt ${attempt + 1}/${maxAttempts}), retrying...`,
                     error
                 )
                 await sleep(2000 * 2 ** attempt)
@@ -470,10 +470,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         error: unknown,
         hasChunk: boolean,
         attempt: number,
-        maxRetries: number
+        maxAttempts: number
     ): boolean {
         return (
-            this._isAbortError(error) || hasChunk || attempt === maxRetries - 1
+            this._isAbortError(error) || hasChunk || attempt === maxAttempts - 1
         )
     }
 
@@ -630,10 +630,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         options: this['ParsedCallOptions'],
         runManager?: CallbackManagerForLLMRun
     ): Promise<ChatGeneration> {
-        const maxRetries = Math.max(1, this._options.maxRetries ?? 1)
+        const maxAttempts = Math.max(1, (this._options.maxRetries ?? 1) + 1)
 
         const generateWithRetry = async () => {
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 try {
                     let response: ChatGeneration
 
@@ -675,7 +675,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     if (
                         options.stream ||
                         this._isAbortError(error) ||
-                        attempt === maxRetries - 1
+                        attempt === maxAttempts - 1
                     ) {
                         throw error
                     }
