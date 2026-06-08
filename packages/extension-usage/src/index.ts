@@ -12,7 +12,8 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         public config: ChatLunaUsage.Config
     ) {
         super(ctx, 'chatluna_usage', {
-            immediate: true
+            immediate: true,
+            authority: 1
         })
 
         ctx.database.extend(
@@ -74,12 +75,16 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         if (!config.webui) return
 
         ctx.inject(['console'], (ctx) => {
-            ctx.console.addListener('chatluna-usage/query', async (input) =>
-                this.query(input)
+            ctx.console.addListener(
+                'chatluna-usage/query',
+                async (input) => this.query(input),
+                { authority: 1 }
             )
 
-            ctx.console.addListener('chatluna-usage/list', async (input) =>
-                this.list(input)
+            ctx.console.addListener(
+                'chatluna-usage/list',
+                async (input) => this.list(input),
+                { authority: 1 }
             )
 
             ctx.console.addListener(
@@ -88,7 +93,8 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                     await this.cleanup(before ? new Date(before) : undefined)
                     await this.refresh()
                     return { success: true }
-                }
+                },
+                { authority: 1 }
             )
 
             ctx.console.addEntry({
