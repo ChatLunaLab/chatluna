@@ -30,45 +30,27 @@ export interface TokenReport {
     plugins?: PluginUsage[]
 }
 
-const RANGES: Record<string, TokenRange> = {
-    d: 'day',
-    day: 'day',
-    w: 'week',
-    week: 'week',
-    m: 'month',
-    month: 'month',
-    a: 'all',
-    all: 'all'
-}
+const RANGES = {
+    day: ['天', 2 * Time.hour],
+    week: ['周', Time.day],
+    month: ['月', 2 * Time.day],
+    all: ['全部', 0]
+} as const
 
-export function tokenRange(value: string): TokenRange | undefined {
-    return RANGES[value.replace(/^-+/, '').trim().toLowerCase()]
-}
-
-export function tokenStart(range: TokenRange, end: Date) {
-    if (range === 'day') return new Date(+end - Time.day)
-    if (range === 'week') return new Date(+end - 7 * Time.day)
-    if (range === 'month') return new Date(+end - 30 * Time.day)
-    return end
-}
+const pad = (value: number) => String(value).padStart(2, '0')
 
 export function formatDate(date: Date) {
-    const y = date.getFullYear()
-    const m = String(date.getMonth() + 1).padStart(2, '0')
-    const d = String(date.getDate()).padStart(2, '0')
-    const h = String(date.getHours()).padStart(2, '0')
-    const min = String(date.getMinutes()).padStart(2, '0')
-    return `${y}-${m}-${d} ${h}:${min}`
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 export function formatTokenReport(report: TokenReport) {
     return [
         `Chatluna token 用量（${report.label}）`,
         `时间范围：${formatDate(report.start)} 至 ${formatDate(report.end)}`,
-        `累计 token：${formatNumber(report.totalTokens)}`,
-        `累计请求：${formatNumber(report.calls)}次`,
-        `TPM：${formatNumber(report.tpm)}`,
-        `RPM：${formatNumber(report.rpm)}次`
+        `累计 token：${report.totalTokens.toLocaleString('en-US')}`,
+        `累计请求：${report.calls.toLocaleString('en-US')}次`,
+        `TPM：${report.tpm.toLocaleString('en-US')}`,
+        `RPM：${report.rpm.toLocaleString('en-US')}次`
     ].join('\n')
 }
 
@@ -81,115 +63,90 @@ export function createTokenReport(
 ): TokenReport {
     const sorted = rows.slice().sort((a, b) => +a.createdAt - +b.createdAt)
     const from = range === 'all' ? (sorted[0]?.createdAt ?? end) : start
-    const minutes = new Map<number, { tokens: number; calls: number }>()
+    const step =
+        range === 'all'
+            ? Math.max(
+                  Time.day,
+                  Math.ceil((+end - +from) / Time.day / 15) * Time.day
+              )
+            : RANGES[range][1]
+    const aligned = new Date(from)
+    const plugins = new Map<string, PluginUsage>()
     let totalTokens = 0
     let tpm = 0
     let rpm = 0
+    let minute = -1
+    let minuteTokens = 0
+    let minuteCalls = 0
+
+    if (range === 'day') aligned.setMinutes(0, 0, 0)
+    else aligned.setHours(0, 0, 0, 0)
+
+    const points: TokenPoint[] = sorted.length
+        ? Array.from(
+              { length: Math.ceil((+end - +aligned) / step) },
+              (_, i) => {
+                  const date = new Date(+aligned + i * step)
+                  const label = `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+                  return {
+                      label:
+                          range === 'day'
+                              ? `${label} ${pad(date.getHours())}:00`
+                              : label,
+                      tokens: 0,
+                      inputTokens: 0,
+                      outputTokens: 0
+                  }
+              }
+          )
+        : []
 
     for (const row of sorted) {
         const tokens = row.usageMetadata.total_tokens
         const key = Math.floor(+row.createdAt / Time.minute) * Time.minute
-        const item = minutes.get(key) ?? { tokens: 0, calls: 0 }
-        item.tokens += tokens
-        item.calls += 1
+        const point = points[Math.floor((+row.createdAt - +aligned) / step)]
+        if (key === minute) {
+            minuteTokens += tokens
+            minuteCalls += 1
+        } else {
+            tpm = Math.max(tpm, minuteTokens)
+            rpm = Math.max(rpm, minuteCalls)
+            minute = key
+            minuteTokens = tokens
+            minuteCalls = 1
+        }
         totalTokens += tokens
-        if (item.tokens > tpm) tpm = item.tokens
-        if (item.calls > rpm) rpm = item.calls
-        minutes.set(key, item)
+        if (point) {
+            point.tokens += tokens
+            point.inputTokens += row.usageMetadata.input_tokens
+            point.outputTokens += row.usageMetadata.output_tokens
+        }
+        if (withPlugins) {
+            const plugin = plugins.get(row.source) ?? {
+                source: row.source,
+                tokens: 0,
+                calls: 0
+            }
+            plugin.tokens += tokens
+            plugin.calls += 1
+            plugins.set(row.source, plugin)
+        }
     }
+    tpm = Math.max(tpm, minuteTokens)
+    rpm = Math.max(rpm, minuteCalls)
 
     return {
         range,
-        label: rangeLabel(range),
+        label: RANGES[range][0],
         start: from,
         end,
         totalTokens,
         calls: sorted.length,
         tpm,
         rpm,
-        points: tokenPoints(range, from, end, sorted),
-        plugins: withPlugins ? pluginUsage(sorted) : undefined
+        points,
+        plugins: withPlugins
+            ? [...plugins.values()].sort((a, b) => b.tokens - a.tokens)
+            : undefined
     }
-}
-
-function rangeLabel(range: TokenRange) {
-    if (range === 'day') return '天'
-    if (range === 'week') return '周'
-    if (range === 'month') return '月'
-    return '全部'
-}
-
-function formatNumber(value: number) {
-    return value.toLocaleString('en-US')
-}
-
-function pluginUsage(rows: ChatLunaUsage.Record[]): PluginUsage[] {
-    const map = new Map<string, PluginUsage>()
-
-    for (const row of rows) {
-        const source = row.source || 'unknown'
-        const item = map.get(source) ?? { source, tokens: 0, calls: 0 }
-        item.tokens += row.usageMetadata.total_tokens
-        item.calls += 1
-        map.set(source, item)
-    }
-
-    return [...map.values()].sort((a, b) => b.tokens - a.tokens)
-}
-
-function tokenPoints(
-    range: TokenRange,
-    start: Date,
-    end: Date,
-    rows: ChatLunaUsage.Record[]
-) {
-    if (!rows.length) return []
-
-    const hourly = range === 'day'
-    const step = tokenStep(range, start, end)
-    const alignedStart = tokenAlignedStart(range, start)
-    const result: TokenPoint[] = []
-
-    for (let at = +alignedStart; at < +end; at += step) {
-        const date = new Date(at)
-        const m = String(date.getMonth() + 1).padStart(2, '0')
-        const d = String(date.getDate()).padStart(2, '0')
-        const h = String(date.getHours()).padStart(2, '0')
-        result.push({
-            label: hourly ? `${m}-${d} ${h}:00` : `${m}-${d}`,
-            tokens: 0,
-            inputTokens: 0,
-            outputTokens: 0
-        })
-    }
-
-    for (const row of rows) {
-        const idx = Math.floor((+row.createdAt - +alignedStart) / step)
-        if (result[idx]) {
-            result[idx].tokens += row.usageMetadata.total_tokens
-            result[idx].inputTokens += row.usageMetadata.input_tokens
-            result[idx].outputTokens += row.usageMetadata.output_tokens
-        }
-    }
-
-    return result
-}
-
-function tokenAlignedStart(range: TokenRange, start: Date) {
-    const result = new Date(start)
-    if (range === 'day') result.setMinutes(0, 0, 0)
-    else result.setHours(0, 0, 0, 0)
-    return result
-}
-
-function tokenStep(range: TokenRange, start: Date, end: Date) {
-    if (range === 'day') return 2 * Time.hour
-    if (range === 'month') return 2 * Time.day
-    if (range === 'all') {
-        return Math.max(
-            Time.day,
-            Math.ceil((+end - +start) / Time.day / 15) * Time.day
-        )
-    }
-    return Time.day
 }

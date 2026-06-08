@@ -1,7 +1,5 @@
-/** @jsxImportSource ./html */
 import type { Context } from 'koishi'
 import type {} from 'koishi-plugin-puppeteer'
-import { raw, renderHtml } from './html/jsx-runtime'
 import { formatDate } from './tokens'
 import type { TokenPoint, TokenReport, TokenTheme } from './tokens'
 
@@ -322,12 +320,7 @@ function monotonePath(pts: Coord[]) {
 function chart(points: TokenPoint[]) {
     if (!points.length) return <div class="empty-chart">暂无用量数据</div>
 
-    const width = 968
-    const height = 360
-    const left = 78
-    const right = 26
-    const top = 30
-    const bottom = 56
+    const [width, height, left, right, top, bottom] = [968, 360, 78, 26, 30, 56]
     const plotWidth = width - left - right
     const plotHeight = height - top - bottom
     const baseline = top + plotHeight
@@ -335,9 +328,9 @@ function chart(points: TokenPoint[]) {
         1,
         ...points.flatMap((p) => [p.tokens, p.inputTokens, p.outputTokens])
     )
-    const makeCoords = (
-        key: 'tokens' | 'inputTokens' | 'outputTokens'
-    ): Coord[] =>
+    const [totalCoords, inputCoords, outputCoords] = (
+        ['tokens', 'inputTokens', 'outputTokens'] as const
+    ).map((key) =>
         points.map((point, idx) => ({
             x:
                 points.length === 1
@@ -346,116 +339,101 @@ function chart(points: TokenPoint[]) {
             y: baseline - (point[key] / max) * plotHeight,
             point
         }))
-
-    const totalCoords = makeCoords('tokens')
-    const inputCoords = makeCoords('inputTokens')
-    const outputCoords = makeCoords('outputTokens')
-    const totalLine = monotonePath(totalCoords)
-    const inputLine = monotonePath(inputCoords)
-    const outputLine = monotonePath(outputCoords)
+    )
+    const [totalLine, inputLine, outputLine] = [
+        totalCoords,
+        inputCoords,
+        outputCoords
+    ].map(monotonePath)
     const area = totalLine
         ? `${totalLine} L${totalCoords[totalCoords.length - 1].x},${baseline} L${totalCoords[0].x},${baseline} Z`
         : ''
     const size = points.length > 24 ? 10 : 12
 
-    return (
-        <>
-            <svg class="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img">
-                <defs>
-                    <linearGradient id="totalGrad" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#6366f1" />
-                        <stop offset="100%" stop-color="#8b5cf6" />
-                    </linearGradient>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="rgba(99,102,241,0.30)" />
-                        <stop offset="100%" stop-color="rgba(139,92,246,0.02)" />
-                    </linearGradient>
-                </defs>
-                <g class="grid">
-                    {Array.from({ length: 5 }, (_, idx) => {
-                        const y = top + (plotHeight * idx) / 4
-                        const value = Math.round(max - (max * idx) / 4)
-                        return (
-                            <>
-                                <line x1={left} y1={y} x2={width - right} y2={y} />
-                                <text x={left - 14} y={y + 4}>
-                                    {fmt(value)}
-                                </text>
-                            </>
-                        )
-                    })}
-                </g>
-                <path d={area} fill="url(#areaGrad)" />
-                <path class="line line-input" d={inputLine} />
-                <path class="line line-output" d={outputLine} />
-                <path class="line line-total" d={totalLine} />
-                {[
-                    ['input', inputCoords] as const,
-                    ['output', outputCoords] as const,
-                    ['total', totalCoords] as const
-                ].flatMap(([name, coords]) =>
-                    coords.map((c, _, arr) => (
+    return [
+        <svg class="trend-chart" viewbox={`0 0 ${width} ${height}`} role="img">
+            <defs>
+                <linearGradient id="totalGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#6366f1" />
+                    <stop offset="100%" stop-color="#8b5cf6" />
+                </linearGradient>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="rgba(99,102,241,0.30)" />
+                    <stop offset="100%" stop-color="rgba(139,92,246,0.02)" />
+                </linearGradient>
+            </defs>
+            <g class="grid">
+                {Array.from({ length: 5 }, (_, idx) => {
+                    const y = top + (plotHeight * idx) / 4
+                    const value = Math.round(max - (max * idx) / 4)
+                    return [
+                        <line x1={left} y1={y} x2={width - right} y2={y} />,
+                        <text x={left - 14} y={y + 4}>
+                            {fmt(value)}
+                        </text>
+                    ]
+                })}
+            </g>
+            <path d={area} fill="url(#areaGrad)" />
+            <path class="line line-input" d={inputLine} />
+            <path class="line line-output" d={outputLine} />
+            <path class="line line-total" d={totalLine} />
+            {[
+                ['input', inputCoords] as const,
+                ['output', outputCoords] as const,
+                ['total', totalCoords] as const
+            ].flatMap(([name, coords]) =>
+                coords.map((c, idx) => {
+                    const last = idx === coords.length - 1
+                    return (
                         <circle
                             class={
-                                c === arr[arr.length - 1]
-                                    ? `dot-${name} dot-last`
-                                    : `dot-${name}`
+                                last ? `dot-${name} dot-last` : `dot-${name}`
                             }
                             cx={c.x}
                             cy={c.y}
-                            r={c === arr[arr.length - 1] ? 5.5 : 4}
+                            r={last ? 5.5 : 4}
                         />
-                    ))
-                )}
-                {totalCoords.map((c) => {
-                    const parts = c.point.label.split(' ')
-                    if (parts.length < 2) {
-                        return (
-                            <text
-                                class="axis-x"
-                                style={`font-size:${size}px`}
-                                x={c.x}
-                                y={height - 22}
-                            >
-                                {c.point.label}
-                            </text>
-                        )
-                    }
-                    return (
-                        <text
-                            class="axis-x"
-                            style={`font-size:${size}px`}
-                            x={c.x}
-                            y={height - 28}
-                        >
-                            <tspan x={c.x} dy="0">
-                                {parts[0]}
-                            </tspan>
-                            <tspan x={c.x} dy="15">
-                                {parts[1]}
-                            </tspan>
-                        </text>
                     )
-                })}
-            </svg>
-            <div class="chart-legend">
-                <span class="legend-item" style="--legend-color:#6366f1">
-                    <i></i>总 token
-                </span>
-                <span class="legend-item" style="--legend-color:#0ea5e9">
-                    <i></i>输入 token
-                </span>
-                <span class="legend-item" style="--legend-color:#f59e0b">
-                    <i></i>输出 token
-                </span>
-            </div>
-        </>
-    )
+                })
+            )}
+            {totalCoords.map((c) => {
+                const parts = c.point.label.split(' ')
+                return (
+                    <text
+                        class="axis-x"
+                        style={`font-size:${size}px`}
+                        x={c.x}
+                        y={height - (parts[1] ? 28 : 22)}
+                    >
+                        {parts[1]
+                            ? parts.map((part, idx) => (
+                                  <tspan x={c.x} dy={idx ? '15' : '0'}>
+                                      {part}
+                                  </tspan>
+                              ))
+                            : c.point.label}
+                    </text>
+                )
+            })}
+        </svg>,
+        <div class="chart-legend">
+            <span class="legend-item" style="--legend-color:#6366f1">
+                <i></i>总 token
+            </span>
+            <span class="legend-item" style="--legend-color:#0ea5e9">
+                <i></i>输入 token
+            </span>
+            <span class="legend-item" style="--legend-color:#f59e0b">
+                <i></i>输出 token
+            </span>
+        </div>
+    ]
 }
 
 function trendIcon() {
     return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="24" height="24" viewbox="0 0 24 24" fill="none">
             <path
                 d="M4 16l4.5-5 3.5 3.5L20 7"
                 stroke="white"
@@ -476,8 +454,16 @@ function trendIcon() {
 
 function pluginIcon() {
     return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <rect x="4" y="4" width="7" height="7" rx="2" stroke="white" stroke-width="2.1" />
+        <svg width="24" height="24" viewbox="0 0 24 24" fill="none">
+            <rect
+                x="4"
+                y="4"
+                width="7"
+                height="7"
+                rx="2"
+                stroke="white"
+                stroke-width="2.1"
+            />
             <rect
                 x="13"
                 y="4"
@@ -498,7 +484,15 @@ function pluginIcon() {
                 stroke-width="2.1"
                 opacity="0.55"
             />
-            <rect x="13" y="13" width="7" height="7" rx="2" stroke="white" stroke-width="2.1" />
+            <rect
+                x="13"
+                y="13"
+                width="7"
+                height="7"
+                rx="2"
+                stroke="white"
+                stroke-width="2.1"
+            />
         </svg>
     )
 }
@@ -522,7 +516,6 @@ function pluginCard(plugins?: TokenReport['plugins']) {
                     const [accent, accent2] =
                         PLUGIN_COLORS[idx % PLUGIN_COLORS.length]
                     const ratio = (plugin.tokens / total) * 100
-                    const width = Math.max(2, Math.min(100, ratio))
                     return (
                         <div
                             class="plugin-row"
@@ -533,13 +526,14 @@ function pluginCard(plugins?: TokenReport['plugins']) {
                                 {plugin.source}
                             </div>
                             <div class="plugin-meta">
-                                <b>{ratio.toFixed(1)}%</b> · {fmt(plugin.tokens)} token ·{' '}
-                                {fmt(plugin.calls)} 次
+                                <b>{ratio.toFixed(1)}%</b> ·{' '}
+                                {fmt(plugin.tokens)} token · {fmt(plugin.calls)}{' '}
+                                次
                             </div>
                             <div class="plugin-track">
                                 <div
                                     class="plugin-fill"
-                                    style={`width:${width}%`}
+                                    style={`width:${Math.max(2, Math.min(100, ratio))}%`}
                                 ></div>
                             </div>
                         </div>
@@ -553,13 +547,16 @@ function pluginCard(plugins?: TokenReport['plugins']) {
 function pageHtml(data: TokenReport, theme: RenderTheme) {
     return (
         '<!doctype html>' +
-        renderHtml(
+        String(
             <html lang="zh-CN">
                 <head>
                     <meta charset="UTF-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <meta
+                        name="viewport"
+                        content="width=device-width, initial-scale=1.0"
+                    />
                     <title>Chatluna token 消耗趋势</title>
-                    <style>{raw(CSS)}</style>
+                    <style>{CSS}</style>
                 </head>
                 <body>
                     <div class={`stage theme-${theme}`}>
@@ -574,7 +571,9 @@ function pageHtml(data: TokenReport, theme: RenderTheme) {
                                     </p>
                                 </div>
                             </header>
-                            <section class="chart-wrap">{chart(data.points)}</section>
+                            <section class="chart-wrap">
+                                {chart(data.points)}
+                            </section>
                         </main>
                         {pluginCard(data.plugins)}
                     </div>
@@ -607,6 +606,6 @@ export async function renderTokenTrend(
         ctx.logger.error(err)
         return '图表渲染失败，请检查日志。'
     } finally {
-        await page?.close().catch((err) => ctx.logger.warn(err))
+        await page?.close()
     }
 }

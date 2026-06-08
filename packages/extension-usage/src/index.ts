@@ -6,22 +6,32 @@ import type { UsageMetadata } from '@langchain/core/messages'
 import type { ModelUsageCallType } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 import type {} from 'koishi-plugin-puppeteer'
 import { renderTokenTrend } from './renderer'
-import {
-    createTokenReport,
-    formatTokenReport,
-    tokenRange,
-    tokenStart
-} from './tokens'
-import type {
-    PluginUsage as UsagePluginUsage,
-    TokenPoint as UsageTokenPoint,
-    TokenRange as UsageTokenRange,
-    TokenReport as UsageTokenReport,
-    TokenTheme as UsageTokenTheme
-} from './tokens'
+import { createTokenReport, formatTokenReport } from './tokens'
+import type { TokenRange, TokenTheme } from './tokens'
 
 const logger = new Logger('chatluna-usage')
-const DEFAULT_TOKEN_THEME: Exclude<UsageTokenTheme, 'auto'> = 'light'
+
+function summary(
+    key: string,
+    label = key,
+    platform?: string
+): ChatLunaUsage.Summary {
+    return {
+        key,
+        label,
+        platform,
+        calls: 0,
+        successfulCalls: 0,
+        failedCalls: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        estimatedTokens: 0,
+        cachedTokens: 0,
+        reasoningTokens: 0,
+        successRate: 0
+    }
+}
 
 class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
     constructor(
@@ -153,67 +163,21 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         const sources = new Map<string, ChatLunaUsage.Summary>()
         const timeline = new Map<string, ChatLunaUsage.Timeline>()
         const modelTimeline = new Map<string, Map<string, number>>()
-        const totals: ChatLunaUsage.Summary = {
-            key: 'total',
-            label: '全部用量',
-            calls: 0,
-            successfulCalls: 0,
-            failedCalls: 0,
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-            estimatedTokens: 0,
-            cachedTokens: 0,
-            reasoningTokens: 0,
-            successRate: 0
-        }
+        const totals = summary('total', '全部用量')
 
         for (const row of rows) {
             const key = this.groupKey(row, groupBy)
-            const item = groups.get(key) ?? {
-                key,
-                label: this.groupLabel(key, groupBy),
-                platform: groupBy === 'model' ? row.platform : undefined,
-                calls: 0,
-                successfulCalls: 0,
-                failedCalls: 0,
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-                estimatedTokens: 0,
-                cachedTokens: 0,
-                reasoningTokens: 0,
-                successRate: 0
-            }
-            const model = models.get(row.model) ?? {
-                key: row.model,
-                label: row.model,
-                platform: row.platform,
-                calls: 0,
-                successfulCalls: 0,
-                failedCalls: 0,
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-                estimatedTokens: 0,
-                cachedTokens: 0,
-                reasoningTokens: 0,
-                successRate: 0
-            }
-            const source = sources.get(row.source) ?? {
-                key: row.source,
-                label: row.source,
-                calls: 0,
-                successfulCalls: 0,
-                failedCalls: 0,
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-                estimatedTokens: 0,
-                cachedTokens: 0,
-                reasoningTokens: 0,
-                successRate: 0
-            }
+            const item =
+                groups.get(key) ??
+                summary(
+                    key,
+                    this.groupLabel(key, groupBy),
+                    groupBy === 'model' ? row.platform : undefined
+                )
+            const model =
+                models.get(row.model) ??
+                summary(row.model, row.model, row.platform)
+            const source = sources.get(row.source) ?? summary(row.source)
             const date = this.dateKey(row.createdAt, input.period ?? 'day')
             const point = timeline.get(date) ?? {
                 date,
@@ -298,21 +262,31 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         options: ChatLunaUsage.TokenCommandOptions,
         args: string[]
     ) {
-        let range: ChatLunaUsage.TokenRange | undefined
-        if (options.all) range = 'all'
-        else if (options.month) range = 'month'
-        else if (options.week) range = 'week'
-        else if (options.day) range = 'day'
-
+        let range: TokenRange = options.all
+            ? 'all'
+            : options.month
+              ? 'month'
+              : options.week
+                ? 'week'
+                : 'day'
         let plugin = Boolean(options.plugin)
 
         for (const arg of args) {
-            const value = tokenRange(arg)
+            const keyword = arg.replace(/^-+/, '').trim().toLowerCase()
+            const value = {
+                d: 'day',
+                day: 'day',
+                w: 'week',
+                week: 'week',
+                m: 'month',
+                month: 'month',
+                a: 'all',
+                all: 'all'
+            }[keyword] as TokenRange
             if (value) {
                 range = value
                 continue
             }
-            const keyword = arg.replace(/^-+/, '').trim().toLowerCase()
             if (keyword === 'p' || keyword === 'plugin') {
                 plugin = true
                 continue
@@ -321,7 +295,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         }
 
         try {
-            const report = await this.tokenReport(range ?? 'day', plugin)
+            const report = await this.tokenReport(range, plugin)
             await session.send(formatTokenReport(report))
 
             const puppeteer = this.ctx.get('puppeteer')
@@ -330,15 +304,13 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
                 return
             }
 
-            const theme =
-                this.config.tokensTheme === 'auto'
-                    ? DEFAULT_TOKEN_THEME
-                    : this.config.tokensTheme
             const image = await renderTokenTrend(
                 this.ctx,
                 puppeteer,
                 report,
-                theme
+                this.config.tokensTheme === 'auto'
+                    ? 'light'
+                    : this.config.tokensTheme
             )
             await session.send(
                 typeof image === 'string'
@@ -351,12 +323,17 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         }
     }
 
-    private async tokenReport(
-        range: ChatLunaUsage.TokenRange,
-        withPlugins = false
-    ) {
+    private async tokenReport(range: TokenRange, withPlugins = false) {
         const end = new Date()
-        const start = tokenStart(range, end)
+        const start = new Date(
+            +end -
+                {
+                    day: Time.day,
+                    week: 7 * Time.day,
+                    month: 30 * Time.day,
+                    all: 0
+                }[range]
+        )
         const time = range === 'all' ? { $lt: end } : { $gte: start, $lt: end }
         const rows = (await this.ctx.database.get('chatluna_usage', {
             createdAt: time
@@ -568,8 +545,6 @@ namespace ChatLunaUsage {
     }
 
     export type Period = 'day' | 'month' | 'year'
-    export type TokenRange = UsageTokenRange
-    export type TokenTheme = UsageTokenTheme
     export type GroupBy =
         | 'source'
         | 'model'
@@ -660,10 +635,6 @@ namespace ChatLunaUsage {
         pageSize: number
         rows: ListRow[]
     }
-
-    export type TokenPoint = UsageTokenPoint
-    export type PluginUsage = UsagePluginUsage
-    export type TokenReport = UsageTokenReport
 
     export interface Payload {
         query: Required<
