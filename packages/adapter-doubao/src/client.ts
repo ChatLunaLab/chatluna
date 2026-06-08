@@ -44,6 +44,8 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
     async refreshModels(): Promise<ModelInfo[]> {
         const rawModels: [string, number | undefined][] = [
+            ['doubao-seed-2-0-lite-260428', 256000],
+            ['doubao-seed-2-0-mini-260428', 256000],
             ['doubao-seed-2-0-pro-260215', 256000],
             ['doubao-seed-2-0-lite-260215', 256000],
             ['doubao-seed-2-0-mini-260215', 256000],
@@ -54,6 +56,8 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             ['doubao-seed-1-6-lite-251015', 256000],
             ['doubao-seed-1-6-flash-250828', 256000],
             ['doubao-1.5-vision-pro-250328', 128000],
+            ['deepseek-v4-pro-260425', 1000000],
+            ['deepseek-v4-flash-260425', 1000000],
             ['deepseek-v3-1-250821', 128000],
             ['deepseek-v3-2-251201', 128000],
             ['glm-4-7-251222', 200000],
@@ -81,7 +85,14 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             'doubao-seed-1-6-lite-251015',
             'doubao-seed-1-6-251015',
             'doubao-seed-1-8-251228',
-            'doubao-seed-2-0'
+            'doubao-seed-2-0-lite-260428',
+            'doubao-seed-2-0-mini-260428',
+            'doubao-seed-2-0-pro-260215',
+            'doubao-seed-2-0-lite-260215',
+            'doubao-seed-2-0-mini-260215',
+            'doubao-seed-2-0-code-preview-260215',
+            'deepseek-v4-pro-260425',
+            'deepseek-v4-flash-260425'
         ]
 
         const imageInputSupportModels = [

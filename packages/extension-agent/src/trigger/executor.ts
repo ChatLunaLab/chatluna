@@ -306,8 +306,7 @@ export class ChatLunaAgentTriggerExecutor {
             if ('result' in routed) return { result: routed.result }
             session = buildVirtualSession(routed.bot, parsed.routing, {
                 message: action.message,
-                messageName: action.messageName,
-                requestId
+                messageName: action.messageName
             })
         } else {
             const routed = resolveBot(
@@ -319,8 +318,7 @@ export class ChatLunaAgentTriggerExecutor {
             if ('result' in routed) return { result: routed.result }
             session = buildVirtualSession(routed.bot, target as WakeupRouting, {
                 message: action.message,
-                messageName: action.messageName,
-                requestId
+                messageName: action.messageName
             })
         }
 
@@ -447,7 +445,6 @@ export class ChatLunaAgentTriggerExecutor {
                     },
                     {
                         message: getMessageContent(reply.content),
-                        requestId: session.messageId,
                         messageName: action.messageName
                     }
                 )

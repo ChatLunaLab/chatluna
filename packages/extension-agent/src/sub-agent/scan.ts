@@ -56,7 +56,13 @@ function getScanTargets(ctx: Context, cfg: AgentConfig['subAgent']) {
     const root = getSubAgentsRootPath(ctx)
     const seen = new Set([toPathKey(root)])
     const targets: ScanTarget[] = [
-        { root, scope: 'data', priority: 0, hint: 'chatluna', remote: false }
+        {
+            root,
+            scope: 'data',
+            priority: 0,
+            hint: 'chatluna',
+            remote: false
+        }
     ]
 
     for (let idx = 0; idx < cfg.dirs.length; idx++) {
@@ -112,6 +118,7 @@ async function scanTarget(target: ScanTarget, cfg: AgentConfig['subAgent']) {
 
             const base = createSubAgentItemConfig({
                 enabled: parsed.value?.enabled ?? true,
+                dedupeTools: parsed.value?.dedupeTools,
                 name: parsed.value?.name ?? name,
                 description: parsed.value?.description ?? '',
                 chatluna: parsed.value?.chatluna ?? true,
@@ -162,6 +169,7 @@ async function scanTarget(target: ScanTarget, cfg: AgentConfig['subAgent']) {
                 id,
                 name: item.name,
                 description: item.description,
+                dedupeTools: item.dedupeTools,
                 source: 'markdown',
                 format: item.format,
                 state: parsed.state,

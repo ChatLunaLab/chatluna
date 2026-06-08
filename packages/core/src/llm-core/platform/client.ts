@@ -68,7 +68,7 @@ export abstract class BasePlatformClient<
 
         const maxRetries = cfg.value.maxRetries ?? 5
 
-        while (retryCount < (maxRetries ?? 1)) {
+        while (retryCount <= maxRetries) {
             let oldConfig: ClientConfigWrapper<T> | undefined
 
             try {
@@ -93,7 +93,7 @@ export abstract class BasePlatformClient<
                     return false
                 }
 
-                if (retryCount === maxRetries - 1) {
+                if (retryCount >= maxRetries) {
                     if (oldConfig == null) {
                         this.ctx.logger.error(e)
                         unlock()

@@ -1295,7 +1295,7 @@ export namespace ChatLunaPlugin {
                 Schema.const('default'),
                 Schema.const('balance')
             ]).default('default'),
-            maxRetries: Schema.number().min(1).max(6).default(5),
+            maxRetries: Schema.number().min(0).max(6).default(5),
             timeout: Schema.number().default(300 * 1000),
             proxyMode: Schema.union([
                 Schema.const('system'),

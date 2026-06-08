@@ -64,6 +64,15 @@
                             <el-switch v-model="draft.hidden" />
                         </div>
                     </div>
+                    <div class="field-card flat-card switch-card">
+                        <div class="scope-row">
+                            <div>
+                                <div class="field-label">主 LLM 去重重复工具</div>
+                                <div class="field-help">开启后，主 LLM 会隐藏与当前 Sub Agent 重叠的工具。</div>
+                            </div>
+                            <el-switch v-model="draft.dedupeTools" />
+                        </div>
+                    </div>
                 </div>
 
                 <el-divider style="margin: 4px 0;" />
@@ -351,6 +360,7 @@ interface RuleDraft {
 
 interface AgentDraft {
     enabled: boolean
+    dedupeTools: boolean
     name: string
     description: string
     promptContent: string

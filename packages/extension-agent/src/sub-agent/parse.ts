@@ -17,6 +17,7 @@ export interface ParsedAgentFrontmatter {
     characterGroupIds: string[]
     characterPrivateIds: string[]
     authority: number
+    dedupeTools: boolean
     model?: string
     maxTurns?: number
     hidden: boolean
@@ -101,6 +102,7 @@ export function parseAgentFrontmatter(
     let characterGroupIds: string[] = []
     let characterPrivateIds: string[] = []
     let authority = 0
+    const dedupeTools = frontmatter.dedupeTools === true
     let model: string | undefined
     let maxTurns: number | undefined
     let allowKoishiMessageTransform = false
@@ -329,6 +331,7 @@ export function parseAgentFrontmatter(
             characterGroupIds,
             characterPrivateIds,
             authority,
+            dedupeTools,
             model,
             maxTurns,
             hidden,

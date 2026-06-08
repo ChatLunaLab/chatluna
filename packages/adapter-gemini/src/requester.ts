@@ -324,6 +324,13 @@ export class GeminiRequester
             }
         }
 
+        if (result == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                new Error('empty gemini response')
+            )
+        }
+
         const finalChunk = this._handleFinalContent(
             reasoningContent,
             groundingContent.value
@@ -419,13 +426,8 @@ export class GeminiRequester
                         : chunk
 
                 const usage = getUsage(transformValue)
-                if (usage != null) {
-                    controller.enqueue({
-                        usage
-                    })
-                }
-
                 if (!transformValue?.candidates) {
+                    if (usage != null) controller.enqueue({ usage })
                     return
                 }
 
@@ -438,6 +440,8 @@ export class GeminiRequester
                         currentGroundingIndex
                     )
                 }
+
+                if (usage != null) controller.enqueue({ usage })
             }
         })
     }
@@ -502,24 +506,27 @@ export class GeminiRequester
                     reasoningTokens: parsedChunk.usage.reasoningTokens
                 })
 
-                const generationChunk = new ChatGenerationChunk({
-                    generationInfo: {
-                        usage_metadata: usageMetadata
-                    },
-                    message: new AIMessageChunk({
-                        content: '',
-                        usage_metadata: usageMetadata
-                    }),
-                    text: ''
-                })
-
-                yield { type: 'generation', generation: generationChunk }
+                yield {
+                    type: 'generation',
+                    generation: new ChatGenerationChunk({
+                        generationInfo: {
+                            usage_metadata: usageMetadata
+                        },
+                        message: new AIMessageChunk({
+                            content: '',
+                            usage_metadata: usageMetadata
+                        }),
+                        text: ''
+                    })
+                }
+                continue
             }
 
             try {
+                const part = Object.assign({}, chunk)
                 const { updatedContent, updatedReasoning, updatedToolCalling } =
                     await this._processChunk(
-                        chunk,
+                        part,
                         reasoningContent,
                         functionIndex
                     )
@@ -530,7 +537,11 @@ export class GeminiRequester
                     continue
                 }
 
-                if (updatedContent || updatedToolCalling) {
+                if (
+                    updatedContent ||
+                    updatedToolCalling ||
+                    chunk['thoughtSignature'] != null
+                ) {
                     const messageChunk = this._createMessageChunk(
                         updatedContent,
                         updatedToolCalling,
@@ -594,9 +605,13 @@ export class GeminiRequester
             } else {
                 const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
 
+                const hash = await hashString(imagePart.inlineData.data, 8)
+                const type = (
+                    imagePart.inlineData.mimeType ?? 'image/png'
+                ).split('/')[1]
                 const file = await storageService.createTempFile(
                     buffer,
-                    `${await hashString(imagePart.inlineData.data, 8)}.${(imagePart.inlineData.mimeType ?? 'image/png').split('/')[1]}`
+                    `${hash}.${type}`
                 )
 
                 messagePart.text = '[image]'
@@ -677,6 +692,36 @@ export class GeminiRequester
             content: content ?? '',
             tool_call_chunks: [functionCall].filter(Boolean)
         })
+        const sig = chunk['thoughtSignature']
+        let thoughtData: Record<string, unknown> | undefined
+        if (sig != null) {
+            const id = chunk['functionCall']?.id
+            if (id != null) {
+                thoughtData = {
+                    [id]: {
+                        thoughtSignature: sig
+                    }
+                }
+            } else {
+                const part = {
+                    thoughtSignature: sig,
+                    toolCall: chunk['toolCall'],
+                    toolResponse: chunk['toolResponse'],
+                    executableCode: chunk['executableCode'],
+                    codeExecutionResult: chunk['codeExecutionResult']
+                }
+                const contextId =
+                    chunk['toolCall']?.id ??
+                    chunk['toolResponse']?.id ??
+                    chunk['executableCode']?.id ??
+                    chunk['codeExecutionResult']?.id
+
+                thoughtData =
+                    contextId != null
+                        ? { [contextId]: [part] }
+                        : { parts: [part] }
+            }
+        }
 
         messageChunk.additional_kwargs = {
             images: imagePart
@@ -684,9 +729,7 @@ export class GeminiRequester
                       `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data}`
                   ]
                 : undefined,
-            thought_data: {
-                thoughtSignature: chunk['thoughtSignature']
-            }
+            thought_data: thoughtData
         }
 
         return messageChunk

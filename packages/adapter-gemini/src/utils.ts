@@ -44,52 +44,67 @@ export async function langchainMessageToGeminiMessage(
     plugin: ChatLunaPlugin<ClientConfig, Config>,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
-    const mappedMessages = await Promise.all(
-        messages.map(async (message) => {
-            const role = messageTypeToGeminiRole(message.getType())
-            const hasFunctionCall =
-                (message as AIMessage).tool_calls != null &&
-                (message as AIMessage).tool_calls.length > 0
+    const result: ChatCompletionResponseMessage[] = []
+    for (let i = 0; i < messages.length; i++) {
+        const message = messages[i]
+        const role = messageTypeToGeminiRole(message.getType())
+        const hasFunctionCall =
+            (message as AIMessage).tool_calls != null &&
+            (message as AIMessage).tool_calls.length > 0
 
-            if (role === 'function' || hasFunctionCall) {
-                return await processFunctionMessage(
+        if (role === 'function') {
+            const parts: ChatPart[] = []
+            let j = i
+            while (j < messages.length) {
+                const msg = messages[j]
+                if (messageTypeToGeminiRole(msg.getType()) !== 'function') break
+                parts.push(
+                    ...(
+                        await processFunctionMessage(
+                            plugin,
+                            msg,
+                            plugin.config.useCamelCaseSystemInstruction
+                        )
+                    ).parts
+                )
+                j++
+            }
+            i = j - 1
+            result.push({ role: 'user', parts })
+            continue
+        }
+
+        if (hasFunctionCall) {
+            result.push(
+                await processFunctionMessage(
                     plugin,
                     message,
-                    // 如果使用 new api，我们应该去掉 id，，，
                     plugin.config.useCamelCaseSystemInstruction
                 )
-            }
+            )
+            continue
+        }
 
-            const result: ChatCompletionResponseMessage = {
-                role,
-                parts: []
-            }
+        const item: ChatCompletionResponseMessage = { role, parts: [] }
+        const thoughtData: Record<string, any> =
+            message.additional_kwargs['thought_data'] ?? {}
+        const parts =
+            typeof message.content === 'string'
+                ? [{ text: message.content }]
+                : await processGeminiContentParts(plugin, message.content)
 
-            const thoughtData: Record<string, any> =
-                message.additional_kwargs['thought_data'] ?? {}
+        item.parts = [...getContextParts(thoughtData), ...parts]
 
-            result.parts =
-                typeof message.content === 'string'
-                    ? [{ text: message.content, ...thoughtData }]
-                    : await processGeminiContentParts(
-                          plugin,
-                          message.content,
-                          thoughtData
-                      )
+        if (message.additional_kwargs.images != null) {
+            logger.warn(
+                'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
+            )
+        }
 
-            if (message.additional_kwargs.images != null) {
-                logger.warn(
-                    'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
-                )
-            }
+        result.push(item)
+    }
 
-            return result
-        })
-    )
-
-    return mappedMessages.flatMap((item) =>
-        Array.isArray(item) ? item : [item]
-    )
+    return result
 }
 
 export function extractSystemMessages(
@@ -145,8 +160,27 @@ function parseJsonArgs(args: string) {
     }
 }
 
+function isContextPart(part: any): part is ChatPart {
+    return (
+        typeof part === 'object' &&
+        part != null &&
+        (part['toolCall'] != null ||
+            part['toolResponse'] != null ||
+            part['executableCode'] != null ||
+            part['codeExecutionResult'] != null)
+    )
+}
+
+function getContextParts(data: Record<string, any>, id?: string) {
+    const parts = data['parts'] ?? [data, ...Object.values(data)]
+    const raw = id != null ? data[id] : parts
+    if (raw == null) return []
+
+    return (Array.isArray(raw) ? raw : [raw]).filter(isContextPart)
+}
+
 async function processFunctionMessage(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     message: AIMessage | ToolMessage,
     removeId: boolean
 ): Promise<ChatCompletionResponseMessage> {
@@ -156,21 +190,36 @@ async function processFunctionMessage(
     if (message['tool_calls']) {
         message = message as AIMessage
         const toolCalls = message.tool_calls
+        const parts: ChatPart[] = []
+
+        for (const toolCall of toolCalls) {
+            // tool context: replay context tied to this tool call first.
+            parts.push(...getContextParts(thoughtData, toolCall.id))
+
+            const functionCall: ChatFunctionCallingPart['functionCall'] = {
+                name: toolCall.name,
+                args: toolCall.args
+            }
+            if (!removeId || toolCall.id) {
+                functionCall.id = toolCall.id
+            }
+            const data = thoughtData[toolCall.id] ?? thoughtData
+            const sig = Array.isArray(data)
+                ? data.find(
+                      (item) => typeof item?.thoughtSignature === 'string'
+                  )?.thoughtSignature
+                : data.thoughtSignature
+
+            // tool calls: reattach custom tool calls with their thought signatures.
+            parts.push({
+                functionCall,
+                ...(typeof sig === 'string' ? { thoughtSignature: sig } : {})
+            })
+        }
+
         return {
             role: 'model',
-            parts: toolCalls.map((toolCall) => {
-                const functionCall: ChatFunctionCallingPart['functionCall'] = {
-                    name: toolCall.name,
-                    args: toolCall.args
-                }
-                if (!removeId) {
-                    functionCall.id = toolCall.id
-                }
-                return {
-                    functionCall,
-                    ...thoughtData
-                }
-            })
+            parts
         }
     }
 
@@ -190,7 +239,7 @@ async function processFunctionMessage(
                   response: parseJsonArgs(message.content as string)
               }
 
-    if (!removeId) {
+    if (!removeId || finalMessage.tool_call_id) {
         functionResponse.id = finalMessage.tool_call_id
     }
 
@@ -205,7 +254,7 @@ async function processFunctionMessage(
 }
 
 async function processGeminiImageContent(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     part: MessageContentImageUrl
 ) {
     let url: string
@@ -223,9 +272,7 @@ async function processGeminiImageContent(
     const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
     const data = url.replace(/^data:image\/\w+;base64,/, '')
 
-    return {
-        inline_data: { data, mime_type: mineType }
-    }
+    return createGeminiInlineDataPart(plugin, data, mineType)
 }
 
 type GeminiFileLikeContent = MessageContentComplex &
@@ -254,18 +301,33 @@ function isGeminiFileLikeContent(
     )
 }
 
+function createGeminiInlineDataPart(
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
+    data: string,
+    mimeType: string
+) {
+    if (plugin.config.useCamelCaseMediaFields) {
+        return {
+            inlineData: { data, mimeType }
+        }
+    }
+
+    return {
+        inline_data: { data, mime_type: mimeType }
+    }
+}
+
 async function processGeminiFileLikeContent(
-    plugin: ChatLunaPlugin,
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
     part: GeminiFileLikeContent
 ) {
     try {
         const { buffer, mimeType } = await fetchFileLikeUrl(plugin, part)
-        return {
-            inline_data: {
-                data: buffer.toString('base64'),
-                mime_type: mimeType
-            }
-        }
+        return createGeminiInlineDataPart(
+            plugin,
+            buffer.toString('base64'),
+            mimeType
+        )
     } catch (e) {
         logger.warn(`Failed to fetch ${part.type}`, e)
         return null
@@ -273,14 +335,13 @@ async function processGeminiFileLikeContent(
 }
 
 async function processGeminiContentParts(
-    plugin: ChatLunaPlugin,
-    content: MessageContentComplex[],
-    thoughtData: Record<string, any> = {}
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
+    content: MessageContentComplex[]
 ) {
     const mappedParts = await Promise.all(
         content.map(async (part) => {
             if (isMessageContentText(part)) {
-                return { text: part.text, ...thoughtData }
+                return { text: part.text }
             }
             if (isMessageContentImageUrl(part)) {
                 return await processGeminiImageContent(plugin, part)
@@ -308,9 +369,7 @@ export function partAsTypeCheck<T extends ChatPart>(
 
 // 不支持 googleSearch / codeExecution / urlContext 的模型列表
 const CUSTOM_TOOLS_UNSUPPORTED_MODELS = [
-    'gemini-1.0',
     'gemini-2.0-flash-lite',
-    'gemini-1.5-flash',
     'gemini-2.0-flash-exp'
 ]
 
@@ -355,7 +414,6 @@ function isImageSearchSupported(model: string): boolean {
 
 /**
  * 将 googleSearch / codeExecution / urlContext 对应的工具项追加到 result 中。
- * - gemini-1 系列使用旧版 google_search_retrieval 格式
  * - 支持 imageSearch 的模型会在 google_search 中注入 searchTypes
  * - 其余模型使用标准的新版 google_search: {} 格式
  */
@@ -408,21 +466,11 @@ export function formatToolsToGeminiAITools(
     const functions = tools.map(formatToolToGeminiAITool)
     const result: Record<string, any>[] = []
 
-    const useCustomTools =
-        config.googleSearch || config.codeExecution || config.urlContext
-
-    // --- 处理 functionDeclarations（与自定义工具互斥）---
-    if (functions.length > 0 && !useCustomTools) {
-        result.push({ functionDeclarations: functions })
-    } else if (functions.length > 0 && useCustomTools) {
-        logger.warn('Use custom tools instead of tool calls.')
-    }
-
     // --- 处理内置工具（googleSearch / codeExecution / urlContext）---
     let { googleSearch, codeExecution, urlContext } = config
 
     if (
-        useCustomTools &&
+        (googleSearch || codeExecution || urlContext) &&
         isCustomToolsUnsupported(model, config.imageGeneration)
     ) {
         logger.warn(
@@ -431,6 +479,19 @@ export function formatToolsToGeminiAITools(
         googleSearch = false
         codeExecution = false
         urlContext = false
+    }
+
+    const useBuiltinTools = googleSearch || codeExecution || urlContext
+
+    if (
+        functions.length > 0 &&
+        (!useBuiltinTools || model.includes('gemini-3'))
+    ) {
+        result.push({ functionDeclarations: functions })
+    } else if (functions.length > 0) {
+        logger.warn(
+            `The model ${model} does not support combining built-in tools and function calling. Function calling will be disabled.`
+        )
     }
 
     appendBuiltinTools(result, googleSearch, codeExecution, urlContext, model)
@@ -558,29 +619,27 @@ export function prepareModelConfig(
     }
 }
 
-export function createSafetySettings(model: string) {
-    const isNonGemini1 = !model.includes('gemini-1')
-
+export function createSafetySettings() {
     return [
         {
             category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         },
         {
             category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
-            threshold: isNonGemini1 ? 'OFF' : 'BLOCK_NONE'
+            threshold: 'OFF'
         }
     ]
 }
@@ -639,10 +698,33 @@ export async function createChatGenerationParams(
     const systemInstructionKey = pluginConfig.useCamelCaseSystemInstruction
         ? 'systemInstruction'
         : 'system_instruction'
+    const tools =
+        params.tools != null ||
+        modelConfig.forceGoogleSearch ||
+        pluginConfig.googleSearch ||
+        pluginConfig.codeExecution ||
+        pluginConfig.urlContext
+            ? formatToolsToGeminiAITools(
+                  params.tools ?? [],
+                  {
+                      ...pluginConfig,
+                      googleSearch:
+                          pluginConfig.googleSearch ||
+                          modelConfig.forceGoogleSearch
+                  },
+                  modelConfig.model
+              )
+            : undefined
+    const hasBuiltinTools = tools?.some(
+        (tool) =>
+            tool.google_search != null ||
+            tool.code_execution != null ||
+            tool.urlContext != null
+    )
 
     return {
         contents: modelMessages,
-        safetySettings: createSafetySettings(modelConfig.model),
+        safetySettings: createSafetySettings(),
         generationConfig: createGenerationConfig(
             params,
             modelConfig,
@@ -650,22 +732,10 @@ export async function createChatGenerationParams(
         ),
         [systemInstructionKey]:
             systemInstruction != null ? systemInstruction : undefined,
-        tools:
-            params.tools != null ||
-            modelConfig.forceGoogleSearch ||
-            pluginConfig.googleSearch ||
-            pluginConfig.codeExecution ||
-            pluginConfig.urlContext
-                ? formatToolsToGeminiAITools(
-                      params.tools ?? [],
-                      {
-                          ...pluginConfig,
-                          googleSearch:
-                              pluginConfig.googleSearch ||
-                              modelConfig.forceGoogleSearch
-                      },
-                      modelConfig.model
-                  )
+        tools,
+        toolConfig:
+            modelConfig.model.includes('gemini-3') && hasBuiltinTools
+                ? { includeServerSideToolInvocations: true }
                 : undefined
     }
 }
@@ -693,13 +763,11 @@ export function createGeminiCapabilities(
     // - *-tts: text only
     // - *-image: image input only
     // - gemini-live native-audio: audio/video (no image/pdf)
-    // - gemini 1.5: image/audio/video (no pdf)
     // - newer flash/pro/flash-lite: image/audio/video/pdf
     const isTtsModel = modelNameLower.includes('-tts')
     const isImageOnlyModel = modelNameLower.includes('-image')
     const isLiveModel = modelNameLower.includes('gemini-live')
     const isNativeAudioLiveModel = modelNameLower.includes('native-audio')
-    const isGemini15Family = modelNameLower.startsWith('gemini-1.5-')
 
     const capabilities: ModelCapabilities[] = []
 
@@ -725,7 +793,7 @@ export function createGeminiCapabilities(
         ModelCapabilities.VideoInput
     )
 
-    if (!isGemini15Family && !isLiveModel) {
+    if (!isLiveModel) {
         capabilities.push(ModelCapabilities.FileInput)
     }
 
@@ -733,9 +801,12 @@ export function createGeminiCapabilities(
 }
 
 export function shouldFilterOutGeminiModel(modelNameLower: string): boolean {
+    const name = modelNameLower.slice(modelNameLower.lastIndexOf('/') + 1)
+
     return (
-        modelNameLower.includes('-tts') ||
-        modelNameLower.includes('gemini-live-')
+        name.includes('-tts') ||
+        name.includes('gemini-live-') ||
+        (name.startsWith('gemini-') && Number(name.split('-')[1]) < 2)
     )
 }
 

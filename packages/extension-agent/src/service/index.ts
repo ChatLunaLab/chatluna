@@ -44,6 +44,7 @@ import { ChatLunaAgentRuntimeSyncService } from '../utils/runtime_sync'
 import { ChatLunaAgentSkillsService } from './skills'
 import { ChatLunaAgentSubAgentService } from './sub_agent'
 import { ChatLunaAgentTriggerService } from './trigger'
+import { isPathInside } from '../utils/path'
 
 export class ChatLunaAgentService extends Service {
     public computer: ChatLunaAgentComputerService
@@ -291,7 +292,9 @@ export class ChatLunaAgentService extends Service {
     }
 
     async removeSkill(id: string) {
-        await this.skills.removeSkill(id)
+        if (!(await this.skills.removeSkill(id))) {
+            return
+        }
 
         const skills = {
             dirs: [...this.args.config.skills.dirs],
@@ -386,6 +389,12 @@ export class ChatLunaAgentService extends Service {
             throw new Error('Sub-agent path is missing')
         }
 
+        if (!isPathInside(info.path, getSubAgentsRootPath(this.ctx))) {
+            throw new Error(
+                'Only sub-agents inside data/chatluna/agents can save content here'
+            )
+        }
+
         await writeFile(
             info.path,
             createSubAgentMarkdown({
@@ -407,6 +416,7 @@ export class ChatLunaAgentService extends Service {
                 characterPrivateIds:
                     input.characterPrivateIds ?? info.characterPrivateIds,
                 authority: input.authority ?? info.authority,
+                dedupeTools: input.dedupeTools ?? info.dedupeTools,
                 model: input.model ?? info.model,
                 maxTurns: input.maxTurns ?? info.maxTurns,
                 hidden: input.hidden ?? info.hidden,
@@ -458,6 +468,7 @@ export class ChatLunaAgentService extends Service {
                 characterGroupIds: info.characterGroupIds,
                 characterPrivateIds: info.characterPrivateIds,
                 authority: info.authority,
+                dedupeTools: info.dedupeTools,
                 promptContent: info.promptContent,
                 model: info.model,
                 maxTurns: info.maxTurns,
@@ -481,6 +492,7 @@ export class ChatLunaAgentService extends Service {
         const subAgent = structuredClone(this.args.config.subAgent)
         subAgent.presetAgents[name] = createSubAgentItemConfig({
             enabled: config.enabled ?? true,
+            dedupeTools: config.dedupeTools,
             name,
             description: config.description ?? name,
             chatluna: config.chatluna,
@@ -526,12 +538,7 @@ export class ChatLunaAgentService extends Service {
         }
 
         if (info.source === 'markdown') {
-            if (!info.path) {
-                throw new Error('Sub-agent path is missing')
-            }
-
             if (info.remote) {
-                await this.computer.removeRemoteSubAgent(info.path)
                 const subAgent = structuredClone(this.args.config.subAgent)
                 delete subAgent.items[id]
                 await this.updateConfig('subAgent', subAgent, async () => {
@@ -540,9 +547,13 @@ export class ChatLunaAgentService extends Service {
                 return
             }
 
+            if (!info.path) {
+                throw new Error('Sub-agent path is missing')
+            }
+
             const root = resolve(getSubAgentsRootPath(this.ctx))
             const file = resolve(info.path)
-            if (!file.startsWith(root)) {
+            if (!isPathInside(file, root)) {
                 throw new Error(
                     'Only sub-agents inside data/chatluna/agents can be removed here'
                 )
@@ -773,6 +784,7 @@ ${truncateOutput(input.text, limit)}`
 function itemFromInfo(info: SubAgentInfo, enabled: boolean) {
     return createSubAgentItemConfig({
         enabled,
+        dedupeTools: info.dedupeTools,
         name: info.name,
         description: info.description,
         chatluna: info.chatlunaEnabled,

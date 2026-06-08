@@ -11,6 +11,7 @@ export function createManualAgent(
 ): SubAgentInfo {
     const item = createSubAgentItemConfig({
         enabled: input.enabled,
+        dedupeTools: input.dedupeTools,
         name: input.name,
         description: input.description ?? input.name,
         chatluna: input.chatluna,
@@ -37,6 +38,7 @@ export function createManualAgent(
         id: input.id?.trim() || `manual:${randomUUID()}`,
         name: item.name,
         description: item.description,
+        dedupeTools: item.dedupeTools,
         source: 'manual',
         format: item.format,
         state: 'ready',

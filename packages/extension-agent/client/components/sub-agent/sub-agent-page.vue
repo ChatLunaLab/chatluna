@@ -254,6 +254,7 @@ const props = withDefaults(
             builtin: {
                 plan: {
                     enabled: false,
+                    dedupeTools: false,
                     name: 'plan',
                     description: '',
                     chatluna: true,
@@ -280,6 +281,7 @@ const props = withDefaults(
                 },
                 general: {
                     enabled: false,
+                    dedupeTools: false,
                     name: 'general',
                     description: '',
                     chatluna: true,
@@ -306,6 +308,7 @@ const props = withDefaults(
                 },
                 explore: {
                     enabled: false,
+                    dedupeTools: false,
                     name: 'explore',
                     description: '',
                     chatluna: true,
@@ -384,6 +387,7 @@ const previewDraft = reactive({
 
 const draft = reactive({
     enabled: false,
+    dedupeTools: false,
     name: '',
     description: '',
     promptContent: '',
@@ -438,6 +442,7 @@ watch(
         if (!value) return
 
         draft.enabled = value.enabled
+        draft.dedupeTools = value.dedupeTools === true
         draft.name = value.name ?? ''
         draft.description = value.description ?? ''
         draft.promptContent = value.promptContent ?? ''
@@ -644,6 +649,7 @@ async function saveSelected() {
         const next = structuredClone(toRaw(props.config))
         const saved = {
             enabled: draft.enabled,
+            dedupeTools: draft.dedupeTools,
             name: draft.name,
             description: draft.description,
             chatluna: draft.chatluna,
@@ -735,20 +741,20 @@ async function removeAgent(item: SubAgentInfo) {
 async function createPresetAgent(
     name: string,
     preset: string,
-        options: {
-            description: string
-            chatluna?: boolean
-            character?: boolean
-            characterGroup?: boolean
-            characterPrivate?: boolean
-            characterGroupMode?: 'all' | 'allow' | 'deny'
-            characterPrivateMode?: 'all' | 'allow' | 'deny'
-            characterGroupIds?: string[]
-            characterPrivateIds?: string[]
-            authority?: number
-            model: string | undefined
-            maxTurns: number
-            hidden: boolean
+    options: {
+        description: string
+        chatluna?: boolean
+        character?: boolean
+        characterGroup?: boolean
+        characterPrivate?: boolean
+        characterGroupMode?: 'all' | 'allow' | 'deny'
+        characterPrivateMode?: 'all' | 'allow' | 'deny'
+        characterGroupIds?: string[]
+        characterPrivateIds?: string[]
+        authority?: number
+        model: string | undefined
+        maxTurns: number
+        hidden: boolean
         allowKoishiMessageTransform: boolean
     }
 ) {
@@ -841,6 +847,7 @@ async function savePreview() {
             name: previewDraft.name.trim(),
             description: previewDraft.description.trim(),
             promptContent: previewDraft.promptContent.trim(),
+            dedupeTools: item.dedupeTools,
             chatluna: item.chatlunaEnabled,
             character: item.characterEnabled,
             characterGroup: item.characterGroupEnabled,

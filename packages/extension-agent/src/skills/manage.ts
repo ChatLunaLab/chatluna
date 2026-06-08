@@ -38,9 +38,7 @@ export async function exportSkillArchive(
 
 export async function removeSkillDirectory(root: string, dir: string) {
     if (!isPathInside(resolve(dir), root)) {
-        throw new Error(
-            'Only skills inside data/chatluna/skills can be removed'
-        )
+        return
     }
 
     await rm(resolve(dir), { recursive: true, force: true })

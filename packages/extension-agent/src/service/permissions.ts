@@ -256,16 +256,43 @@ export class ChatLunaAgentPermissionService {
     ): ToolMask {
         const tools = this.listTools()
         const allNames = tools.map((item) => item.name)
-        const allow = tools
-            .filter(
-                (item) =>
-                    item.enabled &&
-                    item.main &&
-                    this.isSessionAllowed(session, source, item)
-            )
-            .map((item) => item.name)
+        const mainTools = tools.filter(
+            (item) =>
+                item.enabled &&
+                item.main &&
+                this.isSessionAllowed(session, source, item)
+        )
+        const task = mainTools.find((item) => item.name === 'task')
+        const mainNames = mainTools.map((item) => item.name)
 
-        return buildToolMask(allNames, allow)
+        if (!task || !this.hasAuthority(session, task.authority)) {
+            return buildToolMask(allNames, mainNames)
+        }
+
+        const agents =
+            this.ctx.chatluna_agent?.subAgent
+                .listRunnableAgents(session, source)
+                .filter((agent) => agent.dedupeTools) ?? []
+        if (agents.length < 1) {
+            return buildToolMask(allNames, mainNames)
+        }
+
+        const hidden = new Set(
+            agents.flatMap((agent) =>
+                mainTools
+                    .filter(
+                        (item) =>
+                            item.name !== 'task' &&
+                            this.canUseTool(agent, item.name)
+                    )
+                    .map((item) => item.name)
+            )
+        )
+
+        return buildToolMask(
+            allNames,
+            mainNames.filter((name) => !hidden.has(name))
+        )
     }
 
     async createSubAgentToolMask(
