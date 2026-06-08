@@ -147,9 +147,10 @@ function tokenPoints(
 
     const hourly = range === 'day'
     const step = tokenStep(range, start, end)
+    const alignedStart = tokenAlignedStart(range, start)
     const result: TokenPoint[] = []
 
-    for (let at = +start; at < +end; at += step) {
+    for (let at = +alignedStart; at < +end; at += step) {
         const date = new Date(at)
         const m = String(date.getMonth() + 1).padStart(2, '0')
         const d = String(date.getDate()).padStart(2, '0')
@@ -163,7 +164,7 @@ function tokenPoints(
     }
 
     for (const row of rows) {
-        const idx = Math.floor((+row.createdAt - +start) / step)
+        const idx = Math.floor((+row.createdAt - +alignedStart) / step)
         if (result[idx]) {
             result[idx].tokens += row.usageMetadata.total_tokens
             result[idx].inputTokens += row.usageMetadata.input_tokens
@@ -171,6 +172,13 @@ function tokenPoints(
         }
     }
 
+    return result
+}
+
+function tokenAlignedStart(range: TokenRange, start: Date) {
+    const result = new Date(start)
+    if (range === 'day') result.setMinutes(0, 0, 0)
+    else result.setHours(0, 0, 0, 0)
     return result
 }
 

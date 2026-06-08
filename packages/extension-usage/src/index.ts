@@ -21,10 +21,9 @@ import type {
 } from './tokens'
 
 const logger = new Logger('chatluna-usage')
+const DEFAULT_TOKEN_THEME: Exclude<UsageTokenTheme, 'auto'> = 'light'
 
 class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
-    private _theme: 'light' | 'dark' = 'light'
-
     constructor(
         ctx: Context,
         public config: ChatLunaUsage.Config
@@ -117,11 +116,6 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             ctx.console.addListener('chatluna-usage/list', async (input) =>
                 this.list(input)
             )
-
-            ctx.console.addListener('chatluna-usage/theme', async (theme) => {
-                if (theme === 'light' || theme === 'dark') this._theme = theme
-                return { success: true }
-            })
 
             ctx.console.addListener(
                 'chatluna-usage/cleanup',
@@ -332,7 +326,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
 
             const theme =
                 this.config.tokensTheme === 'auto'
-                    ? this._theme
+                    ? DEFAULT_TOKEN_THEME
                     : this.config.tokensTheme
             const image = await renderTokenTrend(
                 this.ctx,
@@ -784,9 +778,6 @@ declare module '@koishijs/plugin-console' {
         'chatluna-usage/list': (
             input?: ChatLunaUsage.Query
         ) => Promise<ChatLunaUsage.List>
-        'chatluna-usage/theme': (
-            theme: 'light' | 'dark'
-        ) => Promise<ChatLunaUsage.ActionResult>
         'chatluna-usage/cleanup': (
             before?: string
         ) => Promise<ChatLunaUsage.ActionResult>
