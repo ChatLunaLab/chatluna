@@ -1,15 +1,15 @@
 import type { Context } from 'koishi'
 import type {} from 'koishi-plugin-puppeteer'
 import { formatDate } from './tokens'
-import type { TokenPoint, TokenReport, TokenTheme } from './tokens'
+import type { ChatLunaUsage } from './utils'
 
 interface Coord {
     x: number
     y: number
-    point: TokenPoint
+    point: ChatLunaUsage.TokenPoint
 }
 
-type RenderTheme = Exclude<TokenTheme, 'auto'>
+type RenderTheme = Exclude<ChatLunaUsage.TokenTheme, 'auto'>
 
 const CSS = `
 :root {
@@ -317,7 +317,7 @@ function monotonePath(pts: Coord[]) {
     return d
 }
 
-function chart(points: TokenPoint[]) {
+function chart(points: ChatLunaUsage.TokenPoint[]) {
     if (!points.length) return <div class="empty-chart">暂无用量数据</div>
 
     const [width, height, left, right, top, bottom] = [968, 360, 78, 26, 30, 56]
@@ -497,7 +497,7 @@ function pluginIcon() {
     )
 }
 
-function pluginCard(plugins?: TokenReport['plugins']) {
+function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
     if (!plugins?.length) return ''
 
     const total = plugins.reduce((sum, p) => sum + p.tokens, 0) || 1
@@ -544,7 +544,7 @@ function pluginCard(plugins?: TokenReport['plugins']) {
     )
 }
 
-function pageHtml(data: TokenReport, theme: RenderTheme) {
+function pageHtml(data: ChatLunaUsage.TokenReport, theme: RenderTheme) {
     return (
         '<!doctype html>' +
         String(
@@ -586,7 +586,7 @@ function pageHtml(data: TokenReport, theme: RenderTheme) {
 export async function renderTokenTrend(
     ctx: Context,
     puppeteer: Context['puppeteer'],
-    data: TokenReport,
+    data: ChatLunaUsage.TokenReport,
     theme: RenderTheme = 'light'
 ) {
     let page: Awaited<ReturnType<Context['puppeteer']['page']>> | undefined

@@ -1,34 +1,5 @@
 import { Time } from 'koishi'
-import type { ChatLunaUsage } from './index'
-
-export type TokenRange = 'day' | 'week' | 'month' | 'all'
-export type TokenTheme = 'auto' | 'light' | 'dark'
-
-export interface TokenPoint {
-    label: string
-    tokens: number
-    inputTokens: number
-    outputTokens: number
-}
-
-export interface PluginUsage {
-    source: string
-    tokens: number
-    calls: number
-}
-
-export interface TokenReport {
-    range: TokenRange
-    label: string
-    start: Date
-    end: Date
-    totalTokens: number
-    calls: number
-    tpm: number
-    rpm: number
-    points: TokenPoint[]
-    plugins?: PluginUsage[]
-}
+import type { ChatLunaUsage } from './utils'
 
 const RANGES = {
     day: ['天', 2 * Time.hour],
@@ -43,7 +14,7 @@ export function formatDate(date: Date) {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-export function formatTokenReport(report: TokenReport) {
+export function formatTokenReport(report: ChatLunaUsage.TokenReport) {
     return [
         `Chatluna token 用量（${report.label}）`,
         `时间范围：${formatDate(report.start)} 至 ${formatDate(report.end)}`,
@@ -55,12 +26,12 @@ export function formatTokenReport(report: TokenReport) {
 }
 
 export function createTokenReport(
-    range: TokenRange,
+    range: ChatLunaUsage.TokenRange,
     start: Date,
     end: Date,
     rows: ChatLunaUsage.Record[],
     withPlugins = false
-): TokenReport {
+): ChatLunaUsage.TokenReport {
     const sorted = rows.slice().sort((a, b) => +a.createdAt - +b.createdAt)
     const from = range === 'all' ? (sorted[0]?.createdAt ?? end) : start
     const step =
@@ -71,7 +42,7 @@ export function createTokenReport(
               )
             : RANGES[range][1]
     const aligned = new Date(from)
-    const plugins = new Map<string, PluginUsage>()
+    const plugins = new Map<string, ChatLunaUsage.PluginUsage>()
     let totalTokens = 0
     let tpm = 0
     let rpm = 0
@@ -82,7 +53,7 @@ export function createTokenReport(
     if (range === 'day') aligned.setMinutes(0, 0, 0)
     else aligned.setHours(0, 0, 0, 0)
 
-    const points: TokenPoint[] = sorted.length
+    const points: ChatLunaUsage.TokenPoint[] = sorted.length
         ? Array.from(
               { length: Math.ceil((+end - +aligned) / step) },
               (_, i) => {
