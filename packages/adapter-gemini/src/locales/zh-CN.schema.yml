@@ -2,6 +2,23 @@ $inner:
     - {}
     - $desc: '请求选项'
       platform: '适配器的平台名。（不懂请不要修改）'
+      pullModels: '是否自动拉取模型列表。关闭后将仅使用下方指定的模型。'
+      additionalModels:
+          $desc: '额外模型列表。'
+          $inner:
+              model: '模型名称。'
+              modelType: '模型类型。'
+              contextSize: '模型上下文大小。'
+              modelCapabilities:
+                $desc: '模型支持的能力。'
+                $inner:
+                    - '文本输入'
+                    - '工具调用'
+                    - '图片视觉输入'
+                    - '图像生成'
+                    - '音频输入'
+                    - '视频输入'
+                    - '文件输入'
       apiKeys:
           $inner:
               - 'Gemini API Key'

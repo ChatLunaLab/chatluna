@@ -547,6 +547,22 @@ export function prepareModelConfig(
     let imageSize: string | undefined
     let forceGoogleSearch = false
 
+    const extra = pluginConfig.additionalModels.find(
+        (item) => item.model === model && !isGeminiModelName(item.model)
+    )
+
+    if (extra) {
+        return {
+            model,
+            enabledThinking,
+            thinkingBudget: pluginConfig.thinkingBudget ?? -1,
+            imageGeneration: pluginConfig.imageGeneration ?? false,
+            thinkingLevel: undefined,
+            imageSize,
+            forceGoogleSearch
+        }
+    }
+
     if (model.toLowerCase().endsWith('-search')) {
         forceGoogleSearch = true
         model = model.slice(0, -'-search'.length)
@@ -745,6 +761,15 @@ export function isChatResponse(response: any): response is ChatResponse {
 }
 
 // #region refreshModels helpers
+
+/**
+ * 判断模型名是否为标准 Gemini 请求名。
+ * 用于决定是否套用 Gemini 的后缀展开 / 能力推断逻辑：
+ * 命中则按 Gemini 处理，否则保留用户填写的原始模型名与能力。
+ */
+export function isGeminiModelName(model: string): boolean {
+    return model.toLowerCase().includes('gemini')
+}
 
 export function createGeminiCapabilities(
     modelNameLower: string,
