@@ -76,11 +76,11 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
         })
 
         ctx.command(
-            'tokens [...args:string]',
+            'chatluna.tokens [...args:string]',
             '查看 ChatLuna 整体 token 消耗趋势',
             { authority: 1 }
         )
-            .alias('/tokens')
+            .alias('chatluna.usage', 'tokens')
             .option('day', '-d 按天统计')
             .option('week', '-w 按一周统计')
             .option('month', '-m 按一月统计')
