@@ -80,6 +80,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                     return {
                         name: model,
                         type,
+                        maxTokens: 1_000_000,
                         capabilities:
                             type === ModelType.llm
                                 ? [ModelCapabilities.ToolCall]
