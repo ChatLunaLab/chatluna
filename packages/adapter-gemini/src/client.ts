@@ -24,7 +24,8 @@ import { RunnableConfig } from '@langchain/core/runnables'
 import { GeminiModelInfo } from './types'
 import {
     createGeminiCapabilities,
-    expandModelVariants,
+    getModelVariantSuffixes,
+    isGeminiModelName,
     shouldFilterOutGeminiModel
 } from './utils'
 
@@ -115,20 +116,18 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     // #region refreshModels
 
     /**
-     * 从 API 获取模型列表，并将每个模型展开为对应的所有变体：
-     * - 图片生成模型：分辨率 + 搜索后缀变体
-     * - gemini-2.5 系列：-thinking / -non-thinking 变体
-     * - gemini-3 系列：thinking 等级变体（low / medium / high / minimal）
-     * - 其他模型：直接加入，不展开
+     * 从配置与 API 获取模型列表，并将特定系列展开为变体
+     * （图片分辨率 / 搜索后缀、thinking 开关与等级）。
      */
     async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
-        // --- 获取原始模型列表 ---
         let rawModels: GeminiModelInfo[] = []
 
         try {
-            rawModels = await this._requester.getModels(config)
+            rawModels = this._config.pullModels
+                ? await this._requester.getModels(config)
+                : []
 
-            if (rawModels.length === 0) {
+            if (this._config.pullModels && rawModels.length === 0) {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.MODEL_INIT_ERROR,
                     new Error('No model found')
@@ -139,38 +138,66 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
 
-        // --- 将原始模型转换并展开为变体列表 ---
-        const models: ModelInfo[] = []
+        const items: ModelInfo[] = this._config.additionalModels.map(
+            (model) => {
+                const name = model.model.toLowerCase()
+                const isEmbedding = model.modelType === 'Embeddings 嵌入模型'
+
+                return {
+                    name: model.model,
+                    maxTokens: model.contextSize,
+                    type: isEmbedding ? ModelType.embeddings : ModelType.llm,
+                    capabilities: isEmbedding
+                        ? []
+                        : isGeminiModelName(name)
+                          ? createGeminiCapabilities(name, false)
+                          : model.modelCapabilities
+                }
+            }
+        )
 
         for (const model of rawModels) {
-            const modelNameLower = model.name.toLowerCase()
+            const name = model.name.toLowerCase()
 
-            if (shouldFilterOutGeminiModel(modelNameLower)) {
-                continue
-            }
+            if (shouldFilterOutGeminiModel(name)) continue
 
-            const isEmbedding = modelNameLower.includes('embedding')
+            const isEmbedding = name.includes('embedding')
 
-            const baseInfo: ModelInfo = {
+            items.push({
                 name: model.name,
                 maxTokens: model.inputTokenLimit,
                 type: isEmbedding ? ModelType.embeddings : ModelType.llm,
-                capabilities: createGeminiCapabilities(
-                    modelNameLower,
-                    isEmbedding
-                )
-            }
+                capabilities: createGeminiCapabilities(name, isEmbedding)
+            })
+        }
 
-            // 尝试展开特殊变体；未命中则直接加入
-            if (
-                !expandModelVariants(
-                    models,
-                    baseInfo,
-                    this._config.imageModelSearch
-                )
-            ) {
-                models.push(baseInfo)
+        const models: ModelInfo[] = []
+        const names = new Set<string>()
+        const addModel = (model: ModelInfo) => {
+            const key = model.name.toLowerCase()
+            if (!names.has(key)) {
+                names.add(key)
+                models.push(model)
             }
+        }
+
+        for (const model of items) {
+            const suffixes = getModelVariantSuffixes(
+                model.name.toLowerCase(),
+                this._config.imageModelSearch
+            )
+
+            for (const suffix of suffixes) {
+                addModel({ ...model, name: model.name + suffix })
+            }
+            addModel(model)
+        }
+
+        if (models.length === 0) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_INIT_ERROR,
+                new Error('No model configured')
+            )
         }
 
         return models
