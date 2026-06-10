@@ -1,12 +1,15 @@
-import { Context, Logger, Schema, Time } from 'koishi'
-import { DataService } from '@koishijs/plugin-console'
-import type { UsageMetadata } from '@langchain/core/messages'
 import { resolve } from 'path'
-import type { ModelUsageCallType } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import { Context, h, Logger, Time } from 'koishi'
+import type { Session } from 'koishi'
+import { DataService } from '@koishijs/plugin-console'
+import { ChatLunaUsage, summary } from './utils'
+import type {} from 'koishi-plugin-puppeteer'
+import { renderTokenTrend } from './renderer'
+import { createTokenReport, formatTokenReport } from './tokens'
 
 const logger = new Logger('chatluna-usage')
 
-class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
+class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
     constructor(
         ctx: Context,
         public config: ChatLunaUsage.Config
@@ -72,6 +75,24 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
             }
         })
 
+        ctx.command(
+            'tokens [...args:string]',
+            '查看 ChatLuna 整体 token 消耗趋势',
+            { authority: 1 }
+        )
+            .alias('/tokens')
+            .option('day', '-d 按天统计')
+            .option('week', '-w 按一周统计')
+            .option('month', '-m 按一月统计')
+            .option('all', '-a 统计全部')
+            .option('plugin', '-p 附带各插件用量明细')
+            .usage(
+                '示例：/tokens / /tokens day / /tokens -d / /tokens d，附带插件明细 /tokens -p'
+            )
+            .action(async ({ session, options }, ...args) =>
+                this.sendTokens(session, options, args)
+            )
+
         if (!config.webui) return
 
         ctx.inject(['console'], (ctx) => {
@@ -118,67 +139,21 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         const sources = new Map<string, ChatLunaUsage.Summary>()
         const timeline = new Map<string, ChatLunaUsage.Timeline>()
         const modelTimeline = new Map<string, Map<string, number>>()
-        const totals: ChatLunaUsage.Summary = {
-            key: 'total',
-            label: '全部用量',
-            calls: 0,
-            successfulCalls: 0,
-            failedCalls: 0,
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-            estimatedTokens: 0,
-            cachedTokens: 0,
-            reasoningTokens: 0,
-            successRate: 0
-        }
+        const totals = summary('total', '全部用量')
 
         for (const row of rows) {
             const key = this.groupKey(row, groupBy)
-            const item = groups.get(key) ?? {
-                key,
-                label: this.groupLabel(key, groupBy),
-                platform: groupBy === 'model' ? row.platform : undefined,
-                calls: 0,
-                successfulCalls: 0,
-                failedCalls: 0,
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-                estimatedTokens: 0,
-                cachedTokens: 0,
-                reasoningTokens: 0,
-                successRate: 0
-            }
-            const model = models.get(row.model) ?? {
-                key: row.model,
-                label: row.model,
-                platform: row.platform,
-                calls: 0,
-                successfulCalls: 0,
-                failedCalls: 0,
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-                estimatedTokens: 0,
-                cachedTokens: 0,
-                reasoningTokens: 0,
-                successRate: 0
-            }
-            const source = sources.get(row.source) ?? {
-                key: row.source,
-                label: row.source,
-                calls: 0,
-                successfulCalls: 0,
-                failedCalls: 0,
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0,
-                estimatedTokens: 0,
-                cachedTokens: 0,
-                reasoningTokens: 0,
-                successRate: 0
-            }
+            const item =
+                groups.get(key) ??
+                summary(
+                    key,
+                    this.groupLabel(key, groupBy),
+                    groupBy === 'model' ? row.platform : undefined
+                )
+            const model =
+                models.get(row.model) ??
+                summary(row.model, row.model, row.platform)
+            const source = sources.get(row.source) ?? summary(row.source)
             const date = this.dateKey(row.createdAt, input.period ?? 'day')
             const point = timeline.get(date) ?? {
                 date,
@@ -258,6 +233,99 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         )
     }
 
+    async sendTokens(
+        session: Session,
+        options: ChatLunaUsage.TokenCommandOptions,
+        args: string[]
+    ) {
+        let range: ChatLunaUsage.TokenRange
+
+        if (options.all) {
+            range = 'all'
+        } else if (options.month) {
+            range = 'month'
+        } else if (options.week) {
+            range = 'week'
+        } else {
+            range = 'day'
+        }
+
+        let plugin = Boolean(options.plugin)
+
+        for (const arg of args) {
+            const keyword = arg.replace(/^-+/, '').trim().toLowerCase()
+            const value = {
+                d: 'day',
+                day: 'day',
+                w: 'week',
+                week: 'week',
+                m: 'month',
+                month: 'month',
+                a: 'all',
+                all: 'all'
+            }[keyword] as ChatLunaUsage.TokenRange
+            if (value) {
+                range = value
+                continue
+            }
+            if (keyword === 'p' || keyword === 'plugin') {
+                plugin = true
+                continue
+            }
+            return '参数只能是 day、week、month、all（或简写 d/w/m/a），以及 plugin（或 p）。'
+        }
+
+        try {
+            const report = await this.tokenReport(range, plugin)
+            await session.send(formatTokenReport(report))
+
+            const puppeteer = this.ctx.get('puppeteer')
+            if (!puppeteer) {
+                await session.send('图表渲染需要启用 puppeteer 服务。')
+                return
+            }
+
+            const image = await renderTokenTrend(
+                this.ctx,
+                puppeteer,
+                report,
+                this.config.tokensTheme === 'auto'
+                    ? 'light'
+                    : this.config.tokensTheme
+            )
+            await session.send(
+                typeof image === 'string'
+                    ? h.text(image)
+                    : h.image(image, 'image/png')
+            )
+        } catch (e) {
+            logger.error(e)
+            return 'ChatLuna token 用量统计失败，请检查日志。'
+        }
+    }
+
+    private async tokenReport(
+        range: ChatLunaUsage.TokenRange,
+        withPlugins = false
+    ) {
+        const end = new Date()
+        const start = new Date(
+            +end -
+                {
+                    day: Time.day,
+                    week: 7 * Time.day,
+                    month: 30 * Time.day,
+                    all: 0
+                }[range]
+        )
+        const time = range === 'all' ? { $lt: end } : { $gte: start, $lt: end }
+        const rows = (await this.ctx.database.get('chatluna_usage', {
+            createdAt: time
+        })) as ChatLunaUsage.Record[]
+
+        return createTokenReport(range, start, end, rows, withPlugins)
+    }
+
     private async search(input: ChatLunaUsage.Query) {
         const query = this.withDefaults(input)
         const where: Record<string, unknown> = {
@@ -270,10 +338,7 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
         if (query.success != null) where.success = query.success
         if (query.estimated != null) where.estimated = query.estimated
 
-        const rows = (await this.ctx.database.get(
-            'chatluna_usage',
-            where
-        )) as ChatLunaUsage.Record[]
+        const rows = await this.ctx.database.get('chatluna_usage', where)
 
         if (
             !query.chatPlatform &&
@@ -432,206 +497,24 @@ class ChatLunaUsage extends DataService<ChatLunaUsage.Payload> {
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
-namespace ChatLunaUsage {
-    export interface Record {
-        id?: number
-        source: string
-        callType: ModelUsageCallType
-        platform: string
-        chatPlatform?: string | null
-        model: string
-        usageMetadata: UsageMetadata
-        estimated: boolean
-        success: boolean
-        createdAt: Date
-        conversationId?: string | null
-        requestId?: string | null
-        userId?: string | null
-        guildId?: string | null
-    }
-
-    export interface ListRow extends Record {
-        inputTokens: number
-        outputTokens: number
-        totalTokens: number
-        estimated: boolean
-        cachedTokens: number
-        reasoningTokens: number
-    }
-
-    export type Period = 'day' | 'month' | 'year'
-    export type GroupBy =
-        | 'source'
-        | 'model'
-        | 'guild'
-        | 'platform'
-        | 'chatPlatform'
-        | 'callType'
-    export type SortBy =
-        | 'calls'
-        | 'successfulCalls'
-        | 'failedCalls'
-        | 'inputTokens'
-        | 'outputTokens'
-        | 'totalTokens'
-        | 'estimatedTokens'
-        | 'cachedTokens'
-        | 'reasoningTokens'
-        | 'successRate'
-    export type ListSortBy =
-        | 'createdAt'
-        | 'inputTokens'
-        | 'outputTokens'
-        | 'totalTokens'
-        | 'cachedTokens'
-        | 'reasoningTokens'
-
-    export interface Query {
-        period?: Period
-        start?: string | Date
-        end?: string | Date
-        groupBy?: GroupBy
-        sortBy?: SortBy
-        desc?: boolean
-        page?: number
-        pageSize?: number
-        listSortBy?: ListSortBy
-        listDesc?: boolean
-        source?: string
-        model?: string
-        platform?: string
-        chatPlatform?: string
-        callType?: ModelUsageCallType
-        guildId?: string
-        userId?: string
-        success?: boolean
-        estimated?: boolean
-        keyword?: string
-    }
-
-    export interface Summary {
-        key: string
-        label: string
-        platform?: string
-        calls: number
-        successfulCalls: number
-        failedCalls: number
-        inputTokens: number
-        outputTokens: number
-        totalTokens: number
-        estimatedTokens: number
-        cachedTokens: number
-        reasoningTokens: number
-        successRate: number
-        lastSeen?: Date
-    }
-
-    export interface Timeline {
-        date: string
-        calls: number
-        inputTokens: number
-        outputTokens: number
-        totalTokens: number
-        cachedTokens: number
-        reasoningTokens: number
-    }
-
-    export interface ModelTimeline {
-        model: string
-        points: {
-            date: string
-            calls: number
-        }[]
-    }
-
-    export interface List {
-        total: number
-        page: number
-        pageSize: number
-        rows: ListRow[]
-    }
-
-    export interface Payload {
-        query: Required<
-            Pick<
-                Query,
-                | 'period'
-                | 'groupBy'
-                | 'sortBy'
-                | 'desc'
-                | 'page'
-                | 'pageSize'
-                | 'listSortBy'
-                | 'listDesc'
-            >
-        > & {
-            start: Date
-            end: Date
-        } & Query
-        totals: Summary
-        groups: Summary[]
-        models: Summary[]
-        sources: Summary[]
-        timeline: Timeline[]
-        modelTimeline: ModelTimeline[]
-        list: List
-    }
-
-    export interface Config {
-        recentDays: number
-        pageSize: number
-        webui: boolean
-    }
-
-    export interface ActionResult {
-        success: boolean
-    }
-
-    export const Config: Schema<Config> = Schema.object({
-        recentDays: Schema.natural()
-            .description('默认统计最近几天的数据。')
-            .default(30),
-        pageSize: Schema.natural()
-            .description('调用明细分页大小。')
-            .default(50),
-        webui: Schema.boolean()
-            .description('启用 Web UI 控制台用量面板。')
-            .default(true)
-    })
-
-    export const inject = ['chatluna', 'database']
-}
-
-export default ChatLunaUsage
-export { ChatLunaUsage }
-
-export async function queryUsage(ctx: Context, source?: string) {
-    const result = await ctx.chatluna_usage.query({ groupBy: 'source' })
-    if (!source) return result.groups
-    return result.groups.filter((row) => row.key === source)
-}
-
-export async function cleanupUsage(ctx: Context, before?: Date) {
-    await ctx.chatluna_usage.cleanup(before)
-}
+export { ChatLunaUsageService as ChatLunaUsage }
 
 export function apply(ctx: Context, config: ChatLunaUsage.Config) {
-    ctx.plugin(ChatLunaUsage, config)
+    ctx.plugin(ChatLunaUsageService, config)
 }
 
 export const Config = ChatLunaUsage.Config
 
 export const inject = {
     required: ['chatluna', 'database'],
-    optional: ['console']
+    optional: ['console', 'puppeteer']
 }
 
 export const name = 'chatluna-usage'
 
 declare module 'koishi' {
     interface Context {
-        chatluna_usage: ChatLunaUsage
+        chatluna_usage: ChatLunaUsageService
     }
 
     interface Tables {
@@ -643,7 +526,7 @@ declare module '@koishijs/plugin-console' {
     // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Console {
         interface Services {
-            chatluna_usage: ChatLunaUsage
+            chatluna_usage: ChatLunaUsageService
         }
     }
 
