@@ -22,7 +22,12 @@ import { GeminiRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { GeminiModelInfo } from './types'
-import { createGeminiCapabilities, shouldFilterOutGeminiModel } from './utils'
+import {
+    createGeminiCapabilities,
+    getModelVariantSuffixes,
+    isGeminiModelName,
+    shouldFilterOutGeminiModel
+} from './utils'
 
 // #region GeminiClient
 
@@ -111,14 +116,10 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
     // #region refreshModels
 
     /**
-     * 从 API 获取模型列表，并将每个模型展开为对应的所有变体：
-     * - 图片生成模型：分辨率 + 搜索后缀变体
-     * - gemini-2.5 系列：-thinking / -non-thinking 变体
-     * - gemini-3 系列：thinking 等级变体（low / medium / high / minimal）
-     * - 其他模型：直接加入，不展开
+     * 从配置与 API 获取模型列表，并将特定系列展开为变体
+     * （图片分辨率 / 搜索后缀、thinking 开关与等级）。
      */
     async refreshModels(config?: RunnableConfig): Promise<ModelInfo[]> {
-        // --- 获取原始模型列表 ---
         let rawModels: GeminiModelInfo[] = []
 
         try {
@@ -137,100 +138,66 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
         }
 
-        const items: ModelInfo[] = []
+        const items: ModelInfo[] = this._config.additionalModels.map(
+            (model) => {
+                const name = model.model.toLowerCase()
+                const isEmbedding = model.modelType === 'Embeddings 嵌入模型'
 
-        for (const model of this._config.additionalModels) {
-            const name = model.model.toLowerCase()
-            const type =
-                model.modelType === 'Embeddings 嵌入模型'
-                    ? ModelType.embeddings
-                    : ModelType.llm
-
-            items.push({
-                name: model.model,
-                maxTokens: model.contextSize,
-                type,
-                capabilities:
-                    type === ModelType.embeddings
+                return {
+                    name: model.model,
+                    maxTokens: model.contextSize,
+                    type: isEmbedding ? ModelType.embeddings : ModelType.llm,
+                    capabilities: isEmbedding
                         ? []
-                        : name.includes('gemini')
+                        : isGeminiModelName(name)
                           ? createGeminiCapabilities(name, false)
                           : model.modelCapabilities
-            })
-        }
+                }
+            }
+        )
+
         for (const model of rawModels) {
             const name = model.name.toLowerCase()
 
             if (shouldFilterOutGeminiModel(name)) continue
 
-            const type = name.includes('embedding')
-                ? ModelType.embeddings
-                : ModelType.llm
+            const isEmbedding = name.includes('embedding')
 
             items.push({
                 name: model.name,
                 maxTokens: model.inputTokenLimit,
-                type,
-                capabilities: createGeminiCapabilities(
-                    name,
-                    type === ModelType.embeddings
-                )
+                type: isEmbedding ? ModelType.embeddings : ModelType.llm,
+                capabilities: createGeminiCapabilities(name, isEmbedding)
             })
         }
 
         const models: ModelInfo[] = []
         const names = new Set<string>()
+        const addModel = (model: ModelInfo) => {
+            const key = model.name.toLowerCase()
+            if (!names.has(key)) {
+                names.add(key)
+                models.push(model)
+            }
+        }
 
         for (const model of items) {
-            const name = model.name.toLowerCase()
-            const suffixes: string[] = []
-
-            if (name.includes('gemini-3-pro-image')) {
-                suffixes.push('-2k', '-4k')
-                if (this._config.imageModelSearch) {
-                    suffixes.push('-search', '-2k-search', '-4k-search')
-                }
-            } else if (name.includes('gemini-3.1-flash-image')) {
-                suffixes.push('-0.5k', '-2k', '-4k')
-                if (this._config.imageModelSearch) {
-                    suffixes.push(
-                        '-search',
-                        '-0.5k-search',
-                        '-2k-search',
-                        '-4k-search'
-                    )
-                }
-            } else if (
-                name.includes('gemini-2.5') &&
-                !name.includes('image') &&
-                !name.includes('-thinking')
-            ) {
-                suffixes.push('-non-thinking', '-thinking')
-            } else if (
-                (name.includes('gemini-3-pro') ||
-                    name.includes('gemini-3-flash') ||
-                    name.includes('gemini-3.1-pro')) &&
-                !name.includes('image')
-            ) {
-                suffixes.push('-low-thinking', '-high-thinking')
-                suffixes.push('-minimal-thinking')
-                if (!/gemini-3(\.1)?-pro/.test(name)) {
-                    suffixes.push('-medium-thinking')
-                }
-            }
+            const suffixes = getModelVariantSuffixes(
+                model.name.toLowerCase(),
+                this._config.imageModelSearch
+            )
 
             for (const suffix of suffixes) {
-                const full = model.name + suffix
-                if (!names.has(full)) {
-                    names.add(full)
-                    models.push({ ...model, name: full })
-                }
+                addModel({ ...model, name: model.name + suffix })
             }
+            addModel(model)
+        }
 
-            if (names.has(model.name)) continue
-
-            names.add(model.name)
-            models.push(model)
+        if (models.length === 0) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_INIT_ERROR,
+                new Error('No model configured')
+            )
         }
 
         return models

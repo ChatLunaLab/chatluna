@@ -546,9 +546,7 @@ export function prepareModelConfig(
 
     if (
         pluginConfig.additionalModels.some(
-            (item) =>
-                item.model === model &&
-                !item.model.toLowerCase().includes('gemini')
+            (item) => item.model === model && !isGeminiModelName(item.model)
         )
     ) {
         return {
@@ -761,6 +759,11 @@ export function isChatResponse(response: any): response is ChatResponse {
 
 // #region refreshModels helpers
 
+export function isGeminiModelName(model: string): boolean {
+    const name = model.toLowerCase().split('/').pop() ?? model.toLowerCase()
+    return /^gemini(?:-|$)/.test(name)
+}
+
 export function createGeminiCapabilities(
     modelNameLower: string,
     isEmbedding: boolean
@@ -828,6 +831,46 @@ export function shouldFilterOutGeminiModel(modelNameLower: string): boolean {
 /** 判断是否属于 gemini-3-pro / gemini-3.1-pro 系列（影响 thinking 等级列表） */
 export function isGemini3ProFamily(modelName: string): boolean {
     return /gemini-3(\.1)?-pro/.test(modelName)
+}
+
+/** 图片生成模型支持的分辨率变体 */
+const IMAGE_MODEL_RESOLUTIONS: [string, string[]][] = [
+    ['gemini-3-pro-image', ['-2k', '-4k']],
+    ['gemini-3.1-flash-image', ['-0.5k', '-2k', '-4k']]
+]
+
+/** 计算模型需要展开的变体后缀（图片分辨率 / 搜索、thinking 开关与等级） */
+export function getModelVariantSuffixes(
+    name: string,
+    imageModelSearch: boolean
+): string[] {
+    const resolutions = IMAGE_MODEL_RESOLUTIONS.find(([model]) =>
+        name.includes(model)
+    )?.[1]
+
+    if (resolutions) {
+        if (!imageModelSearch) return resolutions
+        return [
+            ...resolutions,
+            '-search',
+            ...resolutions.map((r) => `${r}-search`)
+        ]
+    }
+
+    if (name.includes('image')) return []
+
+    if (name.includes('gemini-2.5')) {
+        return name.includes('-thinking') ? [] : ['-non-thinking', '-thinking']
+    }
+
+    if (!/gemini-3(-pro|-flash|\.5-flash|\.1-pro)/.test(name)) return []
+
+    // gemini-3-pro（不含 3.1）不提供 medium 等级
+    return (
+        /(^|\/)gemini-3-pro/.test(name)
+            ? ['low', 'high', 'minimal']
+            : ['low', 'high', 'minimal', 'medium']
+    ).map((level) => `-${level}-thinking`)
 }
 
 // #endregion
