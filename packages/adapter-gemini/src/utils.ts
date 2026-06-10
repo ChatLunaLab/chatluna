@@ -34,10 +34,7 @@ import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import { generateSchema } from '@anatine/zod-openapi'
 import { deepAssign } from 'koishi-plugin-chatluna/utils/object'
 import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
-import {
-    ModelCapabilities,
-    ModelInfo
-} from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { ModelCapabilities } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
 export async function langchainMessageToGeminiMessage(
     messages: BaseMessage[],
@@ -547,11 +544,13 @@ export function prepareModelConfig(
     let imageSize: string | undefined
     let forceGoogleSearch = false
 
-    const extra = pluginConfig.additionalModels.find(
-        (item) => item.model === model && !isGeminiModelName(item.model)
-    )
-
-    if (extra) {
+    if (
+        pluginConfig.additionalModels.some(
+            (item) =>
+                item.model === model &&
+                !item.model.toLowerCase().includes('gemini')
+        )
+    ) {
         return {
             model,
             enabledThinking,
@@ -762,15 +761,6 @@ export function isChatResponse(response: any): response is ChatResponse {
 
 // #region refreshModels helpers
 
-/**
- * 判断模型名是否为标准 Gemini 请求名。
- * 用于决定是否套用 Gemini 的后缀展开 / 能力推断逻辑：
- * 命中则按 Gemini 处理，否则保留用户填写的原始模型名与能力。
- */
-export function isGeminiModelName(model: string): boolean {
-    return model.toLowerCase().includes('gemini')
-}
-
 export function createGeminiCapabilities(
     modelNameLower: string,
     isEmbedding: boolean
@@ -835,162 +825,9 @@ export function shouldFilterOutGeminiModel(modelNameLower: string): boolean {
     )
 }
 
-/** 支持 thinking 开关（-thinking / -non-thinking）的模型前缀 */
-const THINKING_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash'] as const
-
-/** 支持 thinking 等级（-low/medium/high/minimal-thinking）的模型前缀 */
-const THINKING_LEVEL_MODELS = [
-    'gemini-3-pro',
-    'gemini-3-flash',
-    'gemini-3.1-pro'
-] as const
-
-/**
- * 带分辨率 / 搜索后缀变体的图片生成模型配置。
- * resolutions: 该模型支持的分辨率后缀列表
- * supportSearch: 是否同时生成 -search 变体
- */
-export const IMAGE_VARIANT_MODELS = [
-    {
-        name: 'gemini-3-pro-image',
-        resolutions: ['2k', '4k'],
-        supportSearch: true
-    },
-    {
-        name: 'gemini-3.1-flash-image',
-        resolutions: ['0.5k', '2k', '4k'],
-        supportSearch: true
-    }
-] as const
-
-/** 判断 haystack 中是否包含 needles 里的任意一项 */
-export function includesAny(
-    needles: readonly string[],
-    haystack: string
-): boolean {
-    return needles.some((name) => haystack.includes(name))
-}
-
-/**
- * 将 base 模型连同所有 suffixes 变体一起压入 out 数组。
- * 变体先入，base 最后入，保持列表顺序直观。
- */
-export function pushExpanded(
-    out: ModelInfo[],
-    base: ModelInfo,
-    suffixes: readonly string[]
-): void {
-    for (const suffix of suffixes) {
-        out.push({ ...base, name: base.name + suffix })
-    }
-    out.push(base)
-}
-
-/**
- * 查找模型名是否命中 IMAGE_VARIANT_MODELS 中的某一项。
- * 命中则返回该配置，否则返回 undefined。
- */
-export function getImageVariantConfig(modelName: string) {
-    return IMAGE_VARIANT_MODELS.find((item) => modelName.includes(item.name))
-}
-
-/**
- * 为图片生成模型生成所有分辨率变体并压入 out。
- * 仅当 imageModelSearch 为 true 且该模型配置 supportSearch 时，
- * 才额外生成 -search / -<resolution>-search 后缀变体。
- */
-export function pushImageVariants(
-    out: ModelInfo[],
-    base: ModelInfo,
-    resolutions: readonly string[],
-    supportSearch: boolean,
-    imageModelSearch: boolean
-): void {
-    const resolutionSuffixes = resolutions.map((r) => `-${r}`)
-    const searchSuffixes =
-        supportSearch && imageModelSearch
-            ? ['-search', ...resolutions.map((r) => `-${r}-search`)]
-            : []
-
-    pushExpanded(out, base, [...resolutionSuffixes, ...searchSuffixes])
-}
-
 /** 判断是否属于 gemini-3-pro / gemini-3.1-pro 系列（影响 thinking 等级列表） */
 export function isGemini3ProFamily(modelName: string): boolean {
     return /gemini-3(\.1)?-pro/.test(modelName)
-}
-
-/**
- * 判断模型是否支持 thinking 开关（gemini-2.5 系列，且不是图片生成模型）。
- */
-export function isThinkingModel(modelNameLower: string): boolean {
-    return (
-        includesAny(THINKING_MODELS, modelNameLower) &&
-        !modelNameLower.includes('image')
-    )
-}
-
-/**
- * 判断模型是否支持 thinking 等级（gemini-3 系列，且不是图片生成模型）。
- */
-export function isThinkingLevelModel(modelNameLower: string): boolean {
-    return (
-        includesAny(THINKING_LEVEL_MODELS, modelNameLower) &&
-        !modelNameLower.includes('image')
-    )
-}
-
-/**
- * 根据模型类型，将模型展开为所有变体后压入 models 数组。
- * imageModelSearch 控制图片模型是否生成 -search 后缀变体。
- * 返回 true 表示已处理（调用方应 continue），false 表示未命中任何特殊类型。
- */
-export function expandModelVariants(
-    models: ModelInfo[],
-    base: ModelInfo,
-    imageModelSearch: boolean
-): boolean {
-    const nameLower = base.name.toLowerCase()
-
-    // 图片生成模型：展开分辨率变体，按配置决定是否附加搜索变体
-    const imageVariantConfig = getImageVariantConfig(nameLower)
-    if (imageVariantConfig) {
-        pushImageVariants(
-            models,
-            base,
-            imageVariantConfig.resolutions,
-            imageVariantConfig.supportSearch,
-            imageModelSearch
-        )
-        return true
-    }
-
-    // gemini-2.5 系列：展开 -thinking / -non-thinking 变体
-    if (isThinkingModel(nameLower)) {
-        if (nameLower.includes('-thinking')) {
-            // 已经是 thinking 变体，直接加入
-            models.push(base)
-        } else {
-            pushExpanded(models, base, ['-non-thinking', '-thinking'])
-        }
-        return true
-    }
-
-    // gemini-3 系列：展开 thinking 等级变体
-    if (isThinkingLevelModel(nameLower)) {
-        const suffixes = isGemini3ProFamily(nameLower)
-            ? ['-low-thinking', '-high-thinking', '-minimal-thinking']
-            : [
-                  '-low-thinking',
-                  '-high-thinking',
-                  '-minimal-thinking',
-                  '-medium-thinking'
-              ]
-        pushExpanded(models, base, suffixes)
-        return true
-    }
-
-    return false
 }
 
 // #endregion
