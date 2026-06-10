@@ -497,7 +497,6 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
     }
 }
 
-export default ChatLunaUsageService
 export { ChatLunaUsageService as ChatLunaUsage }
 
 export function apply(ctx: Context, config: ChatLunaUsage.Config) {

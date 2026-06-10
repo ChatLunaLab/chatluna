@@ -48,6 +48,7 @@
     ],
     "dependencies": {
         "@koishijs/plugin-console": "^5.30.11",
+        "@satorijs/element": "^3.2.0",
         "echarts": "^5.5.0",
         "vue-echarts": "^6.6.9"
     },
