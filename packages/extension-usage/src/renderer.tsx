@@ -197,6 +197,8 @@ h1 {
     border-radius: 999px;
     background: var(--legend-color);
     box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.03);
+    font-size: 0;
+    line-height: 0;
 }
 .empty-chart {
     display: grid;
@@ -229,6 +231,8 @@ h1 {
     height: 10px;
     border-radius: 50%;
     background: var(--accent);
+    font-size: 0;
+    line-height: 0;
 }
 .plugin-meta {
     font-size: 13px;
@@ -254,6 +258,8 @@ h1 {
     height: 100%;
     border-radius: 6px;
     background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    font-size: 0;
+    line-height: 0;
 }
 `
 
@@ -419,13 +425,13 @@ function chart(points: ChatLunaUsage.TokenPoint[]) {
         </svg>,
         <div class="chart-legend">
             <span class="legend-item" style="--legend-color:#6366f1">
-                <i></i>总 token
+                <i> </i>总 token
             </span>
             <span class="legend-item" style="--legend-color:#0ea5e9">
-                <i></i>输入 token
+                <i> </i>输入 token
             </span>
             <span class="legend-item" style="--legend-color:#f59e0b">
-                <i></i>输出 token
+                <i> </i>输出 token
             </span>
         </div>
     ]
@@ -522,7 +528,7 @@ function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
                             style={`--accent:${accent};--accent-2:${accent2}`}
                         >
                             <div class="plugin-name">
-                                <i></i>
+                                <i> </i>
                                 {plugin.source}
                             </div>
                             <div class="plugin-meta">
@@ -534,7 +540,9 @@ function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
                                 <div
                                     class="plugin-fill"
                                     style={`width:${Math.max(2, Math.min(100, ratio))}%`}
-                                ></div>
+                                >
+                                    {' '}
+                                </div>
                             </div>
                         </div>
                     )
