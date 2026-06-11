@@ -3,6 +3,7 @@
 import { spawn } from 'node:child_process'
 import { createReadStream } from 'node:fs'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import mimeTypes from 'mime-types'
@@ -21,12 +22,7 @@ import {
     resolveInteractiveShellCommand,
     resolveShellCommand
 } from './shell'
-import {
-    confirmHighRiskCommand,
-    ensureCommandAllowed,
-    ensureCommandPathsInScope,
-    ensureWorkdirInScope
-} from './security'
+import { confirmHighRiskCommand, ensureCommandAllowed } from './security'
 import {
     ensureLocalCommandAccess,
     ensureLocalPathAccess,
@@ -65,10 +61,7 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async connect() {
-        await fs.mkdir(
-            path.join(this._cfg.scopePath || process.cwd(), '.tmp'),
-            { recursive: true }
-        )
+        await fs.mkdir(os.tmpdir(), { recursive: true })
         this._connected = true
     }
 
@@ -122,13 +115,9 @@ export class LocalComputerSession implements ComputerSessionApi {
     async execute(command: string, options: ExecuteOptions = {}) {
         ensureCommandAllowed(command, this._cfg)
 
-        const tmp = path.join(this._cfg.scopePath || process.cwd(), '.tmp')
+        const tmp = os.tmpdir()
         const workdir = options.workdir || this._cfg.scopePath || process.cwd()
 
-        ensureWorkdirInScope(workdir, this._cfg)
-        ensureCommandPathsInScope(command, this._cfg, (filePath) =>
-            this.isInScope(filePath)
-        )
         ensureLocalCommandAccess(command, workdir, this._cfg)
         await confirmHighRiskCommand(command, this._cfg, options.session)
 
@@ -155,13 +144,9 @@ export class LocalComputerSession implements ComputerSessionApi {
     ) {
         ensureCommandAllowed(command, this._cfg)
 
-        const tmp = path.join(this._cfg.scopePath || process.cwd(), '.tmp')
+        const tmp = os.tmpdir()
         const workdir = options.workdir || this._cfg.scopePath || process.cwd()
 
-        ensureWorkdirInScope(workdir, this._cfg)
-        ensureCommandPathsInScope(command, this._cfg, (filePath) =>
-            this.isInScope(filePath)
-        )
         ensureLocalCommandAccess(command, workdir, this._cfg)
         await confirmHighRiskCommand(command, this._cfg, options.session)
 
@@ -217,6 +202,10 @@ export class LocalComputerSession implements ComputerSessionApi {
         }
     }
 
+    async getTempDir() {
+        return os.tmpdir()
+    }
+
     isInScope(filePath: string) {
         return this._store.isInScope(filePath)
     }
@@ -228,9 +217,8 @@ export class LocalComputerSession implements ComputerSessionApi {
     async createTerminal(
         options: { cwd?: string; cols?: number; rows?: number } = {}
     ) {
-        const tmp = path.join(this._cfg.scopePath || process.cwd(), '.tmp')
+        const tmp = os.tmpdir()
         const cwd = options.cwd || this._cwd
-        ensureWorkdirInScope(cwd, this._cfg)
         const shell = await resolveInteractiveShellCommand(this._cfg)
         this._cwd = path.resolve(cwd)
         return createLocalTerminal(shell, cwd, {

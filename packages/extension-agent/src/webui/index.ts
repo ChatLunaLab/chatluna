@@ -213,6 +213,13 @@ function registerComputerListeners(ctx: Context, agent: AgentRef) {
     )
 
     ctx.console.addListener(
+        'chatluna-agent/getComputerHome',
+        async function (input) {
+            return await agent().computer.getHomeForUi(this.id, input?.backend)
+        }
+    )
+
+    ctx.console.addListener(
         'chatluna-agent/getComputerDesktop',
         async function (input) {
             return await agent().computer.getDesktopState(

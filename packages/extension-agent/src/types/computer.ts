@@ -17,7 +17,6 @@ export interface LocalBackendConfig {
     dangerouslySkipPermissions: boolean
     preferredShell: 'git-bash' | 'powershell' | 'cmd' | 'auto'
     scopePath: string
-    writableRoots: string[]
     readOnlyRoots: string[]
     denyRoots: string[]
     ignores: string[]

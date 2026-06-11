@@ -250,10 +250,8 @@ export function createTaskTool(
 
                 return [
                     `task_id: ${task.id}`,
-                    `run_id: ${task.activeRunId}`,
                     'state: running',
-                    'message: queued',
-                    `status_hint: use ${toolName} with {"action":"status","id":"${task.id}"} to inspect progress.`
+                    `hint: use ${toolName} action=status id=${task.id}`
                 ].join('\n')
             }
 
@@ -408,12 +406,9 @@ export function createTaskTool(
 
 export function buildTaskToolDescription() {
     return [
-        'Delegate a focused task to a specialized agent when parallel work, deeper investigation, or a narrower prompt will help.',
-        'Use the exact agent name from the injected catalog.',
-        'If delegated work may take a while, set background=true so it can continue beyond the normal tool timeout.',
-        'Use action=list or action=status to inspect background tasks, ' +
-            'action=message to send more guidance while they run, and ' +
-            'action=run with the same id to continue the same session later.'
+        'Delegate focused work to a specialist.',
+        'Use exact agent names. Use background=true for long tasks.',
+        'Use action=list/status to monitor, message to guide, run with id to resume.'
     ].join('\n')
 }
 
@@ -424,9 +419,8 @@ export function renderAvailableAgents(
 ) {
     const lines = [
         '<available_sub_agents>',
-        'Delegate focused work to a specialist via the task tool when parallel work or a narrower prompt helps.',
-        'If delegated work may take a while or exceed the normal tool timeout, set background=true, then query it later with task action=list/status.',
-        'While a background sub-agent is running, you can send more guidance with task action=message.',
+        'Delegate to specialists via the task tool. Use background=true for long work.',
+        'Monitor with action=status; guide running tasks with action=message.',
         ''
     ]
 
@@ -449,8 +443,7 @@ export function renderAvailableAgents(
 
     lines.push(
         '',
-        'Use the exact sub-agent name. Provide a self-contained prompt with goal, context, and expected result.',
-        'Prefer background=true for long-running delegated work so it is not interrupted by the default timeout.',
+        'Use exact sub-agent names. Include goal, context, and expected result.',
         '</available_sub_agents>'
     )
 
@@ -468,28 +461,22 @@ class AgentTaskTool extends StructuredTool {
                 .enum(['run', 'status', 'list', 'message'])
                 .optional()
                 .describe(
-                    'run starts or resumes an agent task, status inspects one task, ' +
-                        'list shows recent tasks in this conversation, message sends ' +
-                        'live guidance to a running background task.'
+                    'run/resume task, status inspects one, list shows recent, message guides a running background task.'
                 ),
             agent: z
                 .string()
                 .optional()
                 .describe(
-                    'The exact agent name from the injected catalog. Required when starting a new task. Optional when resuming an existing task by id.'
+                    'Exact agent name. Required for new tasks; optional when resuming by id.'
                 ),
             id: z
                 .string()
                 .optional()
-                .describe(
-                    'Existing task id returned by an earlier task call. Reuse it to inspect, message, or continue the same agent session.'
-                ),
+                .describe('Existing task id for status, message, or resume.'),
             prompt: z
                 .string()
                 .optional()
-                .describe(
-                    'The delegated task or follow-up instruction. Required when action is run.'
-                ),
+                .describe('Task or follow-up instruction. Required for run.'),
             reason: z
                 .string()
                 .optional()
@@ -497,15 +484,11 @@ class AgentTaskTool extends StructuredTool {
             background: z
                 .boolean()
                 .optional()
-                .describe(
-                    'Run the agent in the background. Prefer this for long-running work so it can continue beyond the normal tool timeout.'
-                ),
+                .describe('Run in background for long work.'),
             message: z
                 .string()
                 .optional()
-                .describe(
-                    'Live guidance to send to a running background agent. Use with action message.'
-                )
+                .describe('Guidance for a running background task.')
         })
         .superRefine((input, ctx) => {
             const action = input.action ?? 'run'
@@ -714,7 +697,7 @@ async function runAgentTask(options: {
 
     if (options.input.background) {
         exec().catch(() => {})
-        return formatTaskStart(options.task, run, options.toolName)
+        return formatTaskStart(options.task, options.toolName)
     }
 
     return await exec()
@@ -899,32 +882,22 @@ function formatTaskResult(
     toolName: string
 ) {
     return [
+        output.trim() || '(empty)',
+        '',
         `task_id: ${task.id}`,
         `agent: ${task.agentName}`,
-        `run_id: ${run.runId}`,
         `state: ${run.state}`,
-        `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
-            'to continue this session. Add "background":true when the work may take a while.',
-        '',
-        output.trim() || '(empty)'
+        `hint: use ${toolName} action=run id=${task.id} to continue`
     ].join('\n')
 }
 
-function formatTaskStart(
-    task: AgentTaskSession,
-    run: AgentTaskRun,
-    toolName: string
-) {
+function formatTaskStart(task: AgentTaskSession, toolName: string) {
     return [
         `task_id: ${task.id}`,
         `agent: ${task.agentName}`,
-        `run_id: ${run.runId}`,
         'state: running',
         'mode: background',
-        `status_hint: use ${toolName} with {"action":"status","id":"${task.id}"} to inspect progress.`,
-        `list_hint: use ${toolName} with {"action":"list"} to see recent agent tasks in this conversation.`,
-        `message_hint: use ${toolName} with {"action":"message","id":"${task.id}","message":"..."} to send more guidance while it runs.`,
-        `resume_hint: after it stops, use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} to continue this session.`
+        `hint: ${toolName} action=status id=${task.id}; action=message to guide; action=run to resume`
     ].join('\n')
 }
 
@@ -941,13 +914,11 @@ function formatTaskList(
                 task.id,
                 `[${run?.state ?? (task.activeRunId ? 'running' : 'idle')}]`,
                 task.agentName,
-                `mode=${run?.background ? 'background' : 'foreground'}`,
-                `updated=${new Date(task.updatedAt).toISOString()}`,
-                `run=${run?.runId ?? task.activeRunId ?? '-'}`
+                `mode=${run?.background ? 'background' : 'foreground'}`
             ].join(' ')
         }),
         '',
-        `Use ${toolName} with {"action":"status","id":"..."} to inspect one task.`
+        `Use ${toolName} action=status id=...`
     ].join('\n')
 }
 
@@ -956,63 +927,32 @@ function formatTaskDetail(
     run: AgentTaskRun | undefined,
     toolName: string
 ) {
-    const lines = [
+    const meta = [
         `task_id: ${task.id}`,
         `agent: ${task.agentName}`,
         `state: ${run?.state ?? (task.activeRunId ? 'running' : 'idle')}`,
-        `mode: ${run?.background ? 'background' : 'foreground'}`,
-        `run_id: ${run?.runId ?? task.activeRunId ?? '-'}`,
-        `depth: ${task.depth}`,
-        `parent_agent: ${task.parentAgent}`,
-        `started: ${new Date(task.startedAt).toISOString()}`,
-        `updated: ${new Date(task.updatedAt).toISOString()}`
+        `mode: ${run?.background ? 'background' : 'foreground'}`
     ]
 
-    if (run?.lastTool) {
-        lines.push(`last_tool: ${run.lastTool}`)
-    }
-
-    if (run) {
-        lines.push(`tool_count: ${run.toolCount}`)
-        lines.push(`turn_count: ${run.turnCount}`)
-    }
-
-    if (run?.endedAt) {
-        lines.push(`ended: ${new Date(run.endedAt).toISOString()}`)
-    }
-
     if (run?.error) {
-        lines.push(`error: ${run.error}`)
+        meta.push(`error: ${run.error}`)
     }
-
-    lines.push(
-        `status_hint: use ${toolName} with {"action":"status","id":"${task.id}"} to inspect it again.`
-    )
 
     if (run?.state === 'running' && run.background) {
-        lines.push(
-            `message_hint: use ${toolName} with {"action":"message","id":"${task.id}","message":"..."} to send more guidance while it runs.`
-        )
+        meta.push(`hint: use ${toolName} action=message id=${task.id}`)
     }
 
     if (run?.state !== 'running') {
-        lines.push(
-            `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
-                'to continue this session. Add "background":true when the work may take a while.'
-        )
+        meta.push(`hint: use ${toolName} action=run id=${task.id} to continue`)
     }
-
-    lines.push('')
 
     if (run?.output?.trim()) {
-        lines.push('Output:')
-        lines.push(run.output.trim())
-        return lines.join('\n')
+        return [run.output.trim(), '', ...meta].join('\n')
     }
 
-    lines.push('History:')
-    lines.push(formatTaskHistory(task.messages))
-    return lines.join('\n')
+    return ['History:', formatTaskHistory(task.messages), '', ...meta].join(
+        '\n'
+    )
 }
 
 function formatTaskHistory(messages: BaseMessage[]) {
@@ -1025,7 +965,7 @@ function formatTaskHistory(messages: BaseMessage[]) {
                 return undefined
             }
 
-            return `${message.getType()}: ${text.length > 280 ? `${text.slice(0, 277)}...` : text}`
+            return `${message.getType()}: ${text.length > 140 ? `${text.slice(0, 137)}...` : text}`
         })
         .filter((item): item is string => item != null)
 
@@ -1033,7 +973,7 @@ function formatTaskHistory(messages: BaseMessage[]) {
         return '(no messages yet)'
     }
 
-    return lines.slice(-6).join('\n')
+    return lines.slice(-3).join('\n')
 }
 
 function formatTraceText(value: unknown) {

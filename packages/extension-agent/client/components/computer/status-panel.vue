@@ -2,9 +2,9 @@
     <div class="panel" :class="{ compact: props.compactMode }">
         <div class="panel-header">
             <div>
-                <div class="panel-title">后端状态</div>
+                <div class="panel-title">后端可用性</div>
                 <div v-if="!props.hideDesc" class="panel-description">
-                    查看可用性和会话数量。
+                    查看各执行环境的连接状态和活跃会话。
                 </div>
             </div>
         </div>

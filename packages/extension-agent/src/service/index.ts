@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'crypto'
 import { mkdir, rm, stat, writeFile } from 'fs/promises'
+import os from 'node:os'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -623,38 +624,29 @@ export class ChatLunaAgentService extends Service {
         if (input.text.length <= limit) return input.text
 
         if (input.session) {
-            const base =
-                input.session.cwd ||
-                input.session.getScopePath() ||
-                process.cwd()
-            const root = /^[A-Za-z]:[\\/]?$/.test(base)
-                ? `${base[0]}:/`
-                : base === '/'
-                  ? '/'
-                  : base.replace(/[\\/]+$/, '')
-            const filePath =
-                `${root}${root.endsWith('/') ? '' : '/'}` +
-                `.tmp-chatluna-${input.name}-${Date.now()}-${randomUUID()}.txt`
+            const dir = (await input.session.getTempDir()).replace(
+                /[\\/]+$/,
+                ''
+            )
+            const filePath = `${dir}/${input.name}-${Date.now()}-${randomUUID()}.txt`
 
             try {
                 await input.session.writeFile(filePath, input.text)
-                return `Output too large (${input.text.length} chars). Truncated preview below.
-Full output saved to: ${filePath}
-Use file_read with this path plus offset/limit to inspect more.
+                return `${truncateOutput(input.text, limit)}
 
-${truncateOutput(input.text, limit)}`
+Output too large (${input.text.length} chars). Full output saved to: ${filePath}
+Use file_read with this path plus offset/limit to inspect more.
+`
             } catch (err) {
                 this.ctx.logger.warn(err)
-                return `Output too large (${input.text.length} chars). Truncated preview below.
-Failed to save full output: ${getErrorMessage(err)}
+                return `${truncateOutput(input.text, limit)}
 
-${truncateOutput(input.text, limit)}`
+Output too large (${input.text.length} chars). Failed to save full output: ${getErrorMessage(err)}`
             }
         }
 
         const dir =
-            input.outputDir ??
-            resolve(this.ctx.baseDir, 'data/chatluna/truncation')
+            input.outputDir ?? resolve(os.tmpdir(), 'chatluna', 'truncation')
         const filePath = join(
             dir,
             `${input.name}-${Date.now()}-${randomUUID()}.txt`
@@ -663,17 +655,16 @@ ${truncateOutput(input.text, limit)}`
         try {
             await mkdir(dir, { recursive: true })
             await writeFile(filePath, input.text, 'utf-8')
-            return `Output too large (${input.text.length} chars). Truncated preview below.
-Full output saved to: ${filePath}
-Use file_read with this path plus offset/limit to inspect more.
+            return `${truncateOutput(input.text, limit)}
 
-${truncateOutput(input.text, limit)}`
+Output too large (${input.text.length} chars). Full output saved to: ${filePath}
+Use file_read with this path plus offset/limit to inspect more.
+`
         } catch (err) {
             this.ctx.logger.warn(err)
-            return `Output too large (${input.text.length} chars). Truncated preview below.
-Failed to save full output: ${getErrorMessage(err)}
+            return `${truncateOutput(input.text, limit)}
 
-${truncateOutput(input.text, limit)}`
+Output too large (${input.text.length} chars). Failed to save full output: ${getErrorMessage(err)}`
         }
     }
 

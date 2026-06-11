@@ -1,7 +1,7 @@
 <template>
     <el-form class="backend-form" label-position="top">
         <div class="section">
-            <div class="section-title">连接设置</div>
+            <div class="section-title">接口设置</div>
 
             <div class="form-grid">
                 <div class="form-cell form-cell-full">
@@ -72,14 +72,14 @@ const emit = defineEmits<{
 
 const warning = computed(() => {
     if (props.config.deploymentMode === 'docker') {
-        return 'Docker 模式的隔离效果取决于容器配置，建议限制网络访问和挂载目录；如果容器隔离做得不好，风险会逐渐接近 Local。'
+        return 'Docker 模式的安全性取决于容器配置。请限制挂载目录和网络权限。'
     }
 
     if (props.config.deploymentMode === 'bare-metal') {
-        return '裸机模式没有宿主机隔离，命令会直接在远端主机上执行。虽然不是本机 Local，但仍属于高风险配置。'
+        return '裸机模式会直接在远端主机执行命令，请只用于受控服务器。'
     }
 
-    return '无法确认部署模式，请按最小权限原则配置；隔离边界不明确时，不建议把它当成高信任后端。'
+    return '无法确认部署模式。请按最低权限配置。'
 })
 
 function set<K extends keyof OpenTerminalBackendConfig>(

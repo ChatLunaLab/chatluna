@@ -54,11 +54,9 @@
             <div class="provider-row">
                 <div class="provider-item">
                     <div class="provider-copy">
-                        <div class="row-title">默认电脑能力后端</div>
+                        <div class="row-title">默认能力后端</div>
                         <div v-if="!hideDesc" class="row-description">
-                            Agent
-                            会优先使用这里选择的执行环境，建议优先启用隔离后端，
-                            Local 仅在明确知道风险时再打开。
+                            Agent 会优先使用这里选择的执行环境。推荐先用隔离后端。
                         </div>
                     </div>
                     <div class="provider-value">
@@ -67,17 +65,17 @@
                             class="provider-select"
                             @update:model-value="updateProvider"
                         >
-                            <el-option label="E2B" value="e2b" />
-                            <el-option label="open-terminal" value="open-terminal" />
-                            <el-option label="Local（高风险）" value="local" />
+                            <el-option label="E2B（云端沙箱）" value="e2b" />
+                            <el-option label="Open Terminal（远程/容器）" value="open-terminal" />
+                            <el-option label="Local（本机环境）" value="local" />
                         </el-select>
                     </div>
                 </div>
                 <div class="provider-item">
                     <div class="provider-copy">
-                        <div class="row-title">会话自动关闭</div>
+                        <div class="row-title">会话自动释放</div>
                         <div v-if="!hideDesc" class="row-description">
-                            当会话的空闲时间超过此时间后会自动关闭。
+                            会话闲置超过此时间后自动关闭。
                         </div>
                     </div>
                     <div class="provider-value">
@@ -206,7 +204,6 @@ const props = withDefaults(
                 dangerouslySkipPermissions: false,
                 preferredShell: 'auto',
                 scopePath: '',
-                writableRoots: [],
                 readOnlyRoots: [],
                 denyRoots: [],
                 ignores: [],

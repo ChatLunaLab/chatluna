@@ -37,18 +37,10 @@ export class FileStore implements BaseFileStore {
     }
 
     isInScope(filePath: string) {
-        if (!this._cfg.scopePath) {
-            return true
-        }
-
-        const target = path.resolve(filePath)
-        const scope = path.resolve(this._cfg.scopePath)
-        return target === scope || target.startsWith(scope + path.sep)
+        return true
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
-        this.assertInScope(filePath)
-
         const stat = await fs.stat(filePath)
         if (stat.isDirectory()) {
             return (await fs.readdir(filePath, { withFileTypes: true }))
@@ -83,8 +75,6 @@ export class FileStore implements BaseFileStore {
     }
 
     async writeFile(writePath: string, contents: FileContent) {
-        this.assertInScope(writePath)
-
         await fs.mkdir(path.dirname(writePath), { recursive: true })
         await fs.writeFile(writePath, contents)
     }
@@ -95,7 +85,6 @@ export class FileStore implements BaseFileStore {
         newString: string,
         replaceCount?: number
     ) {
-        this.assertInScope(filePath)
         const next = replaceSubstring(
             await fs.readFile(filePath, 'utf-8'),
             oldString,
@@ -118,7 +107,6 @@ export class FileStore implements BaseFileStore {
 
     async grep(pattern: string, searchPath?: string, include?: string) {
         const dir = searchPath || this._cfg.scopePath || process.cwd()
-        this.assertInScope(dir)
 
         const stat = await fs.stat(dir).catch(() => null)
         if (!stat) {
@@ -246,7 +234,6 @@ export class FileStore implements BaseFileStore {
 
     async glob(pattern: string, searchPath?: string) {
         const dir = searchPath || this._cfg.scopePath || process.cwd()
-        this.assertInScope(dir)
 
         const stat = await fs.stat(dir).catch(() => null)
         if (!stat) {
@@ -384,16 +371,6 @@ export class FileStore implements BaseFileStore {
                 .replace(/\\/g, '/'),
             this._cfg.ignores,
             { dot: true }
-        )
-    }
-
-    private assertInScope(filePath: string) {
-        if (this.isInScope(filePath)) {
-            return
-        }
-
-        throw new Error(
-            `path "${filePath}" is not in scope "${this._cfg.scopePath}"`
         )
     }
 }

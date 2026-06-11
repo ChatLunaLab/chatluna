@@ -54,7 +54,7 @@
                         v-model="search"
                         clearable
                         class="search-input"
-                        placeholder="搜索当前目录，支持 * 通配符"
+                        placeholder="搜索文件，支持 * 通配符"
                         @clear="clearSearch"
                         @keyup.enter="searchFiles"
                     >
@@ -82,7 +82,7 @@
                     <div class="panel-head">
                         <div>
                             <div class="panel-title">
-                                {{ keyword ? '搜索结果' : '当前目录' }}
+                                {{ keyword ? '匹配文件' : '目录列表' }}
                             </div>
                             <div class="panel-copy">
                                 {{ backendLabel }} · {{ currentDir }} ·
@@ -157,15 +157,15 @@
                             <div class="empty-title">
                                 {{
                                     keyword
-                                        ? '没有找到匹配文件'
-                                        : '当前目录为空'
+                                        ? '未找到匹配文件'
+                                        : '暂无内容'
                                 }}
                             </div>
                             <div class="empty-copy">
                                 {{
                                     keyword
-                                        ? '试试更短的关键字，或输入 *.ts 这样的通配符。'
-                                        : '点击文件夹进入下一层，或直接在顶部输入路径。'
+                                        ? '换个关键字，或使用 *.ts 这样的通配符。'
+                                        : '点击文件夹开始浏览，或在顶部输入路径。'
                                 }}
                             </div>
                         </div>
@@ -276,9 +276,9 @@
                                 class="image-preview"
                             />
                             <div v-else class="empty-state viewer-empty">
-                                <div class="empty-title">图片暂时无法显示</div>
+                                <div class="empty-title">图片无法显示</div>
                                 <div class="empty-copy">
-                                    可以刷新标签重试，或者切换到其他文件继续浏览。
+                                    刷新标签重试，或查看其他文件。
                                 </div>
                             </div>
                         </div>
@@ -291,9 +291,9 @@
                             placeholder="当前文件为空。"
                         />
                         <div v-else class="empty-state viewer-empty">
-                            <div class="empty-title">打开文件开始预览</div>
+                            <div class="empty-title">选择文件进行预览</div>
                             <div class="empty-copy">
-                                左侧列表高度已限制，可独立滚动；中间拖拽条可以调节左右区域宽度。
+                                支持代码和图片预览。拖动中间分割线可调整宽度。
                             </div>
                         </div>
                     </div>
@@ -511,7 +511,7 @@ const browserSize = ref(38)
 const history = ref<string[]>([])
 const historyIndex = ref(-1)
 
-const rootPath = computed(() => clean(props.config.local.scopePath || '/'))
+const rootPath = ref('/')
 const rootLabel = computed(() => {
     const parts = rootPath.value.split('/').filter(Boolean)
     return parts[parts.length - 1] || rootPath.value
@@ -535,7 +535,7 @@ const canGoForward = computed(
     () =>
         historyIndex.value > -1 && historyIndex.value < history.value.length - 1
 )
-const canGoUp = computed(() => currentDir.value !== rootPath.value)
+const canGoUp = computed(() => upOf(currentDir.value) !== currentDir.value)
 const bodyStyle = computed(() => ({
     '--browser-size': `${browserSize.value}%`
 }))
@@ -571,8 +571,13 @@ const crumbs = computed(() => {
 })
 
 watch(
-    [() => props.config.defaultProvider, rootPath],
+    () => props.config.defaultProvider,
     async () => {
+        rootPath.value = clean(
+            await send('chatluna-agent/getComputerHome', {
+                backend: props.config.defaultProvider
+            })
+        )
         currentDir.value = rootPath.value
         pathInput.value = rootPath.value
         search.value = ''
@@ -702,13 +707,7 @@ async function goUp() {
     }
 
     search.value = ''
-    const path = upOf(currentDir.value)
-    await loadDir(
-        path.startsWith(rootPath.value) || rootPath.value === '/'
-            ? path
-            : rootPath.value,
-        'push'
-    )
+    await loadDir(upOf(currentDir.value), 'push')
 }
 
 async function refreshFolder() {
