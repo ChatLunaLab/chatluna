@@ -149,19 +149,32 @@ export function wrapCommandWithSandbox(
         }
     }
 
-    return [
+    const args = [
         quote(bwrap),
-        cfg.sandboxMode === 'read-only' ? '--ro-bind / /' : '--bind / /',
+        '--ro-bind / /',
+        cfg.sandboxMode === 'workspace-write'
+            ? `--bind ${quote(cfg.scopePath || workdir)} ${quote(cfg.scopePath || workdir)}`
+            : undefined,
+        cfg.sandboxMode === 'workspace-write' &&
+        path.resolve(workdir) !== path.resolve(cfg.scopePath || workdir)
+            ? `--bind ${quote(workdir)} ${quote(workdir)}`
+            : undefined,
         cfg.sandboxMode === 'read-only'
             ? `--ro-bind ${quote(tmp)} /tmp`
             : `--bind ${quote(tmp)} /tmp`,
+        ...cfg.readOnlyRoots.map(
+            (root) => `--ro-bind ${quote(root)} ${quote(root)}`
+        ),
+        ...cfg.denyRoots.map((root) => `--tmpfs ${quote(root)}`),
         '--dev /dev',
         '--proc /proc',
         '--die-with-parent',
         ...(cfg.networkPolicy === 'block' ? ['--unshare-net'] : []),
         'sh -lc',
         quote(command)
-    ].join(' ')
+    ].filter((arg): arg is string => arg != null)
+
+    return args.join(' ')
 }
 
 function isInsideRoot(target: string, root: string) {

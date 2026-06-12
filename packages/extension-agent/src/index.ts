@@ -9,6 +9,7 @@ import { readConfig } from './config/read'
 import * as webui from './webui'
 import * as mcpCommands from './commands/mcp'
 import * as agentCommands from './commands/agent'
+import * as taskCommands from './commands/task'
 
 export * from './types'
 
@@ -29,6 +30,7 @@ export async function apply(ctx: Context, config: Config) {
     ctx.plugin(webui)
     ctx.plugin(mcpCommands)
     ctx.plugin(agentCommands)
+    ctx.plugin(taskCommands)
 }
 
 export const Config: Schema<Config> = Schema.intersect([ChatLunaPlugin.Config])

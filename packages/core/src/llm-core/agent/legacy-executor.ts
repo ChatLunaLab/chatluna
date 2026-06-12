@@ -215,6 +215,8 @@ export async function* runAgent(
 
     while (iterations < maxIterations) {
         checkAborted(signal)
+        await runtime.pauseGate?.(signal)
+        checkAborted(signal)
 
         const pending = queue?.drain() ?? []
         if (pending.length > 0) {

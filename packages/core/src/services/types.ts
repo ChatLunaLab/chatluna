@@ -186,6 +186,10 @@ declare module 'koishi' {
     }
 
     interface Events {
+        'chatluna/chat-stopped'(payload: {
+            conversationId: string
+            session: Session
+        }): Promise<void>
         'chatluna/before-check-sender'(session: Session): Promise<boolean>
         'chatluna/check-passive-trigger'(
             session: Session,

@@ -1,0 +1,211 @@
+/** @module commands/task */
+
+import { Context, Session } from 'koishi'
+import type {
+    AgentTaskRun,
+    AgentTaskSession
+} from 'koishi-plugin-chatluna/llm-core/agent'
+import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
+
+export function apply(ctx: Context) {
+    ctx.command('chatluna.agent.list', 'List sub-agent tasks', {
+        authority: 1
+    })
+        .option('all', '--all')
+        .action(async ({ session, options }) => {
+            const service = ctx.chatluna_agent
+            if (!service) return 'ChatLuna agent service is not ready.'
+
+            if (options.all && !(await checkAdmin(session))) {
+                return 'Admin permission is required for --all.'
+            }
+
+            const resolved = options.all
+                ? undefined
+                : await ctx.chatluna.conversation.resolveConversation(session, {
+                      permission: 'manage',
+                      mode: 'target'
+                  })
+            const id = resolved?.conversation?.id
+            if (!options.all && !id) return 'No active conversation.'
+
+            const runs = service.subAgent.getRuns()
+            const tasks = service.subAgent
+                .getTasks()
+                .filter(
+                    (task) => options.all || task.parentConversationId === id
+                )
+            if (tasks.length < 1) return 'No sub-agent tasks.'
+
+            return [
+                'Sub-agent tasks:',
+                ...tasks.map((task) => {
+                    const run = latest(runs, task.id)
+                    return [
+                        task.id.slice(0, 8),
+                        task.agentName,
+                        state(task, run),
+                        run?.background ? 'background' : 'foreground',
+                        `depth=${task.depth}`,
+                        `started=${new Date(task.startedAt).toLocaleString()}`
+                    ].join(' | ')
+                })
+            ].join('\n')
+        })
+
+    ctx.command('chatluna.agent.stop [id:string]', 'Stop sub-agent task', {
+        authority: 1
+    })
+        .option('all', '--all')
+        .action(async ({ session, options }, id) => {
+            const service = ctx.chatluna_agent
+            if (!service) return 'ChatLuna agent service is not ready.'
+
+            const resolved =
+                await ctx.chatluna.conversation.resolveConversation(session, {
+                    permission: 'manage',
+                    mode: 'target'
+                })
+            const conversationId = resolved.conversation?.id
+            if (!conversationId) return 'No active conversation.'
+
+            if (options.all) {
+                const count =
+                    service.subAgent.abortByParentConversation(conversationId)
+                return `Stopped ${count} background sub-agent task(s).`
+            }
+
+            const task = await findTask(ctx, session, id, conversationId)
+            if (typeof task === 'string') return task
+
+            const run = latest(service.subAgent.getRuns(), task.id)
+            if (!run?.background)
+                return 'Foreground tasks stop with chatluna.stop.'
+
+            if (!service.subAgent.stopTask(task.id)) {
+                return 'Task is not running or not stoppable.'
+            }
+
+            service.subAgent.detachAttachedTask(task.id)
+            return `Stopped sub-agent task ${task.id.slice(0, 8)}.`
+        })
+
+    ctx.command('chatluna.agent.pause <id:string>', 'Pause sub-agent task', {
+        authority: 1
+    }).action(async ({ session }, id) => {
+        const service = ctx.chatluna_agent
+        if (!service) return 'ChatLuna agent service is not ready.'
+
+        const resolved = await ctx.chatluna.conversation.resolveConversation(
+            session,
+            { permission: 'manage', mode: 'target' }
+        )
+        const conversationId = resolved.conversation?.id
+        if (!conversationId) return 'No active conversation.'
+
+        const task = await findTask(ctx, session, id, conversationId)
+        if (typeof task === 'string') return task
+
+        const run = latest(service.subAgent.getRuns(), task.id)
+        if (!run?.background) return 'Only background tasks can be paused.'
+
+        return service.subAgent.pauseTask(task.id)
+            ? `Pause requested for ${task.id.slice(0, 8)}.`
+            : 'Task is not running or already unavailable.'
+    })
+
+    ctx.command('chatluna.agent.resume <id:string>', 'Resume sub-agent task', {
+        authority: 1
+    }).action(async ({ session }, id) => {
+        const service = ctx.chatluna_agent
+        if (!service) return 'ChatLuna agent service is not ready.'
+
+        const resolved = await ctx.chatluna.conversation.resolveConversation(
+            session,
+            { permission: 'manage', mode: 'target' }
+        )
+        const conversationId = resolved.conversation?.id
+        if (!conversationId) return 'No active conversation.'
+
+        const task = await findTask(ctx, session, id, conversationId)
+        if (typeof task === 'string') return task
+
+        return service.subAgent.resumeTask(task.id)
+            ? `Resumed ${task.id.slice(0, 8)}.`
+            : 'Task is not paused or already unavailable.'
+    })
+
+    ctx.command('chatluna.agent.chat <id:string>', 'Attach to sub-agent task', {
+        authority: 1
+    }).action(async ({ session }, id) => {
+        const service = ctx.chatluna_agent
+        if (!service) return 'ChatLuna agent service is not ready.'
+
+        const resolved = await ctx.chatluna.conversation.resolveConversation(
+            session,
+            { permission: 'manage', mode: 'target' }
+        )
+        const conversationId = resolved.conversation?.id
+        if (!conversationId) return 'No active conversation.'
+
+        const task = await findTask(ctx, session, id, conversationId)
+        if (typeof task === 'string') return task
+
+        const run = latest(service.subAgent.getRuns(), task.id)
+        service.subAgent.attachTask(session, task.id, conversationId)
+        return [
+            `Attached to ${task.agentName} (${task.id.slice(0, 8)}).`,
+            `State: ${state(task, run)}. Send messages here; use chatluna.agent.task.exit to leave.`,
+            'Recent history:',
+            service.subAgent.getTaskHistory(task)
+        ].join('\n')
+    })
+
+    ctx.command('chatluna.agent.exit', 'Exit sub-agent attach', {
+        authority: 1
+    }).action(({ session }) => {
+        const service = ctx.chatluna_agent
+        if (!service) return 'ChatLuna agent service is not ready.'
+        return service.subAgent.detachTaskAttach(session)
+            ? 'Exited sub-agent attach mode.'
+            : 'No sub-agent attach is active.'
+    })
+}
+
+async function findTask(
+    ctx: Context,
+    session: Session,
+    id: string | undefined,
+    conversationId: string
+) {
+    if (!id?.trim()) return 'Task id is required.'
+
+    const service = ctx.chatluna_agent
+    const all = await checkAdmin(session)
+    const tasks = service.subAgent
+        .getTasks()
+        .filter((task) =>
+            all ? true : task.parentConversationId === conversationId
+        )
+    const matches = tasks.filter((task) => task.id.startsWith(id.trim()))
+    if (matches.length < 1) return `Task '${id}' was not found.`
+    if (matches.length > 1) {
+        return [
+            `Task prefix '${id}' is ambiguous:`,
+            ...matches.map((task) => `${task.id.slice(0, 8)} ${task.agentName}`)
+        ].join('\n')
+    }
+
+    return matches[0]
+}
+
+function latest(runs: AgentTaskRun[], taskId: string) {
+    return runs.filter((run) => run.taskId === taskId).at(-1)
+}
+
+function state(task: AgentTaskSession, run?: AgentTaskRun) {
+    if (run?.paused) return 'running (paused)'
+    return run?.state ?? (task.activeRunId ? 'running' : 'idle')
+}
+
+export const inject = ['chatluna_agent']

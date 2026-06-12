@@ -858,8 +858,8 @@ function formatTaskStart(task: AgentTaskSession, toolName: string) {
         `agent: ${task.agentName}`,
         'state: running (background)',
         'hint: result will be delivered automatically - do NOT poll status. ' +
-            'Continue other work or end your reply; use ' +
-            `${toolName} action=message id=${task.id} to send guidance.`
+            `Continue other work or end your reply; use ${toolName} ` +
+            `action=message id=${task.id} to send guidance.`
     ].join('\n')
 }
 
