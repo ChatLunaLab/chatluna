@@ -11,6 +11,7 @@ import * as request from 'koishi-plugin-chatluna/utils/request'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { command } from './command'
 import { Config } from './config'
+import { applyAgentTaskWakeup } from './llm-core/agent/wakeup'
 import { defaultFactory } from './llm-core/chat/default'
 import { apply as loreBook } from './llm-core/memory/lore_book'
 import { apply as authorsNote } from './llm-core/memory/authors_note'
@@ -108,6 +109,7 @@ async function initializeComponents(ctx: Context, config: Config) {
     await ctx.chatluna.preset.init()
     await setupAutoArchive(ctx, config)
     await setupAutoPurgeArchive(ctx, config)
+    applyAgentTaskWakeup(ctx, config)
     loreBook(ctx, config)
     authorsNote(ctx, config)
 }

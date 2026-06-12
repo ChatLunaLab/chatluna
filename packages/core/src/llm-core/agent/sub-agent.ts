@@ -16,126 +16,13 @@ import { observationToMessageContent } from './legacy-executor'
 import { MessageQueue } from './types'
 import type { AgentEvent, AgentStep, SubagentContext, ToolMask } from './types'
 
-export interface AgentTaskDescriptor {
-    id: string
-    name: string
-    description: string
-}
-
-export interface AgentTaskTarget {
-    agent: ChatLunaAgent
-    toolMask?: ToolMask
-}
-
-export interface AgentTaskSession {
-    id: string
-    agentId: string
-    agentName: string
-    conversationId: string
-    parentConversationId: string
-    depth: number
-    maxDepth: number
-    parentAgent: string
-    activeRunId?: string
-    messages: BaseMessage[]
-    startedAt: number
-    updatedAt: number
-}
-
-export interface AgentTaskRunTraceEntry {
-    id: string
-    type:
-        | 'prompt'
-        | 'message'
-        | 'thought'
-        | 'tool-call'
-        | 'tool-result'
-        | 'output'
-        | 'error'
-    at: number
-    text: string
-    tool?: string
-    title?: string
-    callId?: string
-}
-
-export interface AgentTaskRun {
-    runId: string
-    taskId: string
-    agentId: string
-    agentName: string
-    conversationId: string
-    parentConversationId: string
-    depth: number
-    state: 'running' | 'completed' | 'failed' | 'aborted'
-    background?: boolean
-    startedAt: number
-    endedAt?: number
-    lastTool?: string
-    toolCount: number
-    turnCount: number
-    error?: string
-    output?: string
-    trace: AgentTaskRunTraceEntry[]
-}
-
-export interface AgentTaskInput {
-    action?: 'run' | 'status' | 'list' | 'message'
-    agent?: string
-    id?: string
-    prompt?: string
-    reason?: string
-    background?: boolean
-    message?: string
-}
-
-export interface AgentTaskQueryContext {
-    session?: Session
-    source?: 'chatluna' | 'character'
-}
-
-export interface AgentTaskResolveContext extends AgentTaskQueryContext {
-    conversationId?: string
-    parent?: SubagentContext
-    runConfig?: ChatLunaToolRunnable
-}
-
-export interface CreateTaskToolOptions {
-    list: (ctx: AgentTaskQueryContext) => Awaitable<AgentTaskDescriptor[]>
-    get: (
-        name: string,
-        ctx: AgentTaskResolveContext
-    ) => Awaitable<AgentTaskTarget | undefined>
-    refresh?: () => Awaitable<void>
-    maxDepth?: number
-    taskTtl?: number
-    runTtl?: number
-    name?: string
-}
-
-export interface AgentTaskToolRuntime {
-    buildToolDescription(): string
-    createTool(): StructuredTool
-    dispose(): Promise<void>
-    getRuns(): AgentTaskRun[]
-    getTasks(): AgentTaskSession[]
-    runTask(
-        input: AgentTaskInput,
-        runConfig?: ChatLunaToolRunnable
-    ): Promise<string>
-}
-
-interface ActiveAgentTaskRun {
-    abort: AbortController
-    queue: MessageQueue
-}
-
 export function createTaskTool(
     options: CreateTaskToolOptions
 ): AgentTaskToolRuntime {
     const tasks = new Map<string, AgentTaskSession>()
     const runs = new Map<string, AgentTaskRun>()
     const active = new Map<string, ActiveAgentTaskRun>()
+    const snapshots = new Map<string, AgentTaskSessionSnapshot>()
     const runDispose = new Map<string, () => void>()
     const taskDispose = new Map<string, () => void>()
     const toolName = options.name ?? 'task'
@@ -159,6 +46,7 @@ export function createTaskTool(
             clearDisposers(taskDispose)
             tasks.clear()
             runs.clear()
+            snapshots.clear()
         },
         getRuns() {
             return [...runs.values()].sort((a, b) => b.startedAt - a.startedAt)
@@ -251,7 +139,7 @@ export function createTaskTool(
                 return [
                     `task_id: ${task.id}`,
                     'state: running',
-                    `hint: use ${toolName} action=status id=${task.id}`
+                    'hint: guidance delivered; result will arrive automatically. Do not poll status.'
                 ].join('\n')
             }
 
@@ -297,7 +185,7 @@ export function createTaskTool(
             }
 
             if (next.activeRunId) {
-                return `Task '${next.id}' is already running. Use action=status to inspect it or action=message to guide it while it runs in background.`
+                return `Task '${next.id}' is already running; result will arrive automatically. Use action=message to guide it.`
             }
 
             const raw = input.prompt?.trim()
@@ -317,8 +205,10 @@ export function createTaskTool(
                     input,
                     toolName,
                     runtime: options,
+                    tasks,
                     runs,
                     active,
+                    snapshots,
                     scheduleRunCleanup,
                     scheduleTaskCleanup,
                     task: next,
@@ -366,6 +256,7 @@ export function createTaskTool(
             createTimeout(async () => {
                 runDispose.delete(runId)
                 runs.delete(runId)
+                snapshots.delete(runId)
                 await options.refresh?.()
             }, runTtl)
         )
@@ -396,6 +287,7 @@ export function createTaskTool(
 
                     cancelRunCleanup(run.runId)
                     runs.delete(run.runId)
+                    snapshots.delete(run.runId)
                 }
 
                 await options.refresh?.()
@@ -406,9 +298,9 @@ export function createTaskTool(
 
 export function buildTaskToolDescription() {
     return [
-        'Delegate focused work to a specialist.',
-        'Use exact agent names. Use background=true for long tasks.',
-        'Use action=list/status to monitor, message to guide, run with id to resume.'
+        'Delegate focused work to a specialist agent (exact name required).',
+        'Set background=true for long tasks; results are delivered to you automatically - never poll status.',
+        'Actions: run (new task, or resume with id), status, list, message (guide a running background task).'
     ].join('\n')
 }
 
@@ -419,8 +311,7 @@ export function renderAvailableAgents(
 ) {
     const lines = [
         '<available_sub_agents>',
-        'Delegate to specialists via the task tool. Use background=true for long work.',
-        'Monitor with action=status; guide running tasks with action=message.',
+        'Delegate via the task tool. background=true for long work; results arrive automatically - do not poll status.',
         ''
     ]
 
@@ -434,16 +325,13 @@ export function renderAvailableAgents(
 
     for (const item of agents) {
         lines.push(
-            '  <sub_agent>',
-            `    <name>${escapeXml(item.name)}</name>`,
-            `    <description>${escapeXml(item.description)}</description>`,
-            '  </sub_agent>'
+            `<sub_agent name="${escapeXml(item.name)}">${escapeXml(item.description)}</sub_agent>`
         )
     }
 
     lines.push(
         '',
-        'Use exact sub-agent names. Include goal, context, and expected result.',
+        'Use exact names. Include goal, context, and expected result in the prompt.',
         '</available_sub_agents>'
     )
 
@@ -543,8 +431,10 @@ async function runAgentTask(options: {
     input: AgentTaskInput
     toolName: string
     runtime: CreateTaskToolOptions
+    tasks: Map<string, AgentTaskSession>
     runs: Map<string, AgentTaskRun>
     active: Map<string, ActiveAgentTaskRun>
+    snapshots: Map<string, AgentTaskSessionSnapshot>
     scheduleRunCleanup: (runId: string) => void
     scheduleTaskCleanup: (taskId: string) => void
     task: AgentTaskSession
@@ -601,9 +491,27 @@ async function runAgentTask(options: {
     const queue = options.input.background ? new MessageQueue() : undefined
     const signal = abort?.signal ?? options.signal
     const promptMessage = new HumanMessage(options.prompt)
+    const snapshot: AgentTaskSessionSnapshot | undefined = options.input
+        .background
+        ? {
+              session: options.session,
+              routing: {
+                  platform: options.session.platform,
+                  selfId: options.session.selfId,
+                  userId: options.session.userId,
+                  username: options.session.username ?? undefined,
+                  guildId: options.session.guildId ?? undefined,
+                  channelId: options.session.channelId ?? undefined,
+                  isDirect: options.session.isDirect ?? false
+              }
+          }
+        : undefined
 
     options.task.activeRunId = runId
     options.runs.set(runId, run)
+    if (snapshot) {
+        options.snapshots.set(runId, snapshot)
+    }
     if (abort && queue) {
         options.active.set(runId, { abort, queue })
     }
@@ -667,6 +575,7 @@ async function runAgentTask(options: {
             options.scheduleRunCleanup(runId)
             options.scheduleTaskCleanup(options.task.id)
             await options.runtime.refresh?.()
+            await notifyFinished(options, run, snapshot)
             return formatTaskResult(
                 options.task,
                 run,
@@ -689,6 +598,7 @@ async function runAgentTask(options: {
             options.scheduleRunCleanup(runId)
             options.scheduleTaskCleanup(options.task.id)
             await options.runtime.refresh?.()
+            await notifyFinished(options, run, snapshot)
             throw err
         } finally {
             options.active.delete(runId)
@@ -701,6 +611,57 @@ async function runAgentTask(options: {
     }
 
     return await exec()
+}
+
+async function notifyFinished(
+    options: {
+        input: AgentTaskInput
+        runtime: CreateTaskToolOptions
+        tasks: Map<string, AgentTaskSession>
+        active: Map<string, ActiveAgentTaskRun>
+        task: AgentTaskSession
+        target: AgentTaskTarget
+        source: 'chatluna' | 'character'
+    },
+    run: AgentTaskRun,
+    snapshot?: AgentTaskSessionSnapshot
+) {
+    if (!options.input.background || run.state === 'aborted') {
+        return
+    }
+
+    if (options.task.parentConversationId.startsWith('subagent:')) {
+        const task = [...options.tasks.values()].find(
+            (item) => item.conversationId === options.task.parentConversationId
+        )
+        const active = task?.activeRunId
+            ? options.active.get(task.activeRunId)
+            : undefined
+        if (active) {
+            active.queue.push(
+                new HumanMessage(
+                    formatAgentTaskWakeup(
+                        options.task.id,
+                        options.task.agentName,
+                        run
+                    )
+                )
+            )
+        }
+        return
+    }
+
+    try {
+        await options.runtime.onRunFinished?.({
+            run,
+            taskId: options.task.id,
+            agentId: options.target.agent.id,
+            agentName: options.target.agent.name,
+            parentConversationId: options.task.parentConversationId,
+            source: options.source,
+            snapshot
+        })
+    } catch {}
 }
 
 async function onTaskEvent(
@@ -895,9 +856,31 @@ function formatTaskStart(task: AgentTaskSession, toolName: string) {
     return [
         `task_id: ${task.id}`,
         `agent: ${task.agentName}`,
-        'state: running',
-        'mode: background',
-        `hint: ${toolName} action=status id=${task.id}; action=message to guide; action=run to resume`
+        'state: running (background)',
+        'hint: result will be delivered automatically - do NOT poll status. ' +
+            'Continue other work or end your reply; use ' +
+            `${toolName} action=message id=${task.id} to send guidance.`
+    ].join('\n')
+}
+
+export function formatAgentTaskWakeup(
+    taskId: string,
+    agentName: string,
+    run: Pick<AgentTaskRun, 'state' | 'output' | 'error'>
+) {
+    return [
+        `<agent_task_result task_id="${escapeXml(taskId)}" agent="${escapeXml(agentName)}" state="${run.state}">`,
+        escapeXml(
+            run.state === 'failed' ? (run.error ?? '') : (run.output ?? '')
+        ),
+        '</agent_task_result>',
+        '',
+        run.state === 'failed'
+            ? 'Automatic notice: a background task you started failed. ' +
+              `Report the failure or retry with task action=run id=${taskId}.`
+            : 'Automatic notice: a background task you started finished. ' +
+              'Use the result to respond to the user; continue it with ' +
+              `task action=run id=${taskId} if needed.`
     ].join('\n')
 }
 
@@ -1034,4 +1017,151 @@ function escapeXml(value: string) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;')
+}
+
+export interface AgentTaskDescriptor {
+    id: string
+    name: string
+    description: string
+}
+
+export interface AgentTaskTarget {
+    agent: ChatLunaAgent
+    toolMask?: ToolMask
+}
+
+export interface AgentTaskSession {
+    id: string
+    agentId: string
+    agentName: string
+    conversationId: string
+    parentConversationId: string
+    depth: number
+    maxDepth: number
+    parentAgent: string
+    activeRunId?: string
+    messages: BaseMessage[]
+    startedAt: number
+    updatedAt: number
+}
+
+export interface AgentTaskRunTraceEntry {
+    id: string
+    type:
+        | 'prompt'
+        | 'message'
+        | 'thought'
+        | 'tool-call'
+        | 'tool-result'
+        | 'output'
+        | 'error'
+    at: number
+    text: string
+    tool?: string
+    title?: string
+    callId?: string
+}
+
+export interface AgentTaskRun {
+    runId: string
+    taskId: string
+    agentId: string
+    agentName: string
+    conversationId: string
+    parentConversationId: string
+    depth: number
+    state: 'running' | 'completed' | 'failed' | 'aborted'
+    background?: boolean
+    startedAt: number
+    endedAt?: number
+    lastTool?: string
+    toolCount: number
+    turnCount: number
+    error?: string
+    output?: string
+    trace: AgentTaskRunTraceEntry[]
+}
+
+export interface AgentTaskSessionSnapshot {
+    session?: Session
+    routing?: {
+        platform: string
+        selfId: string
+        userId: string
+        username?: string
+        guildId?: string
+        channelId?: string
+        isDirect: boolean
+    }
+    bindingKey?: string
+}
+
+export interface AgentTaskFinishedPayload {
+    run: AgentTaskRun
+    taskId: string
+    agentId: string
+    agentName: string
+    parentConversationId: string
+    source: 'chatluna' | 'character'
+    snapshot?: AgentTaskSessionSnapshot
+}
+
+export interface AgentTaskInput {
+    action?: 'run' | 'status' | 'list' | 'message'
+    agent?: string
+    id?: string
+    prompt?: string
+    reason?: string
+    background?: boolean
+    message?: string
+}
+
+export interface AgentTaskQueryContext {
+    session?: Session
+    source?: 'chatluna' | 'character'
+}
+
+export interface AgentTaskResolveContext extends AgentTaskQueryContext {
+    conversationId?: string
+    parent?: SubagentContext
+    runConfig?: ChatLunaToolRunnable
+}
+
+export interface CreateTaskToolOptions {
+    list: (ctx: AgentTaskQueryContext) => Awaitable<AgentTaskDescriptor[]>
+    get: (
+        name: string,
+        ctx: AgentTaskResolveContext
+    ) => Awaitable<AgentTaskTarget | undefined>
+    refresh?: () => Awaitable<void>
+    maxDepth?: number
+    taskTtl?: number
+    runTtl?: number
+    name?: string
+    onRunFinished?: (payload: AgentTaskFinishedPayload) => Awaitable<void>
+}
+
+declare module 'koishi' {
+    interface Events {
+        'chatluna/agent-task-finished': (
+            payload: AgentTaskFinishedPayload
+        ) => Promise<void>
+    }
+}
+
+export interface AgentTaskToolRuntime {
+    buildToolDescription(): string
+    createTool(): StructuredTool
+    dispose(): Promise<void>
+    getRuns(): AgentTaskRun[]
+    getTasks(): AgentTaskSession[]
+    runTask(
+        input: AgentTaskInput,
+        runConfig?: ChatLunaToolRunnable
+    ): Promise<string>
+}
+
+interface ActiveAgentTaskRun {
+    abort: AbortController
+    queue: MessageQueue
 }

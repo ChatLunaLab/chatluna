@@ -27,6 +27,7 @@ $inner:
       msgCooldown: Set global message cooldown (seconds) to limit adapter calls.
       messageQueue: Enable message queue. When enabled, if multiple messages are sent and the model has not responded to the initial message, the messages will be cached and merged into one message, and will be sent after waiting for the model response.
       messageQueueDelay: Set message queue delay time (seconds). Set to 0 to disable delay. When delay is enabled, the system will wait for the specified time before sending messages to the model. If there are unprocessed messages during this period, they will be cached and merged into multiple messages to send to the model.
+      agentTaskAutoWakeup: Automatically wake up the conversation when a background agent task finishes. Disable to return to manual status checks.
       showThoughtMessage: Display thinking message in plugin mode or reasoner model.
 
     - $desc: Message Rendering

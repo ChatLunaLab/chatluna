@@ -31,6 +31,7 @@ export interface Config {
     autoPurgeArchiveTimeout: number
     messageQueue: boolean
     messageQueueDelay: number
+    agentTaskAutoWakeup: boolean
     infiniteContext: boolean
     infiniteContextThreshold: number
     rawOnCensor: boolean
@@ -117,6 +118,7 @@ export const Config: Schema<Config> = Schema.intersect([
             .min(0)
             .max(60 * 30)
             .default(0),
+        agentTaskAutoWakeup: Schema.boolean().default(true),
         showThoughtMessage: Schema.boolean().default(false)
     }),
 

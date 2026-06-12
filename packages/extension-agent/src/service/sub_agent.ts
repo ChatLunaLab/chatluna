@@ -203,6 +203,10 @@ export class ChatLunaAgentSubAgentService {
             },
             refresh: async () => {
                 await this.ctx.chatluna_agent?.refreshConsoleData()
+            },
+            onRunFinished: async (payload) => {
+                await this.ctx.parallel('chatluna/agent-task-finished', payload)
+                await this.ctx.chatluna_agent?.refreshConsoleData()
             }
         })
     }

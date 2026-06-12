@@ -13,6 +13,7 @@ tsconfig.temp.json
 .DS_Store
 .idea
 .vscode
+.chatluna
 *.suo
 *.ntvs*
 *.njsproj

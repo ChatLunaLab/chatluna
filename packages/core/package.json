@@ -142,6 +142,11 @@
             "import": "./lib/utils/koishi.mjs",
             "require": "./lib/utils/koishi.cjs"
         },
+        "./utils/virtual_session": {
+            "types": "./lib/utils/virtual_session.d.ts",
+            "import": "./lib/utils/virtual_session.mjs",
+            "require": "./lib/utils/virtual_session.cjs"
+        },
         "./utils/langchain": {
             "types": "./lib/utils/langchain.d.ts",
             "import": "./lib/utils/langchain.mjs",
