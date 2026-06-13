@@ -61,14 +61,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 ctx.chatluna.conversationRuntime.stopConversationRequest(
                     conversation.id
                 )
+
+            if (!status) {
+                context.message = session.text('.no_active_chat')
+                return ChainMiddlewareRunStatus.STOP
+            }
+
             await ctx.parallel('chatluna/chat-stopped', {
                 conversationId: conversation.id,
                 session
             })
-
-            if (!status) {
-                context.message = session.text('.no_active_chat')
-            }
 
             return ChainMiddlewareRunStatus.STOP
         })

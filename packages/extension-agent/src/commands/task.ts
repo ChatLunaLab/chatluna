@@ -155,7 +155,7 @@ export function apply(ctx: Context) {
         service.subAgent.attachTask(session, task.id, conversationId)
         return [
             `Attached to ${task.agentName} (${task.id.slice(0, 8)}).`,
-            `State: ${state(task, run)}. Send messages here; use chatluna.agent.task.exit to leave.`,
+            `State: ${state(task, run)}. Send messages here; use chatluna.agent.exit to leave.`,
             'Recent history:',
             service.subAgent.getTaskHistory(task)
         ].join('\n')

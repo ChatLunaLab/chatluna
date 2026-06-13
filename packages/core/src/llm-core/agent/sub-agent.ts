@@ -54,6 +54,107 @@ export function createTaskTool(
         getTasks() {
             return [...tasks.values()].sort((a, b) => b.updatedAt - a.updatedAt)
         },
+        getTask(id) {
+            return tasks.get(id)
+        },
+        stopTask(id) {
+            const task = tasks.get(id)
+            const runId = task?.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (!runId || !item) return false
+
+            const run = runs.get(runId)
+            if (run) run.paused = false
+            item.paused = false
+            item.resume?.()
+            item.abort.abort()
+            options.refresh?.()
+            return true
+        },
+        pauseTask(id) {
+            const runId = tasks.get(id)?.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (!runId || !item || item.paused) return false
+
+            item.paused = true
+            const run = runs.get(runId)
+            if (run) run.paused = true
+            options.refresh?.()
+            return true
+        },
+        resumeTask(id) {
+            const runId = tasks.get(id)?.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (!runId || !item?.paused) return false
+
+            item.paused = false
+            const run = runs.get(runId)
+            if (run) run.paused = false
+            item.resume?.()
+            options.refresh?.()
+            return true
+        },
+        abortByParentConversation(id) {
+            let count = 0
+            for (const task of tasks.values()) {
+                if (task.parentConversationId !== id || !task.activeRunId) {
+                    continue
+                }
+
+                const item = active.get(task.activeRunId)
+                if (!item) continue
+
+                const run = runs.get(task.activeRunId)
+                if (run) run.paused = false
+                item.paused = false
+                item.resume?.()
+                item.abort.abort()
+                count += 1
+            }
+
+            if (count > 0) options.refresh?.()
+            return count
+        },
+        async chatTask(id, prompt, ctx) {
+            const task = tasks.get(id)
+            if (!task) {
+                return {
+                    state: 'failed',
+                    output: `Task '${id}' was not found or expired.`
+                }
+            }
+
+            const runId = task.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (runId && item) {
+                item.queue.push(new HumanMessage(prompt))
+                touchTaskSession(task)
+                scheduleTaskCleanup(task.id)
+                await options.refresh?.()
+                return { state: 'queued' }
+            }
+
+            if (runId) {
+                return {
+                    state: 'failed',
+                    output: `Task '${task.id}' is not accepting live messages because it was not started in background.`
+                }
+            }
+
+            const output = await runtime.runTask(
+                {
+                    action: 'run',
+                    id,
+                    prompt
+                },
+                ctx.runConfig
+            )
+            const run = getLatestTaskRun(runs, id)
+            return {
+                state: run?.state ?? 'completed',
+                output
+            }
+        },
         async runTask(input, runConfig) {
             const action = input.action ?? 'run'
             const parent =
@@ -489,6 +590,8 @@ async function runAgentTask(options: {
 
     const abort = options.input.background ? new AbortController() : undefined
     const queue = options.input.background ? new MessageQueue() : undefined
+    const activeRun: ActiveAgentTaskRun | undefined =
+        abort && queue ? { abort, queue } : undefined
     const signal = abort?.signal ?? options.signal
     const promptMessage = new HumanMessage(options.prompt)
     const snapshot: AgentTaskSessionSnapshot | undefined = options.input
@@ -512,8 +615,8 @@ async function runAgentTask(options: {
     if (snapshot) {
         options.snapshots.set(runId, snapshot)
     }
-    if (abort && queue) {
-        options.active.set(runId, { abort, queue })
+    if (activeRun) {
+        options.active.set(runId, activeRun)
     }
     options.scheduleTaskCleanup(options.task.id)
     run.trace.push({
@@ -549,6 +652,25 @@ async function runAgentTask(options: {
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
+                pauseGate: activeRun
+                    ? async (signal) => {
+                          while (activeRun.paused) {
+                              if (signal?.aborted) return
+
+                              await new Promise<void>((resolve) => {
+                                  const done = () => {
+                                      signal?.removeEventListener('abort', done)
+                                      activeRun.resume = undefined
+                                      resolve()
+                                  }
+                                  activeRun.resume = done
+                                  signal?.addEventListener('abort', done, {
+                                      once: true
+                                  })
+                              })
+                          }
+                      }
+                    : undefined,
                 toolMask,
                 subagentContext: subCtx,
                 source: options.source,
@@ -1072,6 +1194,7 @@ export interface AgentTaskRun {
     depth: number
     state: 'running' | 'completed' | 'failed' | 'aborted'
     background?: boolean
+    paused?: boolean
     startedAt: number
     endedAt?: number
     lastTool?: string
@@ -1155,6 +1278,16 @@ export interface AgentTaskToolRuntime {
     dispose(): Promise<void>
     getRuns(): AgentTaskRun[]
     getTasks(): AgentTaskSession[]
+    getTask(id: string): AgentTaskSession | undefined
+    stopTask(id: string): boolean
+    pauseTask(id: string): boolean
+    resumeTask(id: string): boolean
+    abortByParentConversation(id: string): number
+    chatTask(
+        id: string,
+        prompt: string,
+        ctx: AgentTaskResolveContext
+    ): Promise<{ state: 'queued' | AgentTaskRun['state']; output?: string }>
     runTask(
         input: AgentTaskInput,
         runConfig?: ChatLunaToolRunnable
@@ -1164,4 +1297,6 @@ export interface AgentTaskToolRuntime {
 interface ActiveAgentTaskRun {
     abort: AbortController
     queue: MessageQueue
+    paused?: boolean
+    resume?: () => void
 }

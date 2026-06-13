@@ -47,26 +47,33 @@ export class ChatLunaAgentTaskAttachService {
                 return
             }
 
-            const result = await this.ctx.chatluna_agent.subAgent.chatTask(
-                item.taskId,
-                session.content,
-                {
-                    session,
-                    conversationId: item.parentConversationId,
-                    source: 'chatluna',
-                    runConfig: await this.runConfig(session, conversation)
-                }
-            )
-
-            if (result.state === 'queued') {
-                await session.send(
-                    `Delivered to running sub-agent ${task.agentName} (${task.id.slice(0, 8)}).`
+            try {
+                const result = await this.ctx.chatluna_agent.subAgent.chatTask(
+                    item.taskId,
+                    session.content,
+                    {
+                        session,
+                        conversationId: item.parentConversationId,
+                        source: 'chatluna',
+                        runConfig: await this.runConfig(session, conversation)
+                    }
                 )
-                return
-            }
 
-            await session.send(result.output?.trim() || '(empty)')
-        }, true)
+                if (result.state === 'queued') {
+                    await session.send(
+                        `Delivered to running sub-agent ${task.agentName} (${task.id.slice(0, 8)}).`
+                    )
+                    return
+                }
+
+                await session.send(result.output?.trim() || '(empty)')
+            } catch (err) {
+                this._items.delete(key)
+                this.ctx.logger.error(err)
+                await session.send('Sub-agent task failed, please retry.')
+                return next()
+            }
+        })
 
         ctx.on('chatluna/chat-stopped', async ({ conversationId }) => {
             this.detachConversation(conversationId)
