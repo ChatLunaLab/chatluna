@@ -58,6 +58,7 @@ export interface AgentGenerateOptions {
     signal?: AbortSignal
     maxToken?: number
     messageQueue?: MessageQueue
+    pauseGate?: (signal?: AbortSignal) => Promise<void>
     toolMask?: ToolMask
     subagentContext?: SubagentContext
     source?: 'chatluna' | 'character'
@@ -161,6 +162,7 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
             const bound = runner.value.withConfig({
                 configurable: {
                     messageQueue: input.messageQueue,
+                    pauseGate: input.pauseGate,
                     onAgentEvent: input.onStep,
                     agentContext: ctx
                 }

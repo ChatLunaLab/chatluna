@@ -424,6 +424,13 @@ export class E2BComputerSession implements ComputerSessionApi {
         }
     }
 
+    async getTempDir() {
+        const result = await this.execute(
+            "printf %s '$" + '{TMPDIR:-$' + '{TMP:-$' + "{TEMP:-/tmp}}}'"
+        )
+        return result.stdout.trim() || '/tmp'
+    }
+
     async createTerminal(options: TerminalOptions = {}) {
         try {
             const sandbox = await this.ensureSandbox()

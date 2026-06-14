@@ -5,7 +5,7 @@ import { getErrorMessage } from '../utils/shell'
 
 export function apply(ctx: Context) {
     ctx.command('chatluna.agent', 'ChatLuna agent admin commands', {
-        authority: 3
+        authority: 1
     })
 
     ctx.command(

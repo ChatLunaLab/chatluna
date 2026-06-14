@@ -64,15 +64,6 @@ export function ensureLocalPathAccess(
     ) {
         throw new Error(`Path "${filePath}" is read-only by configuration.`)
     }
-
-    if (
-        mode === 'write' &&
-        cfg.scopePath &&
-        !isInsideRoot(resolved, cfg.scopePath) &&
-        !cfg.writableRoots.some((root) => isInsideRoot(resolved, root))
-    ) {
-        throw new Error(`Path "${filePath}" is outside the writable workspace.`)
-    }
 }
 
 export function ensureLocalCommandAccess(
@@ -113,7 +104,7 @@ export function wrapCommandWithSandbox(
     cfg: LocalBackendConfig,
     tmp: string
 ) {
-    if (process.platform === 'win32') {
+    if (process.platform === 'win32' || cfg.dangerouslySkipPermissions) {
         return command
     }
 
@@ -158,23 +149,32 @@ export function wrapCommandWithSandbox(
         }
     }
 
-    const ro = cfg.sandboxMode === 'read-only'
-    const scope = cfg.scopePath || workdir || process.cwd()
-
-    return [
+    const args = [
         quote(bwrap),
         '--ro-bind / /',
-        ro
-            ? `--ro-bind ${quote(scope)} ${quote(scope)}`
-            : `--bind ${quote(scope)} ${quote(scope)}`,
-        ro ? `--ro-bind ${quote(tmp)} /tmp` : `--bind ${quote(tmp)} /tmp`,
+        cfg.sandboxMode === 'workspace-write'
+            ? `--bind ${quote(cfg.scopePath || workdir)} ${quote(cfg.scopePath || workdir)}`
+            : undefined,
+        cfg.sandboxMode === 'workspace-write' &&
+        path.resolve(workdir) !== path.resolve(cfg.scopePath || workdir)
+            ? `--bind ${quote(workdir)} ${quote(workdir)}`
+            : undefined,
+        cfg.sandboxMode === 'read-only'
+            ? `--ro-bind ${quote(tmp)} /tmp`
+            : `--bind ${quote(tmp)} /tmp`,
+        ...cfg.readOnlyRoots.map(
+            (root) => `--ro-bind ${quote(root)} ${quote(root)}`
+        ),
+        ...cfg.denyRoots.map((root) => `--tmpfs ${quote(root)}`),
         '--dev /dev',
         '--proc /proc',
         '--die-with-parent',
         ...(cfg.networkPolicy === 'block' ? ['--unshare-net'] : []),
         'sh -lc',
         quote(command)
-    ].join(' ')
+    ].filter((arg): arg is string => arg != null)
+
+    return args.join(' ')
 }
 
 function isInsideRoot(target: string, root: string) {

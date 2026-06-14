@@ -142,6 +142,9 @@ declare module '@koishijs/plugin-console' {
             path?: string
             backend?: ComputerBackendType
         }) => Promise<string[]>
+        'chatluna-agent/getComputerHome': (input?: {
+            backend?: ComputerBackendType
+        }) => Promise<string>
         'chatluna-agent/getComputerDesktop': (input?: {
             backend?: ComputerBackendType
         }) => Promise<ComputerDesktopState>

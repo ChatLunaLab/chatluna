@@ -31,6 +31,7 @@ export interface ComputerSessionApi {
     execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult>
     readAsset?(path: string): Promise<string>
     openAsset(path: string): Promise<OpenAssetResult>
+    getTempDir(): Promise<string>
 
     createTerminal?(options?: TerminalOptions): Promise<TerminalHandle>
     prepareBackgroundCommand?(

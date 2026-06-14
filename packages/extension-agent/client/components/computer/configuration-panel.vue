@@ -25,7 +25,7 @@
                         </el-tag>
                     </div>
                     <div v-if="!props.hideDesc" class="backend-copy">
-                        云端隔离沙箱，支持桌面和 GUI，适合需要完整隔离的任务。
+                        云端隔离环境，适合默认执行后端。需要时可开启桌面能力。
                     </div>
                     <div
                         v-if="props.status.backends.e2b.error"
@@ -37,7 +37,7 @@
 
                 <div class="backend-actions">
                     <el-button text @click="openGuide('e2b')">
-                        如何配置
+                        配置指南
                     </el-button>
                     <el-button
                         class="test-link"
@@ -99,7 +99,7 @@
                         </el-tag>
                     </div>
                     <div v-if="!props.hideDesc" class="backend-copy">
-                        接入已部署的远程执行服务，适合复用现有的执行节点。
+                        连接已部署的 Open Terminal 服务，用远程机器或容器执行任务。
                     </div>
                     <div
                         v-if="props.status.backends['open-terminal'].error"
@@ -111,7 +111,7 @@
 
                 <div class="backend-actions">
                     <el-button text @click="openGuide('open-terminal')">
-                        如何配置
+                        配置指南
                     </el-button>
                     <el-button
                         class="test-link"
@@ -176,7 +176,7 @@
                         </el-tag>
                     </div>
                     <div v-if="!props.hideDesc" class="backend-copy">
-                        直接在宿主机执行，终端能力风险很高，只建议在完全信任当前模型和工作目录时启用。
+                        直接访问宿主机文件系统并运行系统命令。模型会以当前用户权限操作。
                     </div>
                     <div
                         v-if="props.status.backends.local.error"
@@ -188,7 +188,7 @@
 
                 <div class="backend-actions">
                     <el-button text @click="openGuide('local')">
-                        如何配置
+                        配置指南
                     </el-button>
                     <el-button
                         class="test-link"
@@ -225,7 +225,7 @@
 
         <el-dialog
             v-model="guideOpen"
-            :title="`${guide.title} 如何配置`"
+            :title="`${guide.title} 配置指南`"
             width="min(860px, calc(100vw - 32px))"
             destroy-on-close
         >
@@ -341,38 +341,38 @@ const guide = computed<GuideContent>(() => {
     if (guideType.value === 'local') {
         return {
             title: 'Local 本地环境',
-            intro: 'Local 会直接在宿主机上读写文件并执行终端命令，适合你明确知道工作目录、命令边界和风险的时候使用。',
-            warn: '建议保持默认关闭。优先把 scopePath 收紧到单个项目目录，并保留按需审批。',
+            intro: 'Local 使用这台机器的文件系统和终端。适合需要直接操作本机项目时使用。',
+            warn: '开启“跳过沙箱与权限约束”后，不再使用 bwrap，也不会做路径保护、命令白名单和高危确认。',
             sections: [
                 {
-                    title: '推荐配置顺序',
+                    title: '配置顺序',
                     steps: [
-                        '先把“作用域路径”设置为单个项目的绝对路径，只给 Agent 它必须访问的目录。',
-                        '把“沙箱模式”设为“只读”，只有在确实需要改文件时再切到“工作区可写”。',
-                        '把“审批模式”保留为“按需审批”，这样高风险命令还需要人工确认。',
-                        '把“网络策略”设为“阻止”，只有明确需要联网下载或调用外部服务时再放开。',
-                        '如果只允许一小部分命令，就填写“允许的命令”；如果只是排除危险命令，就填写“禁止的命令”。',
-                        '设置完成后先点“测试连接”，确认没问题再启用。'
+                        'Linux 先安装 bubblewrap (bwrap)。如果准备开启“跳过沙箱与权限约束”，可以不装。',
+                        '把“初始工作目录”设为常用项目目录。它只是起点，不限制访问范围。',
+                        '默认用“沙箱：只读”。需要改文件时再切到“沙箱：可写”。',
+                        '保留“按需审批”，高风险命令会先问你。',
+                        '不需要联网时，把网络策略设为“阻止”。',
+                        '保存后点“测试连接”，确认本机环境可用。'
                     ]
                 },
                 {
-                    title: '字段怎么填',
+                    title: '字段说明',
                     items: [
-                        '作用域路径：必填绝对路径，建议直接指向你的仓库根目录。',
-                        '可写根目录：仅当需要写 scopePath 之外的路径时再加。',
-                        '只读根目录 / 禁止访问目录：用来进一步收紧访问边界。',
-                        '首选终端：一般保持“自动检测”即可。',
-                        '命令超时：保守值可以先用 0.5 分钟。',
-                        '忽略模式：把 node_modules、dist、缓存目录排除掉，能减少误读和误改。'
+                        '初始工作目录：终端和文件面板的起始路径，不是访问边界。',
+                        '只读根目录：这些路径可以读，不能写。',
+                        '禁止访问目录：这些路径不允许读写。',
+                        '忽略模式：减少搜索和文件列表里的噪音，比如 node_modules、dist。',
+                        '跳过沙箱与权限约束：直接运行，不使用 bwrap，也不拦高危命令。'
                     ],
                     code: [
-                        '推荐起步配置',
-                        '作用域路径: /path/to/project 或 C:\\repo\\project',
+                        '# Ubuntu / Debian',
+                        'sudo apt install bubblewrap',
+                        '',
+                        '# 建议起步',
+                        '初始工作目录: /path/to/project 或 C:\\repo\\project',
                         '沙箱模式: read-only',
                         '审批模式: on-request',
-                        '首选终端: auto',
-                        '命令超时: 0.5',
-                        '网络策略: block'
+                        '跳过沙箱与权限约束: false'
                     ].join('\n')
                 }
             ],
@@ -383,19 +383,15 @@ const guide = computed<GuideContent>(() => {
     if (guideType.value === 'open-terminal') {
         return {
             title: 'open-terminal 远程终端',
-            intro: 'open-terminal 更适合把执行环境放到远端机器或容器里，ChatLuna 只需要连接它暴露出的 HTTP API。',
-            warn: '官方文档推荐优先使用 Docker。裸机模式会直接在远端宿主机上执行命令，风险明显更高。',
+            intro: 'ChatLuna 通过 HTTP API 连接 Open Terminal。服务可以跑在容器里，也可以跑在远端主机上。',
+            warn: '优先用 Docker。裸机模式会直接在远端主机执行命令。',
             sections: [
                 {
-                    title: '最快启动方式',
+                    title: 'Docker 快速启动',
                     steps: [
-                        '用 Docker 启动 open-terminal，并显式设置 API Key。',
-                        '建议同时设置 `HOME=/home/user`，让 `~` 和相对路径都稳定落在挂载卷里。',
-                        '如果你需要让图片、音频、视频、PDF、压缩包等二进制文件在 Agent 场景里正常读写或传递，记得保留 `OPEN_TERMINAL_BINARY_MIME_PREFIXES`。',
-                        '启动后把“基础 URL”填成你的服务地址，例如 http://localhost:8000。',
-                        '把“API 密钥”填成 env:OPEN_TERMINAL_API_KEY 或直接填密钥。',
-                        '如果服务跑在 Docker 里，把“部署模式”设为 Docker；如果是 pip/uvx 裸机启动，就选裸机。',
-                        '配置完成后先点“测试连接”，确认通了再启用。'
+                        '推荐先用 Docker 跑起来。',
+                        'ChatLuna 里基础 URL 填 http://host:8000。',
+                        'API 密钥填 env:OPEN_TERMINAL_API_KEY 或直接填密钥。'
                     ],
                     code: [
                         'docker run -d --name open-terminal --restart unless-stopped \\',
@@ -409,32 +405,48 @@ const guide = computed<GuideContent>(() => {
                     ].join('\n')
                 },
                 {
-                    title: '表单字段建议',
+                    title: 'Docker Compose 示例',
+                    code: [
+                        'services:',
+                        '  open-terminal:',
+                        '    image: ghcr.io/open-webui/open-terminal',
+                        '    restart: unless-stopped',
+                        '    ports:',
+                        '      - "8000:8000"',
+                        '    working_dir: /home/user',
+                        '    environment:',
+                        '      HOME: /home/user',
+                        '      OPEN_TERMINAL_API_KEY: your-secret-key',
+                        '      OPEN_TERMINAL_BINARY_MIME_PREFIXES: image,audio,video,application/pdf,application/zip,application/vnd.openxmlformats-officedocument.,application/octet-stream',
+                        '    volumes:',
+                        '      - open-terminal:/home/user',
+                        '',
+                        'volumes:',
+                        '  open-terminal:'
+                    ].join('\n')
+                },
+                {
+                    title: '字段说明',
                     items: [
-                        '基础 URL：填写 open-terminal 对外地址，通常是 http://host:8000。',
-                        'API 密钥：推荐使用 env:OPEN_TERMINAL_API_KEY，便于统一管理。',
-                        '`OPEN_TERMINAL_BINARY_MIME_PREFIXES`：用于声明哪些二进制 MIME 类型允许按文件处理；推荐至少保留 image、audio、video、application/pdf、application/zip。',
-                        '部署模式：按真实部署情况选 Docker / 裸机 / 未知。',
-                        '如果你用 Docker，建议把 HOME 和工作目录都固定到 /home/user；其中 HOME 会影响 `~` 的展开位置，工作目录会影响部分相对路径和会话 cwd 的初始位置。',
-                        '这样可以避免新版本 open-terminal 按会话 cwd 解析相对路径时落到 /app 之类的镜像目录。',
-                        '用户隔离：只有你明确启用了 open-terminal 的 multi-user 模式时再打开；这个开关主要是配置标记，不会替代底层隔离。',
-                        '如果你需要每个用户更强隔离，官方 README 也建议考虑每用户单独容器的方案。'
+                        '基础 URL：Open Terminal 对外地址。',
+                        'API 密钥：推荐使用 env: 前缀读取环境变量。',
+                        '部署模式：用于提示风险，不会改变远端隔离方式。',
+                        '用户隔离：只有服务端启用了 multi-user 模式时再打开。',
+                        'Docker 建议固定 HOME 和工作目录，避免相对路径落到镜像目录。'
                     ],
                     code: [
                         '基础 URL: http://localhost:8000',
                         'API 密钥: env:OPEN_TERMINAL_API_KEY',
-                        '二进制类型: image,audio,video,application/pdf,application/zip,...',
                         '部署模式: docker',
-                        'Docker 环境变量: HOME=/home/user（影响 ~ 的展开位置）',
-                        'Docker 工作目录: /home/user',
                         '用户隔离: false'
                     ].join('\n')
                 },
                 {
                     title: '裸机启动示例',
                     steps: [
-                        '如果不用 Docker，可以用 uvx 或 pip 安装后直接启动。',
-                        '这种模式下命令会直接以当前用户权限运行，请只在可信机器上使用。'
+                        '不用 Docker 时，可以用 uvx 或 pip 启动。',
+                        '裸机会直接在远端主机执行命令，只放在受控机器上。',
+                        '启动后把部署模式选为“裸机”。'
                     ],
                     code: [
                         'uvx open-terminal run --host 0.0.0.0 --port 8000 --api-key your-secret-key',
@@ -459,22 +471,21 @@ const guide = computed<GuideContent>(() => {
 
     return {
         title: 'E2B 沙箱',
-        intro: 'E2B 适合做默认电脑后端：隔离好、开箱即用，还能在需要时扩展到桌面流和 GUI 自动化。',
-        warn: '没有桌面需求时，把“桌面模板”留空即可；只有要用桌面流和截图时，才需要单独准备 desktop template。',
+        intro: 'E2B 提供云端沙箱。普通文件、终端和代码任务直接使用 base 模板即可。',
+        warn: '不需要桌面功能时，“桌面模板”留空。',
         sections: [
             {
-                title: '基础配置步骤',
+                title: '配置步骤',
                 steps: [
-                    '先在 E2B 创建账号，并从 Dashboard 的 Keys 页面生成 API Key。',
-                    '把“API 密钥”填成 env:E2B_API_KEY，或直接填入你的密钥。',
-                    '普通文件和终端任务直接把“模板”保持为 base 即可。',
-                    '如果你需要桌面能力，再去构建一个 desktop template，并把模板名填到“桌面模板”。',
-                    '“超时时间”建议先保留 5 分钟；“保持连接”适合连续任务复用同一个沙箱。',
-                    '配置完先点“测试连接”，通过后再启用。'
+                    '在 E2B 控制台创建 API Key。',
+                    'API 密钥推荐填 env:E2B_API_KEY。',
+                    '普通任务保持模板为 base。',
+                    '需要桌面时再填写桌面模板。',
+                    '保存后点“测试连接”。'
                 ]
             },
             {
-                title: '没有桌面需求时的推荐值',
+                title: '推荐值',
                 code: [
                     'API 密钥: env:E2B_API_KEY',
                     '模板: base',
@@ -484,11 +495,10 @@ const guide = computed<GuideContent>(() => {
                 ].join('\n')
             },
             {
-                title: '需要桌面时怎么填',
+                title: '桌面能力',
                 items: [
-                    'E2B Desktop 文档给了完整的 desktop template 示例，构建完成后可以直接用模板名，例如 desktop。',
-                    '填了“桌面模板”后，这个后端才会暴露桌面流、截图和桌面操作能力。',
-                    '如果你只是让 Agent 跑 bash、读写文件、搜索代码，不需要额外开启桌面模板。'
+                    '填了“桌面模板”后，才会开启桌面流、截图和桌面操作。',
+                    '只跑 bash、读写文件、搜索代码时不需要桌面模板。'
                 ],
                 code: [
                     'API 密钥: env:E2B_API_KEY',

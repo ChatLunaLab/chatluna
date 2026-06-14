@@ -648,6 +648,11 @@ export class ChatLunaAgentComputerService {
         return await session.glob(input.pattern, input.path)
     }
 
+    async getHomeForUi(clientId: string, backend?: ComputerBackendType) {
+        const session = await this.getOrCreateUiSession(clientId, backend)
+        return session.cwd || session.getScopePath()
+    }
+
     async removeRemoteSkill(dir: string) {
         await this.removeRemoteEntry(dir)
     }
@@ -759,10 +764,6 @@ export class ChatLunaAgentComputerService {
         const session = await this.getToolSession(runConfig)
         return await Promise.all(
             filePaths.map(async (filePath) => {
-                if (!session.isInScope(filePath)) {
-                    throw new Error(`Path is outside scope: ${filePath}`)
-                }
-
                 const fileName = path.posix.basename(
                     filePath.replaceAll('\\', '/')
                 )

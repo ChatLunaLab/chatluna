@@ -309,7 +309,6 @@ export function createDefaultComputerConfig(): ComputerConfig {
             dangerouslySkipPermissions: false,
             preferredShell: 'auto',
             scopePath: '',
-            writableRoots: [],
             readOnlyRoots: [],
             denyRoots: [],
             ignores: [

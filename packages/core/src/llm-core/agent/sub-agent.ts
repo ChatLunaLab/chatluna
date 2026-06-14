@@ -8,6 +8,7 @@ import {
 import { StructuredTool } from '@langchain/core/tools'
 import { randomUUID } from 'crypto'
 import type { Awaitable, Session } from 'koishi'
+import { logger } from 'koishi-plugin-chatluna'
 import { z } from 'zod'
 import type { ChatLunaToolRunnable } from '../platform/types'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
@@ -16,126 +17,13 @@ import { observationToMessageContent } from './legacy-executor'
 import { MessageQueue } from './types'
 import type { AgentEvent, AgentStep, SubagentContext, ToolMask } from './types'
 
-export interface AgentTaskDescriptor {
-    id: string
-    name: string
-    description: string
-}
-
-export interface AgentTaskTarget {
-    agent: ChatLunaAgent
-    toolMask?: ToolMask
-}
-
-export interface AgentTaskSession {
-    id: string
-    agentId: string
-    agentName: string
-    conversationId: string
-    parentConversationId: string
-    depth: number
-    maxDepth: number
-    parentAgent: string
-    activeRunId?: string
-    messages: BaseMessage[]
-    startedAt: number
-    updatedAt: number
-}
-
-export interface AgentTaskRunTraceEntry {
-    id: string
-    type:
-        | 'prompt'
-        | 'message'
-        | 'thought'
-        | 'tool-call'
-        | 'tool-result'
-        | 'output'
-        | 'error'
-    at: number
-    text: string
-    tool?: string
-    title?: string
-    callId?: string
-}
-
-export interface AgentTaskRun {
-    runId: string
-    taskId: string
-    agentId: string
-    agentName: string
-    conversationId: string
-    parentConversationId: string
-    depth: number
-    state: 'running' | 'completed' | 'failed' | 'aborted'
-    background?: boolean
-    startedAt: number
-    endedAt?: number
-    lastTool?: string
-    toolCount: number
-    turnCount: number
-    error?: string
-    output?: string
-    trace: AgentTaskRunTraceEntry[]
-}
-
-export interface AgentTaskInput {
-    action?: 'run' | 'status' | 'list' | 'message'
-    agent?: string
-    id?: string
-    prompt?: string
-    reason?: string
-    background?: boolean
-    message?: string
-}
-
-export interface AgentTaskQueryContext {
-    session?: Session
-    source?: 'chatluna' | 'character'
-}
-
-export interface AgentTaskResolveContext extends AgentTaskQueryContext {
-    conversationId?: string
-    parent?: SubagentContext
-    runConfig?: ChatLunaToolRunnable
-}
-
-export interface CreateTaskToolOptions {
-    list: (ctx: AgentTaskQueryContext) => Awaitable<AgentTaskDescriptor[]>
-    get: (
-        name: string,
-        ctx: AgentTaskResolveContext
-    ) => Awaitable<AgentTaskTarget | undefined>
-    refresh?: () => Awaitable<void>
-    maxDepth?: number
-    taskTtl?: number
-    runTtl?: number
-    name?: string
-}
-
-export interface AgentTaskToolRuntime {
-    buildToolDescription(): string
-    createTool(): StructuredTool
-    dispose(): Promise<void>
-    getRuns(): AgentTaskRun[]
-    getTasks(): AgentTaskSession[]
-    runTask(
-        input: AgentTaskInput,
-        runConfig?: ChatLunaToolRunnable
-    ): Promise<string>
-}
-
-interface ActiveAgentTaskRun {
-    abort: AbortController
-    queue: MessageQueue
-}
-
 export function createTaskTool(
     options: CreateTaskToolOptions
 ): AgentTaskToolRuntime {
     const tasks = new Map<string, AgentTaskSession>()
     const runs = new Map<string, AgentTaskRun>()
     const active = new Map<string, ActiveAgentTaskRun>()
+    const snapshots = new Map<string, AgentTaskSessionSnapshot>()
     const runDispose = new Map<string, () => void>()
     const taskDispose = new Map<string, () => void>()
     const toolName = options.name ?? 'task'
@@ -159,12 +47,132 @@ export function createTaskTool(
             clearDisposers(taskDispose)
             tasks.clear()
             runs.clear()
+            snapshots.clear()
         },
         getRuns() {
             return [...runs.values()].sort((a, b) => b.startedAt - a.startedAt)
         },
         getTasks() {
             return [...tasks.values()].sort((a, b) => b.updatedAt - a.updatedAt)
+        },
+        getTask(id) {
+            return tasks.get(id)
+        },
+        async stopTask(id) {
+            const task = tasks.get(id)
+            const runId = task?.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (!runId || !item) return false
+
+            const run = runs.get(runId)
+            if (run) run.paused = false
+            item.paused = false
+            item.resume?.()
+            item.abort.abort()
+            try {
+                await options.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
+            return true
+        },
+        async pauseTask(id) {
+            const runId = tasks.get(id)?.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (!runId || !item || item.paused) return false
+
+            item.paused = true
+            const run = runs.get(runId)
+            if (run) run.paused = true
+            try {
+                await options.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
+            return true
+        },
+        async resumeTask(id) {
+            const runId = tasks.get(id)?.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (!runId || !item?.paused) return false
+
+            item.paused = false
+            const run = runs.get(runId)
+            if (run) run.paused = false
+            item.resume?.()
+            try {
+                await options.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
+            return true
+        },
+        async abortByParentConversation(id) {
+            let count = 0
+            for (const task of tasks.values()) {
+                if (task.parentConversationId !== id || !task.activeRunId) {
+                    continue
+                }
+
+                const item = active.get(task.activeRunId)
+                if (!item) continue
+
+                const run = runs.get(task.activeRunId)
+                if (run) run.paused = false
+                item.paused = false
+                item.resume?.()
+                item.abort.abort()
+                count += 1
+            }
+
+            if (count > 0) {
+                try {
+                    await options.refresh?.()
+                } catch (err) {
+                    logger.error(err)
+                }
+            }
+            return count
+        },
+        async chatTask(id, prompt, ctx) {
+            const task = tasks.get(id)
+            if (!task) {
+                return {
+                    state: 'failed',
+                    output: `Task '${id}' was not found or expired.`
+                }
+            }
+
+            const runId = task.activeRunId
+            const item = runId ? active.get(runId) : undefined
+            if (runId && item) {
+                item.queue.push(new HumanMessage(prompt))
+                touchTaskSession(task)
+                scheduleTaskCleanup(task.id)
+                await options.refresh?.()
+                return { state: 'queued' }
+            }
+
+            if (runId) {
+                return {
+                    state: 'failed',
+                    output: `Task '${task.id}' is not accepting live messages because it was not started in background.`
+                }
+            }
+
+            const output = await runtime.runTask(
+                {
+                    action: 'run',
+                    id,
+                    prompt
+                },
+                ctx.runConfig
+            )
+            const run = getLatestTaskRun(runs, id)
+            return {
+                state: run?.state ?? 'completed',
+                output
+            }
         },
         async runTask(input, runConfig) {
             const action = input.action ?? 'run'
@@ -250,10 +258,8 @@ export function createTaskTool(
 
                 return [
                     `task_id: ${task.id}`,
-                    `run_id: ${task.activeRunId}`,
                     'state: running',
-                    'message: queued',
-                    `status_hint: use ${toolName} with {"action":"status","id":"${task.id}"} to inspect progress.`
+                    'hint: guidance delivered; result will arrive automatically. Do not poll status.'
                 ].join('\n')
             }
 
@@ -299,7 +305,7 @@ export function createTaskTool(
             }
 
             if (next.activeRunId) {
-                return `Task '${next.id}' is already running. Use action=status to inspect it or action=message to guide it while it runs in background.`
+                return `Task '${next.id}' is already running; result will arrive automatically. Use action=message to guide it.`
             }
 
             const raw = input.prompt?.trim()
@@ -319,8 +325,10 @@ export function createTaskTool(
                     input,
                     toolName,
                     runtime: options,
+                    tasks,
                     runs,
                     active,
+                    snapshots,
                     scheduleRunCleanup,
                     scheduleTaskCleanup,
                     task: next,
@@ -368,6 +376,7 @@ export function createTaskTool(
             createTimeout(async () => {
                 runDispose.delete(runId)
                 runs.delete(runId)
+                snapshots.delete(runId)
                 await options.refresh?.()
             }, runTtl)
         )
@@ -398,6 +407,7 @@ export function createTaskTool(
 
                     cancelRunCleanup(run.runId)
                     runs.delete(run.runId)
+                    snapshots.delete(run.runId)
                 }
 
                 await options.refresh?.()
@@ -408,12 +418,9 @@ export function createTaskTool(
 
 export function buildTaskToolDescription() {
     return [
-        'Delegate a focused task to a specialized agent when parallel work, deeper investigation, or a narrower prompt will help.',
-        'Use the exact agent name from the injected catalog.',
-        'If delegated work may take a while, set background=true so it can continue beyond the normal tool timeout.',
-        'Use action=list or action=status to inspect background tasks, ' +
-            'action=message to send more guidance while they run, and ' +
-            'action=run with the same id to continue the same session later.'
+        'Delegate focused work to a specialist agent (exact name required).',
+        'Set background=true for long tasks; results are delivered to you automatically - never poll status.',
+        'Actions: run (new task, or resume with id), status, list, message (guide a running background task).'
     ].join('\n')
 }
 
@@ -424,9 +431,7 @@ export function renderAvailableAgents(
 ) {
     const lines = [
         '<available_sub_agents>',
-        'Delegate focused work to a specialist via the task tool when parallel work or a narrower prompt helps.',
-        'If delegated work may take a while or exceed the normal tool timeout, set background=true, then query it later with task action=list/status.',
-        'While a background sub-agent is running, you can send more guidance with task action=message.',
+        'Delegate via the task tool. background=true for long work; results arrive automatically - do not poll status.',
         ''
     ]
 
@@ -440,17 +445,13 @@ export function renderAvailableAgents(
 
     for (const item of agents) {
         lines.push(
-            '  <sub_agent>',
-            `    <name>${escapeXml(item.name)}</name>`,
-            `    <description>${escapeXml(item.description)}</description>`,
-            '  </sub_agent>'
+            `<sub_agent name="${escapeXml(item.name)}">${escapeXml(item.description)}</sub_agent>`
         )
     }
 
     lines.push(
         '',
-        'Use the exact sub-agent name. Provide a self-contained prompt with goal, context, and expected result.',
-        'Prefer background=true for long-running delegated work so it is not interrupted by the default timeout.',
+        'Use exact names. Include goal, context, and expected result in the prompt.',
         '</available_sub_agents>'
     )
 
@@ -468,28 +469,22 @@ class AgentTaskTool extends StructuredTool {
                 .enum(['run', 'status', 'list', 'message'])
                 .optional()
                 .describe(
-                    'run starts or resumes an agent task, status inspects one task, ' +
-                        'list shows recent tasks in this conversation, message sends ' +
-                        'live guidance to a running background task.'
+                    'run/resume task, status inspects one, list shows recent, message guides a running background task.'
                 ),
             agent: z
                 .string()
                 .optional()
                 .describe(
-                    'The exact agent name from the injected catalog. Required when starting a new task. Optional when resuming an existing task by id.'
+                    'Exact agent name. Required for new tasks; optional when resuming by id.'
                 ),
             id: z
                 .string()
                 .optional()
-                .describe(
-                    'Existing task id returned by an earlier task call. Reuse it to inspect, message, or continue the same agent session.'
-                ),
+                .describe('Existing task id for status, message, or resume.'),
             prompt: z
                 .string()
                 .optional()
-                .describe(
-                    'The delegated task or follow-up instruction. Required when action is run.'
-                ),
+                .describe('Task or follow-up instruction. Required for run.'),
             reason: z
                 .string()
                 .optional()
@@ -497,15 +492,11 @@ class AgentTaskTool extends StructuredTool {
             background: z
                 .boolean()
                 .optional()
-                .describe(
-                    'Run the agent in the background. Prefer this for long-running work so it can continue beyond the normal tool timeout.'
-                ),
+                .describe('Run in background for long work.'),
             message: z
                 .string()
                 .optional()
-                .describe(
-                    'Live guidance to send to a running background agent. Use with action message.'
-                )
+                .describe('Guidance for a running background task.')
         })
         .superRefine((input, ctx) => {
             const action = input.action ?? 'run'
@@ -560,8 +551,10 @@ async function runAgentTask(options: {
     input: AgentTaskInput
     toolName: string
     runtime: CreateTaskToolOptions
+    tasks: Map<string, AgentTaskSession>
     runs: Map<string, AgentTaskRun>
     active: Map<string, ActiveAgentTaskRun>
+    snapshots: Map<string, AgentTaskSessionSnapshot>
     scheduleRunCleanup: (runId: string) => void
     scheduleTaskCleanup: (taskId: string) => void
     task: AgentTaskSession
@@ -616,13 +609,33 @@ async function runAgentTask(options: {
 
     const abort = options.input.background ? new AbortController() : undefined
     const queue = options.input.background ? new MessageQueue() : undefined
+    const activeRun: ActiveAgentTaskRun | undefined =
+        abort && queue ? { abort, queue } : undefined
     const signal = abort?.signal ?? options.signal
     const promptMessage = new HumanMessage(options.prompt)
+    const snapshot: AgentTaskSessionSnapshot | undefined = options.input
+        .background
+        ? {
+              session: options.session,
+              routing: {
+                  platform: options.session.platform,
+                  selfId: options.session.selfId,
+                  userId: options.session.userId,
+                  username: options.session.username ?? undefined,
+                  guildId: options.session.guildId ?? undefined,
+                  channelId: options.session.channelId ?? undefined,
+                  isDirect: options.session.isDirect ?? false
+              }
+          }
+        : undefined
 
     options.task.activeRunId = runId
     options.runs.set(runId, run)
-    if (abort && queue) {
-        options.active.set(runId, { abort, queue })
+    if (snapshot) {
+        options.snapshots.set(runId, snapshot)
+    }
+    if (activeRun) {
+        options.active.set(runId, activeRun)
     }
     options.scheduleTaskCleanup(options.task.id)
     run.trace.push({
@@ -658,6 +671,25 @@ async function runAgentTask(options: {
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
+                pauseGate: activeRun
+                    ? async (signal) => {
+                          while (activeRun.paused) {
+                              if (signal?.aborted) return
+
+                              await new Promise<void>((resolve) => {
+                                  const done = () => {
+                                      signal?.removeEventListener('abort', done)
+                                      activeRun.resume = undefined
+                                      resolve()
+                                  }
+                                  activeRun.resume = done
+                                  signal?.addEventListener('abort', done, {
+                                      once: true
+                                  })
+                              })
+                          }
+                      }
+                    : undefined,
                 toolMask,
                 subagentContext: subCtx,
                 source: options.source,
@@ -683,7 +715,12 @@ async function runAgentTask(options: {
             touchTaskSession(options.task)
             options.scheduleRunCleanup(runId)
             options.scheduleTaskCleanup(options.task.id)
-            await options.runtime.refresh?.()
+            await notifyFinished(options, run, snapshot)
+            try {
+                await options.runtime.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
             return formatTaskResult(
                 options.task,
                 run,
@@ -705,7 +742,12 @@ async function runAgentTask(options: {
             touchTaskSession(options.task)
             options.scheduleRunCleanup(runId)
             options.scheduleTaskCleanup(options.task.id)
-            await options.runtime.refresh?.()
+            await notifyFinished(options, run, snapshot)
+            try {
+                await options.runtime.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
             throw err
         } finally {
             options.active.delete(runId)
@@ -714,10 +756,62 @@ async function runAgentTask(options: {
 
     if (options.input.background) {
         exec().catch(() => {})
-        return formatTaskStart(options.task, run, options.toolName)
+        return formatTaskStart(options.task, options.toolName)
     }
 
     return await exec()
+}
+
+async function notifyFinished(
+    options: {
+        input: AgentTaskInput
+        runtime: CreateTaskToolOptions
+        tasks: Map<string, AgentTaskSession>
+        active: Map<string, ActiveAgentTaskRun>
+        task: AgentTaskSession
+        target: AgentTaskTarget
+        source: 'chatluna' | 'character'
+    },
+    run: AgentTaskRun,
+    snapshot?: AgentTaskSessionSnapshot
+) {
+    if (!options.input.background || run.state === 'aborted') {
+        return
+    }
+
+    let parentId = options.task.parentConversationId
+    const message = new HumanMessage(
+        formatAgentTaskWakeup(options.task.id, options.task.agentName, run)
+    )
+
+    while (parentId.startsWith('subagent:')) {
+        const task = options.tasks.get(parentId.slice('subagent:'.length))
+        const item = task?.activeRunId
+            ? options.active.get(task.activeRunId)
+            : undefined
+        if (item) {
+            item.queue.push(message)
+            return
+        }
+
+        if (!task) {
+            return
+        }
+
+        parentId = task.parentConversationId
+    }
+
+    try {
+        await options.runtime.onRunFinished?.({
+            run,
+            taskId: options.task.id,
+            agentId: options.target.agent.id,
+            agentName: options.target.agent.name,
+            parentConversationId: parentId,
+            source: options.source,
+            snapshot
+        })
+    } catch {}
 }
 
 async function onTaskEvent(
@@ -899,32 +993,44 @@ function formatTaskResult(
     toolName: string
 ) {
     return [
+        output.trim() || '(empty)',
+        '',
         `task_id: ${task.id}`,
         `agent: ${task.agentName}`,
-        `run_id: ${run.runId}`,
         `state: ${run.state}`,
-        `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
-            'to continue this session. Add "background":true when the work may take a while.',
-        '',
-        output.trim() || '(empty)'
+        `hint: use ${toolName} action=run id=${task.id} to continue`
     ].join('\n')
 }
 
-function formatTaskStart(
-    task: AgentTaskSession,
-    run: AgentTaskRun,
-    toolName: string
-) {
+function formatTaskStart(task: AgentTaskSession, toolName: string) {
     return [
         `task_id: ${task.id}`,
         `agent: ${task.agentName}`,
-        `run_id: ${run.runId}`,
-        'state: running',
-        'mode: background',
-        `status_hint: use ${toolName} with {"action":"status","id":"${task.id}"} to inspect progress.`,
-        `list_hint: use ${toolName} with {"action":"list"} to see recent agent tasks in this conversation.`,
-        `message_hint: use ${toolName} with {"action":"message","id":"${task.id}","message":"..."} to send more guidance while it runs.`,
-        `resume_hint: after it stops, use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} to continue this session.`
+        'state: running (background)',
+        'hint: result will be delivered automatically - do NOT poll status. ' +
+            `Continue other work or end your reply; use ${toolName} ` +
+            `action=message id=${task.id} to send guidance.`
+    ].join('\n')
+}
+
+export function formatAgentTaskWakeup(
+    taskId: string,
+    agentName: string,
+    run: Pick<AgentTaskRun, 'state' | 'output' | 'error'>
+) {
+    return [
+        `<agent_task_result task_id="${escapeXml(taskId)}" agent="${escapeXml(agentName)}" state="${run.state}">`,
+        escapeXml(
+            run.state === 'failed' ? (run.error ?? '') : (run.output ?? '')
+        ),
+        '</agent_task_result>',
+        '',
+        run.state === 'failed'
+            ? 'Automatic notice: a background task you started failed. ' +
+              `Report the failure or retry with task action=run id=${taskId}.`
+            : 'Automatic notice: a background task you started finished. ' +
+              'Use the result to respond to the user; continue it with ' +
+              `task action=run id=${taskId} if needed.`
     ].join('\n')
 }
 
@@ -941,13 +1047,11 @@ function formatTaskList(
                 task.id,
                 `[${run?.state ?? (task.activeRunId ? 'running' : 'idle')}]`,
                 task.agentName,
-                `mode=${run?.background ? 'background' : 'foreground'}`,
-                `updated=${new Date(task.updatedAt).toISOString()}`,
-                `run=${run?.runId ?? task.activeRunId ?? '-'}`
+                `mode=${run?.background ? 'background' : 'foreground'}`
             ].join(' ')
         }),
         '',
-        `Use ${toolName} with {"action":"status","id":"..."} to inspect one task.`
+        `Use ${toolName} action=status id=...`
     ].join('\n')
 }
 
@@ -956,63 +1060,32 @@ function formatTaskDetail(
     run: AgentTaskRun | undefined,
     toolName: string
 ) {
-    const lines = [
+    const meta = [
         `task_id: ${task.id}`,
         `agent: ${task.agentName}`,
         `state: ${run?.state ?? (task.activeRunId ? 'running' : 'idle')}`,
-        `mode: ${run?.background ? 'background' : 'foreground'}`,
-        `run_id: ${run?.runId ?? task.activeRunId ?? '-'}`,
-        `depth: ${task.depth}`,
-        `parent_agent: ${task.parentAgent}`,
-        `started: ${new Date(task.startedAt).toISOString()}`,
-        `updated: ${new Date(task.updatedAt).toISOString()}`
+        `mode: ${run?.background ? 'background' : 'foreground'}`
     ]
 
-    if (run?.lastTool) {
-        lines.push(`last_tool: ${run.lastTool}`)
-    }
-
-    if (run) {
-        lines.push(`tool_count: ${run.toolCount}`)
-        lines.push(`turn_count: ${run.turnCount}`)
-    }
-
-    if (run?.endedAt) {
-        lines.push(`ended: ${new Date(run.endedAt).toISOString()}`)
-    }
-
     if (run?.error) {
-        lines.push(`error: ${run.error}`)
+        meta.push(`error: ${run.error}`)
     }
-
-    lines.push(
-        `status_hint: use ${toolName} with {"action":"status","id":"${task.id}"} to inspect it again.`
-    )
 
     if (run?.state === 'running' && run.background) {
-        lines.push(
-            `message_hint: use ${toolName} with {"action":"message","id":"${task.id}","message":"..."} to send more guidance while it runs.`
-        )
+        meta.push(`hint: use ${toolName} action=message id=${task.id}`)
     }
 
     if (run?.state !== 'running') {
-        lines.push(
-            `resume_hint: use ${toolName} with {"action":"run","id":"${task.id}","prompt":"next instruction"} ` +
-                'to continue this session. Add "background":true when the work may take a while.'
-        )
+        meta.push(`hint: use ${toolName} action=run id=${task.id} to continue`)
     }
-
-    lines.push('')
 
     if (run?.output?.trim()) {
-        lines.push('Output:')
-        lines.push(run.output.trim())
-        return lines.join('\n')
+        return [run.output.trim(), '', ...meta].join('\n')
     }
 
-    lines.push('History:')
-    lines.push(formatTaskHistory(task.messages))
-    return lines.join('\n')
+    return ['History:', formatTaskHistory(task.messages), '', ...meta].join(
+        '\n'
+    )
 }
 
 function formatTaskHistory(messages: BaseMessage[]) {
@@ -1025,7 +1098,7 @@ function formatTaskHistory(messages: BaseMessage[]) {
                 return undefined
             }
 
-            return `${message.getType()}: ${text.length > 280 ? `${text.slice(0, 277)}...` : text}`
+            return `${message.getType()}: ${text.length > 140 ? `${text.slice(0, 137)}...` : text}`
         })
         .filter((item): item is string => item != null)
 
@@ -1033,7 +1106,7 @@ function formatTaskHistory(messages: BaseMessage[]) {
         return '(no messages yet)'
     }
 
-    return lines.slice(-6).join('\n')
+    return lines.slice(-3).join('\n')
 }
 
 function formatTraceText(value: unknown) {
@@ -1094,4 +1167,164 @@ function escapeXml(value: string) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;')
+}
+
+export interface AgentTaskDescriptor {
+    id: string
+    name: string
+    description: string
+}
+
+export interface AgentTaskTarget {
+    agent: ChatLunaAgent
+    toolMask?: ToolMask
+}
+
+export interface AgentTaskSession {
+    id: string
+    agentId: string
+    agentName: string
+    conversationId: string
+    parentConversationId: string
+    depth: number
+    maxDepth: number
+    parentAgent: string
+    activeRunId?: string
+    messages: BaseMessage[]
+    startedAt: number
+    updatedAt: number
+}
+
+export interface AgentTaskRunTraceEntry {
+    id: string
+    type:
+        | 'prompt'
+        | 'message'
+        | 'thought'
+        | 'tool-call'
+        | 'tool-result'
+        | 'output'
+        | 'error'
+    at: number
+    text: string
+    tool?: string
+    title?: string
+    callId?: string
+}
+
+export interface AgentTaskRun {
+    runId: string
+    taskId: string
+    agentId: string
+    agentName: string
+    conversationId: string
+    parentConversationId: string
+    depth: number
+    state: 'running' | 'completed' | 'failed' | 'aborted'
+    background?: boolean
+    paused?: boolean
+    startedAt: number
+    endedAt?: number
+    lastTool?: string
+    toolCount: number
+    turnCount: number
+    error?: string
+    output?: string
+    trace: AgentTaskRunTraceEntry[]
+}
+
+export interface AgentTaskSessionSnapshot {
+    session?: Session
+    routing?: {
+        platform: string
+        selfId: string
+        userId: string
+        username?: string
+        guildId?: string
+        channelId?: string
+        isDirect: boolean
+    }
+    bindingKey?: string
+}
+
+export interface AgentTaskFinishedPayload {
+    run: AgentTaskRun
+    taskId: string
+    agentId: string
+    agentName: string
+    parentConversationId: string
+    source: 'chatluna' | 'character'
+    snapshot?: AgentTaskSessionSnapshot
+}
+
+export interface AgentTaskInput {
+    action?: 'run' | 'status' | 'list' | 'message'
+    agent?: string
+    id?: string
+    prompt?: string
+    reason?: string
+    background?: boolean
+    message?: string
+}
+
+export interface AgentTaskQueryContext {
+    session?: Session
+    source?: 'chatluna' | 'character'
+}
+
+export interface AgentTaskResolveContext extends AgentTaskQueryContext {
+    conversationId?: string
+    parent?: SubagentContext
+    runConfig?: ChatLunaToolRunnable
+}
+
+export interface CreateTaskToolOptions {
+    list: (ctx: AgentTaskQueryContext) => Awaitable<AgentTaskDescriptor[]>
+    get: (
+        name: string,
+        ctx: AgentTaskResolveContext
+    ) => Awaitable<AgentTaskTarget | undefined>
+    refresh?: () => Awaitable<void>
+    maxDepth?: number
+    taskTtl?: number
+    runTtl?: number
+    name?: string
+    onRunFinished?: (payload: AgentTaskFinishedPayload) => Awaitable<void>
+}
+
+declare module 'koishi' {
+    interface Events {
+        'chatluna/agent-task-finished': (
+            payload: AgentTaskFinishedPayload
+        ) => Promise<void>
+    }
+}
+
+export interface AgentTaskToolRuntime {
+    buildToolDescription(): string
+    createTool(): StructuredTool
+    dispose(): Promise<void>
+    getRuns(): AgentTaskRun[]
+    getTasks(): AgentTaskSession[]
+    getTask(id: string): AgentTaskSession | undefined
+    stopTask(id: string): Promise<boolean>
+    pauseTask(id: string): Promise<boolean>
+    resumeTask(id: string): Promise<boolean>
+    abortByParentConversation(id: string): Promise<number>
+    chatTask(
+        id: string,
+        prompt: string,
+        ctx: AgentTaskResolveContext
+    ): Promise<{ state: 'queued' | AgentTaskRun['state']; output?: string }>
+    runTask(
+        input: AgentTaskInput,
+        runConfig?: ChatLunaToolRunnable
+    ): Promise<string>
+}
+
+interface ActiveAgentTaskRun {
+    abort: AbortController
+    queue: MessageQueue
+    paused?: boolean
+    resume?: () => void
 }

@@ -634,6 +634,13 @@ exit
 `
     }
 
+    async getTempDir() {
+        const result = await this.execute(
+            "printf %s '$" + '{TMPDIR:-$' + '{TMP:-$' + "{TEMP:-/tmp}}}'"
+        )
+        return result.stdout.trim() || '/tmp'
+    }
+
     async getDesktopInfo() {
         return undefined
     }

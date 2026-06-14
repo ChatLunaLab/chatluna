@@ -1,7 +1,7 @@
 <template>
     <el-form class="backend-form" label-position="top">
         <div class="section">
-            <div class="section-title">基础设置</div>
+            <div class="section-title">沙箱设置</div>
 
             <div class="form-grid">
                 <div class="form-cell form-cell-full">
@@ -64,7 +64,7 @@
         </div>
         
         <div class="info-box">
-            <div class="info-desc">推荐优先把 E2B 作为默认后端；配置会被保存，但实际可用性仍取决于状态检测结果。</div>
+            <div class="info-desc">保存后会根据 E2B 的响应更新可用状态。</div>
         </div>
     </el-form>
 </template>

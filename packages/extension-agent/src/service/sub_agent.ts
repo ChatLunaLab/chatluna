@@ -2,6 +2,8 @@
 
 import { Context } from 'koishi'
 import {
+    type AgentTaskResolveContext,
+    type AgentTaskSession,
     type AgentTaskToolRuntime,
     createTaskTool,
     renderAvailableAgents
@@ -11,11 +13,13 @@ import {
     countMessageTokens,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { getSubAgentsRootPath } from '../config/path'
 import { buildSubAgentCatalog } from '../sub-agent/catalog'
 import { createManualAgent } from '../sub-agent/manual'
 import { createSubAgent } from '../sub-agent/run'
 import { ensureSubAgentsRoot, REMOTE_SUBAGENTS_ROOT } from '../sub-agent/scan'
+import { ChatLunaAgentTaskAttachService } from '../sub-agent/task_attach'
 import {
     AgentConfig,
     ManualSubAgentInput,
@@ -31,6 +35,7 @@ export class ChatLunaAgentSubAgentService {
     private _manual = new Map<string, ManualSubAgentInput>()
     private _toolDispose?: () => void
     private _promptDispose?: () => void
+    private _attach: ChatLunaAgentTaskAttachService
     private _task: AgentTaskToolRuntime
 
     constructor(
@@ -39,6 +44,26 @@ export class ChatLunaAgentSubAgentService {
         private permission: ChatLunaAgentPermissionService
     ) {
         this._task = this._createTaskRuntime()
+        this._attach = new ChatLunaAgentTaskAttachService(this.ctx)
+        this.ctx.on('chatluna/chat-stopped', async ({ conversationId }) => {
+            if (
+                (await this._task.abortByParentConversation(conversationId)) > 0
+            ) {
+                await this.ctx.chatluna_agent?.refreshConsoleData()
+            }
+        })
+        this.ctx.on(
+            'chatluna/before-conversation-clear-history',
+            async ({ conversation }) => {
+                if (
+                    (await this._task.abortByParentConversation(
+                        conversation.id
+                    )) > 0
+                ) {
+                    await this.ctx.chatluna_agent?.refreshConsoleData()
+                }
+            }
+        )
     }
 
     async start() {
@@ -79,6 +104,77 @@ export class ChatLunaAgentSubAgentService {
 
     getRuns() {
         return this._task.getRuns() as SubAgentRunInfo[]
+    }
+
+    getTasks() {
+        return this._task.getTasks()
+    }
+
+    getTask(id: string) {
+        return this._task.getTask(id)
+    }
+
+    async stopTask(id: string) {
+        const result = await this._task.stopTask(id)
+        if (result) this.ctx.chatluna_agent?.refreshConsoleData()
+        return result
+    }
+
+    async pauseTask(id: string) {
+        const result = await this._task.pauseTask(id)
+        if (result) this.ctx.chatluna_agent?.refreshConsoleData()
+        return result
+    }
+
+    async resumeTask(id: string) {
+        const result = await this._task.resumeTask(id)
+        if (result) this.ctx.chatluna_agent?.refreshConsoleData()
+        return result
+    }
+
+    async abortByParentConversation(id: string) {
+        const result = await this._task.abortByParentConversation(id)
+        if (result > 0) this.ctx.chatluna_agent?.refreshConsoleData()
+        return result
+    }
+
+    async chatTask(id: string, prompt: string, ctx: AgentTaskResolveContext) {
+        return await this._task.chatTask(id, prompt, ctx)
+    }
+
+    attachTask(
+        session: Parameters<ChatLunaAgentTaskAttachService['attach']>[0],
+        id: string,
+        conversationId: string
+    ) {
+        this._attach.attach(session, id, conversationId)
+    }
+
+    detachTaskAttach(
+        session: Parameters<ChatLunaAgentTaskAttachService['detach']>[0]
+    ) {
+        return this._attach.detach(session)
+    }
+
+    detachAttachedTask(id: string) {
+        this._attach.detachTask(id)
+    }
+
+    getTaskHistory(task: AgentTaskSession) {
+        const lines = task.messages
+            .map((msg) => {
+                const text = getMessageContent(msg.content)
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                if (!text) return undefined
+
+                return `${msg.getType()}: ${text.length > 140 ? `${text.slice(0, 137)}...` : text}`
+            })
+            .filter((item): item is string => item != null)
+
+        return lines.length < 1
+            ? '(no messages yet)'
+            : lines.slice(-3).join('\n')
     }
 
     listRunnableAgents(
@@ -202,6 +298,10 @@ export class ChatLunaAgentSubAgentService {
                 }
             },
             refresh: async () => {
+                await this.ctx.chatluna_agent?.refreshConsoleData()
+            },
+            onRunFinished: async (payload) => {
+                await this.ctx.parallel('chatluna/agent-task-finished', payload)
                 await this.ctx.chatluna_agent?.refreshConsoleData()
             }
         })

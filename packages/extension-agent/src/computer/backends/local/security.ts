@@ -1,6 +1,4 @@
 import { randomBytes } from 'crypto'
-import path from 'path'
-
 import { Session } from 'koishi'
 import { LocalBackendConfig } from '../../../types'
 
@@ -49,37 +47,6 @@ export function ensureCommandAllowed(cmd: string, cfg: LocalBackendConfig) {
         throw new Error(
             `Command "${base}" is not in the allowed commands list.`
         )
-    }
-}
-
-export function ensureWorkdirInScope(workdir: string, cfg: LocalBackendConfig) {
-    if (cfg.dangerouslySkipPermissions || !cfg.scopePath) return
-
-    const resolved = path.resolve(workdir)
-    const scope = path.resolve(cfg.scopePath)
-    if (resolved !== scope && !resolved.startsWith(scope + path.sep)) {
-        throw new Error(
-            `Working directory "${workdir}" is outside the configured scope path "${cfg.scopePath}".`
-        )
-    }
-}
-
-export function ensureCommandPathsInScope(
-    command: string,
-    cfg: LocalBackendConfig,
-    isInScope: (filePath: string) => boolean
-) {
-    if (cfg.dangerouslySkipPermissions || !cfg.scopePath) return
-
-    for (const match of command.matchAll(
-        /(?:^|[\s="'`:(\[{;<>@,])((?:\/|[A-Za-z]:)[^\s"'`)\]}<>;,@]*)/g
-    )) {
-        const fp = match[1]
-        if (!isInScope(path.resolve(fp))) {
-            throw new Error(
-                `Command references path "${fp}" which is outside the scope path "${cfg.scopePath}".`
-            )
-        }
     }
 }
 

@@ -291,6 +291,7 @@ export interface AgentCallbackEvent {
 
 export interface AgentRuntimeConfigurable {
     messageQueue?: MessageQueue
+    pauseGate?: (signal?: AbortSignal) => Promise<void>
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void
     agentContext?: AgentRunContext
 }

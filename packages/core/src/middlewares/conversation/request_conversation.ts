@@ -135,8 +135,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             let responseMessage: Message
 
             inputMessage.conversationId = conversation.id
-            inputMessage.name =
-                session.author?.name ?? session.author?.id ?? session.username
+            if (wakeup?.source.kind === 'agent-task') {
+                inputMessage.name = 'task'
+            } else {
+                inputMessage.name =
+                    session.author?.name ??
+                    session.author?.id ??
+                    session.username
+            }
 
             const requestId = context.options.messageId
 

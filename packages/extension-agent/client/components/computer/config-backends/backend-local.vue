@@ -2,18 +2,22 @@
     <el-form class="backend-form" label-position="top">
         <div class="warning-box">
             <div class="warning-title">本地终端能力很危险</div>
-            <div class="warning-desc">它会直接在宿主机执行命令，而不是隔离沙箱。建议默认关闭，只在明确知道风险、且需要访问本地工作区时临时启用。</div>
+            <div class="warning-desc">直接访问宿主机文件系统并运行系统命令。模型会以当前用户权限操作。</div>
         </div>
 
         <div class="section">
             <div class="section-title">基础设置</div>
+            <div class="section-copy">
+                Linux 未开启“跳过沙箱与权限约束”时需要安装
+                bubblewrap (bwrap)。开启后不使用 bwrap。
+            </div>
 
             <div class="form-grid">
                 <div class="form-cell">
-                    <el-form-item label="作用域路径">
+                    <el-form-item label="初始工作目录 (CWD)">
                         <el-input
                             :model-value="config.scopePath"
-                            placeholder="留空时使用当前工作目录"
+                            placeholder="留空时使用当前进程目录"
                             @update:model-value="set('scopePath', $event)"
                         />
                     </el-form-item>
@@ -26,10 +30,10 @@
                             @update:model-value="set('sandboxMode', $event)"
                         >
                             <el-option
-                                label="工作区可写"
+                                label="沙箱：可写"
                                 value="workspace-write"
                             />
-                            <el-option label="只读" value="read-only" />
+                            <el-option label="沙箱：只读" value="read-only" />
                         </el-select>
                     </el-form-item>
                 </div>
@@ -90,10 +94,9 @@
         </div>
 
         <div class="section">
-            <div class="section-title">访问边界</div>
+            <div class="section-title">文件策略</div>
             <div class="section-copy">
-                路径和 glob
-                模式请逐条输入，按回车后会变成标签，修改时更直观，也不容易误删。
+                初始工作目录只是起点，不是访问边界。这里可以排除扫描结果，或单独禁止、只读某些路径。
             </div>
 
             <div class="form-grid">
@@ -112,31 +115,6 @@
                         >
                             <el-option
                                 v-for="item in config.ignores"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                    </el-form-item>
-                </div>
-
-                <div class="form-cell form-cell-full">
-                    <el-form-item label="可写根目录">
-                        <el-select
-                            :model-value="config.writableRoots"
-                            multiple
-                            filterable
-                            allow-create
-                            clearable
-                            default-first-option
-                            :reserve-keyword="false"
-                            placeholder="输入绝对路径后按回车添加"
-                            @update:model-value="
-                                setList('writableRoots', $event)
-                            "
-                        >
-                            <el-option
-                                v-for="item in config.writableRoots"
                                 :key="item"
                                 :label="item"
                                 :value="item"
@@ -256,10 +234,10 @@
                 :model-value="config.dangerouslySkipPermissions"
                 @update:model-value="set('dangerouslySkipPermissions', $event)"
             >
-                <span class="danger-title">跳过权限检查（危险）</span>
+                <span class="danger-title">跳过沙箱与权限约束（危险）</span>
             </el-checkbox>
             <div class="danger-copy">
-                启用后将跳过作用域、白名单和高危操作确认。仅在完全信任当前模型时使用。
+                开启后不使用 bwrap，也不做路径保护、命令白名单和高危确认。模型会直接以当前用户权限运行。
             </div>
         </div>
     </el-form>
@@ -269,7 +247,6 @@
 import type { LocalBackendConfig } from '../../../../src/types'
 
 type LocalListKey =
-    | 'writableRoots'
     | 'readOnlyRoots'
     | 'denyRoots'
     | 'ignores'
