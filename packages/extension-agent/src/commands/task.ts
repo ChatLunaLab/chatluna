@@ -71,7 +71,9 @@ export function apply(ctx: Context) {
 
             if (options.all) {
                 const count =
-                    service.subAgent.abortByParentConversation(conversationId)
+                    await service.subAgent.abortByParentConversation(
+                        conversationId
+                    )
                 return `Stopped ${count} background sub-agent task(s).`
             }
 
@@ -82,7 +84,7 @@ export function apply(ctx: Context) {
             if (!run?.background)
                 return 'Foreground tasks stop with chatluna.stop.'
 
-            if (!service.subAgent.stopTask(task.id)) {
+            if (!(await service.subAgent.stopTask(task.id))) {
                 return 'Task is not running or not stoppable.'
             }
 
@@ -109,7 +111,7 @@ export function apply(ctx: Context) {
         const run = latest(service.subAgent.getRuns(), task.id)
         if (!run?.background) return 'Only background tasks can be paused.'
 
-        return service.subAgent.pauseTask(task.id)
+        return (await service.subAgent.pauseTask(task.id))
             ? `Pause requested for ${task.id.slice(0, 8)}.`
             : 'Task is not running or already unavailable.'
     })
@@ -130,7 +132,7 @@ export function apply(ctx: Context) {
         const task = await findTask(ctx, session, id, conversationId)
         if (typeof task === 'string') return task
 
-        return service.subAgent.resumeTask(task.id)
+        return (await service.subAgent.resumeTask(task.id))
             ? `Resumed ${task.id.slice(0, 8)}.`
             : 'Task is not paused or already unavailable.'
     })

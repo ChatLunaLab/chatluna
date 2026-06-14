@@ -8,6 +8,7 @@ import {
 import { StructuredTool } from '@langchain/core/tools'
 import { randomUUID } from 'crypto'
 import type { Awaitable, Session } from 'koishi'
+import { logger } from 'koishi-plugin-chatluna'
 import { z } from 'zod'
 import type { ChatLunaToolRunnable } from '../platform/types'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
@@ -57,7 +58,7 @@ export function createTaskTool(
         getTask(id) {
             return tasks.get(id)
         },
-        stopTask(id) {
+        async stopTask(id) {
             const task = tasks.get(id)
             const runId = task?.activeRunId
             const item = runId ? active.get(runId) : undefined
@@ -68,10 +69,14 @@ export function createTaskTool(
             item.paused = false
             item.resume?.()
             item.abort.abort()
-            options.refresh?.()
+            try {
+                await options.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
             return true
         },
-        pauseTask(id) {
+        async pauseTask(id) {
             const runId = tasks.get(id)?.activeRunId
             const item = runId ? active.get(runId) : undefined
             if (!runId || !item || item.paused) return false
@@ -79,10 +84,14 @@ export function createTaskTool(
             item.paused = true
             const run = runs.get(runId)
             if (run) run.paused = true
-            options.refresh?.()
+            try {
+                await options.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
             return true
         },
-        resumeTask(id) {
+        async resumeTask(id) {
             const runId = tasks.get(id)?.activeRunId
             const item = runId ? active.get(runId) : undefined
             if (!runId || !item?.paused) return false
@@ -91,10 +100,14 @@ export function createTaskTool(
             const run = runs.get(runId)
             if (run) run.paused = false
             item.resume?.()
-            options.refresh?.()
+            try {
+                await options.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
             return true
         },
-        abortByParentConversation(id) {
+        async abortByParentConversation(id) {
             let count = 0
             for (const task of tasks.values()) {
                 if (task.parentConversationId !== id || !task.activeRunId) {
@@ -112,7 +125,13 @@ export function createTaskTool(
                 count += 1
             }
 
-            if (count > 0) options.refresh?.()
+            if (count > 0) {
+                try {
+                    await options.refresh?.()
+                } catch (err) {
+                    logger.error(err)
+                }
+            }
             return count
         },
         async chatTask(id, prompt, ctx) {
@@ -696,8 +715,12 @@ async function runAgentTask(options: {
             touchTaskSession(options.task)
             options.scheduleRunCleanup(runId)
             options.scheduleTaskCleanup(options.task.id)
-            await options.runtime.refresh?.()
             await notifyFinished(options, run, snapshot)
+            try {
+                await options.runtime.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
             return formatTaskResult(
                 options.task,
                 run,
@@ -719,8 +742,12 @@ async function runAgentTask(options: {
             touchTaskSession(options.task)
             options.scheduleRunCleanup(runId)
             options.scheduleTaskCleanup(options.task.id)
-            await options.runtime.refresh?.()
             await notifyFinished(options, run, snapshot)
+            try {
+                await options.runtime.refresh?.()
+            } catch (err) {
+                logger.error(err)
+            }
             throw err
         } finally {
             options.active.delete(runId)
@@ -752,25 +779,26 @@ async function notifyFinished(
         return
     }
 
-    if (options.task.parentConversationId.startsWith('subagent:')) {
-        const task = [...options.tasks.values()].find(
-            (item) => item.conversationId === options.task.parentConversationId
-        )
-        const active = task?.activeRunId
+    let parentId = options.task.parentConversationId
+    const message = new HumanMessage(
+        formatAgentTaskWakeup(options.task.id, options.task.agentName, run)
+    )
+
+    while (parentId.startsWith('subagent:')) {
+        const task = options.tasks.get(parentId.slice('subagent:'.length))
+        const item = task?.activeRunId
             ? options.active.get(task.activeRunId)
             : undefined
-        if (active) {
-            active.queue.push(
-                new HumanMessage(
-                    formatAgentTaskWakeup(
-                        options.task.id,
-                        options.task.agentName,
-                        run
-                    )
-                )
-            )
+        if (item) {
+            item.queue.push(message)
+            return
         }
-        return
+
+        if (!task) {
+            return
+        }
+
+        parentId = task.parentConversationId
     }
 
     try {
@@ -779,7 +807,7 @@ async function notifyFinished(
             taskId: options.task.id,
             agentId: options.target.agent.id,
             agentName: options.target.agent.name,
-            parentConversationId: options.task.parentConversationId,
+            parentConversationId: parentId,
             source: options.source,
             snapshot
         })
@@ -1279,10 +1307,10 @@ export interface AgentTaskToolRuntime {
     getRuns(): AgentTaskRun[]
     getTasks(): AgentTaskSession[]
     getTask(id: string): AgentTaskSession | undefined
-    stopTask(id: string): boolean
-    pauseTask(id: string): boolean
-    resumeTask(id: string): boolean
-    abortByParentConversation(id: string): number
+    stopTask(id: string): Promise<boolean>
+    pauseTask(id: string): Promise<boolean>
+    resumeTask(id: string): Promise<boolean>
+    abortByParentConversation(id: string): Promise<number>
     chatTask(
         id: string,
         prompt: string,

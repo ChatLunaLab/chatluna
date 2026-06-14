@@ -46,14 +46,20 @@ export class ChatLunaAgentSubAgentService {
         this._task = this._createTaskRuntime()
         this._attach = new ChatLunaAgentTaskAttachService(this.ctx)
         this.ctx.on('chatluna/chat-stopped', async ({ conversationId }) => {
-            if (this._task.abortByParentConversation(conversationId) > 0) {
+            if (
+                (await this._task.abortByParentConversation(conversationId)) > 0
+            ) {
                 await this.ctx.chatluna_agent?.refreshConsoleData()
             }
         })
         this.ctx.on(
             'chatluna/before-conversation-clear-history',
             async ({ conversation }) => {
-                if (this._task.abortByParentConversation(conversation.id) > 0) {
+                if (
+                    (await this._task.abortByParentConversation(
+                        conversation.id
+                    )) > 0
+                ) {
                     await this.ctx.chatluna_agent?.refreshConsoleData()
                 }
             }
@@ -108,26 +114,26 @@ export class ChatLunaAgentSubAgentService {
         return this._task.getTask(id)
     }
 
-    stopTask(id: string) {
-        const result = this._task.stopTask(id)
+    async stopTask(id: string) {
+        const result = await this._task.stopTask(id)
         if (result) this.ctx.chatluna_agent?.refreshConsoleData()
         return result
     }
 
-    pauseTask(id: string) {
-        const result = this._task.pauseTask(id)
+    async pauseTask(id: string) {
+        const result = await this._task.pauseTask(id)
         if (result) this.ctx.chatluna_agent?.refreshConsoleData()
         return result
     }
 
-    resumeTask(id: string) {
-        const result = this._task.resumeTask(id)
+    async resumeTask(id: string) {
+        const result = await this._task.resumeTask(id)
         if (result) this.ctx.chatluna_agent?.refreshConsoleData()
         return result
     }
 
-    abortByParentConversation(id: string) {
-        const result = this._task.abortByParentConversation(id)
+    async abortByParentConversation(id: string) {
+        const result = await this._task.abortByParentConversation(id)
         if (result > 0) this.ctx.chatluna_agent?.refreshConsoleData()
         return result
     }
