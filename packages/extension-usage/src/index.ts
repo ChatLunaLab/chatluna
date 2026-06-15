@@ -291,7 +291,8 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
                 report,
                 this.config.tokensTheme === 'auto'
                     ? 'light'
-                    : this.config.tokensTheme
+                    : this.config.tokensTheme,
+                this.config.tokensRenderMode
             )
             await session.send(
                 typeof image === 'string'

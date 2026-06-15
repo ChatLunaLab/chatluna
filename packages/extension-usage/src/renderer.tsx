@@ -13,266 +13,309 @@ type RenderTheme = Exclude<ChatLunaUsage.TokenTheme, 'auto'>
 
 const CSS = `
 :root {
+    --bg-stage: #f8fafc;
+    --bg-card: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #4b5563;
+    --border-color: #cbd5e1;
+    --grid-line: #cbd5e1;
+    --color-total: #4f46e5;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     color-scheme: light;
 }
+
 * {
     box-sizing: border-box;
 }
+
 body {
     margin: 0;
+    background: var(--bg-stage);
 }
+
 .stage {
-    --card: #ffffff;
-    --text: #0f172a;
-    --muted: #64748b;
-    --faint: #94a3b8;
-    --brand: #6366f1;
-    --brand-2: #8b5cf6;
-    --border: #eef0f6;
-    color-scheme: light;
     display: inline-flex;
     flex-direction: column;
-    gap: 24px;
-    padding: 56px;
-    background:
-        radial-gradient(1100px 560px at 10% -10%, #e7e9ff 0%, transparent 55%),
-        radial-gradient(900px 480px at 110% 0%, #f5e9ff 0%, transparent 50%),
-        linear-gradient(180deg, #eef1ff, #f7f8fc);
-    font-family: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    gap: 16px;
+    padding: 20px;
+    background: var(--bg-stage);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans SC", "Microsoft YaHei", sans-serif;
     -webkit-font-smoothing: antialiased;
 }
+
 .stage.theme-dark {
-    --card: #111827;
-    --text: #e5e7eb;
-    --muted: #94a3b8;
-    --faint: #64748b;
-    --border: #253044;
+    --bg-stage: #0f172a;
+    --bg-card: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border-color: #475569;
+    --grid-line: #475569;
+    --color-total: #818cf8;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
     color-scheme: dark;
-    background:
-        radial-gradient(1100px 560px at 10% -10%, rgba(79, 70, 229, 0.28) 0%, transparent 55%),
-        radial-gradient(900px 480px at 110% 0%, rgba(14, 165, 233, 0.18) 0%, transparent 50%),
-        linear-gradient(180deg, #0b1020, #111827);
 }
-.token-trend-card {
+
+.card {
     position: relative;
-    width: 1040px;
-    padding: 38px 40px 28px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    box-shadow:
-        0 24px 60px -20px rgba(49, 46, 129, 0.30),
-        0 8px 24px -12px rgba(15, 23, 42, 0.12);
-    overflow: hidden;
-    color: var(--text);
+    width: 1000px;
+    padding: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
 }
-.token-trend-card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    height: 5px;
-    background: linear-gradient(90deg, var(--brand), var(--brand-2));
-}
-.stage.theme-dark .token-trend-card {
-    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.65), 0 8px 24px -12px rgba(0, 0, 0, 0.55);
-}
-.head {
+
+.card-header {
     display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 26px;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
 }
-.mark {
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: linear-gradient(140deg, var(--brand), var(--brand-2));
-    box-shadow: 0 10px 22px -8px rgba(99, 102, 241, 0.65);
-}
-h1 {
+
+.card-title-group h1 {
     margin: 0;
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: 0;
-    line-height: 1.25;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
 }
-.range {
-    margin: 5px 0 0;
-    color: var(--muted);
-    font-size: 14px;
+
+.card-subtitle {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
 }
-.chart-wrap {
-    padding: 18px 16px 12px;
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    background: radial-gradient(620px 220px at 82% -10%, rgba(139, 92, 246, 0.07), transparent 60%), linear-gradient(180deg, #ffffff, #fbfcff);
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
 }
-.stage.theme-dark .chart-wrap {
-    background: radial-gradient(620px 220px at 82% -10%, rgba(14, 165, 233, 0.10), transparent 60%), linear-gradient(180deg, #111827, #0f172a);
+
+.metric-item {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 16px;
+    background: var(--bg-card);
 }
+
+.metric-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.metric-value {
+    margin-top: 8px;
+    font-size: 24px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.chart-container {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 20px;
+    background: var(--bg-card);
+}
+
 .trend-chart {
     display: block;
     width: 100%;
     height: auto;
 }
+
 .grid line {
-    stroke: #eef1f6;
+    stroke: var(--grid-line);
     stroke-width: 1;
+    stroke-dasharray: 3 3;
 }
-.stage.theme-dark .grid line {
-    stroke: #253044;
-}
+
 .grid text {
-    fill: var(--faint);
-    font-size: 12px;
+    fill: var(--text-secondary);
+    font-size: 11px;
+    font-family: var(--font-mono);
     text-anchor: end;
-    font-variant-numeric: tabular-nums;
+    font-weight: 500;
 }
+
 .axis-x {
-    fill: var(--faint);
-    font-size: 12px;
+    fill: var(--text-secondary);
+    font-size: 11px;
+    font-family: var(--font-mono);
     text-anchor: middle;
+    font-weight: 500;
 }
+
 .line {
     fill: none;
-    stroke-width: 3.5;
+    stroke-width: 2.5;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
+
 .line-total {
-    stroke: url(#totalGrad);
+    stroke: var(--color-total);
 }
-.line-input {
-    stroke: #0ea5e9;
-}
-.line-output {
-    stroke: #f59e0b;
-}
-.dot-total,
-.dot-input,
-.dot-output {
-    fill: var(--card);
-    stroke-width: 3;
-}
+
 .dot-total {
-    stroke: #6366f1;
+    fill: var(--bg-card);
+    stroke-width: 2;
+    stroke: var(--color-total);
 }
-.dot-input {
-    stroke: #0ea5e9;
-}
-.dot-output {
-    stroke: #f59e0b;
-}
+
 .dot-last.dot-total {
-    fill: #6366f1;
-    stroke: #fff;
+    fill: var(--color-total);
+    stroke: var(--bg-card);
 }
-.dot-last.dot-input {
-    fill: #0ea5e9;
-    stroke: #fff;
-}
-.dot-last.dot-output {
-    fill: #f59e0b;
-    stroke: #fff;
-}
+
 .chart-legend {
     display: flex;
     justify-content: center;
-    gap: 22px;
-    margin: 12px 0 0;
-    color: var(--muted);
-    font-size: 13px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
 }
+
 .legend-item {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    font-variant-numeric: tabular-nums;
+    margin: 0 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
 }
-.legend-item i {
-    width: 26px;
-    height: 3px;
-    border-radius: 999px;
+
+.legend-color-indicator {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
     background: var(--legend-color);
-    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    margin-right: 8px;
     font-size: 0;
     line-height: 0;
 }
+
 .empty-chart {
     display: grid;
-    height: 360px;
+    height: 320px;
     place-items: center;
-    color: var(--faint);
-    font-size: 16px;
+    color: var(--text-muted);
+    font-size: 14px;
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
 }
-.plugin-list {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+
+.plugin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
 }
-.plugin-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 6px 12px;
-    align-items: baseline;
+
+.plugin-table th,
+.plugin-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 13px;
 }
-.plugin-name {
+
+.plugin-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    background-color: var(--bg-stage);
+}
+
+.plugin-table td {
+    color: var(--text-primary);
+}
+
+.plugin-name-cell {
+    font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 9px;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
 }
-.plugin-name i {
-    width: 10px;
-    height: 10px;
+
+.plugin-indicator {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
+    background: var(--accent);
+    margin-right: 8px;
+    font-size: 0;
+    line-height: 0;
+}
+
+.plugin-progress-wrapper {
+    display: inline-flex;
+    align-items: center;
+}
+
+.plugin-progress-bar {
+    width: 100px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--grid-line);
+    overflow: hidden;
+    margin-right: 12px;
+}
+
+.plugin-progress-fill {
+    height: 100%;
+    border-radius: 3px;
     background: var(--accent);
     font-size: 0;
     line-height: 0;
 }
-.plugin-meta {
-    font-size: 13px;
-    color: var(--muted);
+
+.plugin-number {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
 }
-.plugin-meta b {
-    color: var(--text);
-    font-weight: 700;
-    font-size: 15px;
+
+.text-right {
+    text-align: right !important;
 }
-.plugin-track {
-    grid-column: 1 / -1;
-    height: 10px;
-    border-radius: 6px;
-    background: #f1f3f9;
-    overflow: hidden;
-}
-.stage.theme-dark .plugin-track {
-    background: #1f2937;
-}
-.plugin-fill {
-    height: 100%;
-    border-radius: 6px;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    font-size: 0;
-    line-height: 0;
+
+.text-center {
+    text-align: center !important;
 }
 `
 
-const PLUGIN_COLORS: [string, string][] = [
-    ['#6366f1', '#8b5cf6'],
-    ['#0ea5e9', '#22d3ee'],
-    ['#f43f5e', '#fb7185'],
-    ['#f59e0b', '#fbbf24'],
-    ['#10b981', '#34d399'],
-    ['#a855f7', '#d946ef']
+const MODEL_COLORS = [
+    '#4f46e5',
+    '#0891b2',
+    '#ea580c',
+    '#16a34a',
+    '#9333ea',
+    '#db2777',
+    '#059669',
+    '#2563eb',
+    '#d97706'
 ]
 
-function fmt(value: number) {
+function formatNum(value: number) {
+    if (value >= 1000000) {
+        return (value / 1000000).toFixed(2) + 'M'
+    }
     return value.toLocaleString('en-US')
 }
 
@@ -283,138 +326,246 @@ function monotonePath(pts: Coord[]) {
         return `M${pts[0].x},${pts[0].y} L${pts[1].x},${pts[1].y}`
     }
 
-    const dx: number[] = []
-    const slope: number[] = []
+    const h = new Array(n - 1)
+    const m = new Array(n - 1)
     for (let i = 0; i < n - 1; i++) {
-        dx[i] = pts[i + 1].x - pts[i].x
-        slope[i] = (pts[i + 1].y - pts[i].y) / dx[i]
+        h[i] = pts[i + 1].x - pts[i].x
+        m[i] = (pts[i + 1].y - pts[i].y) / h[i]
     }
 
-    const t: number[] = [slope[0]]
+    const t = new Array(n)
+
+    t[0] = m[0]
+    t[n - 1] = m[n - 2]
+
     for (let i = 1; i < n - 1; i++) {
-        t[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2
-    }
-    t[n - 1] = slope[n - 2]
+        const s0 = m[i - 1]
+        const s1 = m[i]
 
-    for (let i = 0; i < n - 1; i++) {
-        if (slope[i] === 0) {
+        if (s0 * s1 <= 0) {
             t[i] = 0
-            t[i + 1] = 0
-            continue
-        }
-        const a = t[i] / slope[i]
-        const b = t[i + 1] / slope[i]
-        const h = Math.hypot(a, b)
-        if (h > 3) {
-            const k = 3 / h
-            t[i] = k * a * slope[i]
-            t[i + 1] = k * b * slope[i]
+        } else {
+            const h0 = h[i - 1]
+            const h1 = h[i]
+            const p = (s0 * h1 + s1 * h0) / (h0 + h1)
+            t[i] =
+                (Math.sign(s0) + Math.sign(s1)) *
+                Math.min(Math.abs(s0), Math.abs(s1), 0.5 * Math.abs(p))
         }
     }
+
+    t[0] = Math.sign(m[0]) * Math.min(Math.abs(m[0]), Math.abs(t[0]))
+    t[n - 1] =
+        Math.sign(m[n - 2]) * Math.min(Math.abs(m[n - 2]), Math.abs(t[n - 1]))
+
+    const maxY = Math.max(...pts.map((p) => p.y))
 
     let d = `M${pts[0].x},${pts[0].y}`
     for (let i = 0; i < n - 1; i++) {
-        const c1x = pts[i].x + dx[i] / 3
-        const c1y = pts[i].y + (t[i] * dx[i]) / 3
-        const c2x = pts[i + 1].x - dx[i] / 3
-        const c2y = pts[i + 1].y - (t[i + 1] * dx[i]) / 3
+        const dx = h[i]
+        const factor = 0.4
+
+        const c1x = pts[i].x + dx * factor
+        let c1y = pts[i].y + t[i] * dx * factor
+        const c2x = pts[i + 1].x - dx * factor
+        let c2y = pts[i + 1].y - t[i + 1] * dx * factor
+
+        if (Math.abs(pts[i].y - pts[i + 1].y) < 0.1) {
+            c1y = pts[i].y
+            c2y = pts[i + 1].y
+        } else if (pts[i].y < pts[i + 1].y) {
+            c1y = Math.max(pts[i].y, Math.min(pts[i + 1].y, c1y))
+            c2y = Math.max(pts[i].y, Math.min(pts[i + 1].y, c2y))
+        } else {
+            c1y = Math.max(pts[i + 1].y, Math.min(pts[i].y, c1y))
+            c2y = Math.max(pts[i + 1].y, Math.min(pts[i].y, c2y))
+        }
+
+        c1y = Math.min(maxY, c1y)
+        c2y = Math.min(maxY, c2y)
+
         d += ` C${c1x},${c1y} ${c2x},${c2y} ${pts[i + 1].x},${pts[i + 1].y}`
     }
     return d
 }
 
-function chart(points: ChatLunaUsage.TokenPoint[]) {
+function getTopModels(points: ChatLunaUsage.TokenPoint[]) {
+    const modelTotals: Record<string, number> = {}
+    for (const p of points) {
+        for (const [model, val] of Object.entries(p.models)) {
+            modelTotals[model] = (modelTotals[model] || 0) + val
+        }
+    }
+    const sortedModels = Object.entries(modelTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([model]) => model)
+
+    const topModels = sortedModels.slice(0, 5)
+
+    const colorMap: Record<string, string> = {}
+    topModels.forEach((model, i) => {
+        colorMap[model] = MODEL_COLORS[i % MODEL_COLORS.length]
+    })
+    if (sortedModels.length > 5) {
+        colorMap['其他模型'] = '#94a3b8'
+    }
+    return { topModels, colorMap }
+}
+
+function chart(
+    points: ChatLunaUsage.TokenPoint[],
+    mode: ChatLunaUsage.TokenRenderMode = 'both'
+) {
     if (!points.length) return <div class="empty-chart">暂无用量数据</div>
 
-    const [width, height, left, right, top, bottom] = [968, 360, 78, 26, 30, 56]
+    const [width, height, left, right, top, bottom] = [952, 320, 60, 20, 20, 48]
     const plotWidth = width - left - right
     const plotHeight = height - top - bottom
     const baseline = top + plotHeight
-    const max = Math.max(
-        1,
-        ...points.flatMap((p) => [p.tokens, p.inputTokens, p.outputTokens])
-    )
-    const [totalCoords, inputCoords, outputCoords] = (
-        ['tokens', 'inputTokens', 'outputTokens'] as const
-    ).map((key) =>
-        points.map((point, idx) => ({
-            x:
-                points.length === 1
-                    ? left + plotWidth / 2
-                    : left + (plotWidth * idx) / (points.length - 1),
-            y: baseline - (point[key] / max) * plotHeight,
-            point
-        }))
-    )
-    const [totalLine, inputLine, outputLine] = [
-        totalCoords,
-        inputCoords,
-        outputCoords
-    ].map(monotonePath)
-    const area = totalLine
-        ? `${totalLine} L${totalCoords[totalCoords.length - 1].x},${baseline} L${totalCoords[0].x},${baseline} Z`
-        : ''
-    const size = points.length > 24 ? 10 : 12
+    const max = Math.max(1, ...points.flatMap((p) => [p.tokens]))
 
-    return [
+    const { topModels, colorMap } = getTopModels(points)
+    const stepX =
+        points.length > 1 ? plotWidth / (points.length - 1) : plotWidth
+    const barWidth = Math.max(3, Math.min(28, stepX * 0.5))
+
+    const safePadding = barWidth / 2 + 4
+    const drawWidth = plotWidth - safePadding * 2
+
+    const totalCoords = points.map((point, idx) => ({
+        x:
+            points.length === 1
+                ? left + plotWidth / 2
+                : left + safePadding + (drawWidth * idx) / (points.length - 1),
+        y: baseline - (point.tokens / max) * plotHeight,
+        point
+    }))
+
+    const totalLine = monotonePath(totalCoords)
+
+    const maxLabels = 12
+    const stepLabel = Math.max(1, Math.ceil(points.length / maxLabels))
+
+    return (
         <svg class="trend-chart" viewbox={`0 0 ${width} ${height}`} role="img">
-            <defs>
-                <linearGradient id="totalGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stop-color="#6366f1" />
-                    <stop offset="100%" stop-color="#8b5cf6" />
-                </linearGradient>
-                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="rgba(99,102,241,0.30)" />
-                    <stop offset="100%" stop-color="rgba(139,92,246,0.02)" />
-                </linearGradient>
-            </defs>
             <g class="grid">
                 {Array.from({ length: 5 }, (_, idx) => {
                     const y = top + (plotHeight * idx) / 4
                     const value = Math.round(max - (max * idx) / 4)
                     return [
                         <line x1={left} y1={y} x2={width - right} y2={y} />,
-                        <text x={left - 14} y={y + 4}>
-                            {fmt(value)}
+                        <text x={left - 12} y={y + 4}>
+                            {formatNum(value)}
                         </text>
                     ]
                 })}
             </g>
-            <path d={area} fill="url(#areaGrad)" />
-            <path class="line line-input" d={inputLine} />
-            <path class="line line-output" d={outputLine} />
-            <path class="line line-total" d={totalLine} />
-            {[
-                ['input', inputCoords] as const,
-                ['output', outputCoords] as const,
-                ['total', totalCoords] as const
-            ].flatMap(([name, coords]) =>
-                coords.map((c, idx) => {
-                    const last = idx === coords.length - 1
+
+            {(mode === 'both' || mode === 'bar') &&
+                points.map((point, idx) => {
+                    const x =
+                        points.length === 1
+                            ? left + plotWidth / 2
+                            : left +
+                              safePadding +
+                              (drawWidth * idx) / (points.length - 1)
+
+                    const activeModels: { name: string; val: number }[] = []
+                    let otherVal = 0
+
+                    for (const [mName, val] of Object.entries(point.models)) {
+                        if (val <= 0) continue
+                        if (topModels.includes(mName)) {
+                            activeModels.push({ name: mName, val })
+                        } else {
+                            otherVal += val
+                        }
+                    }
+
+                    activeModels.sort(
+                        (a, b) =>
+                            topModels.indexOf(a.name) -
+                            topModels.indexOf(b.name)
+                    )
+
+                    if (otherVal > 0) {
+                        activeModels.push({ name: '其他模型', val: otherVal })
+                    }
+
+                    let currentY = baseline
+                    const groupHeight = activeModels.reduce(
+                        (sum, item) => sum + (item.val / max) * plotHeight,
+                        0
+                    )
+                    const groupY = baseline - groupHeight
+
+                    return (
+                        <g>
+                            {activeModels.map((item) => {
+                                const barHeight = (item.val / max) * plotHeight
+                                const y = currentY - barHeight
+                                currentY = y
+                                return (
+                                    <rect
+                                        x={x - barWidth / 2}
+                                        y={y}
+                                        width={barWidth}
+                                        height={barHeight}
+                                        fill={colorMap[item.name]}
+                                        opacity="0.85"
+                                    />
+                                )
+                            })}
+                            {groupHeight > 0 && (
+                                <rect
+                                    x={x - barWidth / 2}
+                                    y={groupY}
+                                    width={barWidth}
+                                    height={groupHeight}
+                                    fill="none"
+                                    stroke="var(--border-color)"
+                                    stroke-width="1"
+                                    opacity="0.6"
+                                />
+                            )}
+                        </g>
+                    )
+                })}
+
+            {(mode === 'both' || mode === 'line') && totalLine && (
+                <path class="line line-total" d={totalLine} />
+            )}
+
+            {mode === 'line' &&
+                totalCoords.map((c, idx) => {
+                    const last = idx === totalCoords.length - 1
                     return (
                         <circle
-                            class={
-                                last ? `dot-${name} dot-last` : `dot-${name}`
-                            }
+                            class={last ? 'dot-total dot-last' : 'dot-total'}
                             cx={c.x}
                             cy={c.y}
                             r={last ? 5.5 : 4}
                         />
                     )
-                })
-            )}
-            {totalCoords.map((c) => {
+                })}
+
+            {totalCoords.map((c, idx) => {
+                const shouldShowLabel =
+                    idx === 0 ||
+                    idx === totalCoords.length - 1 ||
+                    idx % stepLabel === 0
+                if (!shouldShowLabel) return null
+
                 const parts = c.point.label.split(' ')
                 return (
                     <text
                         class="axis-x"
-                        style={`font-size:${size}px`}
                         x={c.x}
-                        y={height - (parts[1] ? 28 : 22)}
+                        y={height - (parts[1] ? 22 : 18)}
                     >
                         {parts[1]
-                            ? parts.map((part, idx) => (
-                                  <tspan x={c.x} dy={idx ? '15' : '0'}>
+                            ? parts.map((part, pIdx) => (
+                                  <tspan x={c.x} dy={pIdx ? '13' : '0'}>
                                       {part}
                                   </tspan>
                               ))
@@ -422,83 +573,6 @@ function chart(points: ChatLunaUsage.TokenPoint[]) {
                     </text>
                 )
             })}
-        </svg>,
-        <div class="chart-legend">
-            <span class="legend-item" style="--legend-color:#6366f1">
-                <i> </i>总 token
-            </span>
-            <span class="legend-item" style="--legend-color:#0ea5e9">
-                <i> </i>输入 token
-            </span>
-            <span class="legend-item" style="--legend-color:#f59e0b">
-                <i> </i>输出 token
-            </span>
-        </div>
-    ]
-}
-
-function trendIcon() {
-    return (
-        <svg width="24" height="24" viewbox="0 0 24 24" fill="none">
-            <path
-                d="M4 16l4.5-5 3.5 3.5L20 7"
-                stroke="white"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            />
-            <path
-                d="M4 20h15"
-                stroke="white"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                opacity="0.55"
-            />
-        </svg>
-    )
-}
-
-function pluginIcon() {
-    return (
-        <svg width="24" height="24" viewbox="0 0 24 24" fill="none">
-            <rect
-                x="4"
-                y="4"
-                width="7"
-                height="7"
-                rx="2"
-                stroke="white"
-                stroke-width="2.1"
-            />
-            <rect
-                x="13"
-                y="4"
-                width="7"
-                height="7"
-                rx="2"
-                stroke="white"
-                stroke-width="2.1"
-                opacity="0.55"
-            />
-            <rect
-                x="4"
-                y="13"
-                width="7"
-                height="7"
-                rx="2"
-                stroke="white"
-                stroke-width="2.1"
-                opacity="0.55"
-            />
-            <rect
-                x="13"
-                y="13"
-                width="7"
-                height="7"
-                rx="2"
-                stroke="white"
-                stroke-width="2.1"
-            />
         </svg>
     )
 }
@@ -508,51 +582,149 @@ function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
 
     const total = plugins.reduce((sum, p) => sum + p.tokens, 0) || 1
 
+    const maxDisplay = 6
+    let displayPlugins = plugins.slice(0, maxDisplay)
+    if (plugins.length > maxDisplay) {
+        const otherTokens = plugins
+            .slice(maxDisplay)
+            .reduce((sum, p) => sum + p.tokens, 0)
+        const otherCalls = plugins
+            .slice(maxDisplay)
+            .reduce((sum, p) => sum + p.calls, 0)
+        displayPlugins = [
+            ...displayPlugins,
+            {
+                source: '其他插件',
+                tokens: otherTokens,
+                calls: otherCalls
+            }
+        ]
+    }
+
     return (
-        <section class="token-trend-card">
-            <header class="head">
-                <div class="mark">{pluginIcon()}</div>
-                <div>
+        <section class="card">
+            <div
+                class="card-header"
+                style="border-bottom: 0; padding-bottom: 8px; margin-bottom: 12px;"
+            >
+                <div class="card-title-group">
                     <h1>各插件用量明细</h1>
-                    <p class="range">按 token 占比排序</p>
+                    <p class="card-subtitle">按 Token 占比降序排列</p>
                 </div>
-            </header>
-            <div class="plugin-list">
-                {plugins.map((plugin, idx) => {
-                    const [accent, accent2] =
-                        PLUGIN_COLORS[idx % PLUGIN_COLORS.length]
-                    const ratio = (plugin.tokens / total) * 100
-                    return (
-                        <div
-                            class="plugin-row"
-                            style={`--accent:${accent};--accent-2:${accent2}`}
-                        >
-                            <div class="plugin-name">
-                                <i> </i>
-                                {plugin.source}
-                            </div>
-                            <div class="plugin-meta">
-                                <b>{ratio.toFixed(1)}%</b> ·{' '}
-                                {fmt(plugin.tokens)} token · {fmt(plugin.calls)}{' '}
-                                次
-                            </div>
-                            <div class="plugin-track">
-                                <div
-                                    class="plugin-fill"
-                                    style={`width:${Math.max(2, Math.min(100, ratio))}%`}
-                                >
-                                    {' '}
-                                </div>
-                            </div>
-                        </div>
-                    )
-                })}
             </div>
+            <table class="plugin-table">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">来源插件</th>
+                        <th class="text-center" style="width: 220px;">
+                            用量占比
+                        </th>
+                        <th class="text-center" style="width: 180px;">
+                            总 Token 消耗
+                        </th>
+                        <th class="text-center" style="width: 140px;">
+                            调用次数
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {displayPlugins.map((plugin, idx) => {
+                        const isOther = plugin.source === '其他插件'
+                        const color = isOther
+                            ? '#94a3b8'
+                            : MODEL_COLORS[idx % MODEL_COLORS.length]
+                        const ratio = (plugin.tokens / total) * 100
+                        return (
+                            <tr>
+                                <td>
+                                    <div class="plugin-name-cell">
+                                        <span
+                                            class="plugin-indicator"
+                                            style={`--accent:${color}`}
+                                        >
+                                            {' '}
+                                        </span>
+                                        {plugin.source}
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div
+                                        class="plugin-progress-wrapper"
+                                        style="justify-content: center;"
+                                    >
+                                        <div class="plugin-progress-bar">
+                                            <div
+                                                class="plugin-progress-fill"
+                                                style={`--accent:${color}; width:${Math.max(1, Math.min(100, ratio))}%`}
+                                            >
+                                                {' '}
+                                            </div>
+                                        </div>
+                                        <span
+                                            class="plugin-number"
+                                            style="min-width: 45px;"
+                                        >
+                                            {ratio.toFixed(1)}%
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="plugin-number text-center">
+                                    {formatNum(plugin.tokens)}
+                                </td>
+                                <td class="plugin-number text-center">
+                                    {formatNum(plugin.calls)}
+                                </td>
+                            </tr>
+                        )
+                    })}
+                </tbody>
+            </table>
         </section>
     )
 }
 
-function pageHtml(data: ChatLunaUsage.TokenReport, theme: RenderTheme) {
+function renderLegend(
+    points: ChatLunaUsage.TokenPoint[],
+    mode: ChatLunaUsage.TokenRenderMode = 'both'
+) {
+    const { colorMap } = getTopModels(points)
+    const showLine = mode === 'both' || mode === 'line'
+    const showBar = mode === 'both' || mode === 'bar'
+
+    return (
+        <div class="chart-legend" style="flex-wrap: wrap; gap: 8px 0;">
+            {showLine && (
+                <div class="legend-item">
+                    <span
+                        class="legend-color-indicator"
+                        style="--legend-color:var(--color-total)"
+                    >
+                        {' '}
+                    </span>
+                    总 Token
+                </div>
+            )}
+            {showBar &&
+                Object.entries(colorMap).map(([model, color]) => (
+                    <div class="legend-item">
+                        <span
+                            class="legend-color-indicator"
+                            style={`--legend-color:${color}`}
+                        >
+                            {' '}
+                        </span>
+                        {model}
+                    </div>
+                ))}
+        </div>
+    )
+}
+
+function pageHtml(
+    data: ChatLunaUsage.TokenReport,
+    theme: RenderTheme,
+    mode: ChatLunaUsage.TokenRenderMode = 'both'
+) {
     return (
         '<!doctype html>' +
         String(
@@ -563,24 +735,58 @@ function pageHtml(data: ChatLunaUsage.TokenReport, theme: RenderTheme) {
                         name="viewport"
                         content="width=device-width, initial-scale=1.0"
                     />
-                    <title>Chatluna token 消耗趋势</title>
+                    <title>Chatluna Token 消耗分析</title>
                     <style>{CSS}</style>
                 </head>
                 <body>
                     <div class={`stage theme-${theme}`}>
-                        <main class="token-trend-card">
-                            <header class="head">
-                                <div class="mark">{trendIcon()}</div>
-                                <div>
-                                    <h1>Chatluna token 消耗趋势</h1>
-                                    <p class="range">
-                                        时间范围：{formatDate(data.start)} 至{' '}
+                        <main class="card">
+                            <header class="card-header">
+                                <div class="card-title-group">
+                                    <h1>Chatluna Token 消耗分析</h1>
+                                    <p class="card-subtitle">
+                                        时间跨度：{formatDate(data.start)} 至{' '}
                                         {formatDate(data.end)}
                                     </p>
                                 </div>
                             </header>
-                            <section class="chart-wrap">
-                                {chart(data.points)}
+
+                            <section class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">
+                                        累计消耗 Token
+                                    </div>
+                                    <div class="metric-value">
+                                        {formatNum(data.totalTokens)}
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">累计请求次数</div>
+                                    <div class="metric-value">
+                                        {formatNum(data.calls)}
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">
+                                        TPM 峰值 (每分钟)
+                                    </div>
+                                    <div class="metric-value">
+                                        {formatNum(data.tpm)}
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">
+                                        RPM 峰值 (每分钟)
+                                    </div>
+                                    <div class="metric-value">
+                                        {formatNum(data.rpm)}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="chart-container">
+                                {chart(data.points, mode)}
+                                {renderLegend(data.points, mode)}
                             </section>
                         </main>
                         {pluginCard(data.plugins)}
@@ -595,12 +801,18 @@ export async function renderTokenTrend(
     ctx: Context,
     puppeteer: Context['puppeteer'],
     data: ChatLunaUsage.TokenReport,
-    theme: RenderTheme = 'light'
+    theme: RenderTheme = 'light',
+    mode: ChatLunaUsage.TokenRenderMode = 'both'
 ) {
     let page: Awaited<ReturnType<Context['puppeteer']['page']>> | undefined
     try {
         page = await puppeteer.page()
-        await page.setContent(pageHtml(data, theme), {
+        await page.setViewport({
+            width: 1040,
+            height: 820,
+            deviceScaleFactor: 2
+        })
+        await page.setContent(pageHtml(data, theme, mode), {
             waitUntil: 'domcontentloaded'
         })
         await page.evaluate(() => document.fonts.ready)

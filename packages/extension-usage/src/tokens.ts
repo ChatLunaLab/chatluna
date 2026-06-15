@@ -65,8 +65,7 @@ export function createTokenReport(
                               ? `${label} ${pad(date.getHours())}:00`
                               : label,
                       tokens: 0,
-                      inputTokens: 0,
-                      outputTokens: 0
+                      models: {}
                   }
               }
           )
@@ -89,8 +88,7 @@ export function createTokenReport(
         totalTokens += tokens
         if (point) {
             point.tokens += tokens
-            point.inputTokens += row.usageMetadata.input_tokens
-            point.outputTokens += row.usageMetadata.output_tokens
+            point.models[row.model] = (point.models[row.model] || 0) + tokens
         }
         if (withPlugins) {
             const plugin = plugins.get(row.source) ?? {

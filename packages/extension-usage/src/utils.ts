@@ -156,12 +156,12 @@ export namespace ChatLunaUsage {
 
     export type TokenRange = 'day' | 'week' | 'month' | 'all'
     export type TokenTheme = 'auto' | 'light' | 'dark'
+    export type TokenRenderMode = 'both' | 'line' | 'bar'
 
     export interface TokenPoint {
         label: string
         tokens: number
-        inputTokens: number
-        outputTokens: number
+        models: { [model: string]: number }
     }
 
     export interface PluginUsage {
@@ -214,6 +214,7 @@ export namespace ChatLunaUsage {
         pageSize: number
         webui: boolean
         tokensTheme: TokenTheme
+        tokensRenderMode: TokenRenderMode
     }
 
     export interface TokenCommandOptions {
@@ -245,6 +246,14 @@ export namespace ChatLunaUsage {
         ])
             .description('tokens命令渲染出的图表颜色主题')
             .default('auto')
+            .role('select'),
+        tokensRenderMode: Schema.union([
+            Schema.const('both').description('曲线和柱状图'),
+            Schema.const('line').description('仅曲线'),
+            Schema.const('bar').description('仅柱状图')
+        ])
+            .description('tokens命令渲染出的图表展示模式')
+            .default('both')
             .role('select')
     })
 
