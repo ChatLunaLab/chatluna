@@ -128,7 +128,7 @@ export function getModelMaxContextSize(info: ModelInfo): number {
         'gemini-3.0-pro': 1_097_152,
         'gemini-3.1-pro': 1_097_152,
         'gemini-2.0': 2097152,
-        deepseek: 128000,
+        deepseek: 1_000_000,
         'llama3.1': 128000,
         'command-r-plus': 128000,
         'moonshot-v1-8k': 8192,
