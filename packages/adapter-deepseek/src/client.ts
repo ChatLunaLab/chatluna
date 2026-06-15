@@ -115,6 +115,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                 modelInfo: info,
                 requester: this._requester,
                 model,
+                modelMaxContextSize: info.maxTokens,
                 maxTokenLimit: Math.floor(
                     (info.maxTokens || 1_000_000) * this._config.maxContextRatio
                 ),
