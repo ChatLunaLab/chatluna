@@ -13,16 +13,29 @@ type RenderTheme = Exclude<ChatLunaUsage.TokenTheme, 'auto'>
 
 const CSS = `
 :root {
-    --bg-stage: #f8fafc;
-    --bg-card: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #4b5563;
-    --border-color: #cbd5e1;
-    --grid-line: #cbd5e1;
-    --color-total: #4f46e5;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --bg-paper: #fff8ea;
+    --bg-paper-soft: #f9ebd2;
+    --bg-paper-row: #fff1d7;
+    --bg-paper-line: rgba(122, 82, 38, 0.025);
+    --bg-paper-dot: rgba(255, 255, 255, 0.65);
+    --bg-paper-glow: rgba(255, 255, 255, 0.72);
+    --bg-legend: rgba(255, 242, 216, 0.78);
+    --bg-row: rgba(255, 244, 221, 0.78);
+    --bg-row-track: rgba(165, 128, 82, 0.22);
+    --text-primary: #3d3024;
+    --text-secondary: #6f5b45;
+    --text-muted: #9a7d5e;
+    --border-color: #e7cfaa;
+    --grid-line: #dcc49f;
+    --color-total: #c94f72;
+    --total-shadow: rgba(201, 79, 114, 0.24);
+    --edge-shade: rgba(157, 110, 58, 0.07);
+    --row-border: rgba(218, 183, 132, 0.42);
+    --legend-border: rgba(212, 178, 128, 0.62);
+    --bar-shadow: rgba(88, 56, 27, 0.16);
+    --shadow-paper: 0 22px 46px -28px rgba(107, 72, 36, 0.62), 0 8px 20px -14px rgba(77, 48, 20, 0.42);
+    --shadow-lift: 0 18px 28px -20px rgba(93, 58, 25, 0.48);
+    --shadow-hover: 0 20px 28px -20px rgba(93, 58, 25, 0.58);
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     color-scheme: light;
 }
@@ -33,79 +46,150 @@ const CSS = `
 
 body {
     margin: 0;
-    background: var(--bg-stage);
+    background: transparent;
 }
 
 .stage {
-    display: inline-flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 20px;
-    background: var(--bg-stage);
+    position: relative;
+    display: inline-block;
+    width: 1000px;
+    padding: 32px 38px 34px;
+    background:
+        radial-gradient(circle at 18% 20%, var(--bg-paper-dot) 0 1px, transparent 1px 9px),
+        linear-gradient(145deg, var(--bg-paper-glow), transparent 36%),
+        var(--bg-paper);
+    border: 1px solid var(--border-color);
+    border-radius: 30px 22px 34px 26px;
+    box-shadow: var(--shadow-paper);
+    color: var(--text-primary);
+    overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans SC", "Microsoft YaHei", sans-serif;
     -webkit-font-smoothing: antialiased;
 }
 
 .stage.theme-dark {
-    --bg-stage: #0f172a;
-    --bg-card: #1e293b;
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
-    --border-color: #475569;
-    --grid-line: #475569;
-    --color-total: #818cf8;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --bg-paper: #1b2436;
+    --bg-paper-soft: #27334b;
+    --bg-paper-row: #222e44;
+    --bg-paper-line: rgba(255, 235, 205, 0.035);
+    --bg-paper-dot: rgba(255, 241, 209, 0.08);
+    --bg-paper-glow: rgba(255, 235, 197, 0.1);
+    --bg-legend: rgba(41, 52, 75, 0.88);
+    --bg-row: rgba(36, 47, 68, 0.86);
+    --bg-row-track: rgba(223, 189, 137, 0.16);
+    --text-primary: #fff0d8;
+    --text-secondary: #dec69f;
+    --text-muted: #b5966a;
+    --border-color: #725d3e;
+    --grid-line: #695944;
+    --color-total: #f2c66d;
+    --total-shadow: rgba(242, 198, 109, 0.3);
+    --edge-shade: rgba(255, 211, 144, 0.08);
+    --row-border: rgba(153, 123, 82, 0.44);
+    --legend-border: rgba(153, 123, 82, 0.55);
+    --bar-shadow: rgba(0, 0, 0, 0.24);
+    --shadow-paper: 0 28px 52px -28px rgba(0, 0, 0, 0.62), 0 8px 20px -12px rgba(0, 0, 0, 0.42);
+    --shadow-lift: 0 20px 30px -18px rgba(0, 0, 0, 0.42);
+    --shadow-hover: 0 22px 30px -18px rgba(0, 0, 0, 0.52);
     color-scheme: dark;
 }
 
-.card {
+.stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, var(--edge-shade), transparent 12%, transparent 86%, var(--edge-shade)),
+        repeating-linear-gradient(0deg, var(--bg-paper-line) 0 1px, transparent 1px 7px);
+    mix-blend-mode: multiply;
+}
+
+.paper-content {
     position: relative;
-    width: 1000px;
-    padding: 24px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: var(--shadow-sm);
-    color: var(--text-primary);
+    z-index: 1;
 }
 
-.card-header {
+.hero-header {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 16px;
-    margin-bottom: 20px;
+    gap: 24px;
+    margin-bottom: 24px;
 }
 
-.card-title-group h1 {
+.hero-title {
     margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    letter-spacing: -0.025em;
+    font-size: 28px;
+    line-height: 1.18;
+    font-weight: 800;
+    letter-spacing: 0;
     color: var(--text-primary);
 }
 
-.card-subtitle {
-    margin: 4px 0 0;
+.time-strip {
+    display: inline-grid;
+    grid-template-columns: auto auto auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: var(--bg-paper-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 999px 22px 999px 22px;
+    box-shadow: var(--shadow-lift);
+    transform: rotate(0.35deg);
+}
+
+.time-label {
     color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.time-value,
+.time-sep {
+    color: var(--text-secondary);
     font-size: 13px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-style: normal;
 }
 
 .metrics-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 20px;
+    gap: 12px;
+    margin-bottom: 24px;
 }
 
 .metric-item {
+    position: relative;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 16px;
-    background: var(--bg-card);
+    border-radius: 18px 14px 20px 13px;
+    padding: 15px 16px 16px;
+    background: var(--bg-paper-row);
+    box-shadow: var(--shadow-lift);
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.metric-item:nth-child(2n) {
+    transform: rotate(0.25deg);
+}
+
+.metric-item:nth-child(2n + 1) {
+    transform: rotate(-0.2deg);
+}
+
+.metric-item:hover {
+    transform: translateY(-3px) rotate(0deg);
+    box-shadow: var(--shadow-hover);
+}
+
+.metric-item:active {
+    transform: translateY(1px) rotate(0deg);
+    box-shadow: 0 12px 20px -18px rgba(93, 58, 25, 0.46);
 }
 
 .metric-label {
@@ -118,18 +202,17 @@ body {
 
 .metric-value {
     margin-top: 8px;
-    font-size: 24px;
-    font-weight: 600;
+    font-size: 25px;
+    font-weight: 800;
     font-family: var(--font-mono);
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
 }
 
 .chart-container {
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 20px;
-    background: var(--bg-card);
+    padding: 22px 0 18px;
+    margin: 4px 0 2px;
+    background: transparent;
 }
 
 .trend-chart {
@@ -169,34 +252,59 @@ body {
 
 .line-total {
     stroke: var(--color-total);
+    filter: drop-shadow(0 3px 3px var(--total-shadow));
 }
 
 .dot-total {
-    fill: var(--bg-card);
+    fill: var(--bg-paper);
     stroke-width: 2;
     stroke: var(--color-total);
 }
 
 .dot-last.dot-total {
     fill: var(--color-total);
-    stroke: var(--bg-card);
+    stroke: var(--bg-paper);
+}
+
+.bar-piece {
+    filter: drop-shadow(0 4px 4px var(--bar-shadow));
+}
+
+.bar-outline {
+    stroke: var(--row-border);
 }
 
 .chart-legend {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-color);
+    gap: 8px;
+    margin-top: 12px;
 }
 
 .legend-item {
     display: inline-flex;
     align-items: center;
-    margin: 0 16px;
+    padding: 6px 10px;
+    background: var(--bg-legend);
+    border: 1px solid var(--legend-border);
+    border-radius: 999px;
+    box-shadow: 0 10px 16px -14px rgba(93, 58, 25, 0.38);
     font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.legend-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 20px -16px rgba(93, 58, 25, 0.5);
+}
+
+.legend-item:active {
+    transform: translateY(1px);
 }
 
 .legend-color-indicator {
@@ -212,6 +320,10 @@ body {
     line-height: 0;
 }
 
+.legend-total-indicator {
+    border-radius: 50%;
+}
+
 .empty-chart {
     display: grid;
     height: 320px;
@@ -222,28 +334,87 @@ body {
     border-radius: 6px;
 }
 
+.plugin-section {
+    margin-top: 24px;
+    padding-top: 22px;
+    border-top: 2px dashed rgba(180, 135, 82, 0.38);
+}
+
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.section-title-row h2 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--text-primary);
+}
+
+.sort-chip {
+    padding: 7px 12px;
+    color: var(--text-secondary);
+    background: var(--bg-paper-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 999px 18px 999px 18px;
+    box-shadow: 0 10px 18px -16px rgba(93, 58, 25, 0.45);
+    font-size: 12px;
+    font-weight: 700;
+}
+
 .plugin-table {
     width: 100%;
-    border-collapse: collapse;
-    margin-top: 8px;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    margin-top: 0;
 }
 
 .plugin-table th,
 .plugin-table td {
-    padding: 12px 16px;
+    padding: 11px 16px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
     font-size: 13px;
 }
 
 .plugin-table th {
     font-weight: 600;
     color: var(--text-secondary);
-    background-color: var(--bg-stage);
+    border-bottom: 1px solid rgba(180, 135, 82, 0.35);
 }
 
 .plugin-table td {
+    background: var(--bg-row);
+    border-top: 1px solid var(--row-border);
+    border-bottom: 1px solid var(--row-border);
     color: var(--text-primary);
+}
+
+.plugin-table td:first-child {
+    border-left: 1px solid var(--row-border);
+    border-radius: 16px 0 0 14px;
+}
+
+.plugin-table td:last-child {
+    border-right: 1px solid var(--row-border);
+    border-radius: 0 14px 16px 0;
+}
+
+.plugin-table tbody tr {
+    transition:
+        transform 180ms ease,
+        filter 180ms ease;
+}
+
+.plugin-table tbody tr:hover {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 10px 10px rgba(93, 58, 25, 0.14));
+}
+
+.plugin-table tbody tr:active {
+    transform: translateY(1px);
 }
 
 .plugin-name-cell {
@@ -273,7 +444,7 @@ body {
     width: 100px;
     height: 6px;
     border-radius: 3px;
-    background: var(--grid-line);
+    background: var(--bg-row-track);
     overflow: hidden;
     margin-right: 12px;
 }
@@ -301,15 +472,15 @@ body {
 `
 
 const MODEL_COLORS = [
-    '#4f46e5',
-    '#0891b2',
-    '#ea580c',
-    '#16a34a',
-    '#9333ea',
-    '#db2777',
-    '#059669',
-    '#2563eb',
-    '#d97706'
+    '#7d82f3',
+    '#1aa6b7',
+    '#f47b3f',
+    '#3ab86a',
+    '#a967e8',
+    '#df6f9f',
+    '#34a889',
+    '#4d91df',
+    '#d99a38'
 ]
 
 function formatNum(value: number) {
@@ -507,6 +678,7 @@ function chart(
                                 currentY = y
                                 return (
                                     <rect
+                                        class="bar-piece"
                                         x={x - barWidth / 2}
                                         y={y}
                                         width={barWidth}
@@ -518,12 +690,12 @@ function chart(
                             })}
                             {groupHeight > 0 && (
                                 <rect
+                                    class="bar-outline"
                                     x={x - barWidth / 2}
                                     y={groupY}
                                     width={barWidth}
                                     height={groupHeight}
                                     fill="none"
-                                    stroke="var(--border-color)"
                                     stroke-width="1"
                                     opacity="0.6"
                                 />
@@ -602,15 +774,10 @@ function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
     }
 
     return (
-        <section class="card">
-            <div
-                class="card-header"
-                style="border-bottom: 0; padding-bottom: 8px; margin-bottom: 12px;"
-            >
-                <div class="card-title-group">
-                    <h1>各插件用量明细</h1>
-                    <p class="card-subtitle">按 Token 占比降序排列</p>
-                </div>
+        <section class="plugin-section">
+            <div class="section-title-row">
+                <h2>各插件用量明细</h2>
+                <span class="sort-chip">按 Token 占比降序排列</span>
             </div>
             <table class="plugin-table">
                 <thead>
@@ -692,11 +859,11 @@ function renderLegend(
     const showBar = mode === 'both' || mode === 'bar'
 
     return (
-        <div class="chart-legend" style="flex-wrap: wrap; gap: 8px 0;">
+        <div class="chart-legend">
             {showLine && (
                 <div class="legend-item">
                     <span
-                        class="legend-color-indicator"
+                        class="legend-color-indicator legend-total-indicator"
                         style="--legend-color:var(--color-total)"
                     >
                         {' '}
@@ -740,14 +907,20 @@ function pageHtml(
                 </head>
                 <body>
                     <div class={`stage theme-${theme}`}>
-                        <main class="card">
-                            <header class="card-header">
-                                <div class="card-title-group">
-                                    <h1>Chatluna Token 消耗分析</h1>
-                                    <p class="card-subtitle">
-                                        时间跨度：{formatDate(data.start)} 至{' '}
+                        <main class="paper-content">
+                            <header class="hero-header">
+                                <h1 class="hero-title">
+                                    Chatluna Token 消耗分析
+                                </h1>
+                                <div class="time-strip">
+                                    <span class="time-label">统计周期</span>
+                                    <strong class="time-value">
+                                        {formatDate(data.start)}
+                                    </strong>
+                                    <i class="time-sep">至</i>
+                                    <strong class="time-value">
                                         {formatDate(data.end)}
-                                    </p>
+                                    </strong>
                                 </div>
                             </header>
 
@@ -788,8 +961,8 @@ function pageHtml(
                                 {chart(data.points, mode)}
                                 {renderLegend(data.points, mode)}
                             </section>
+                            {pluginCard(data.plugins)}
                         </main>
-                        {pluginCard(data.plugins)}
                     </div>
                 </body>
             </html>
@@ -808,8 +981,8 @@ export async function renderTokenTrend(
     try {
         page = await puppeteer.page()
         await page.setViewport({
-            width: 1040,
-            height: 820,
+            width: 1080,
+            height: 900,
             deviceScaleFactor: 2
         })
         await page.setContent(pageHtml(data, theme, mode), {
