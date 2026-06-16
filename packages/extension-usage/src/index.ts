@@ -272,7 +272,16 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
                 plugin = true
                 continue
             }
-            return '参数只能是 day、week、month、all（或简写 d/w/m/a），以及 plugin（或 p）。'
+            return [
+                '指令：chatluna tokens',
+                '查看 ChatLuna 整体 token 消耗趋势',
+                '可用的子指令有：',
+                '  chatluna tokens day 显示当日的token用量',
+                '  chatluna tokens week 显示最近一周的token用量',
+                '  chatluna tokens month 显示最近一个月的token用量',
+                '  chatluna tokens all 显示至今的token用量',
+                '  chatluna tokens plugin 显示各插件的token用量明细'
+            ].join('\n')
         }
 
         try {

@@ -86,10 +86,8 @@ export function createTokenReport(
             minuteCalls = 1
         }
         totalTokens += tokens
-        if (point) {
-            point.tokens += tokens
-            point.models[row.model] = (point.models[row.model] || 0) + tokens
-        }
+        point.tokens += tokens
+        point.models[row.model] = (point.models[row.model] || 0) + tokens
         if (withPlugins) {
             const plugin = plugins.get(row.source) ?? {
                 source: row.source,

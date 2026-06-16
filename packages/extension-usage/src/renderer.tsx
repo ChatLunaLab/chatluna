@@ -483,6 +483,27 @@ const MODEL_COLORS = [
     '#d99a38'
 ]
 
+const CHART = {
+    width: 952,
+    height: 320,
+    left: 60,
+    right: 20,
+    top: 20,
+    bottom: 48,
+    gridLines: 5,
+    maxLabels: 12,
+    maxModels: 5,
+    minBarWidth: 3,
+    maxBarWidth: 28
+} as const
+
+const CURVE_FACTOR = 0.4
+const FLAT_Y_THRESHOLD = 0.1
+const MAX_PLUGIN_ROWS = 6
+const OTHER_COLOR = '#94a3b8'
+const OTHER_MODEL_NAME = '其他模型'
+const OTHER_PLUGIN_NAME = '其他插件'
+
 function formatNum(value: number) {
     if (value >= 1000000) {
         return (value / 1000000).toFixed(2) + 'M'
@@ -534,14 +555,13 @@ function monotonePath(pts: Coord[]) {
     let d = `M${pts[0].x},${pts[0].y}`
     for (let i = 0; i < n - 1; i++) {
         const dx = h[i]
-        const factor = 0.4
 
-        const c1x = pts[i].x + dx * factor
-        let c1y = pts[i].y + t[i] * dx * factor
-        const c2x = pts[i + 1].x - dx * factor
-        let c2y = pts[i + 1].y - t[i + 1] * dx * factor
+        const c1x = pts[i].x + dx * CURVE_FACTOR
+        let c1y = pts[i].y + t[i] * dx * CURVE_FACTOR
+        const c2x = pts[i + 1].x - dx * CURVE_FACTOR
+        let c2y = pts[i + 1].y - t[i + 1] * dx * CURVE_FACTOR
 
-        if (Math.abs(pts[i].y - pts[i + 1].y) < 0.1) {
+        if (Math.abs(pts[i].y - pts[i + 1].y) < FLAT_Y_THRESHOLD) {
             c1y = pts[i].y
             c2y = pts[i + 1].y
         } else if (pts[i].y < pts[i + 1].y) {
@@ -571,206 +591,249 @@ function getTopModels(points: ChatLunaUsage.TokenPoint[]) {
         .sort((a, b) => b[1] - a[1])
         .map(([model]) => model)
 
-    const topModels = sortedModels.slice(0, 5)
+    const topModels = sortedModels.slice(0, CHART.maxModels)
 
     const colorMap: Record<string, string> = {}
     topModels.forEach((model, i) => {
         colorMap[model] = MODEL_COLORS[i % MODEL_COLORS.length]
     })
-    if (sortedModels.length > 5) {
-        colorMap['其他模型'] = '#94a3b8'
+    if (sortedModels.length > CHART.maxModels) {
+        colorMap[OTHER_MODEL_NAME] = OTHER_COLOR
     }
     return { topModels, colorMap }
 }
 
-function chart(
-    points: ChatLunaUsage.TokenPoint[],
-    mode: ChatLunaUsage.TokenRenderMode = 'both'
-) {
-    if (!points.length) return <div class="empty-chart">暂无用量数据</div>
+type ModelInfo = ReturnType<typeof getTopModels>
 
-    const [width, height, left, right, top, bottom] = [952, 320, 60, 20, 20, 48]
-    const plotWidth = width - left - right
-    const plotHeight = height - top - bottom
-    const baseline = top + plotHeight
-    const max = Math.max(1, ...points.flatMap((p) => [p.tokens]))
-
-    const { topModels, colorMap } = getTopModels(points)
+function getChartLayout(points: ChatLunaUsage.TokenPoint[]) {
+    const plotWidth = CHART.width - CHART.left - CHART.right
+    const plotHeight = CHART.height - CHART.top - CHART.bottom
+    const baseline = CHART.top + plotHeight
+    const max = Math.max(1, ...points.map((p) => p.tokens))
     const stepX =
         points.length > 1 ? plotWidth / (points.length - 1) : plotWidth
-    const barWidth = Math.max(3, Math.min(28, stepX * 0.5))
-
+    const barWidth = Math.max(
+        CHART.minBarWidth,
+        Math.min(CHART.maxBarWidth, stepX * 0.5)
+    )
     const safePadding = barWidth / 2 + 4
     const drawWidth = plotWidth - safePadding * 2
-
     const totalCoords = points.map((point, idx) => ({
         x:
             points.length === 1
-                ? left + plotWidth / 2
-                : left + safePadding + (drawWidth * idx) / (points.length - 1),
+                ? CHART.left + plotWidth / 2
+                : CHART.left +
+                  safePadding +
+                  (drawWidth * idx) / (points.length - 1),
         y: baseline - (point.tokens / max) * plotHeight,
         point
     }))
 
-    const totalLine = monotonePath(totalCoords)
+    return {
+        plotWidth,
+        plotHeight,
+        baseline,
+        max,
+        barWidth,
+        safePadding,
+        drawWidth,
+        totalCoords,
+        totalLine: monotonePath(totalCoords),
+        stepLabel: Math.max(1, Math.ceil(points.length / CHART.maxLabels))
+    }
+}
 
-    const maxLabels = 12
-    const stepLabel = Math.max(1, Math.ceil(points.length / maxLabels))
+type ChartLayout = ReturnType<typeof getChartLayout>
+
+function getBarItems(point: ChatLunaUsage.TokenPoint, info: ModelInfo) {
+    const items: { name: string; val: number }[] = []
+    let otherVal = 0
+
+    for (const [name, val] of Object.entries(point.models)) {
+        if (val <= 0) continue
+        if (info.topModels.includes(name)) {
+            items.push({ name, val })
+        } else {
+            otherVal += val
+        }
+    }
+
+    items.sort(
+        (a, b) =>
+            info.topModels.indexOf(a.name) - info.topModels.indexOf(b.name)
+    )
+
+    if (otherVal > 0) {
+        items.push({ name: OTHER_MODEL_NAME, val: otherVal })
+    }
+
+    return items
+}
+
+function renderGrid(layout: ChartLayout) {
+    const last = CHART.gridLines - 1
 
     return (
-        <svg class="trend-chart" viewbox={`0 0 ${width} ${height}`} role="img">
-            <g class="grid">
-                {Array.from({ length: 5 }, (_, idx) => {
-                    const y = top + (plotHeight * idx) / 4
-                    const value = Math.round(max - (max * idx) / 4)
-                    return [
-                        <line x1={left} y1={y} x2={width - right} y2={y} />,
-                        <text x={left - 12} y={y + 4}>
-                            {formatNum(value)}
-                        </text>
-                    ]
-                })}
-            </g>
+        <g class="grid">
+            {Array.from({ length: CHART.gridLines }, (_, idx) => {
+                const y = CHART.top + (layout.plotHeight * idx) / last
+                const value = Math.round(layout.max - (layout.max * idx) / last)
+                return [
+                    <line
+                        x1={CHART.left}
+                        y1={y}
+                        x2={CHART.width - CHART.right}
+                        y2={y}
+                    />,
+                    <text x={CHART.left - 12} y={y + 4}>
+                        {formatNum(value)}
+                    </text>
+                ]
+            })}
+        </g>
+    )
+}
 
-            {(mode === 'both' || mode === 'bar') &&
-                points.map((point, idx) => {
-                    const x =
-                        points.length === 1
-                            ? left + plotWidth / 2
-                            : left +
-                              safePadding +
-                              (drawWidth * idx) / (points.length - 1)
+function renderBars(
+    points: ChatLunaUsage.TokenPoint[],
+    info: ModelInfo,
+    layout: ChartLayout
+) {
+    return points.map((point, idx) => {
+        const x =
+            points.length === 1
+                ? CHART.left + layout.plotWidth / 2
+                : CHART.left +
+                  layout.safePadding +
+                  (layout.drawWidth * idx) / (points.length - 1)
+        const items = getBarItems(point, info)
+        let currentY = layout.baseline
+        const groupHeight = items.reduce(
+            (sum, item) => sum + (item.val / layout.max) * layout.plotHeight,
+            0
+        )
+        const groupY = layout.baseline - groupHeight
 
-                    const activeModels: { name: string; val: number }[] = []
-                    let otherVal = 0
-
-                    for (const [mName, val] of Object.entries(point.models)) {
-                        if (val <= 0) continue
-                        if (topModels.includes(mName)) {
-                            activeModels.push({ name: mName, val })
-                        } else {
-                            otherVal += val
-                        }
-                    }
-
-                    activeModels.sort(
-                        (a, b) =>
-                            topModels.indexOf(a.name) -
-                            topModels.indexOf(b.name)
-                    )
-
-                    if (otherVal > 0) {
-                        activeModels.push({ name: '其他模型', val: otherVal })
-                    }
-
-                    let currentY = baseline
-                    const groupHeight = activeModels.reduce(
-                        (sum, item) => sum + (item.val / max) * plotHeight,
-                        0
-                    )
-                    const groupY = baseline - groupHeight
-
+        return (
+            <g>
+                {items.map((item) => {
+                    const barHeight =
+                        (item.val / layout.max) * layout.plotHeight
+                    const y = currentY - barHeight
+                    currentY = y
                     return (
-                        <g>
-                            {activeModels.map((item) => {
-                                const barHeight = (item.val / max) * plotHeight
-                                const y = currentY - barHeight
-                                currentY = y
-                                return (
-                                    <rect
-                                        class="bar-piece"
-                                        x={x - barWidth / 2}
-                                        y={y}
-                                        width={barWidth}
-                                        height={barHeight}
-                                        fill={colorMap[item.name]}
-                                        opacity="0.85"
-                                    />
-                                )
-                            })}
-                            {groupHeight > 0 && (
-                                <rect
-                                    class="bar-outline"
-                                    x={x - barWidth / 2}
-                                    y={groupY}
-                                    width={barWidth}
-                                    height={groupHeight}
-                                    fill="none"
-                                    stroke-width="1"
-                                    opacity="0.6"
-                                />
-                            )}
-                        </g>
-                    )
-                })}
-
-            {(mode === 'both' || mode === 'line') && totalLine && (
-                <path class="line line-total" d={totalLine} />
-            )}
-
-            {mode === 'line' &&
-                totalCoords.map((c, idx) => {
-                    const last = idx === totalCoords.length - 1
-                    return (
-                        <circle
-                            class={last ? 'dot-total dot-last' : 'dot-total'}
-                            cx={c.x}
-                            cy={c.y}
-                            r={last ? 5.5 : 4}
+                        <rect
+                            class="bar-piece"
+                            x={x - layout.barWidth / 2}
+                            y={y}
+                            width={layout.barWidth}
+                            height={barHeight}
+                            fill={info.colorMap[item.name]}
+                            opacity="0.85"
                         />
                     )
                 })}
+                {groupHeight > 0 && (
+                    <rect
+                        class="bar-outline"
+                        x={x - layout.barWidth / 2}
+                        y={groupY}
+                        width={layout.barWidth}
+                        height={groupHeight}
+                        fill="none"
+                        stroke-width="1"
+                        opacity="0.6"
+                    />
+                )}
+            </g>
+        )
+    })
+}
 
-            {totalCoords.map((c, idx) => {
-                const shouldShowLabel =
-                    idx === 0 ||
-                    idx === totalCoords.length - 1 ||
-                    idx % stepLabel === 0
-                if (!shouldShowLabel) return null
+function renderLineDots(coords: Coord[]) {
+    return coords.map((c, idx) => {
+        const last = idx === coords.length - 1
+        return (
+            <circle
+                class={last ? 'dot-total dot-last' : 'dot-total'}
+                cx={c.x}
+                cy={c.y}
+                r={last ? 5.5 : 4}
+            />
+        )
+    })
+}
 
-                const parts = c.point.label.split(' ')
-                return (
-                    <text
-                        class="axis-x"
-                        x={c.x}
-                        y={height - (parts[1] ? 22 : 18)}
-                    >
-                        {parts[1]
-                            ? parts.map((part, pIdx) => (
-                                  <tspan x={c.x} dy={pIdx ? '13' : '0'}>
-                                      {part}
-                                  </tspan>
-                              ))
-                            : c.point.label}
-                    </text>
-                )
-            })}
+function renderAxisLabels(coords: Coord[], stepLabel: number) {
+    return coords.map((c, idx) => {
+        const shouldShowLabel =
+            idx === 0 || idx === coords.length - 1 || idx % stepLabel === 0
+        if (!shouldShowLabel) return null
+
+        const parts = c.point.label.split(' ')
+        return (
+            <text
+                class="axis-x"
+                x={c.x}
+                y={CHART.height - (parts[1] ? 22 : 18)}
+            >
+                {parts[1]
+                    ? parts.map((part, pIdx) => (
+                          <tspan x={c.x} dy={pIdx ? '13' : '0'}>
+                              {part}
+                          </tspan>
+                      ))
+                    : c.point.label}
+            </text>
+        )
+    })
+}
+
+function chart(
+    points: ChatLunaUsage.TokenPoint[],
+    info: ModelInfo,
+    mode: ChatLunaUsage.TokenRenderMode = 'both'
+) {
+    if (!points.length) return <div class="empty-chart">暂无用量数据</div>
+
+    const layout = getChartLayout(points)
+    const showLine = mode === 'both' || mode === 'line'
+    const showBar = mode === 'both' || mode === 'bar'
+
+    return (
+        <svg
+            class="trend-chart"
+            viewbox={`0 0 ${CHART.width} ${CHART.height}`}
+            role="img"
+        >
+            {renderGrid(layout)}
+            {showBar && renderBars(points, info, layout)}
+            {showLine && layout.totalLine && (
+                <path class="line line-total" d={layout.totalLine} />
+            )}
+            {mode === 'line' && renderLineDots(layout.totalCoords)}
+            {renderAxisLabels(layout.totalCoords, layout.stepLabel)}
         </svg>
     )
 }
 
-function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
+function pluginSection(plugins?: ChatLunaUsage.TokenReport['plugins']) {
     if (!plugins?.length) return ''
 
     const total = plugins.reduce((sum, p) => sum + p.tokens, 0) || 1
 
-    const maxDisplay = 6
-    let displayPlugins = plugins.slice(0, maxDisplay)
-    if (plugins.length > maxDisplay) {
-        const otherTokens = plugins
-            .slice(maxDisplay)
-            .reduce((sum, p) => sum + p.tokens, 0)
-        const otherCalls = plugins
-            .slice(maxDisplay)
-            .reduce((sum, p) => sum + p.calls, 0)
-        displayPlugins = [
-            ...displayPlugins,
-            {
-                source: '其他插件',
-                tokens: otherTokens,
-                calls: otherCalls
-            }
-        ]
+    let displayPlugins = plugins.slice(0, MAX_PLUGIN_ROWS)
+    if (plugins.length > MAX_PLUGIN_ROWS) {
+        const other = {
+            source: OTHER_PLUGIN_NAME,
+            tokens: 0,
+            calls: 0
+        }
+        for (const p of plugins.slice(MAX_PLUGIN_ROWS)) {
+            other.tokens += p.tokens
+            other.calls += p.calls
+        }
+        displayPlugins = [...displayPlugins, other]
     }
 
     return (
@@ -796,9 +859,9 @@ function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
                 </thead>
                 <tbody>
                     {displayPlugins.map((plugin, idx) => {
-                        const isOther = plugin.source === '其他插件'
+                        const isOther = plugin.source === OTHER_PLUGIN_NAME
                         const color = isOther
-                            ? '#94a3b8'
+                            ? OTHER_COLOR
                             : MODEL_COLORS[idx % MODEL_COLORS.length]
                         const ratio = (plugin.tokens / total) * 100
                         return (
@@ -851,10 +914,9 @@ function pluginCard(plugins?: ChatLunaUsage.TokenReport['plugins']) {
 }
 
 function renderLegend(
-    points: ChatLunaUsage.TokenPoint[],
+    info: ModelInfo,
     mode: ChatLunaUsage.TokenRenderMode = 'both'
 ) {
-    const { colorMap } = getTopModels(points)
     const showLine = mode === 'both' || mode === 'line'
     const showBar = mode === 'both' || mode === 'bar'
 
@@ -872,7 +934,7 @@ function renderLegend(
                 </div>
             )}
             {showBar &&
-                Object.entries(colorMap).map(([model, color]) => (
+                Object.entries(info.colorMap).map(([model, color]) => (
                     <div class="legend-item">
                         <span
                             class="legend-color-indicator"
@@ -892,6 +954,11 @@ function pageHtml(
     theme: RenderTheme,
     mode: ChatLunaUsage.TokenRenderMode = 'both'
 ) {
+    const info: ModelInfo =
+        mode === 'line'
+            ? { topModels: [], colorMap: {} }
+            : getTopModels(data.points)
+
     return (
         '<!doctype html>' +
         String(
@@ -958,10 +1025,10 @@ function pageHtml(
                             </section>
 
                             <section class="chart-container">
-                                {chart(data.points, mode)}
-                                {renderLegend(data.points, mode)}
+                                {chart(data.points, info, mode)}
+                                {renderLegend(info, mode)}
                             </section>
-                            {pluginCard(data.plugins)}
+                            {pluginSection(data.plugins)}
                         </main>
                     </div>
                 </body>
