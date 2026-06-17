@@ -473,13 +473,18 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         maxAttempts: number
     ): boolean {
         return (
-            this._isAbortError(error) || hasChunk || attempt === maxAttempts - 1
+            this._isNonRetryableError(error) ||
+            hasChunk ||
+            attempt === maxAttempts - 1
         )
     }
 
-    private _isAbortError(error: unknown): boolean {
+    private _isNonRetryableError(error: unknown): boolean {
         if (error instanceof ChatLunaError) {
-            return error.errorCode === ChatLunaErrorCode.ABORTED
+            return (
+                error.errorCode === ChatLunaErrorCode.ABORTED ||
+                error.errorCode === ChatLunaErrorCode.NOT_AVAILABLE_CONFIG
+            )
         }
 
         return (error as Error)?.name === 'AbortError'
@@ -674,7 +679,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 } catch (error) {
                     if (
                         options.stream ||
-                        this._isAbortError(error) ||
+                        this._isNonRetryableError(error) ||
                         attempt === maxAttempts - 1
                     ) {
                         throw error
