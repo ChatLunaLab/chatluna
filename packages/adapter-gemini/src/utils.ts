@@ -884,7 +884,10 @@ export function getModalityTokens(
 
 function getCompletionTokens(data: ChatResponse) {
     if (data.usageMetadata?.candidatesTokenCount != null) {
-        return data.usageMetadata.candidatesTokenCount
+        return (
+            data.usageMetadata.candidatesTokenCount +
+            (data.usageMetadata.thoughtsTokenCount ?? 0)
+        )
     }
 
     let total = 0
