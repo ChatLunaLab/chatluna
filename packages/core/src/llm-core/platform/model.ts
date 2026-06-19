@@ -21,7 +21,6 @@ import { sleep } from 'koishi'
 import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
-    MIN_LATENCY_MS,
     ModelRequester,
     ModelRequestParams,
     readInvocationMetrics
@@ -447,13 +446,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             : 0
         let timing = metrics.timing
         if (timing != null && outputTokens > 0) {
-            const genMs = Math.max(
-                (timing.totalMs ?? 0) - (timing.ttftMs ?? 0),
-                MIN_LATENCY_MS
-            )
             timing = {
                 ...timing,
-                tps: (outputTokens * 1000) / genMs
+                tps:
+                    timing.totalMs == null
+                        ? undefined
+                        : (outputTokens * 1000) / timing.totalMs
             }
         }
         await this._reportUsage(

@@ -67,11 +67,10 @@ export function createModelUsageTiming(
         }
     }
     const ttftMs = Math.max(firstAt - start, MIN_LATENCY_MS)
-    const genMs = Math.max(totalMs - ttftMs, MIN_LATENCY_MS)
     return {
         ttftMs,
         totalMs,
-        tps: outputTokens == null ? undefined : (outputTokens * 1000) / genMs
+        tps: outputTokens == null ? undefined : (outputTokens * 1000) / totalMs
     }
 }
 
