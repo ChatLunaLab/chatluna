@@ -21,6 +21,7 @@ import { StreamMetricsTracker } from './metrics'
 export type { EmbeddingsResult, RerankerUsageResult }
 export type { ChatLunaInvocationMetrics } from './metrics'
 export {
+    MIN_LATENCY_MS,
     attachInvocationMetrics,
     createModelUsageTiming,
     readInvocationMetrics
