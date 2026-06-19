@@ -56,7 +56,8 @@ export function createModelUsageTiming(
     usage?: UsageMetadata
 ): ModelUsageTiming {
     const totalMs = Math.max(Date.now() - start, MIN_LATENCY_MS)
-    const outputTokens = usage?.output_tokens
+    const outputTokens =
+        usage?.output_tokens + (usage?.output_token_details?.reasoning ?? 0)
     if (firstAt == null) {
         return {
             totalMs,
