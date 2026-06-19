@@ -22,7 +22,8 @@ import {
     EmbeddingsRequester,
     EmbeddingsRequestParams,
     ModelRequester,
-    ModelRequestParams
+    ModelRequestParams,
+    readInvocationMetrics
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import type { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
@@ -46,7 +47,8 @@ import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
 import { logger } from 'koishi-plugin-chatluna'
 import type {
     ModelUsageContext,
-    ModelUsageReporter
+    ModelUsageReporter,
+    ModelUsageTiming
 } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 import { estimateTextTokens } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
@@ -316,7 +318,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         await this._reportFailedUsage(
                             options,
                             promptTokens,
-                            latestTokenUsage.output_tokens
+                            latestTokenUsage.output_tokens,
+                            readInvocationMetrics(response).timing
                         )
                     }
                     throw error
@@ -430,8 +433,11 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         response: ChatGenerationChunk | undefined,
         options: this['ParsedCallOptions']
     ) {
+        const metrics = readInvocationMetrics(response)
+        usage = metrics.usageMetadata ?? usage
+
         if (usage.total_tokens > 0) {
-            await this._reportUsage(usage, false, options)
+            await this._reportUsage(usage, false, options, metrics.timing)
             return
         }
 
@@ -445,7 +451,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 total_tokens: promptTokens + outputTokens
             },
             true,
-            options
+            options,
+            metrics.timing
         )
     }
 
@@ -518,40 +525,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
         }
 
-        const message = response.message as AIMessage | AIMessageChunk
-        let usageMetadata = message.usage_metadata
-
-        if (!usageMetadata?.total_tokens) {
-            const metadata = message.response_metadata as
-                | {
-                      tokenUsage?: {
-                          promptTokens?: number
-                          completionTokens?: number
-                          totalTokens?: number
-                      }
-                      usage?: {
-                          prompt_tokens?: number
-                          completion_tokens?: number
-                          total_tokens?: number
-                      }
-                  }
-                | undefined
-            const tokenUsage = metadata?.tokenUsage
-            const usage = metadata?.usage
-            if (tokenUsage?.totalTokens != null) {
-                usageMetadata = {
-                    input_tokens: tokenUsage.promptTokens ?? 0,
-                    output_tokens: tokenUsage.completionTokens ?? 0,
-                    total_tokens: tokenUsage.totalTokens
-                }
-            } else if (usage?.total_tokens != null) {
-                usageMetadata = {
-                    input_tokens: usage.prompt_tokens ?? 0,
-                    output_tokens: usage.completion_tokens ?? 0,
-                    total_tokens: usage.total_tokens
-                }
-            }
-        }
+        const metrics = readInvocationMetrics(response)
+        let usageMetadata = metrics.usageMetadata
 
         const estimated = !usageMetadata?.total_tokens
 
@@ -578,7 +553,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             usage_metadata: usageMetadata
         }
 
-        await this._reportUsage(usageMetadata, estimated, options)
+        await this._reportUsage(
+            usageMetadata,
+            estimated,
+            options,
+            metrics.timing
+        )
 
         return {
             generations: [response],
@@ -589,7 +569,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private async _reportUsage(
         usage: UsageMetadata,
         estimated: boolean,
-        options: this['ParsedCallOptions']
+        options: this['ParsedCallOptions'],
+        timing?: ModelUsageTiming
     ) {
         if (this._report == null) return
 
@@ -599,6 +580,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 usageMetadata: usage,
                 estimated,
                 success: true,
+                timing,
                 context: usageContextFromOptions(options)
             })
         } catch (e) {
@@ -609,7 +591,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     private async _reportFailedUsage(
         options: this['ParsedCallOptions'],
         promptTokens = 0,
-        outputTokens = 0
+        outputTokens = 0,
+        timing?: ModelUsageTiming
     ) {
         if (this._report == null) return
 
@@ -623,6 +606,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 },
                 estimated: promptTokens > 0 || outputTokens > 0,
                 success: false,
+                timing,
                 context: usageContextFromOptions(options)
             })
         } catch (e) {
@@ -827,6 +811,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         const conversationRounds = buildConversationRounds(messages)
         const selectedRounds: BaseMessage[][] = []
         let truncated = false
+        let overflowTokens = 0
         const hasLimit = maxTokenLimit != null && maxTokenLimit > 0
 
         // Find baseline: last AI message with usage_metadata
@@ -863,6 +848,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             // If we hit the baseline region, bulk-add everything up to it
             if (baselineRoundIdx >= 0 && i <= baselineRoundIdx) {
                 if (hasLimit && totalTokens + baselineTokens > maxTokenLimit) {
+                    overflowTokens = totalTokens + baselineTokens
                     truncated = true
                     break
                 }
@@ -876,6 +862,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 hasLimit && totalTokens + roundTokens > maxTokenLimit
 
             if (exceeds && selectedRounds.length > 0) {
+                overflowTokens = totalTokens + roundTokens
                 truncated = true
                 break
             }
@@ -884,6 +871,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             selectedRounds.unshift(conversationRounds[i])
 
             if (exceeds) {
+                overflowTokens = totalTokens
                 truncated = true
                 break
             }
@@ -893,7 +881,8 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             const round = conversationRounds[conversationRounds.length - 1]
             totalTokens += await countRoundTokens(round)
             selectedRounds.unshift(round)
-            truncated = maxTokenLimit != null && maxTokenLimit > 0
+            truncated = hasLimit && totalTokens > maxTokenLimit
+            overflowTokens = truncated ? totalTokens : overflowTokens
         }
 
         const flattenedRounds = selectedRounds.reduce<BaseMessage[]>(
@@ -903,9 +892,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
         const result = systemMessages.concat(flattenedRounds)
 
-        if (truncated) {
+        if (truncated && hasLimit) {
             logger?.warn(
-                `Message length exceeds token limit. ${totalTokens} > ${maxTokenLimit}. Try increasing the adapter token limit or reducing the message length.`
+                `Message length exceeds token limit. ${overflowTokens} > ${maxTokenLimit}. ` +
+                    `Truncated to ${totalTokens}. Try increasing the adapter token limit or reducing the message length.`
             )
         }
 

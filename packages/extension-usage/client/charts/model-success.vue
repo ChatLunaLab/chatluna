@@ -107,7 +107,10 @@ const rows = computed(() =>
     (usage.value?.models ?? [])
         .slice()
         .filter((row) => row.calls > 0)
-        .sort((a, b) => b.calls - a.calls)
+        .sort(
+            (a, b) =>
+                b.successRate - a.successRate || b.calls - a.calls
+        )
 )
 
 const totalCalls = computed(() => usage.value?.totals.calls ?? 0)

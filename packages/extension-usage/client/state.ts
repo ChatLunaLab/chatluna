@@ -203,6 +203,16 @@ export function time(value?: string | Date) {
     return value ? new Date(value).toLocaleString() : '-'
 }
 
+export function dur(value?: number | null) {
+    if (value == null) return '-'
+    if (value >= 1000) return `${(value / 1000).toFixed(2)}s`
+    return `${Math.round(value)}ms`
+}
+
+export function rate(value?: number | null) {
+    return value == null ? '-' : `${value.toFixed(2)} t/s`
+}
+
 watch(
     () => [
         query.period,

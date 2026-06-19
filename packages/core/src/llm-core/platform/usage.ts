@@ -108,7 +108,14 @@ export interface ModelUsagePayload {
     estimated: boolean
     success: boolean
     createdAt: Date
+    timing?: ModelUsageTiming
     context?: ModelUsageContext
+}
+
+export interface ModelUsageTiming {
+    ttftMs?: number
+    totalMs?: number
+    tps?: number
 }
 
 export type ModelUsageInput = Omit<

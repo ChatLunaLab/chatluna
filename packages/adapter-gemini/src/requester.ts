@@ -5,6 +5,8 @@ import {
 } from '@langchain/core/messages'
 import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 import {
+    attachInvocationMetrics,
+    createModelUsageTiming,
     EmbeddingsRequester,
     EmbeddingsRequestParams,
     EmbeddingsResult,
@@ -98,7 +100,6 @@ export class GeminiRequester
             modelConfig,
             this._pluginConfig
         )
-
         try {
             const response = await this._post(
                 `models/${modelConfig.model}:streamGenerateContent?alt=sse`,
@@ -132,6 +133,7 @@ export class GeminiRequester
     ): Promise<ChatGeneration> {
         const modelConfig = prepareModelConfig(params, this._pluginConfig)
 
+        const start = Date.now()
         const chatGenerationParams = await createChatGenerationParams(
             params,
             this._plugin,
@@ -150,7 +152,13 @@ export class GeminiRequester
 
             await checkResponse(response)
 
-            return await this._processResponse(response)
+            const result = await this._processResponse(response)
+            const usage = (result.message as AIMessageChunk).usage_metadata
+            attachInvocationMetrics(result, {
+                usageMetadata: usage,
+                timing: createModelUsageTiming(start, undefined, usage)
+            })
+            return result
         } catch (e) {
             if (this.ctx.chatluna.currentConfig.isLog) {
                 await trackLogToLocal(
