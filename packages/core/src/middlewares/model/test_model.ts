@@ -100,7 +100,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 try {
                     response = await chatModel.invoke('Hello', {
-                        maxTokens: 10,
+                        maxTokens: 50,
                         signal: AbortSignal.timeout(60000)
                     })
                 } catch (error) {
