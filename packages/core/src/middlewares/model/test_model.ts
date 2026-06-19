@@ -99,10 +99,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 let testError: Error | null = null
 
                 try {
-                    response = await chatModel.invoke('Hello', {
-                        maxTokens: 50,
-                        signal: AbortSignal.timeout(60000)
-                    })
+                    response = await chatModel.invoke(
+                        'Hellom Just reply "world"',
+                        {
+                            maxTokens: 50,
+                            signal: AbortSignal.timeout(60000)
+                        }
+                    )
                 } catch (error) {
                     testError = error
                 }
