@@ -2,7 +2,7 @@ import { resolve } from 'path'
 import { Context, h, Logger, Time } from 'koishi'
 import type { Session } from 'koishi'
 import { DataService } from '@koishijs/plugin-console'
-import { ChatLunaUsage, summary } from './utils'
+import { calculateTheme, ChatLunaUsage, summary } from './utils'
 import type {} from 'koishi-plugin-puppeteer'
 import { renderTokenTrend } from './renderer'
 import { createTokenReport, formatTokenReport } from './tokens'
@@ -272,17 +272,30 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
                 plugin = true
                 continue
             }
-            return '参数只能是 day、week、month、all（或简写 d/w/m/a），以及 plugin（或 p）。'
+            return [
+                '指令：chatluna tokens',
+                '查看 ChatLuna 整体 token 消耗趋势',
+                '可用的子指令有：',
+                '  chatluna tokens day 显示当日的token用量',
+                '  chatluna tokens week 显示最近一周的token用量',
+                '  chatluna tokens month 显示最近一个月的token用量',
+                '  chatluna tokens all 显示至今的token用量',
+                '  chatluna tokens plugin 显示各插件的token用量明细'
+            ].join('\n')
+        }
+
+        let report: ChatLunaUsage.TokenReport
+        try {
+            report = await this.tokenReport(range, plugin)
+        } catch (e) {
+            logger.error(e)
+            return 'ChatLuna token 用量统计失败，请检查日志。'
         }
 
         try {
-            const report = await this.tokenReport(range, plugin)
-            await session.send(formatTokenReport(report))
-
             const puppeteer = this.ctx.get('puppeteer')
             if (!puppeteer) {
-                await session.send('图表渲染需要启用 puppeteer 服务。')
-                return
+                return formatTokenReport(report)
             }
 
             const image = await renderTokenTrend(
@@ -290,8 +303,9 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
                 puppeteer,
                 report,
                 this.config.tokensTheme === 'auto'
-                    ? 'light'
-                    : this.config.tokensTheme
+                    ? calculateTheme()
+                    : this.config.tokensTheme,
+                this.config.tokensRenderMode
             )
             await session.send(
                 typeof image === 'string'
@@ -300,7 +314,7 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
             )
         } catch (e) {
             logger.error(e)
-            return 'ChatLuna token 用量统计失败，请检查日志。'
+            return formatTokenReport(report)
         }
     }
 
@@ -423,16 +437,11 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
                     row.usageMetadata.output_token_details?.reasoning ?? 0
             }))
             .sort((a, b) => {
-                const left = a[query.listSortBy] as unknown
-                const right = b[query.listSortBy] as unknown
+                const left = a[query.listSortBy]
+                const right = b[query.listSortBy]
                 let diff: number
                 if (left instanceof Date && right instanceof Date) {
                     diff = +left - +right
-                } else if (
-                    typeof left === 'string' &&
-                    typeof right === 'string'
-                ) {
-                    diff = left.localeCompare(right)
                 } else {
                     diff = Number(left) - Number(right)
                 }
