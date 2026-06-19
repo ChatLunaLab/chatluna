@@ -260,7 +260,7 @@ export namespace ChatLunaUsage {
             Schema.const('bar').description('仅柱状图')
         ])
             .description('tokens命令渲染出的图表展示模式')
-            .default('bar')
+            .default('line')
             .role('select')
     })
 
