@@ -1,7 +1,7 @@
 import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
-import { hideSlashGroups } from '../utils/koishi'
+import { hideSlashGroups } from 'koishi-plugin-chatluna/utils/koishi'
 import { RenderType } from '../types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
