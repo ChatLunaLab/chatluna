@@ -55,18 +55,16 @@ export function createModelUsageTiming(
 ): ModelUsageTiming {
     const totalMs = Math.max(0, Date.now() - start)
     const ttftMs = firstAt == null ? totalMs : Math.max(0, firstAt - start)
-    const genMs = Math.max(0, totalMs - ttftMs)
-    // TPS denominator excludes the first-token latency (prefill); only the
-    // post-TTFT generation span counts as output time. Non-streaming calls
-    // pass no firstAt, so the full elapsed time is used.
-    const tpsMs = firstAt == null ? totalMs : genMs
-    // TPS numerator covers the full generation throughput: visible completion
-    // output plus reasoning tokens.
-    const tpsTokens = usage?.output_tokens ?? 0
+    // post-TTFT span is the generation window; non-stream calls use full time
+    const genMs = firstAt == null ? totalMs : Math.max(0, totalMs - ttftMs)
+    const outputTokens = usage?.output_tokens
     return {
         ttftMs,
         totalMs,
-        tps: Math.min(tpsMs > 0 ? (tpsTokens * 1000) / tpsMs : 0, tpsTokens)
+        tps:
+            outputTokens == null || genMs <= 0
+                ? undefined
+                : Math.min((outputTokens * 1000) / genMs, outputTokens)
     }
 }
 

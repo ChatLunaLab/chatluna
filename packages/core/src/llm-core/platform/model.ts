@@ -444,6 +444,14 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         const outputTokens = response
             ? await this.countMessageTokens(response.message)
             : 0
+        let timing = metrics.timing
+        if (timing != null && outputTokens > 0) {
+            const genMs = Math.max(timing.totalMs - timing.ttftMs, 1)
+            timing = {
+                ...timing,
+                tps: Math.min((outputTokens * 1000) / genMs, outputTokens)
+            }
+        }
         await this._reportUsage(
             {
                 input_tokens: promptTokens,
@@ -452,7 +460,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             },
             true,
             options,
-            metrics.timing
+            timing
         )
     }
 
