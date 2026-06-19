@@ -1,5 +1,7 @@
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
+    attachInvocationMetrics,
+    createModelUsageTiming,
     EmbeddingsRequestParams,
     EmbeddingsResult,
     ModelRequester,
@@ -61,6 +63,20 @@ interface RequestContext<
     pluginConfig: R
     plugin: ChatLunaPlugin
     modelRequester: ModelRequester<T, R>
+}
+
+function attachUsage(
+    chunk: ChatGenerationChunk,
+    start: number,
+    usageMetadata = chunk.message instanceof AIMessageChunk
+        ? chunk.message.usage_metadata
+        : undefined
+) {
+    attachInvocationMetrics(chunk, {
+        usageMetadata,
+        timing: createModelUsageTiming(start, undefined, usageMetadata)
+    })
+    return chunk
 }
 
 export type ResponseImageProvider = (
@@ -808,6 +824,7 @@ export async function completion<
     supportImageInput?: boolean
 ): Promise<ChatGenerationChunk> {
     const { modelRequester } = requestContext
+    const start = Date.now()
 
     const chatCompletionParams = await buildChatCompletionParams(
         params,
@@ -827,7 +844,10 @@ export async function completion<
             }
         )
 
-        return await processResponse(requestContext, response)
+        return attachUsage(
+            await processResponse(requestContext, response),
+            start
+        )
     } catch (e) {
         if (requestContext.ctx.chatluna.currentConfig.isLog) {
             await trackLogToLocal(
@@ -897,6 +917,7 @@ export async function responseApiCompletion<
     imageProvider?: ResponseImageProvider
 ): Promise<ChatGenerationChunk> {
     const { modelRequester } = requestContext
+    const start = Date.now()
     const request = await buildResponseParams(
         params,
         requestContext.plugin,
@@ -912,7 +933,10 @@ export async function responseApiCompletion<
             signal: params.signal
         })
 
-        return await processResponseApiResponse(response, imageProvider)
+        return attachUsage(
+            await processResponseApiResponse(response, imageProvider),
+            start
+        )
     } catch (e) {
         if (requestContext.ctx.chatluna.currentConfig.isLog) {
             await trackLogToLocal(

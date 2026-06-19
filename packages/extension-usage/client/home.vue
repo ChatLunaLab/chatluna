@@ -192,17 +192,84 @@
                     <el-table-column
                         prop="source"
                         label="插件来源"
-                        :min-width="sourceWidth"
+                        :width="sourceWidth"
                         sortable
                     />
                     <el-table-column
                         prop="callType"
                         label="类型"
-                        width="128"
+                        :min-width="128"
                         sortable
                     >
                         <template #default="scope">
                             {{ typeText(scope.row.callType) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column
+                        prop="totalMs"
+                        label="性能"
+                        width="220"
+                        align="right"
+                        header-align="left"
+                        sortable="custom"
+                    >
+                        <template #default="scope">
+                            <el-tooltip
+                                placement="right"
+                                effect="dark"
+                                popper-class="chatluna-usage-token-popper"
+                            >
+                                <template #content>
+                                    <div class="token-detail">
+                                        <p class="token-detail-title">
+                                            性能明细
+                                        </p>
+                                        <div class="token-detail-row">
+                                            <span>首字延迟 TTFT</span>
+                                            <strong>
+                                                {{ dur(scope.row.ttftMs) }}
+                                            </strong>
+                                        </div>
+                                        <div class="token-detail-row">
+                                            <span>输出速度 TPS</span>
+                                            <strong>
+                                                {{ rate(scope.row.tps) }}
+                                            </strong>
+                                        </div>
+                                        <div class="token-detail-divider"></div>
+                                        <div class="token-detail-row total">
+                                            <span>总耗时 Total</span>
+                                            <strong>
+                                                {{ dur(scope.row.totalMs) }}
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div class="token-cell perf-cell">
+                                    <div class="token-row">
+                                        <span class="token-item perf-ttft">
+                                            <span>TTFT</span>
+                                            <strong>
+                                                {{ dur(scope.row.ttftMs) }}
+                                            </strong>
+                                        </span>
+                                        <span class="token-item perf-tps">
+                                            <span>TPS</span>
+                                            <strong>
+                                                {{ rate(scope.row.tps) }}
+                                            </strong>
+                                        </span>
+                                    </div>
+                                    <div class="token-row">
+                                        <span class="token-item perf-total">
+                                            <span>Total</span>
+                                            <strong>
+                                                {{ dur(scope.row.totalMs) }}
+                                            </strong>
+                                        </span>
+                                    </div>
+                                </div>
+                            </el-tooltip>
                         </template>
                     </el-table-column>
                     <el-table-column
@@ -435,6 +502,7 @@ import SourceList from './sources/index.vue'
 import {
     changeListRange,
     clearHistory,
+    dur,
     fmt,
     list,
     listLoading,
@@ -442,6 +510,7 @@ import {
     listRange,
     loading,
     refreshList,
+    rate,
     resetFilters as resetQuery,
     scope,
     scopes,
@@ -1362,6 +1431,24 @@ function changeSort(data: {
 
 .token-reasoning {
     color: var(--el-color-info);
+}
+
+.perf-cell .token-item span {
+    color: var(--k-text-light);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.perf-ttft strong {
+    color: var(--el-color-warning);
+}
+
+.perf-tps strong {
+    color: var(--el-color-success);
+}
+
+.perf-total strong {
+    color: var(--k-color-primary);
 }
 
 .chatluna-usage-token-popper.el-popper {

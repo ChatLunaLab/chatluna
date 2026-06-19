@@ -32,6 +32,7 @@ import {
 // #region GeminiClient
 
 import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import { getModelMaxContextSize } from '@chatluna/v1-shared-adapter'
 
 export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'gemini'
@@ -163,12 +164,16 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
             const isEmbedding = name.includes('embedding')
 
-            items.push({
+            const info = {
                 name: model.name,
                 maxTokens: model.inputTokenLimit,
                 type: isEmbedding ? ModelType.embeddings : ModelType.llm,
                 capabilities: createGeminiCapabilities(name, isEmbedding)
-            })
+            }
+
+            info.maxTokens = info.maxTokens ?? getModelMaxContextSize(info)
+
+            items.push(info)
         }
 
         const models: ModelInfo[] = []

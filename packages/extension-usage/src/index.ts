@@ -40,6 +40,9 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
                 estimated: 'boolean',
                 success: 'boolean',
                 createdAt: { type: 'timestamp', nullable: false },
+                ttftMs: { type: 'integer', nullable: true },
+                totalMs: { type: 'integer', nullable: true },
+                tps: { type: 'float', nullable: true },
                 conversationId: { type: 'char', length: 255, nullable: true },
                 requestId: { type: 'char', length: 255, nullable: true },
                 userId: { type: 'char', length: 255, nullable: true },
@@ -64,6 +67,9 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
                     estimated: usage.estimated,
                     success: usage.success,
                     createdAt: usage.createdAt,
+                    ttftMs: usage.timing?.ttftMs ?? null,
+                    totalMs: usage.timing?.totalMs ?? null,
+                    tps: usage.timing?.tps ?? null,
                     conversationId: usage.context?.conversationId ?? null,
                     requestId: usage.context?.requestId ?? null,
                     userId: usage.context?.userId ?? null,
@@ -471,12 +477,23 @@ class ChatLunaUsageService extends DataService<ChatLunaUsage.Payload> {
             row.usageMetadata.output_token_details?.reasoning ?? 0
         if (row.estimated)
             item.estimatedTokens += row.usageMetadata.total_tokens
+        if (row.totalMs != null) {
+            item.timedCalls += 1
+            item.ttftMs += row.ttftMs ?? 0
+            item.totalMs += row.totalMs
+            item.tps += row.tps ?? 0
+        }
         if (!item.lastSeen || row.createdAt > item.lastSeen)
             item.lastSeen = row.createdAt
     }
 
     private finish(item: ChatLunaUsage.Summary) {
         item.successRate = item.calls ? item.successfulCalls / item.calls : 0
+        if (item.timedCalls > 0) {
+            item.ttftMs /= item.timedCalls
+            item.totalMs /= item.timedCalls
+            item.tps /= item.timedCalls
+        }
         return item
     }
 

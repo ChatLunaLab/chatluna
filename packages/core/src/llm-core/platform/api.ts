@@ -1,4 +1,4 @@
-import { BaseMessage } from '@langchain/core/messages'
+import { AIMessageChunk, BaseMessage } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
 import { ChatGeneration, ChatGenerationChunk } from '@langchain/core/outputs'
 import {
@@ -16,8 +16,15 @@ import type {
     EmbeddingsResult,
     RerankerUsageResult
 } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import { StreamMetricsTracker } from './metrics'
 
 export type { EmbeddingsResult, RerankerUsageResult }
+export type { ChatLunaInvocationMetrics } from './metrics'
+export {
+    attachInvocationMetrics,
+    createModelUsageTiming,
+    readInvocationMetrics
+} from './metrics'
 
 export interface BaseRequestParams {
     /**
@@ -129,10 +136,19 @@ export abstract class ModelRequester<
         // refresh config
         this._configPool.getConfig(false)
         const config = this._config
+        const tracker = new StreamMetricsTracker()
         try {
             for await (const chunk of this.completionStreamInternal(params)) {
+                tracker.observe(chunk)
                 yield chunk
             }
+
+            yield tracker.attachTo(
+                new ChatGenerationChunk({
+                    message: new AIMessageChunk({ content: '' }),
+                    text: ''
+                })
+            )
         } catch (e) {
             if (
                 (e instanceof ChatLunaError &&

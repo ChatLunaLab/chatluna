@@ -20,6 +20,10 @@ export function summary(
         estimatedTokens: 0,
         cachedTokens: 0,
         reasoningTokens: 0,
+        timedCalls: 0,
+        ttftMs: 0,
+        totalMs: 0,
+        tps: 0,
         successRate: 0
     }
 }
@@ -52,6 +56,9 @@ export namespace ChatLunaUsage {
         estimated: boolean
         success: boolean
         createdAt: Date
+        ttftMs?: number | null
+        totalMs?: number | null
+        tps?: number | null
         conversationId?: string | null
         requestId?: string | null
         userId?: string | null
@@ -85,6 +92,9 @@ export namespace ChatLunaUsage {
         | 'estimatedTokens'
         | 'cachedTokens'
         | 'reasoningTokens'
+        | 'ttftMs'
+        | 'totalMs'
+        | 'tps'
         | 'successRate'
     export type ListSortBy =
         | 'createdAt'
@@ -93,6 +103,9 @@ export namespace ChatLunaUsage {
         | 'totalTokens'
         | 'cachedTokens'
         | 'reasoningTokens'
+        | 'ttftMs'
+        | 'totalMs'
+        | 'tps'
 
     export interface Query {
         period?: Period
@@ -130,6 +143,10 @@ export namespace ChatLunaUsage {
         estimatedTokens: number
         cachedTokens: number
         reasoningTokens: number
+        timedCalls: number
+        ttftMs: number
+        totalMs: number
+        tps: number
         successRate: number
         lastSeen?: Date
     }
