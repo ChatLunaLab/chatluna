@@ -249,9 +249,11 @@ export function hideSlashGroups(root: Command): void {
     const toJSON = root.toJSON.bind(root)
     root.toJSON = () => {
         const data = toJSON()
-        data.children = data.children.filter((child) => {
+        data.children = data.children.flatMap((child) => {
             const real = root.children.find((c) => c.name === child.name)
-            return !(real?.config.slash === false && !child.children?.length)
+            return real?.config.slash === false
+                ? (child.children ?? [])
+                : [child]
         })
         return data
     }
