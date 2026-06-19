@@ -1,4 +1,4 @@
-import { ForkScope, h, Session, User } from 'koishi'
+import { Command, ForkScope, h, Session, User } from 'koishi'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { Marked, Token } from 'marked'
 import type { MessageContent } from '@langchain/core/messages'
@@ -243,4 +243,18 @@ export function normalizeForwardMessageId(value: unknown): string | null {
 
     const trimmed = value.trim()
     return trimmed.length > 0 ? trimmed : null
+}
+
+export function hideSlashGroups(root: Command): void {
+    const toJSON = root.toJSON.bind(root)
+    root.toJSON = () => {
+        const data = toJSON()
+        data.children = data.children.flatMap((child) => {
+            const real = root.children.find((c) => c.name === child.name)
+            return real?.config.slash === false
+                ? (child.children ?? [])
+                : [child]
+        })
+        return data
+    }
 }

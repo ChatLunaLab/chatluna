@@ -455,6 +455,13 @@ export class GeminiRequester
     ) {
         const parts = candidate.content?.parts
 
+        if (candidate.finishReason === 'SAFETY') {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_UNSAFE_CONTENT,
+                new Error('Unsafe content detected, please try again.' + chunk)
+            )
+        }
+
         if (
             (parts == null || parts.length < 1) &&
             candidate.finishReason !== 'STOP' &&
@@ -557,7 +564,10 @@ export class GeminiRequester
                 }
 
                 if (updatedToolCalling) {
-                    functionIndex++
+                    const fc = chunk['functionCall']
+                    if (fc?.name && fc.name.length > 0) {
+                        functionIndex++
+                    }
                 }
             } catch (e) {
                 if (errorCount > 5) {
@@ -614,7 +624,7 @@ export class GeminiRequester
                     `${hash}.${type}`
                 )
 
-                messagePart.text = '[image]'
+                messagePart.text = `[image:${file.url}]`
                 messageContent = [
                     {
                         type: 'image_url',
@@ -627,9 +637,10 @@ export class GeminiRequester
         const deltaFunctionCall = chatFunctionCallingPart?.functionCall
         let updatedToolCalling: ToolCallChunk
         if (deltaFunctionCall) {
+            const isNew = deltaFunctionCall.name?.length > 0
             updatedToolCalling = this._createToolCallChunk(
                 deltaFunctionCall,
-                functionIndex
+                isNew ? functionIndex : functionIndex - 1
             )
         }
 
@@ -642,12 +653,20 @@ export class GeminiRequester
 
     private _createToolCallChunk(
         deltaFunctionCall: ChatFunctionCallingPart['functionCall'],
-        functionIndex: number
+        index: number
     ) {
+        const isNew = deltaFunctionCall.name?.length > 0
+        const args =
+            Object.keys(deltaFunctionCall.args ?? {}).length > 0
+                ? JSON.stringify(deltaFunctionCall.args)
+                : undefined
         return {
-            name: deltaFunctionCall?.name,
-            args: JSON.stringify(deltaFunctionCall.args),
-            id: deltaFunctionCall.id ?? `function_call_${functionIndex}`
+            name: isNew ? deltaFunctionCall.name : undefined,
+            args,
+            id: isNew
+                ? (deltaFunctionCall.id ?? `function_call_${index}`)
+                : undefined,
+            index
         } satisfies ToolCallChunk
     }
 

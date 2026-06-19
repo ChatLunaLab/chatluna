@@ -1,12 +1,17 @@
 import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
+import { hideSlashGroups } from '../utils/koishi'
 import { RenderType } from '../types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chatluna', {
-        authority: 1
-    }).alias('chatluna')
+    const root = ctx
+        .command('chatluna', {
+            authority: 1
+        })
+        .alias('chatluna')
+
+    hideSlashGroups(root)
 
     ctx.command('chatluna.chat <message:text>')
         .option('conversation', '-c <conversation:string>')
@@ -115,6 +120,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await chain.receiveCommand(session, 'wipe')
         }
     )
+
+    ctx.command('chatluna.admin', { authority: 3, slash: false })
 
     ctx.command('chatluna.admin.purge-legacy', { authority: 3 }).action(
         async ({ session }) => {

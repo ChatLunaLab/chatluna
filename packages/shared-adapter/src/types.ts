@@ -1,3 +1,14 @@
+export interface OpenAIError {
+    code?: string
+    message?: string
+}
+
+export const UNSAFE_OPENAI_ERROR_CODES = [
+    'content_filter',
+    'content_policy_violation',
+    'image_content_policy_violation'
+]
+
 export interface ChatCompletionResponse {
     choices: {
         index: number
@@ -16,6 +27,7 @@ export interface ChatCompletionResponse {
     created: number
     model: string
     usage?: ChatCompletionUsage
+    error?: OpenAIError
 }
 
 export interface ChatCompletionPromptTokensDetails {
@@ -178,7 +190,8 @@ export interface ResponseObject {
     output_text?: string
     output?: ResponseOutputItem[]
     usage?: ResponseUsage
-    error?: { message?: string } | null
+    error?: OpenAIError | null
+    incomplete_details?: { reason?: string } | null
     conversation?: { id: string } | null
 }
 
@@ -225,6 +238,8 @@ export type ResponseOutputContent =
 export interface ResponseStreamEvent {
     type: string
     sequence_number?: number
+    code?: string | null
+    message?: string
     item_id?: string
     output_index?: number
     content_index?: number

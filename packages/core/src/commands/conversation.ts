@@ -3,10 +3,6 @@ import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 
 export function apply(ctx: Context, _config: Config, chain: ChatChain) {
-    ctx.command('chatluna.conversation', {
-        authority: 1
-    }).alias('chatluna.session')
-
     ctx.command('chatluna.rule', {
         authority: 3
     })

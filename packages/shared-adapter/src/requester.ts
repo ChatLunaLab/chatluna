@@ -19,10 +19,12 @@ import {
     ChatCompletionResponseMessageRoleEnum,
     CreateEmbeddingResponse,
     CreateRerankResponse,
+    OpenAIError,
     type ResponseBuiltinTool,
     ResponseObject,
     ResponseOutputItem,
-    ResponseStreamEvent
+    ResponseStreamEvent,
+    UNSAFE_OPENAI_ERROR_CODES
 } from './types'
 import {
     convertDeltaToMessageChunk,
@@ -68,6 +70,27 @@ export type ResponseImageProvider = (
 export interface ResponseToolOptions {
     googleSearch?: boolean
     builtinTools?: ResponseBuiltinTool[]
+}
+
+function throwIfUnsafeCode(
+    code: string | undefined | null,
+    detail: string
+): void {
+    if (code != null && UNSAFE_OPENAI_ERROR_CODES.includes(code)) {
+        throw new ChatLunaError(
+            ChatLunaErrorCode.API_UNSAFE_CONTENT,
+            new Error('Unsafe content detected, please try again.' + detail)
+        )
+    }
+}
+
+function throwIfUnsafeBody(body: string): void {
+    try {
+        const parsed = JSON.parse(body) as { error?: OpenAIError } | null
+        if (parsed) throwIfUnsafeCode(parsed.error?.code, body)
+    } catch (e) {
+        if (e instanceof ChatLunaError) throw e
+    }
 }
 
 export async function buildChatCompletionParams(
@@ -210,8 +233,8 @@ export async function* processStreamResponse<
         try {
             const data = JSON.parse(chunk) as ChatCompletionResponse
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((data as any).error) {
+            if (data.error) {
+                throwIfUnsafeCode(data.error.code, chunk)
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error('Error when calling completion, Result: ' + chunk)
@@ -219,6 +242,8 @@ export async function* processStreamResponse<
             }
 
             const choice = data.choices?.[0]
+
+            throwIfUnsafeCode(choice?.finish_reason, chunk)
 
             if (data.usage) {
                 const usageMetadata = openAIUsageToUsageMetadata(data.usage)
@@ -323,6 +348,8 @@ export async function* processStreamResponse<
                 text: getMessageContent(messageChunk.content)
             })
         } catch (e) {
+            if (e instanceof ChatLunaError) throw e
+
             if (
                 chunk.includes('tool_calls') ||
                 chunk.includes('function_call') ||
@@ -376,6 +403,9 @@ export async function processResponse<
     R extends ChatLunaPlugin.Config
 >(requestContext: RequestContext<T, R>, response: Response) {
     if (response.status !== 200) {
+        const responseText = await response.text()
+        throwIfUnsafeBody(responseText)
+
         throw new ChatLunaError(
             ChatLunaErrorCode.API_REQUEST_FAILED,
             new Error(
@@ -384,7 +414,7 @@ export async function processResponse<
                     ' ' +
                     response.statusText +
                     ', Response: ' +
-                    (await response.text())
+                    responseText
             )
         )
     }
@@ -394,8 +424,8 @@ export async function processResponse<
     try {
         const data = JSON.parse(responseText) as ChatCompletionResponse
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ((data as any).error) {
+        if (data.error) {
+            throwIfUnsafeCode(data.error.code, responseText)
             throw new ChatLunaError(
                 ChatLunaErrorCode.API_REQUEST_FAILED,
                 new Error(
@@ -405,6 +435,8 @@ export async function processResponse<
         }
 
         const choice = data.choices?.[0]
+
+        throwIfUnsafeCode(choice?.finish_reason, responseText)
 
         if (!choice) {
             throw new ChatLunaError(
@@ -456,11 +488,14 @@ export async function responseToChatGeneration(
     imageProvider?: ResponseImageProvider
 ) {
     if (response.error) {
+        throwIfUnsafeCode(response.error.code, response.error.message ?? '')
         throw new ChatLunaError(
             ChatLunaErrorCode.API_REQUEST_FAILED,
             new Error(response.error.message ?? JSON.stringify(response.error))
         )
     }
+
+    throwIfUnsafeCode(response.incomplete_details?.reason, '')
 
     const text = responseOutputText(response)
     const toolCalls = responseOutputToolCalls(response)
@@ -516,6 +551,9 @@ export async function processResponseApiResponse(
     imageProvider?: ResponseImageProvider
 ) {
     if (response.status !== 200) {
+        const responseText = await response.text()
+        throwIfUnsafeBody(responseText)
+
         throw new ChatLunaError(
             ChatLunaErrorCode.API_REQUEST_FAILED,
             new Error(
@@ -524,7 +562,7 @@ export async function processResponseApiResponse(
                     ' ' +
                     response.statusText +
                     ', Response: ' +
-                    (await response.text())
+                    responseText
             )
         )
     }
@@ -574,6 +612,14 @@ export async function* processResponseApiStream<
 
         try {
             const data = JSON.parse(chunk) as ResponseStreamEvent
+
+            if (data.type === 'error') {
+                throwIfUnsafeCode(data.code, data.message ?? chunk)
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_FAILED,
+                    new Error(chunk)
+                )
+            }
 
             if (data.type === 'response.output_text.delta' && data.delta) {
                 yield new ChatGenerationChunk({
@@ -682,6 +728,9 @@ export async function* processResponseApiStream<
                 data.type === 'response.incomplete' ||
                 data.type === 'response.error'
             ) {
+                throwIfUnsafeCode(data.response?.incomplete_details?.reason, '')
+                throwIfUnsafeCode(data.response?.error?.code, '')
+
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error(chunk)
