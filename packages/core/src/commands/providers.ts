@@ -3,9 +3,9 @@ import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chatluna.embeddings', { authority: 1 })
+    ctx.command('chatluna.embeddings', { authority: 1, slash: false })
 
-    ctx.command('chatluna.vectorstore', { authority: 1 })
+    ctx.command('chatluna.vectorstore', { authority: 1, slash: false })
 
     ctx.command('chatluna.embeddings.list')
         .option('page', '-p <page:number>')

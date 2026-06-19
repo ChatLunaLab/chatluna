@@ -4,9 +4,23 @@ import { ChatChain } from '../chains/chain'
 import { RenderType } from '../types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    ctx.command('chatluna', {
-        authority: 1
-    }).alias('chatluna')
+    const root = ctx
+        .command('chatluna', {
+            authority: 1
+        })
+        .alias('chatluna')
+
+    const toJSON = root.toJSON.bind(root)
+    root.toJSON = () => {
+        const data = toJSON()
+        data.children = data.children.filter((cmd) => {
+            return (
+                root.children.find((child) => child.name === cmd.name)?.config
+                    .slash !== false
+            )
+        })
+        return data
+    }
 
     ctx.command('chatluna.chat <message:text>')
         .option('conversation', '-c <conversation:string>')
@@ -115,6 +129,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             await chain.receiveCommand(session, 'wipe')
         }
     )
+
+    ctx.command('chatluna.admin', { authority: 3, slash: false })
 
     ctx.command('chatluna.admin.purge-legacy', { authority: 3 }).action(
         async ({ session }) => {
