@@ -637,7 +637,7 @@ export class GeminiRequester
         const deltaFunctionCall = chatFunctionCallingPart?.functionCall
         let updatedToolCalling: ToolCallChunk
         if (deltaFunctionCall) {
-            const isNew = deltaFunctionCall.name.length > 0
+            const isNew = deltaFunctionCall.name?.length > 0
             updatedToolCalling = this._createToolCallChunk(
                 deltaFunctionCall,
                 isNew ? functionIndex : functionIndex - 1
@@ -655,7 +655,7 @@ export class GeminiRequester
         deltaFunctionCall: ChatFunctionCallingPart['functionCall'],
         index: number
     ) {
-        const isNew = deltaFunctionCall.name.length > 0
+        const isNew = deltaFunctionCall.name?.length > 0
         const args =
             Object.keys(deltaFunctionCall.args ?? {}).length > 0
                 ? JSON.stringify(deltaFunctionCall.args)

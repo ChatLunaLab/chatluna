@@ -265,12 +265,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         latestTokenUsage
                     )
                     hasToolCallChunk = hasTool || hasToolCallChunk
-                    hasChunk = true
                     hasResponse =
                         hasResponse ||
                         this._hasResponse(
                             chunk.message as AIMessage | AIMessageChunk
                         )
+                    hasChunk = hasResponse ?? hasChunk
                     response = response != null ? response.concat(chunk) : chunk
                     yield chunk
                 }

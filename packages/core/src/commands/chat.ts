@@ -1,6 +1,7 @@
 import { Context, h } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
+import { hideSlashGroups } from '../utils/koishi'
 import { RenderType } from '../types'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -10,17 +11,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         })
         .alias('chatluna')
 
-    const toJSON = root.toJSON.bind(root)
-    root.toJSON = () => {
-        const data = toJSON()
-        data.children = data.children.filter((cmd) => {
-            return (
-                root.children.find((child) => child.name === cmd.name)?.config
-                    .slash !== false
-            )
-        })
-        return data
-    }
+    hideSlashGroups(root)
 
     ctx.command('chatluna.chat <message:text>')
         .option('conversation', '-c <conversation:string>')

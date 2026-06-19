@@ -86,8 +86,8 @@ function throwIfUnsafeCode(
 
 function throwIfUnsafeBody(body: string): void {
     try {
-        const parsed = JSON.parse(body) as { error?: OpenAIError }
-        throwIfUnsafeCode(parsed.error?.code, body)
+        const parsed = JSON.parse(body) as { error?: OpenAIError } | null
+        if (parsed) throwIfUnsafeCode(parsed.error?.code, body)
     } catch (e) {
         if (e instanceof ChatLunaError) throw e
     }
