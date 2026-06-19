@@ -48,23 +48,30 @@ export function readInvocationMetrics(
     }
 }
 
+export const MIN_LATENCY_MS = 10
+
 export function createModelUsageTiming(
     start: number,
     firstAt?: number,
     usage?: UsageMetadata
 ): ModelUsageTiming {
-    const totalMs = Math.max(0, Date.now() - start)
-    const ttftMs = firstAt == null ? totalMs : Math.max(0, firstAt - start)
-    // post-TTFT span is the generation window; non-stream calls use full time
-    const genMs = firstAt == null ? totalMs : Math.max(0, totalMs - ttftMs)
+    const totalMs = Math.max(Date.now() - start, MIN_LATENCY_MS)
     const outputTokens = usage?.output_tokens
+    if (firstAt == null) {
+        return {
+            totalMs,
+            tps:
+                outputTokens == null
+                    ? undefined
+                    : (outputTokens * 1000) / totalMs
+        }
+    }
+    const ttftMs = Math.max(firstAt - start, MIN_LATENCY_MS)
+    const genMs = Math.max(totalMs - ttftMs, MIN_LATENCY_MS)
     return {
         ttftMs,
         totalMs,
-        tps:
-            outputTokens == null || genMs <= 0
-                ? undefined
-                : Math.min((outputTokens * 1000) / genMs, outputTokens)
+        tps: outputTokens == null ? undefined : (outputTokens * 1000) / genMs
     }
 }
 
