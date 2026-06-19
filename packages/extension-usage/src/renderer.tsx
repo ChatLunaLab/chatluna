@@ -13,29 +13,31 @@ type RenderTheme = Exclude<ChatLunaUsage.TokenTheme, 'auto'>
 
 const CSS = `
 :root {
-    --bg-paper: #fff8ea;
-    --bg-paper-soft: #f9ebd2;
-    --bg-paper-row: #fff1d7;
-    --bg-paper-line: rgba(122, 82, 38, 0.025);
+    --bg-paper: #f8fafc;
+    --bg-paper-soft: #f1f5f9;
+    --bg-paper-row: #e2e8f0;
+    --bg-paper-line: rgba(148, 163, 184, 0.025);
     --bg-paper-dot: rgba(255, 255, 255, 0.65);
     --bg-paper-glow: rgba(255, 255, 255, 0.72);
-    --bg-legend: rgba(255, 242, 216, 0.78);
-    --bg-row: rgba(255, 244, 221, 0.78);
-    --bg-row-track: rgba(165, 128, 82, 0.22);
-    --text-primary: #3d3024;
-    --text-secondary: #6f5b45;
-    --text-muted: #9a7d5e;
-    --border-color: #e7cfaa;
-    --grid-line: #dcc49f;
-    --color-total: #c94f72;
-    --total-shadow: rgba(201, 79, 114, 0.24);
-    --edge-shade: rgba(157, 110, 58, 0.07);
-    --row-border: rgba(218, 183, 132, 0.42);
-    --legend-border: rgba(212, 178, 128, 0.62);
-    --bar-shadow: rgba(88, 56, 27, 0.16);
-    --shadow-paper: 0 22px 46px -28px rgba(107, 72, 36, 0.62), 0 8px 20px -14px rgba(77, 48, 20, 0.42);
-    --shadow-lift: 0 18px 28px -20px rgba(93, 58, 25, 0.48);
-    --shadow-hover: 0 20px 28px -20px rgba(93, 58, 25, 0.58);
+    --bg-legend: rgba(241, 245, 249, 0.78);
+    --bg-row: rgba(241, 245, 249, 0.78);
+    --bg-row-hover: rgba(148, 163, 184, 0.05);
+    --bg-row-track: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --grid-line: #e2e8f0;
+    --color-total: #7e1671;
+    --color-input: #1772b4;
+    --color-output: #20894d;
+    --edge-shade: rgba(148, 163, 184, 0.08);
+    --row-border: rgba(203, 213, 225, 0.42);
+    --legend-border: rgba(203, 213, 225, 0.62);
+    --bar-shadow: transparent;
+    --shadow-paper: none;
+    --shadow-lift: none;
+    --shadow-hover: none;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     color-scheme: light;
 }
@@ -54,13 +56,7 @@ body {
     display: inline-block;
     width: 1000px;
     padding: 32px 38px 34px;
-    background:
-        radial-gradient(circle at 18% 20%, var(--bg-paper-dot) 0 1px, transparent 1px 9px),
-        linear-gradient(145deg, var(--bg-paper-glow), transparent 36%),
-        var(--bg-paper);
-    border: 1px solid var(--border-color);
-    border-radius: 30px 22px 34px 26px;
-    box-shadow: var(--shadow-paper);
+    background: var(--bg-paper);
     color: var(--text-primary);
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans SC", "Microsoft YaHei", sans-serif;
@@ -68,30 +64,53 @@ body {
 }
 
 .stage.theme-dark {
-    --bg-paper: #1b2436;
-    --bg-paper-soft: #27334b;
-    --bg-paper-row: #222e44;
-    --bg-paper-line: rgba(255, 235, 205, 0.035);
-    --bg-paper-dot: rgba(255, 241, 209, 0.08);
-    --bg-paper-glow: rgba(255, 235, 197, 0.1);
-    --bg-legend: rgba(41, 52, 75, 0.88);
-    --bg-row: rgba(36, 47, 68, 0.86);
-    --bg-row-track: rgba(223, 189, 137, 0.16);
-    --text-primary: #fff0d8;
-    --text-secondary: #dec69f;
-    --text-muted: #b5966a;
-    --border-color: #725d3e;
-    --grid-line: #695944;
-    --color-total: #f2c66d;
-    --total-shadow: rgba(242, 198, 109, 0.3);
-    --edge-shade: rgba(255, 211, 144, 0.08);
-    --row-border: rgba(153, 123, 82, 0.44);
-    --legend-border: rgba(153, 123, 82, 0.55);
-    --bar-shadow: rgba(0, 0, 0, 0.24);
-    --shadow-paper: 0 28px 52px -28px rgba(0, 0, 0, 0.62), 0 8px 20px -12px rgba(0, 0, 0, 0.42);
-    --shadow-lift: 0 20px 30px -18px rgba(0, 0, 0, 0.42);
-    --shadow-hover: 0 22px 30px -18px rgba(0, 0, 0, 0.52);
+    --bg-paper: #1e293b;
+    --bg-paper-soft: #334155;
+    --bg-paper-row: #1e293b;
+    --bg-paper-line: rgba(255, 255, 255, 0.015);
+    --bg-paper-dot: rgba(255, 255, 255, 0.02);
+    --bg-paper-glow: rgba(255, 255, 255, 0.03);
+    --bg-legend: rgba(51, 65, 85, 0.88);
+    --bg-row: rgba(30, 41, 59, 0.86);
+    --bg-row-hover: rgba(255, 255, 255, 0.03);
+    --bg-row-track: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border-color: #475569;
+    --grid-line: #334155;
+    --color-total: #c8709c;
+    --color-input: #4a9eda;
+    --color-output: #4ade80;
+    --edge-shade: rgba(255, 255, 255, 0.03);
+    --row-border: rgba(71, 85, 105, 0.44);
+    --legend-border: rgba(71, 85, 105, 0.55);
+    --bar-shadow: transparent;
+    --shadow-paper: none;
+    --shadow-lift: none;
+    --shadow-hover: none;
     color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: transparent;
+}
+
+.stage {
+    position: relative;
+    display: inline-block;
+    width: 1000px;
+    padding: 32px 38px 34px;
+    background: var(--bg-paper);
+    color: var(--text-primary);
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
 
 .stage::after {
@@ -99,10 +118,6 @@ body {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background:
-        linear-gradient(90deg, var(--edge-shade), transparent 12%, transparent 86%, var(--edge-shade)),
-        repeating-linear-gradient(0deg, var(--bg-paper-line) 0 1px, transparent 1px 7px);
-    mix-blend-mode: multiply;
 }
 
 .paper-content {
@@ -134,9 +149,7 @@ body {
     gap: 8px;
     padding: 10px 15px;
     background: var(--bg-paper-soft);
-    border: 1px solid var(--border-color);
-    border-radius: 999px 22px 999px 22px;
-    box-shadow: var(--shadow-lift);
+    border-radius: 10px;
     transform: rotate(0.35deg);
 }
 
@@ -155,58 +168,40 @@ body {
     font-style: normal;
 }
 
-.metrics-grid {
+.stats-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
     margin-bottom: 24px;
 }
 
-.metric-item {
-    position: relative;
-    border: 1px solid var(--border-color);
-    border-radius: 18px 14px 20px 13px;
-    padding: 15px 16px 16px;
-    background: var(--bg-paper-row);
-    box-shadow: var(--shadow-lift);
-    transition:
-        transform 180ms ease,
-        box-shadow 180ms ease;
+.stat-cell {
+    padding: 0 20px;
 }
 
-.metric-item:nth-child(2n) {
-    transform: rotate(0.25deg);
+.stat-cell:first-child {
+    padding-left: 0;
 }
 
-.metric-item:nth-child(2n + 1) {
-    transform: rotate(-0.2deg);
+.stat-cell + .stat-cell {
+    border-left: 1px solid var(--edge-shade);
 }
 
-.metric-item:hover {
-    transform: translateY(-3px) rotate(0deg);
-    box-shadow: var(--shadow-hover);
-}
-
-.metric-item:active {
-    transform: translateY(1px) rotate(0deg);
-    box-shadow: 0 12px 20px -18px rgba(93, 58, 25, 0.46);
-}
-
-.metric-label {
-    font-size: 12px;
-    font-weight: 500;
+.stat-label {
+    font-size: 11px;
+    font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
 }
 
-.metric-value {
-    margin-top: 8px;
-    font-size: 25px;
-    font-weight: 800;
+.stat-value {
+    margin-top: 6px;
+    font-size: 22px;
+    font-weight: 700;
     font-family: var(--font-mono);
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
+    line-height: 1.1;
 }
 
 .chart-container {
@@ -252,22 +247,43 @@ body {
 
 .line-total {
     stroke: var(--color-total);
-    filter: drop-shadow(0 3px 3px var(--total-shadow));
 }
 
-.dot-total {
+.line-input {
+    stroke: var(--color-input);
+}
+
+.line-output {
+    stroke: var(--color-output);
+}
+
+.line-input {
+    stroke: var(--color-input);
+}
+
+.line-output {
+    stroke: var(--color-output);
+}
+
+.bar-outline {
+    stroke: var(--row-border);
+}
+
+.dot-input {
     fill: var(--bg-paper);
     stroke-width: 2;
-    stroke: var(--color-total);
+    stroke: var(--color-input);
+}
+
+.dot-output {
+    fill: var(--bg-paper);
+    stroke-width: 2;
+    stroke: var(--color-output);
 }
 
 .dot-last.dot-total {
     fill: var(--color-total);
     stroke: var(--bg-paper);
-}
-
-.bar-piece {
-    filter: drop-shadow(0 4px 4px var(--bar-shadow));
 }
 
 .bar-outline {
@@ -285,26 +301,12 @@ body {
 .legend-item {
     display: inline-flex;
     align-items: center;
-    padding: 6px 10px;
+    padding: 6px 12px;
     background: var(--bg-legend);
-    border: 1px solid var(--legend-border);
-    border-radius: 999px;
-    box-shadow: 0 10px 16px -14px rgba(93, 58, 25, 0.38);
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
-    transition:
-        transform 160ms ease,
-        box-shadow 160ms ease;
-}
-
-.legend-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 20px -16px rgba(93, 58, 25, 0.5);
-}
-
-.legend-item:active {
-    transform: translateY(1px);
 }
 
 .legend-color-indicator {
@@ -312,9 +314,8 @@ body {
     flex-shrink: 0;
     width: 12px;
     height: 12px;
-    border-radius: 2px;
+    border-radius: 3px;
     background: var(--legend-color);
-    border: 1px solid rgba(0, 0, 0, 0.05);
     margin-right: 8px;
     font-size: 0;
     line-height: 0;
@@ -330,13 +331,12 @@ body {
     place-items: center;
     color: var(--text-muted);
     font-size: 14px;
-    border: 1px dashed var(--border-color);
-    border-radius: 6px;
+    border-radius: 8px;
 }
 
 .plugin-section {
-    margin-top: 24px;
-    padding-top: 22px;
+    margin-top: 28px;
+    padding-top: 24px;
     border-top: 2px dashed rgba(180, 135, 82, 0.38);
 }
 
@@ -344,7 +344,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .section-title-row h2 {
@@ -358,63 +358,51 @@ body {
     padding: 7px 12px;
     color: var(--text-secondary);
     background: var(--bg-paper-soft);
-    border: 1px solid var(--border-color);
-    border-radius: 999px 18px 999px 18px;
-    box-shadow: 0 10px 18px -16px rgba(93, 58, 25, 0.45);
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 700;
 }
 
-.plugin-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 8px;
-    margin-top: 0;
-}
-
-.plugin-table th,
-.plugin-table td {
-    padding: 11px 16px;
-    text-align: left;
-    font-size: 13px;
-}
-
-.plugin-table th {
-    font-weight: 600;
-    color: var(--text-secondary);
-    border-bottom: 1px solid rgba(180, 135, 82, 0.35);
-}
-
-.plugin-table td {
+.plugin-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     background: var(--bg-row);
-    border-top: 1px solid var(--row-border);
-    border-bottom: 1px solid var(--row-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.plugin-list-head,
+.plugin-list-row {
+    display: grid;
+    grid-template-columns: 1fr 240px 160px 120px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+}
+
+.plugin-list-head {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.plugin-list-row {
+    font-size: 13px;
     color: var(--text-primary);
+    background: transparent;
+    transition: background 180ms ease;
 }
 
-.plugin-table td:first-child {
-    border-left: 1px solid var(--row-border);
-    border-radius: 16px 0 0 14px;
+.plugin-list-row + .plugin-list-row {
+    margin-top: 0;
+    border-top: 1px solid var(--row-border);
 }
 
-.plugin-table td:last-child {
-    border-right: 1px solid var(--row-border);
-    border-radius: 0 14px 16px 0;
-}
-
-.plugin-table tbody tr {
-    transition:
-        transform 180ms ease,
-        filter 180ms ease;
-}
-
-.plugin-table tbody tr:hover {
-    transform: translateY(-2px);
-    filter: drop-shadow(0 10px 10px rgba(93, 58, 25, 0.14));
-}
-
-.plugin-table tbody tr:active {
-    transform: translateY(1px);
+.plugin-list-row:hover {
+    background: var(--bg-row-hover);
 }
 
 .plugin-name-cell {
@@ -430,23 +418,24 @@ body {
     height: 8px;
     border-radius: 50%;
     background: var(--accent);
-    margin-right: 8px;
+    margin-right: 10px;
     font-size: 0;
     line-height: 0;
 }
 
 .plugin-progress-wrapper {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    gap: 12px;
+    width: 100%;
 }
 
 .plugin-progress-bar {
-    width: 100px;
-    height: 6px;
+    flex: 1;
+    height: 5px;
     border-radius: 3px;
     background: var(--bg-row-track);
     overflow: hidden;
-    margin-right: 12px;
 }
 
 .plugin-progress-fill {
@@ -469,18 +458,33 @@ body {
 .text-center {
     text-align: center !important;
 }
+
+.footer {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid var(--edge-shade);
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.footer span {
+    font-weight: 700;
+    color: var(--text-secondary);
+}
 `
 
 const MODEL_COLORS = [
-    '#7d82f3',
-    '#1aa6b7',
-    '#f47b3f',
-    '#3ab86a',
-    '#a967e8',
-    '#df6f9f',
-    '#34a889',
-    '#4d91df',
-    '#d99a38'
+    '#b14b28',
+    '#1772b4',
+    '#20894d',
+    '#ebb10d',
+    '#813c85',
+    '#fb8b05',
+    '#12aa9c',
+    '#eb261a',
+    '#918072'
 ]
 
 const CHART = {
@@ -491,7 +495,7 @@ const CHART = {
     top: 20,
     bottom: 48,
     gridLines: 5,
-    maxLabels: 12,
+    maxLabels: 30,
     maxModels: 5,
     minBarWidth: 3,
     maxBarWidth: 28
@@ -506,9 +510,12 @@ const OTHER_PLUGIN_NAME = '其他插件'
 
 function formatNum(value: number) {
     if (value >= 1000000) {
-        return (value / 1000000).toFixed(2) + 'M'
+        return (value / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
     }
-    return value.toLocaleString('en-US')
+    if (value >= 1000) {
+        return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+    }
+    return value.toString()
 }
 
 function monotonePath(pts: Coord[]) {
@@ -609,7 +616,12 @@ function getChartLayout(points: ChatLunaUsage.TokenPoint[]) {
     const plotWidth = CHART.width - CHART.left - CHART.right
     const plotHeight = CHART.height - CHART.top - CHART.bottom
     const baseline = CHART.top + plotHeight
-    const max = Math.max(1, ...points.map((p) => p.tokens))
+    const max = Math.max(
+        1,
+        ...points.map((p) => p.tokens),
+        ...points.map((p) => p.inputTokens),
+        ...points.map((p) => p.outputTokens)
+    )
     const stepX =
         points.length > 1 ? plotWidth / (points.length - 1) : plotWidth
     const barWidth = Math.max(
@@ -618,16 +630,22 @@ function getChartLayout(points: ChatLunaUsage.TokenPoint[]) {
     )
     const safePadding = barWidth / 2 + 4
     const drawWidth = plotWidth - safePadding * 2
-    const totalCoords = points.map((point, idx) => ({
-        x:
-            points.length === 1
-                ? CHART.left + plotWidth / 2
-                : CHART.left +
-                  safePadding +
-                  (drawWidth * idx) / (points.length - 1),
-        y: baseline - (point.tokens / max) * plotHeight,
-        point
-    }))
+
+    const makeCoords = (key: keyof ChatLunaUsage.TokenPoint) =>
+        points.map((point, idx) => ({
+            x:
+                points.length === 1
+                    ? CHART.left + plotWidth / 2
+                    : CHART.left +
+                      safePadding +
+                      (drawWidth * idx) / (points.length - 1),
+            y: baseline - ((point[key] as number) / max) * plotHeight,
+            point
+        }))
+
+    const totalCoords = makeCoords('tokens')
+    const inputCoords = makeCoords('inputTokens')
+    const outputCoords = makeCoords('outputTokens')
 
     return {
         plotWidth,
@@ -639,6 +657,10 @@ function getChartLayout(points: ChatLunaUsage.TokenPoint[]) {
         drawWidth,
         totalCoords,
         totalLine: monotonePath(totalCoords),
+        inputCoords,
+        inputLine: monotonePath(inputCoords),
+        outputCoords,
+        outputLine: monotonePath(outputCoords),
         stepLabel: Math.max(1, Math.ceil(points.length / CHART.maxLabels))
     }
 }
@@ -750,20 +772,6 @@ function renderBars(
     })
 }
 
-function renderLineDots(coords: Coord[]) {
-    return coords.map((c, idx) => {
-        const last = idx === coords.length - 1
-        return (
-            <circle
-                class={last ? 'dot-total dot-last' : 'dot-total'}
-                cx={c.x}
-                cy={c.y}
-                r={last ? 5.5 : 4}
-            />
-        )
-    })
-}
-
 function renderAxisLabels(coords: Coord[], stepLabel: number) {
     return coords.map((c, idx) => {
         const shouldShowLabel =
@@ -807,11 +815,16 @@ function chart(
             role="img"
         >
             {renderGrid(layout)}
-            {showBar && renderBars(points, info, layout)}
-            {showLine && layout.totalLine && (
+            {showBar ? renderBars(points, info, layout) : null}
+            {showLine && layout.totalLine ? (
                 <path class="line line-total" d={layout.totalLine} />
-            )}
-            {mode === 'line' && renderLineDots(layout.totalCoords)}
+            ) : null}
+            {mode === 'line' && layout.inputLine ? (
+                <path class="line line-input" d={layout.inputLine} />
+            ) : null}
+            {mode === 'line' && layout.outputLine ? (
+                <path class="line line-output" d={layout.outputLine} />
+            ) : null}
             {renderAxisLabels(layout.totalCoords, layout.stepLabel)}
         </svg>
     )
@@ -839,76 +852,59 @@ function pluginSection(plugins?: ChatLunaUsage.TokenReport['plugins']) {
     return (
         <section class="plugin-section">
             <div class="section-title-row">
-                <h2>各插件用量明细</h2>
-                <span class="sort-chip">按 Token 占比降序排列</span>
+                <h2>用量明细</h2>
+                <span class="sort-chip">按 Token 使用降序排列</span>
             </div>
-            <table class="plugin-table">
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">来源插件</th>
-                        <th class="text-center" style="width: 220px;">
-                            用量占比
-                        </th>
-                        <th class="text-center" style="width: 180px;">
-                            总 Token 消耗
-                        </th>
-                        <th class="text-center" style="width: 140px;">
-                            调用次数
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {displayPlugins.map((plugin, idx) => {
-                        const isOther = plugin.source === OTHER_PLUGIN_NAME
-                        const color = isOther
-                            ? OTHER_COLOR
-                            : MODEL_COLORS[idx % MODEL_COLORS.length]
-                        const ratio = (plugin.tokens / total) * 100
-                        return (
-                            <tr>
-                                <td>
-                                    <div class="plugin-name-cell">
-                                        <span
-                                            class="plugin-indicator"
-                                            style={`--accent:${color}`}
-                                        >
-                                            {' '}
-                                        </span>
-                                        {plugin.source}
-                                    </div>
-                                </td>
-                                <td class="text-center">
+            <div class="plugin-list-head">
+                <span>来源插件</span>
+                <span class="text-center">用量占比</span>
+                <span class="text-right">Token 使用</span>
+                <span class="text-right">请求次数</span>
+            </div>
+            <ul class="plugin-list">
+                {displayPlugins.map((plugin, idx) => {
+                    const isOther = plugin.source === OTHER_PLUGIN_NAME
+                    const color = isOther
+                        ? OTHER_COLOR
+                        : MODEL_COLORS[idx % MODEL_COLORS.length]
+                    const ratio = (plugin.tokens / total) * 100
+                    return (
+                        <li class="plugin-list-row">
+                            <div class="plugin-name-cell">
+                                <span
+                                    class="plugin-indicator"
+                                    style={`--accent:${color}`}
+                                >
+                                    {' '}
+                                </span>
+                                {plugin.source}
+                            </div>
+                            <div class="plugin-progress-wrapper">
+                                <div class="plugin-progress-bar">
                                     <div
-                                        class="plugin-progress-wrapper"
-                                        style="justify-content: center;"
+                                        class="plugin-progress-fill"
+                                        style={`--accent:${color}; width:${Math.max(1, Math.min(100, ratio))}%`}
                                     >
-                                        <div class="plugin-progress-bar">
-                                            <div
-                                                class="plugin-progress-fill"
-                                                style={`--accent:${color}; width:${Math.max(1, Math.min(100, ratio))}%`}
-                                            >
-                                                {' '}
-                                            </div>
-                                        </div>
-                                        <span
-                                            class="plugin-number"
-                                            style="min-width: 45px;"
-                                        >
-                                            {ratio.toFixed(1)}%
-                                        </span>
+                                        {' '}
                                     </div>
-                                </td>
-                                <td class="plugin-number text-center">
-                                    {formatNum(plugin.tokens)}
-                                </td>
-                                <td class="plugin-number text-center">
-                                    {formatNum(plugin.calls)}
-                                </td>
-                            </tr>
-                        )
-                    })}
-                </tbody>
-            </table>
+                                </div>
+                                <span
+                                    class="plugin-number"
+                                    style="min-width: 48px;"
+                                >
+                                    {ratio.toFixed(1)}%
+                                </span>
+                            </div>
+                            <span class="plugin-number text-right">
+                                {formatNum(plugin.tokens)}
+                            </span>
+                            <span class="plugin-number text-right">
+                                {formatNum(plugin.calls)}
+                            </span>
+                        </li>
+                    )
+                })}
+            </ul>
         </section>
     )
 }
@@ -922,7 +918,7 @@ function renderLegend(
 
     return (
         <div class="chart-legend">
-            {showLine && (
+            {mode === 'line' ? (
                 <div class="legend-item">
                     <span
                         class="legend-color-indicator legend-total-indicator"
@@ -932,19 +928,53 @@ function renderLegend(
                     </span>
                     总 Token
                 </div>
-            )}
-            {showBar &&
-                Object.entries(info.colorMap).map(([model, color]) => (
-                    <div class="legend-item">
-                        <span
-                            class="legend-color-indicator"
-                            style={`--legend-color:${color}`}
-                        >
-                            {' '}
-                        </span>
-                        {model}
-                    </div>
-                ))}
+            ) : null}
+            {mode === 'line' ? (
+                <div class="legend-item">
+                    <span
+                        class="legend-color-indicator legend-total-indicator"
+                        style="--legend-color:var(--color-input)"
+                    >
+                        {' '}
+                    </span>
+                    输入 Token
+                </div>
+            ) : null}
+            {mode === 'line' ? (
+                <div class="legend-item">
+                    <span
+                        class="legend-color-indicator legend-total-indicator"
+                        style="--legend-color:var(--color-output)"
+                    >
+                        {' '}
+                    </span>
+                    输出 Token
+                </div>
+            ) : null}
+            {mode === 'both' && showLine ? (
+                <div class="legend-item">
+                    <span
+                        class="legend-color-indicator legend-total-indicator"
+                        style="--legend-color:var(--color-total)"
+                    >
+                        {' '}
+                    </span>
+                    总 Token
+                </div>
+            ) : null}
+            {showBar
+                ? Object.entries(info.colorMap).map(([model, color]) => (
+                      <div class="legend-item">
+                          <span
+                              class="legend-color-indicator"
+                              style={`--legend-color:${color}`}
+                          >
+                              {' '}
+                          </span>
+                          {model}
+                      </div>
+                  ))
+                : null}
         </div>
     )
 }
@@ -969,16 +999,14 @@ function pageHtml(
                         name="viewport"
                         content="width=device-width, initial-scale=1.0"
                     />
-                    <title>Chatluna Token 消耗分析</title>
+                    <title>ChatLuna Token 用量</title>
                     <style>{CSS}</style>
                 </head>
                 <body>
                     <div class={`stage theme-${theme}`}>
                         <main class="paper-content">
                             <header class="hero-header">
-                                <h1 class="hero-title">
-                                    Chatluna Token 消耗分析
-                                </h1>
+                                <h1 class="hero-title">ChatLuna Token 用量</h1>
                                 <div class="time-strip">
                                     <span class="time-label">统计周期</span>
                                     <strong class="time-value">
@@ -991,34 +1019,28 @@ function pageHtml(
                                 </div>
                             </header>
 
-                            <section class="metrics-grid">
-                                <div class="metric-item">
-                                    <div class="metric-label">
-                                        累计消耗 Token
-                                    </div>
-                                    <div class="metric-value">
+                            <section class="stats-row">
+                                <div class="stat-cell">
+                                    <div class="stat-label">使用 Token</div>
+                                    <div class="stat-value">
                                         {formatNum(data.totalTokens)}
                                     </div>
                                 </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">累计请求次数</div>
-                                    <div class="metric-value">
+                                <div class="stat-cell">
+                                    <div class="stat-label">请求次数</div>
+                                    <div class="stat-value">
                                         {formatNum(data.calls)}
                                     </div>
                                 </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">
-                                        TPM 峰值 (每分钟)
-                                    </div>
-                                    <div class="metric-value">
+                                <div class="stat-cell">
+                                    <div class="stat-label">TPM 峰值</div>
+                                    <div class="stat-value">
                                         {formatNum(data.tpm)}
                                     </div>
                                 </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">
-                                        RPM 峰值 (每分钟)
-                                    </div>
-                                    <div class="metric-value">
+                                <div class="stat-cell">
+                                    <div class="stat-label">RPM 峰值</div>
+                                    <div class="stat-value">
                                         {formatNum(data.rpm)}
                                     </div>
                                 </div>
@@ -1029,6 +1051,10 @@ function pageHtml(
                                 {renderLegend(info, mode)}
                             </section>
                             {pluginSection(data.plugins)}
+                            <footer class="footer">
+                                Generated by <span>ChatLuna</span> &amp;{' '}
+                                <span>Koishi</span>
+                            </footer>
                         </main>
                     </div>
                 </body>

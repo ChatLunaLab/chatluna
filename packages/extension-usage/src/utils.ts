@@ -24,6 +24,11 @@ export function summary(
     }
 }
 
+export function calculateTheme(): Exclude<ChatLunaUsage.TokenTheme, 'auto'> {
+    const currentHours = new Date().getHours()
+    return currentHours < 6 || currentHours >= 18 ? 'dark' : 'light'
+}
+
 export async function queryUsage(ctx: Context, source?: string) {
     const result = await ctx.chatluna_usage.query({ groupBy: 'source' })
     if (!source) return result.groups
@@ -161,6 +166,8 @@ export namespace ChatLunaUsage {
     export interface TokenPoint {
         label: string
         tokens: number
+        inputTokens: number
+        outputTokens: number
         models: { [model: string]: number }
     }
 
@@ -253,7 +260,7 @@ export namespace ChatLunaUsage {
             Schema.const('bar').description('仅柱状图')
         ])
             .description('tokens命令渲染出的图表展示模式')
-            .default('both')
+            .default('bar')
             .role('select')
     })
 
