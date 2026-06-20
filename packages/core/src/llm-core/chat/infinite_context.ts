@@ -33,6 +33,7 @@ export interface CompressContextOptions {
     threshold?: number
     force?: boolean
     signal?: AbortSignal
+    instruction?: string
 }
 
 /**
@@ -108,7 +109,8 @@ export async function compressIfNeeded(
         model,
         transcript,
         conversationId,
-        opts.signal
+        opts.signal,
+        opts.instruction
     )
     if (!summary?.text.trim()) return noCompressResult()
 

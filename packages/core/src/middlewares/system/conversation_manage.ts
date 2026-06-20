@@ -742,7 +742,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const result =
                 await ctx.chatluna.conversationRuntime.compressConversation(
                     conversation,
-                    context.options.force === true
+                    context.options.force === true,
+                    context.options.conversation_compress?.instruction
                 )
 
             context.message = session.text(

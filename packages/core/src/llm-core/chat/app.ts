@@ -393,7 +393,10 @@ export class ChatInterface {
         await this._chain?.value?.model.clearContext(this._input.conversationId)
     }
 
-    async compressContext(force = false): Promise<CompressContextResult> {
+    async compressContext(
+        force = false,
+        instruction?: string
+    ): Promise<CompressContextResult> {
         const wrapper = await this.getChatLunaLLMChainWrapper()
         if (!this._chatHistory) {
             throw new ChatLunaError(
@@ -408,7 +411,8 @@ export class ChatInterface {
             conversationId: this._input.conversationId,
             preset: this._input.preset,
             threshold: this.chatluna.currentConfig.infiniteContextThreshold,
-            force
+            force,
+            instruction
         })
         if (result.messages) {
             await this._chatHistory.replaceMessages(result.messages)

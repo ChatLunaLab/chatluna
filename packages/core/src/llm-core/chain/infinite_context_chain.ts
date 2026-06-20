@@ -22,6 +22,9 @@ Focus on information that would be helpful for continuing the conversation, incl
 - Important technical decisions and why they were made
 - Tool calls that were made and their results (summarize the key outcomes)
 
+Additional user instructions for this compression:
+{instruction}
+
 Some old tool result messages may say that the original tool output expired and was removed.
 Treat those as intentional retention placeholders, not as meaningful tool output.
 
@@ -36,7 +39,8 @@ export async function compressChunk(
     model: ChatLunaChatModel,
     transcript: string,
     conversationId: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    instruction?: string
 ): Promise<CompressChunkResult | null> {
     const trimmed = transcript?.trim()
 
@@ -48,6 +52,7 @@ export async function compressChunk(
 
     const result = await chain.invoke({
         conversation_chunk: trimmed,
+        instruction: instruction?.trim() || 'None',
         id: conversationId,
         stream: false,
         signal
