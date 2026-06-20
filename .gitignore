@@ -14,10 +14,12 @@ tsconfig.temp.json
 .idea
 .vscode
 .chatluna
+.tmp
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
+.tmp
 
 packages/*/node_modules
 packages/*/dist

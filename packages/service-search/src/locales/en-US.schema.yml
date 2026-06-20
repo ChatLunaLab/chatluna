@@ -6,10 +6,6 @@ $inner:
       topK: 'Number of reference results (2-50)'
       enhancedSummary: 'Enable enhanced summary'
       fastEnhancedSummary: 'Enable fast enhanced summary. This will not call the model and directly return the search results. (Requires a larger context model)'
-      browserTimeout: 'Browser operation timeout (ms)'
-      browserIdleTimeout: 'Browser idle timeout (ms)'
-      browserMaxPages: 'Maximum browser pages per conversation'
-      browserOutputLimit: 'Maximum browser tool output length before saving to file'
       contextualCompression: 'Enable contextual compression. Will compress the search results based on the selected summary model.'
       summaryModel: 'Model used for generating summaries. Opting for a smaller and faster model can yield quicker responses.'
       summaryType:
@@ -25,6 +21,12 @@ $inner:
               - 'Average mode. Takes an average number of search results from each source.'
               - 'Sum mode. Combines search results from multiple sources and takes the top K results.'
 
+    - $desc: 'Browser Settings'
+      enableBrowser: 'Enable browser features. Required for browser tools, URL browsing, Bing (Web), and Google (Web).'
+      browserTimeout: 'Browser operation timeout (ms)'
+      browserIdleTimeout: 'Browser idle timeout (ms)'
+      browserMaxPages: 'Maximum browser pages per conversation'
+      browserOutputLimit: 'Maximum browser tool output length before saving to file'
 
     - $desc: 'Serper Settings'
       serperApiKey: 'Serper API key'

@@ -11,12 +11,14 @@ export class TaskTool extends StructuredTool {
     schema = z
         .object({
             action: z
-                .enum(['run', 'status', 'list', 'message'])
+                .enum(['run', 'status', 'list', 'list_all', 'message', 'stop'])
                 .optional()
                 .describe(
                     'run starts or resumes a sub-agent task, status inspects ' +
                         'one task, list shows recent tasks in this conversation, ' +
-                        'message sends live guidance to a running background task.'
+                        'list_all shows every task, message sends live guidance ' +
+                        'to a running background task, stop aborts a running ' +
+                        'background task.'
                 ),
             agent: z
                 .string()
@@ -36,7 +38,15 @@ export class TaskTool extends StructuredTool {
                 .string()
                 .optional()
                 .describe(
-                    'The delegated task or follow-up instruction. Required when action is run.'
+                    'The delegated task or follow-up instruction. Required ' +
+                        'when action is run. Use goal for the structured ' +
+                        'Markdown objective.'
+                ),
+            goal: z
+                .string()
+                .optional()
+                .describe(
+                    'Markdown goal block for the sub-agent. Include objective, scope, success criteria, expected output, and constraints.'
                 ),
             reason: z
                 .string()
@@ -67,13 +77,16 @@ export class TaskTool extends StructuredTool {
             }
 
             if (
-                (action === 'status' || action === 'message') &&
+                (action === 'status' ||
+                    action === 'message' ||
+                    action === 'stop') &&
                 !input.id?.trim()
             ) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ['id'],
-                    message: 'id is required when action is status or message.'
+                    message:
+                        'id is required when action is status, message, or stop.'
                 })
             }
 

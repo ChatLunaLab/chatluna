@@ -86,7 +86,7 @@ export function apply(
     plugin: ChatLunaPlugin,
     manager: SearchManager
 ) {
-    if (config.searchEngine.includes('bing-web')) {
+    if (config.enableBrowser && config.searchEngine.includes('bing-web')) {
         manager.addProvider(new BingWebSearchProvider(ctx, config, plugin))
     }
 }

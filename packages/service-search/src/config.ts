@@ -32,6 +32,7 @@ export interface Config extends ChatLunaPlugin.Config {
 
     searxngBaseURL: string
 
+    enableBrowser: boolean
     browserTimeout: number
     browserIdleTimeout: number
     browserMaxPages: number
@@ -65,10 +66,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .default(['bing-web'])
             .role('select'),
         topK: Schema.number().min(2).max(50).step(1).default(5),
-        browserTimeout: Schema.number().default(60000),
-        browserIdleTimeout: Schema.number().default(300000),
-        browserMaxPages: Schema.number().min(1).max(20).default(6),
-        browserOutputLimit: Schema.number().min(1000).default(12000),
         summaryType: Schema.union([
             Schema.const('speed'),
             Schema.const('balanced'),
@@ -82,6 +79,14 @@ export const Config: Schema<Config> = Schema.intersect([
 
         searchThreshold: Schema.percent().step(0.01).default(0.25),
         contextualCompression: Schema.boolean().default(false)
+    }),
+
+    Schema.object({
+        enableBrowser: Schema.boolean().default(true),
+        browserTimeout: Schema.number().default(60000),
+        browserIdleTimeout: Schema.number().default(300000),
+        browserMaxPages: Schema.number().min(1).max(20).default(6),
+        browserOutputLimit: Schema.number().min(1000).default(12000)
     }),
 
     Schema.object({

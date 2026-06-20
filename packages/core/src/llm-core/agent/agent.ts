@@ -279,26 +279,23 @@ export function createPromptPreset(
     system?: string,
     preset?: ComputedRef<PresetTemplate>
 ): ComputedRef<PresetTemplate> {
-    if (preset) {
-        return preset
-    }
-
-    return computed(
-        () =>
-            ({
-                triggerKeyword: [name],
-                rawText: system ?? '',
-                messages: system ? [new SystemMessage(system)] : [],
-                config: {}
-            }) satisfies PresetTemplate
+    return (
+        preset ??
+        computed(
+            () =>
+                ({
+                    triggerKeyword: [name],
+                    rawText: system ?? '',
+                    messages: system ? [new SystemMessage(system)] : [],
+                    config: {}
+                }) satisfies PresetTemplate
+        )
     )
 }
 
 class AgentTool extends StructuredTool {
     name: string
-
     description: string
-
     schema: z.ZodTypeAny
 
     private _agent: ChatLunaAgent
@@ -317,9 +314,7 @@ class AgentTool extends StructuredTool {
     }
 
     async _call(
-        input: {
-            prompt: string
-        },
+        input: { prompt: string },
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
@@ -342,59 +337,41 @@ class AgentTool extends StructuredTool {
 }
 
 function createAsyncQueue<T>() {
-    const values: T[] = []
+    const queue: T[] = []
     let done = false
     let error: unknown
-    let wait = createWaiter()
+    let nextResolve: (() => void) | null = null
 
     return {
         push(value: T) {
-            if (done) {
-                return
-            }
-
-            values.push(value)
-            wait.resolve()
+            if (done) return
+            queue.push(value)
+            nextResolve?.()
         },
         close() {
             done = true
-            wait.resolve()
+            nextResolve?.()
         },
         fail(err: unknown) {
             error = err
             done = true
-            wait.resolve()
+            nextResolve?.()
         },
         async *iterate(): AsyncGenerator<T> {
             while (true) {
-                if (values.length > 0) {
-                    yield values.shift()
+                if (queue.length > 0) {
+                    yield queue.shift()!
                     continue
                 }
-
                 if (done) {
-                    if (error) {
-                        throw error
-                    }
-
+                    if (error) throw error
                     return
                 }
-
-                await wait.promise
-                wait = createWaiter()
+                await new Promise<void>((resolve) => {
+                    nextResolve = resolve
+                })
+                nextResolve = null
             }
         }
-    }
-}
-
-function createWaiter() {
-    let finish!: () => void
-    const promise = new Promise<void>((resolve) => {
-        finish = resolve
-    })
-
-    return {
-        promise,
-        resolve: finish
     }
 }

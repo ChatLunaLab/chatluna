@@ -27,15 +27,10 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
     lc_namespace = ['chatluna', 'agent']
 
     agent: Runnable
-
     tools: StructuredTool[]
-
     returnIntermediateSteps = false
-
     maxIterations?: number
-
     handleParsingErrors?: boolean | string | ((e: Error) => string)
-
     handleToolRuntimeErrors?: (e: Error) => string
 
     constructor(fields: AgentRunnerInput) {
@@ -58,9 +53,9 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
         runManager?: CallbackManagerForChainRun
     ): AsyncGenerator<AgentRunnerOutput> {
         const configurable = (config?.configurable ??
-            {}) as AgentRunnerConfigurable
+            {}) as AgentRuntimeConfigurable
 
-        const runner = runAgent({
+        for await (const event of runAgent({
             agent: this.agent,
             tools: this.tools,
             input,
@@ -69,9 +64,7 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
             handleParsingErrors: this.handleParsingErrors,
             handleToolRuntimeErrors: this.handleToolRuntimeErrors,
             config
-        })
-
-        for await (const event of runner) {
+        })) {
             if (event.type === 'tool-call') {
                 for (const action of event.actions) {
                     await runManager?.handleAgentAction(action)
@@ -81,30 +74,18 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
             await emitAgentEvent(runManager, configurable, event)
             await configurable.onAgentEvent?.(event)
 
-            if (event.type !== 'done') {
-                continue
-            }
+            if (event.type !== 'done') continue
 
             const returnValues = event.message
-                ? {
-                      output: event.output,
-                      message: event.message
-                  }
-                : {
-                      output: event.output
-                  }
+                ? { output: event.output, message: event.message }
+                : { output: event.output }
 
-            await runManager?.handleAgentEnd({
-                returnValues,
-                log: event.log
-            })
+            await runManager?.handleAgentEnd({ returnValues, log: event.log })
 
             yield {
                 output: event.output,
                 ...(this.returnIntermediateSteps
-                    ? {
-                          intermediateSteps: event.steps
-                      }
+                    ? { intermediateSteps: event.steps }
                     : {}),
                 message: event.message ?? new AIMessage(event.output)
             }
@@ -176,11 +157,7 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
 }
 
 export const AgentExecutor = AgentRunner
-
 export type AgentExecutor = AgentRunner
 
 export type AgentRunnerInput = AgentExecutorInput
-
 export type AgentRunnerOutput = AgentExecutorOutput
-
-type AgentRunnerConfigurable = AgentRuntimeConfigurable

@@ -475,12 +475,11 @@ function assignSnapshotIds(
     nextId: () => string
 ): BrowserSnapshotNode {
     const uid = nextId()
-    const node = Object.assign(Object.create(Object.getPrototypeOf(raw)), raw, {
-        uid,
-        children: (raw.children ?? []).map((child) =>
-            assignSnapshotIds(child, nodes, nextId)
-        )
-    }) as BrowserSnapshotNode
+    const node = raw as BrowserSnapshotNode
+    node.uid = uid
+    node.children = (raw.children ?? []).map((child) =>
+        assignSnapshotIds(child, nodes, nextId)
+    )
     nodes.set(uid, node)
     return node
 }

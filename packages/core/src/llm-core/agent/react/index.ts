@@ -6,10 +6,10 @@ import {
     RunnablePassthrough,
     RunnableSequence
 } from '@langchain/core/runnables'
-import { AgentStep } from '@langchain/core/agents'
 import { ReActMultiInputOutputParser } from './output_parser'
 import { renderTextDescriptionAndArgs } from '../render'
 import { FORMAT_INSTRUCTIONS } from './prompt'
+import type { AgentStep, ScratchpadEntry } from '../types'
 import type { ChatLunaChatModel } from '../../platform/model'
 import type { ChatLunaChatPrompt } from '../../chain/prompt'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
@@ -113,8 +113,10 @@ export function createReactAgent({
         [
             RunnablePassthrough.assign({
                 // eslint-disable-next-line @typescript-eslint/naming-convention
-                agent_scratchpad: (input: { steps: AgentStep[] }) =>
-                    formatLogToString(input.steps)
+                agent_scratchpad: (input: {
+                    steps: AgentStep[]
+                    scratchpadEntries?: ScratchpadEntry[]
+                }) => formatLogToString(input.scratchpadEntries ?? input.steps)
             }),
             prompt,
             llm,
@@ -149,35 +151,46 @@ export function createReactAgent({
  * @returns a string with the formatted observations and agent logs
  */
 export function formatLogToString(
-    intermediateSteps: AgentStep[],
+    intermediateSteps: ScratchpadEntry[],
     observationPrefix = 'Observation: ',
     llmPrefix = ''
 ): string {
-    const formattedSteps = intermediateSteps.reduce(
-        (thoughts, { action, observation }) => {
-            const buffer: string[] = []
+    const formattedSteps = intermediateSteps.reduce((thoughts, step) => {
+        if ('messages' in step) {
+            const text = step.messages
+                .map((msg) => {
+                    const content =
+                        typeof msg.content === 'string'
+                            ? msg.content
+                            : JSON.stringify(msg.content)
+                    return `[Human Update]: ${content}`
+                })
+                .join('\n')
+            return thoughts + `\n${text}\n`
+        }
 
-            if (action.log) {
-                buffer.push(`<thought>${action.log}</thought>`)
-            }
+        const { action, observation } = step
+        const buffer: string[] = []
 
-            if (action.toolInput) {
-                buffer.push(
-                    `<tool_calling>${JSON.stringify({
+        if (action.log) {
+            buffer.push(`<thought>${action.log}</thought>`)
+        }
+
+        if (action.toolInput) {
+            buffer.push(
+                `<tool_calling>${JSON.stringify([
+                    {
                         name: action.tool,
                         arguments: action.toolInput
-                    })}</tool_calling>`
-                )
-            }
-
-            return (
-                thoughts +
-                [...buffer, `\n${observationPrefix}${observation}\n`].join(
-                    '\n\n'
-                )
+                    }
+                ])}</tool_calling>`
             )
-        },
-        ''
-    )
+        }
+
+        return (
+            thoughts +
+            [...buffer, `\n${observationPrefix}${observation}\n`].join('\n\n')
+        )
+    }, '')
     return formattedSteps
 }

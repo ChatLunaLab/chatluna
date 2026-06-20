@@ -34,7 +34,7 @@ export class SearchTool extends Tool {
 
     constructor(
         private searchManager: SearchManager,
-        private browser: BrowserManager,
+        private browser: BrowserManager | undefined,
         private embeddings: Embeddings,
         llm: ComputedRef<ChatLunaChatModel>,
         private summaryType: SummaryType
@@ -138,6 +138,8 @@ export class SearchTool extends Tool {
         if (result.description && result.description.length >= 500) {
             return result.description
         }
+
+        if (!this.browser) return result.description
 
         const text = await (async () => {
             try {
