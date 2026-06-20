@@ -44,12 +44,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const wakeup = context.options.triggerWakeup
             const existing = context.options.conversation
             const resolved =
-                existing?.conversation != null
+                existing?.mode === 'active' && existing.conversation != null
                     ? existing
                     : await ctx.chatluna.conversation.ensureActiveConversation(
                           session,
                           {
-                              conversationId: existing?.conversationId,
+                              conversationId:
+                                  existing?.conversationId ??
+                                  existing?.conversation?.id,
                               bindingKey: existing?.bindingKey,
                               presetLane: existing?.presetLane,
                               useRoutePresetLane: false
