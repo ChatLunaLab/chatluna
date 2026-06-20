@@ -102,8 +102,9 @@ commands:
         compress:
             description: Compress a conversation without referencing rooms.
             arguments:
-                conversation: Target conversation by seq, ID, or title.
+                instruction: Extra compression instruction.
             options:
+                conversation: Target conversation by seq, ID, or title.
                 preset: Preset lane.
                 archived: Include archived conversations.
                 all: Include archived conversations.

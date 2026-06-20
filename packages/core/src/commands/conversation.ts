@@ -180,16 +180,18 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         })
 
     const compressCommand = ctx.command(
-        'chatluna.compress [conversation:string]',
+        'chatluna.compress [instruction:text]',
         {
             authority: 1
         }
     )
     compressCommand
+        .alias('chatluna.compact')
+        .option('conversation', '-c <conversation:string>')
         .option('preset', '-p <preset:string>')
         .option('archived', '-a')
         .option('all', '--all')
-        .action(async ({ options, session }, conversation) => {
+        .action(async ({ options, session }, instruction) => {
             const presetLane = options.preset?.trim() || undefined
             const includeArchived =
                 options.archived === true || options.all === true
@@ -200,9 +202,13 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                     force: true,
                     allPresetLanes: presetLane == null,
                     conversation_manage: {
-                        targetConversation: conversation?.trim() || undefined,
+                        targetConversation:
+                            options.conversation?.trim() || undefined,
                         presetLane,
                         includeArchived
+                    },
+                    conversation_compress: {
+                        instruction: instruction?.trim() || undefined
                     },
                     i18n_base: 'commands.chatluna.compress.messages'
                 },
@@ -439,6 +445,9 @@ declare module '../chains/chain' {
             force?: boolean
             newOnly?: boolean
             clear?: boolean
+        }
+        conversation_compress?: {
+            instruction?: string
         }
         i18n_base?: string
     }

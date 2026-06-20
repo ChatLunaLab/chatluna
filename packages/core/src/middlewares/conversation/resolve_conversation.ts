@@ -116,7 +116,7 @@ const TARGET_SUFFIX_BY_COMMAND: Record<string, string> = {
     conversation_archive: 'commands.chatluna.archive.arguments.conversation',
     conversation_restore: 'commands.chatluna.restore.arguments.conversation',
     conversation_export: 'commands.chatluna.export.arguments.conversation',
-    conversation_compress: 'commands.chatluna.compress.arguments.conversation',
+    conversation_compress: 'commands.chatluna.compress.options.conversation',
     conversation_delete: 'commands.chatluna.delete.arguments.conversation'
 }
 

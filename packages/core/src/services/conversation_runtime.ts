@@ -428,11 +428,12 @@ export class ConversationRuntime {
 
     async compressConversation(
         conversation: ConversationRecord,
-        force = false
+        force = false,
+        instruction?: string
     ) {
         return this.withConversationAndPlatformLock(conversation, async () => {
             const chatInterface = await this.ensureChatInterface(conversation)
-            return await chatInterface.compressContext(force)
+            return await chatInterface.compressContext(force, instruction)
         })
     }
 

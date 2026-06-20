@@ -102,8 +102,9 @@ commands:
         compress:
             description: 在不引用房间的情况下压缩一个会话。
             arguments:
-                conversation: 目标会话，可使用序号、ID 或标题。
+                instruction: 额外压缩要求。
             options:
+                conversation: 目标会话，可使用序号、ID 或标题。
                 preset: 预设分流。
                 archived: 包含已归档会话。
                 all: 包含已归档会话。
