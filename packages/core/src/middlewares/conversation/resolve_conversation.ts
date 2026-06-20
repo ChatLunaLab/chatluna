@@ -11,6 +11,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_conversation', async (session, context) => {
             const { options } = context
+            if (options.conversation?.conversation != null) {
+                return ChainMiddlewareRunStatus.CONTINUE
+            }
+
             const presetLane =
                 options.conversation_manage?.presetLane ?? options.presetLane
             const targetConversation =

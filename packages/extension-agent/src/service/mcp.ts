@@ -34,13 +34,13 @@ export class ChatLunaAgentMcpService {
 
     async start() {
         this._stopped = false
-        this.ctx.logger.info('Starting MCP service')
+        logger.info('Starting MCP service')
 
         if (
             !this.config.mcp.mcpServers ||
             Object.keys(this.config.mcp.mcpServers).length === 0
         ) {
-            this.ctx.logger.warn('No MCP servers available')
+            logger.warn('No MCP servers available')
             this.ctx.chatluna_agent?.refreshConsoleData()
             return
         }
@@ -52,9 +52,7 @@ export class ChatLunaAgentMcpService {
             })
         )
 
-        this.ctx.logger.info(
-            `MCP service started with ${this._disposers.size} tool(s)`
-        )
+        logger.info(`MCP service started with ${this._disposers.size} tool(s)`)
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
@@ -240,7 +238,7 @@ export class ChatLunaAgentMcpService {
         }
 
         const task = (async () => {
-            this.ctx.logger.debug(`Connecting to server ${name}`)
+            logger.debug(`Connecting to server ${name}`)
             const srv = this._servers.get(name)
             if (srv) {
                 srv.state = reconnecting ? 'reconnecting' : 'connecting'
@@ -274,7 +272,7 @@ export class ChatLunaAgentMcpService {
 
                 await this._registerTools(client, name)
                 this.ctx.chatluna_agent?.refreshConsoleData()
-                this.ctx.logger.debug(`MCP client connected: ${name}`)
+                logger.debug(`MCP client connected: ${name}`)
                 return true
             } catch (error) {
                 await this._fail(
@@ -282,10 +280,7 @@ export class ChatLunaAgentMcpService {
                     cfg,
                     error instanceof Error ? error.message : String(error)
                 )
-                this.ctx.logger.error(
-                    `Failed to connect to server ${name}`,
-                    error
-                )
+                logger.error(`Failed to connect to server ${name}`, error)
                 return false
             }
         })()
@@ -404,6 +399,8 @@ export class ChatLunaAgentMcpService {
         this._disposeTools(serverName)
 
         const names = new Set<string>()
+        const registered: string[] = []
+        const disabled: string[] = []
 
         for (const mcpTool of mcpTools.tools) {
             names.add(mcpTool.name)
@@ -422,7 +419,7 @@ export class ChatLunaAgentMcpService {
 
             const t = this._tools[mcpTool.name]
             if (!t.enabled) {
-                logger.debug(`Tool ${mcpTool.name} is disabled`)
+                disabled.push(mcpTool.name)
                 continue
             }
 
@@ -480,7 +477,18 @@ export class ChatLunaAgentMcpService {
                 })
             )
 
-            logger.debug(`Tool ${mcpTool.name} registered`)
+            registered.push(mcpTool.name)
+        }
+
+        if (registered.length > 0) {
+            logger.debug(
+                `MCP tools registered for ${serverName}: ${registered.join(', ')}`
+            )
+        }
+        if (disabled.length > 0) {
+            logger.debug(
+                `MCP tools disabled for ${serverName}: ${disabled.join(', ')}`
+            )
         }
 
         for (const [toolName, toolCfg] of Object.entries(this._tools)) {

@@ -5,6 +5,7 @@ import {
     ChatChain
 } from '../../chains/chain'
 import { Config } from '../../config'
+import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
 import {
     AdminRequiredError,
     ConstraintDisabledError,
@@ -50,7 +51,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (resolved == null) {
             context.message = session.text(
-                'chatluna.conversation.messages.target_not_found'
+                'chatluna.conversation.messages.target_not_found',
+                [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
             )
             return ChainMiddlewareRunStatus.STOP
         }
@@ -61,7 +63,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             !(await checkAdmin(session))
         ) {
             context.message = session.text(
-                'chatluna.conversation.messages.admin_required'
+                'chatluna.conversation.messages.admin_required',
+                [ChatLunaErrorCode.CONVERSATION_ADMIN_REQUIRED]
             )
             return ChainMiddlewareRunStatus.STOP
         }
@@ -80,7 +83,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (value != null && fixed != null && value !== fixed) {
                 context.message = session.text(
                     `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[field]}`,
-                    [fixed]
+                    [fixed, ChatLunaErrorCode.CONVERSATION_FIXED]
                 )
                 return ChainMiddlewareRunStatus.STOP
             }
@@ -280,7 +283,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 if (seqs === null) {
                     context.message = session.text(
-                        'chatluna.conversation.messages.target_not_found'
+                        'chatluna.conversation.messages.target_not_found',
+                        [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
                     )
                     return ChainMiddlewareRunStatus.STOP
                 }
@@ -297,7 +301,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                     if (targets.length !== seqs.length) {
                         context.message = session.text(
-                            'chatluna.conversation.messages.target_not_found'
+                            'chatluna.conversation.messages.target_not_found',
+                            [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
                         )
                         return ChainMiddlewareRunStatus.STOP
                     }
@@ -581,7 +586,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (resolved == null) {
             context.message = session.text(
-                'chatluna.conversation.messages.target_not_found'
+                'chatluna.conversation.messages.target_not_found',
+                [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
             )
             return ChainMiddlewareRunStatus.STOP
         }
@@ -674,7 +680,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
         if (resolved == null) {
             context.message = session.text(
-                'chatluna.conversation.messages.target_not_found'
+                'chatluna.conversation.messages.target_not_found',
+                [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
             )
             return ChainMiddlewareRunStatus.STOP
         }
@@ -794,7 +801,12 @@ function requireConversation(
     if (conversation == null) {
         context.message = session.text(
             `chatluna.conversation.messages.${action}_failed`,
-            [session.text('chatluna.conversation.messages.target_not_found')]
+            [
+                session.text(
+                    'chatluna.conversation.messages.target_not_found',
+                    [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
+                )
+            ]
         )
     }
     return conversation
@@ -846,13 +858,15 @@ function conversationSummary(conversation: ConversationRecord) {
 
 function actionLocked(session: Session, action: string) {
     return session.text('chatluna.conversation.messages.action_locked', [
-        session.text(`chatluna.conversation.action.${action}`)
+        session.text(`chatluna.conversation.action.${action}`),
+        ChatLunaErrorCode.CONVERSATION_LOCKED
     ])
 }
 
 function actionDisabled(session: Session, action: string) {
     return session.text('chatluna.conversation.messages.action_disabled', [
-        session.text(`chatluna.conversation.action.${action}`)
+        session.text(`chatluna.conversation.action.${action}`),
+        ChatLunaErrorCode.CONVERSATION_DISABLED
     ])
 }
 
@@ -912,19 +926,29 @@ function formatConversationError(
     action?: string
 ) {
     if (error instanceof ConversationResolutionError) {
+        const ambiguous = error.code === 'ambiguous_target'
         return session.text(
-            error.code === 'ambiguous_target'
+            ambiguous
                 ? 'chatluna.conversation.messages.target_ambiguous'
-                : 'chatluna.conversation.messages.target_outside_route'
+                : 'chatluna.conversation.messages.target_outside_route',
+            [
+                ambiguous
+                    ? ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS
+                    : ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE
+            ]
         )
     }
 
     if (error instanceof ConversationNotFoundError) {
-        return session.text('chatluna.conversation.messages.target_not_found')
+        return session.text('chatluna.conversation.messages.target_not_found', [
+            ChatLunaErrorCode.CONVERSATION_NOT_FOUND
+        ])
     }
 
     if (error instanceof AdminRequiredError) {
-        return session.text('chatluna.conversation.messages.admin_required')
+        return session.text('chatluna.conversation.messages.admin_required', [
+            ChatLunaErrorCode.CONVERSATION_ADMIN_REQUIRED
+        ])
     }
 
     if (error instanceof ConstraintLockedError) {
@@ -938,21 +962,26 @@ function formatConversationError(
     if (error instanceof ConstraintFixedError) {
         return session.text(
             `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[error.field]}`,
-            [error.value]
+            [error.value, ChatLunaErrorCode.CONVERSATION_FIXED]
         )
     }
 
     if (error instanceof InvalidChatModeError) {
         return session.text(
             'chatluna.conversation.messages.invalid_chat_mode',
-            [error.mode]
+            [error.mode, ChatLunaErrorCode.CONVERSATION_INVALID_CHAT_MODE]
         )
+    }
+
+    if (error instanceof ChatLunaError) {
+        return error.message
     }
 
     if (action != null) {
         return session.text('chatluna.conversation.messages.action_failed', [
             session.text(`chatluna.conversation.action.${action}`),
-            error.message
+            error.message,
+            ChatLunaErrorCode.UNKNOWN_ERROR
         ])
     }
 

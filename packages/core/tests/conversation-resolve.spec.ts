@@ -903,13 +903,13 @@ it('chatluna.delete removes range and list selectors', async () => {
     assert.deepEqual(messages, [
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)',
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nThird Topic (3)',
-        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.target_not_found:412',
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)',
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)\nThird Topic (3)',
-        'chatluna.conversation.messages.target_not_found',
-        'chatluna.conversation.messages.target_not_found',
-        'chatluna.conversation.messages.target_not_found',
-        'chatluna.conversation.messages.target_not_found',
+        'chatluna.conversation.messages.target_not_found:412',
+        'chatluna.conversation.messages.target_not_found:412',
+        'chatluna.conversation.messages.target_not_found:412',
+        'chatluna.conversation.messages.target_not_found:412',
         'chatluna.conversation.messages.delete_success:1..101,4,conversation-range-title'
     ])
 })
