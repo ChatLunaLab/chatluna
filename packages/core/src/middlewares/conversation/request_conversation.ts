@@ -42,18 +42,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .middleware('request_conversation', async (session, context) => {
             const { inputMessage } = context.options
             const wakeup = context.options.triggerWakeup
+            const existing = context.options.conversation
             const resolved =
-                await ctx.chatluna.conversation.ensureActiveConversation(
-                    session,
-                    {
-                        conversationId:
-                            context.options.conversation?.conversationId ??
-                            context.options.conversation?.conversation?.id,
-                        bindingKey: context.options.conversation?.bindingKey,
-                        presetLane: context.options.conversation?.presetLane,
-                        useRoutePresetLane: false
-                    }
-                )
+                existing?.mode === 'active' && existing.conversation != null
+                    ? existing
+                    : await ctx.chatluna.conversation.ensureActiveConversation(
+                          session,
+                          {
+                              conversationId:
+                                  existing?.conversationId ??
+                                  existing?.conversation?.id,
+                              bindingKey: existing?.bindingKey,
+                              presetLane: existing?.presetLane,
+                              useRoutePresetLane: false
+                          }
+                      )
             const base = resolved.conversation
             const conversation =
                 wakeup?.chatMode == null || wakeup.chatMode === base.chatMode

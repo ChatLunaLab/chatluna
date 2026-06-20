@@ -67,6 +67,7 @@ import {
     ListConversationsOptions
 } from './types'
 import type { ConversationRuntime } from './conversation_runtime'
+import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
 
 const EMPTY_MODEL_NAMES = new Set(['', '无', 'empty'])
 
@@ -1155,11 +1156,15 @@ export class ConversationService {
               : await this.getArchiveByConversationId(conversation.id)
 
         if (archive == null) {
-            throw new Error('Archive not found.')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.CONVERSATION_ARCHIVE_NOT_FOUND
+            )
         }
 
         if (archive.conversationId !== conversation.id) {
-            throw new Error('Archive does not belong to conversation.')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.CONVERSATION_ARCHIVE_MISMATCH
+            )
         }
 
         if (managed?.lockConversation ?? resolved.constraint.lockConversation) {
@@ -1219,7 +1224,9 @@ export class ConversationService {
 
                 const updated = await this.getConversation(current.id)
                 if (updated == null) {
-                    throw new Error('Conversation restore failed.')
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.CONVERSATION_RESTORE_FAILED
+                    )
                 }
 
                 if (

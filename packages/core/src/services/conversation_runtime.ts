@@ -272,7 +272,7 @@ export class ConversationRuntime {
         }
         if (client.value == null) {
             throw new ChatLunaError(
-                ChatLunaErrorCode.UNKNOWN_ERROR,
+                ChatLunaErrorCode.CONVERSATION_PLATFORM_NOT_AVAILABLE,
                 new Error(`Platform ${platform} is not available`)
             )
         }
@@ -556,7 +556,7 @@ function requirePlatform(conversation: ConversationRecord) {
     const [platform] = parseRawModelName(conversation.model)
     if (platform == null) {
         throw new ChatLunaError(
-            ChatLunaErrorCode.UNKNOWN_ERROR,
+            ChatLunaErrorCode.CONVERSATION_INVALID_MODEL,
             new Error(`Invalid conversation model: ${conversation.model}`)
         )
     }

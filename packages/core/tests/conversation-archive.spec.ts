@@ -147,7 +147,7 @@ it('ConversationService rejects restoring archives from another conversation', a
             conversationId: conversation.id,
             archiveId: foreignArchive.id
         }),
-        /Archive does not belong to conversation\./
+        /419/
     )
 })
 
