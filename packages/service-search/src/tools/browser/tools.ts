@@ -383,9 +383,8 @@ class BrowserWaitForTool extends StructuredTool {
     ) {
         const page = this.manager.getPage(cfg, input.pageId)
         await page.page.waitForFunction(
-            (text) => document.body?.innerText?.includes(text),
-            { timeout: input.timeout ?? this.manager.config.browserTimeout },
-            input.text
+            `document.body?.innerText?.includes(${JSON.stringify(input.text)})`,
+            { timeout: input.timeout ?? this.manager.config.browserTimeout }
         )
         return `Text found: ${input.text}`
     }
@@ -697,11 +696,12 @@ class BrowserEvaluateTool extends StructuredTool {
                 handles.push(await this.manager.getElement(page, uid))
             }
             const result = await page.page.evaluate(
-                async (fnText, ...args) => {
-                    // eslint-disable-next-line no-new-func
-                    const fn = new Function(`return (${fnText})`)()
-                    return await fn(...args)
-                },
+                // eslint-disable-next-line no-new-func
+                new Function(
+                    'fnText',
+                    '...args',
+                    "const fn = new Function('return (' + fnText + ')')()\nreturn fn(...args)"
+                ) as (fnText: string, ...args: unknown[]) => unknown,
                 input.function,
                 ...handles
             )
@@ -799,29 +799,35 @@ async function fillElement(
 ) {
     const el = await manager.getElement(page, uid)
     try {
-        await el.evaluate((node, value) => {
-            if (node instanceof HTMLInputElement) {
-                if (node.type === 'checkbox' || node.type === 'radio') {
-                    node.checked = value === 'true'
-                } else {
-                    node.value = value
+        await el.evaluate(
+            // eslint-disable-next-line no-new-func
+            new Function(
+                'node',
+                'value',
+                `if (node instanceof HTMLInputElement) {
+                    if (node.type === 'checkbox' || node.type === 'radio') {
+                        node.checked = value === 'true'
+                    } else {
+                        node.value = value
+                    }
+                    node.dispatchEvent(new Event('input', { bubbles: true }))
+                    node.dispatchEvent(new Event('change', { bubbles: true }))
+                    return
                 }
-                node.dispatchEvent(new Event('input', { bubbles: true }))
-                node.dispatchEvent(new Event('change', { bubbles: true }))
-                return
-            }
-            if (
-                node instanceof HTMLTextAreaElement ||
-                node instanceof HTMLSelectElement
-            ) {
-                node.value = value
-                node.dispatchEvent(new Event('input', { bubbles: true }))
-                node.dispatchEvent(new Event('change', { bubbles: true }))
-                return
-            }
-            ;(node as HTMLElement).innerText = value
-            node.dispatchEvent(new Event('input', { bubbles: true }))
-        }, value)
+                if (
+                    node instanceof HTMLTextAreaElement ||
+                    node instanceof HTMLSelectElement
+                ) {
+                    node.value = value
+                    node.dispatchEvent(new Event('input', { bubbles: true }))
+                    node.dispatchEvent(new Event('change', { bubbles: true }))
+                    return
+                }
+                node.innerText = value
+                node.dispatchEvent(new Event('input', { bubbles: true }))`
+            ) as (node: Element, value: string) => void,
+            value
+        )
     } finally {
         await el.dispose()
     }

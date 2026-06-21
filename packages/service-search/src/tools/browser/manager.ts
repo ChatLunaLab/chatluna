@@ -231,13 +231,7 @@ export class BrowserManager {
         const page = input.url
             ? await this.open({ url: input.url }, runConfig)
             : this.getPage(runConfig, input.pageId)
-        const html = await page.page.evaluate(
-            (selector) =>
-                selector
-                    ? (document.querySelector(selector)?.outerHTML ?? '')
-                    : document.documentElement.outerHTML,
-            input.selector
-        )
+        const html = await page.page.evaluate(readBrowserHtml, input.selector)
         return await this.formatOutput({
             name: 'browser-html',
             text: html,
@@ -426,20 +420,23 @@ If a focus is provided and the page is unrelated, output exactly: [none].
 Include important facts, numbers, names, and source links when present.`
 }
 
-function readBrowserText(selector?: string, includeLinks = false) {
-    const root = selector
+// eslint-disable-next-line no-new-func
+const readBrowserText = new Function(
+    'selector',
+    'includeLinks',
+    String.raw`const root = selector
         ? document.querySelector(selector)
         : (document.querySelector('article, main, [role="main"]') ??
           document.body)
     if (!root) return ''
 
-    const copy = root.cloneNode(true) as Element
+    const copy = root.cloneNode(true)
     copy.querySelectorAll(
         'script, style, noscript, svg, nav, header, footer'
     ).forEach((el) => el.remove())
 
-    const lines: string[] = []
-    const walk = (node: Node) => {
+    const lines = []
+    function walk(node) {
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent?.replace(/\s+/g, ' ').trim()
             if (text) lines.push(text)
@@ -447,7 +444,7 @@ function readBrowserText(selector?: string, includeLinks = false) {
         }
         if (node.nodeType !== Node.ELEMENT_NODE) return
 
-        const el = node as Element
+        const el = node
         const tag = el.tagName.toLowerCase()
         if (/^h[1-6]$/.test(tag)) {
             lines.push(
@@ -460,7 +457,9 @@ function readBrowserText(selector?: string, includeLinks = false) {
         if (tag === 'li') lines.push('\n- ')
         if (tag === 'br') lines.push('\n')
         if (tag === 'pre') {
-            lines.push('\n```\n' + el.textContent?.trim() + '\n```\n')
+            lines.push(
+                '\n\x60\x60\x60\n' + el.textContent?.trim() + '\n\x60\x60\x60\n'
+            )
             return
         }
         if (tag === 'tr') lines.push('\n| ')
@@ -480,7 +479,7 @@ function readBrowserText(selector?: string, includeLinks = false) {
                 const text = a.textContent?.replace(/\s+/g, ' ').trim()
                 const href = a.getAttribute('href')
                 return text && href
-                    ? `- [${text}](${new URL(href, location.href).href})`
+                    ? \`- [\${text}](\${new URL(href, location.href).href})\`
                     : ''
             })
             .filter(Boolean)
@@ -494,20 +493,29 @@ function readBrowserText(selector?: string, includeLinks = false) {
         .replace(/\n[ \t]+/g, '\n')
         .replace(/[ \t]{2,}/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
-        .trim()
-}
+        .trim()`
+) as (selector?: string, includeLinks?: boolean) => string
 
-function readBrowserLinks() {
-    const current = new URL(location.href)
+// eslint-disable-next-line no-new-func
+const readBrowserHtml = new Function(
+    'selector',
+    String.raw`return selector
+        ? (document.querySelector(selector)?.outerHTML ?? '')
+        : document.documentElement.outerHTML`
+) as (selector?: string) => string
+
+// eslint-disable-next-line no-new-func
+const readBrowserLinks = new Function(
+    String.raw`const current = new URL(location.href)
     const host = current.hostname
-    const result: Record<string, { text: string; url: string }[]> = {
+    const result = {
         sameSite: [],
         external: []
     }
     for (const a of Array.from(document.querySelectorAll('a[href]'))) {
         const text = a.textContent?.replace(/\s+/g, ' ').trim()
         if (!text) continue
-        const url = new URL(a.getAttribute('href')!, current.href)
+        const url = new URL(a.getAttribute('href'), current.href)
         if (
             url.hash &&
             url.origin === current.origin &&
@@ -522,8 +530,8 @@ function readBrowserLinks() {
     }
     result.sameSite = result.sameSite.slice(0, 100)
     result.external = result.external.slice(0, 100)
-    return result
-}
+    return result`
+) as () => Record<string, { text: string; url: string }[]>
 
 export interface BrowserManagerConfig {
     browserTimeout: number
