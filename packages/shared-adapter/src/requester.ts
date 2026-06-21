@@ -1130,9 +1130,12 @@ export async function getModels<
             throw e
         }
 
-        throw new Error(
-            'error when listing openai models, Result: ' + JSON.stringify(data)
-        )
+        const raw = data?.error?.message ?? data?.error ?? data
+        if (raw == null) {
+            throw new Error(e instanceof Error ? e.message : String(e))
+        }
+
+        throw new Error(typeof raw === 'string' ? raw : JSON.stringify(raw))
     }
 }
 

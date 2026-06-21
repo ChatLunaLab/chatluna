@@ -10,7 +10,7 @@ description: >-
 This skill ships a CLI that runs inside the sandbox via the bash tool. It
 reads and writes a working copy of the agent config materialized next to the
 script (`config.json` in this skill folder). Local edits do **not** take
-effect until the user runs `chatluna.agent sync` on the host instance.
+effect until the user runs `chatluna.agent.sync` on the host instance.
 
 ## How to invoke
 
@@ -88,5 +88,5 @@ Each write rewrites `config.json` in place and keeps a `config.json.bak`.
   truth.
 - Removing a skill or sub-agent here only removes its config entry. To erase
   the actual files, delete them from the corresponding sandbox directory
-  before running `chatluna.agent sync`.
+  before running `chatluna.agent.sync`.
 - If the bash tool is unavailable, say so instead of guessing.

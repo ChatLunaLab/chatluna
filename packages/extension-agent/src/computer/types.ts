@@ -16,6 +16,7 @@ export interface ComputerSessionApi {
 
     readFile(path: string, offset?: number, limit?: number): Promise<string>
     writeFile(path: string, content: FileContent): Promise<void>
+    hashFiles?(paths: string[]): Promise<Map<string, string>>
     editFile(
         path: string,
         oldString: string,

@@ -3,6 +3,7 @@
 import { Context, Session } from 'koishi'
 import type { ConversationRecord } from 'koishi-plugin-chatluna/services/chat'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { logger } from '..'
 
 interface TaskAttachState {
     taskId: string
@@ -69,7 +70,7 @@ export class ChatLunaAgentTaskAttachService {
                 await session.send(result.output?.trim() || '(empty)')
             } catch (err) {
                 this._items.delete(key)
-                this.ctx.logger.error(err)
+                logger.error(err)
                 await session.send('Sub-agent task failed, please retry.')
                 return next()
             }

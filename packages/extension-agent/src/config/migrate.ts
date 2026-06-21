@@ -3,6 +3,7 @@
 import { Context } from 'koishi'
 import { cp, mkdir, readFile, rm, stat, writeFile } from 'fs/promises'
 import { basename, join, relative, resolve } from 'path'
+import { logger } from '..'
 import { collectFilesRecursive } from '../utils/fs'
 import { createHashId } from '../utils/id'
 import { getConfigPath, getSkillsRootPath, getSubAgentsRootPath } from './path'
@@ -143,6 +144,6 @@ export async function migrateAgentData(ctx: Context) {
 
         await rm(old, { recursive: true, force: true })
     } catch (err) {
-        ctx.logger.warn('Failed to migrate chatluna agent data', err)
+        logger.warn('Failed to migrate chatluna agent data', err)
     }
 }

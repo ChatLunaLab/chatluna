@@ -5,7 +5,10 @@ import {
     ChatChain
 } from '../../chains/chain'
 import { Config } from '../../config'
-import { ChatLunaError, ChatLunaErrorCode } from '../../utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import {
     AdminRequiredError,
     ConstraintDisabledError,
@@ -758,6 +761,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 [
                     result.inputTokens,
                     result.outputTokens,
+                    result.reducedTokens,
                     result.reducedPercent.toFixed(2)
                 ]
             )

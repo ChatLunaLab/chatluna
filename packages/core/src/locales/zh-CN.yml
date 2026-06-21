@@ -109,8 +109,8 @@ commands:
                 archived: 包含已归档会话。
                 all: 包含已归档会话。
             messages:
-                success: '{0} -> {1}, {2}%'
-                skipped: '未执行压缩。{0} -> {1}, {2}%'
+                success: '已压缩：{0} tokens -> {1} tokens，减少 {2} tokens（{3}%）'
+                skipped: '未执行压缩：{0} tokens -> {1} tokens，减少 {2} tokens（{3}%）'
                 no_conversation: '没有可压缩的会话。'
                 failed: '压缩会话 {0}（{1}）的聊天记录失败：{2}'
         delete:
@@ -210,8 +210,8 @@ commands:
                 options:
                     conversation: 指定目标会话，可使用序号、ID 或标题。
                 messages:
-                    success: '{0} -> {1}, {2}%'
-                    skipped: '未执行压缩。{0} -> {1}, {2}%'
+                    success: '已压缩：{0} tokens -> {1} tokens，减少 {2} tokens（{3}%）'
+                    skipped: '未执行压缩：{0} tokens -> {1} tokens，减少 {2} tokens（{3}%）'
                     conversation_not_found: '未找到指定的会话。'
                     failed: '压缩会话 {0} 的聊天记录失败：{1}'
             voice:

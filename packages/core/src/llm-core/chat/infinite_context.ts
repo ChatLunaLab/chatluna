@@ -128,11 +128,11 @@ export async function compressIfNeeded(
         inputTokens > 0 ? (reducedTokens / inputTokens) * 100 : 0
 
     logger.info(
-        '[InfiniteContext] Compressed: %d → %d tokens (-%d, %.2f%%), kept %d recent messages',
+        '[InfiniteContext] Compressed: %d → %d tokens (-%d, %s%%), kept %d recent messages',
         inputTokens,
         outputTokens,
         reducedTokens,
-        reducedPercent,
+        reducedPercent.toFixed(2),
         toKeep.length
     )
 

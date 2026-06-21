@@ -37,6 +37,7 @@ import { activityTriggerProvider } from '../trigger/providers/activity'
 import { cronTriggerProvider } from '../trigger/providers/cron'
 import { keywordTriggerProvider } from '../trigger/providers/keyword'
 import { onceTriggerProvider } from '../trigger/providers/once'
+import { logger } from '..'
 
 const RETRYABLE_FIRE_CODES = new Set([
     'conversation-unavailable',
@@ -714,7 +715,7 @@ export class ChatLunaAgentTriggerService {
                         item.action.source == null ||
                         item.action.target == null
                     ) {
-                        this.ctx.logger.warn(
+                        logger.warn(
                             'Skip deferred wakeup replay because required action fields are missing.'
                         )
                         continue
@@ -748,7 +749,7 @@ export class ChatLunaAgentTriggerService {
                 )
                 if (result.deferred == null) changed = true
             } catch (err) {
-                this.ctx.logger.warn(err)
+                logger.warn(err)
             }
         }
 

@@ -1,8 +1,7 @@
 /** @module computer/backends/e2b */
 
-import { randomUUID } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 import { Buffer } from 'node:buffer'
-import { posix } from 'path'
 import { Readable } from 'node:stream'
 import {
     CommandExitError,
@@ -15,7 +14,13 @@ import {
 } from 'e2b'
 import mimeTypes from 'mime-types'
 import { Context } from 'koishi'
-import { buildPosixBackgroundCommand, quoteShell } from './types'
+import { logger } from '../..'
+import {
+    buildHashCommand,
+    buildPosixBackgroundCommand,
+    quoteShell,
+    readHashCommandOutput
+} from './types'
 import { ComputerCapability, E2BBackendConfig } from '../../types'
 import { getErrorMessage } from '../../utils/shell'
 import {
@@ -245,7 +250,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                 .map((line, idx) => `${start + idx + 1}: ${line}`)
                 .join('\n')
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             throw new Error(
                 `Failed to read ${filePath}: ${getErrorMessage(err)}`
             )
@@ -261,32 +266,45 @@ export class E2BComputerSession implements ComputerSessionApi {
                 return
             }
 
-            const tmp = `${target}.${randomUUID()}.base64`
-
-            await this.execute(`mkdir -p ${quoteShell(posix.dirname(target))}`)
-            await sandbox.files.write(
-                tmp,
-                Buffer.from(content).toString('base64')
-            )
-
-            try {
-                const result = await this.execute(
-                    `base64 -d ${quoteShell(tmp)} > ${quoteShell(target)}`
-                )
-                if (result.exitCode !== 0) {
-                    throw new Error(
-                        result.stderr || `Failed to write ${filePath}`
-                    )
-                }
-            } finally {
-                await this.execute(`rm -f ${quoteShell(tmp)}`).catch(() => {})
-            }
+            const data = new ArrayBuffer(content.byteLength)
+            new Uint8Array(data).set(content)
+            await sandbox.files.write(target, data)
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             throw new Error(
                 `Failed to write ${filePath}: ${getErrorMessage(err)}`
             )
         }
+    }
+
+    async hashFiles(paths: string[]) {
+        const sandbox = await this.ensureSandbox()
+        const hashes = await this.execute(
+            buildHashCommand(
+                paths.map((file) => [file, this.resolvePath(file)])
+            ),
+            { timeout: 30000 }
+        )
+            .then((result) => readHashCommandOutput(result))
+            .catch(() => new Map<string, string>())
+        const missing = paths.filter((file) => !hashes.has(file))
+        await Promise.all(
+            missing.map(async (file) => {
+                const data = await sandbox.files
+                    .read(this.resolvePath(file), { format: 'bytes' })
+                    .catch(() => undefined)
+
+                if (!data) {
+                    return
+                }
+
+                hashes.set(
+                    file,
+                    createHash('sha1').update(Buffer.from(data)).digest('hex')
+                )
+            })
+        )
+        return hashes
     }
 
     async editFile(
@@ -352,7 +370,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                 .split('\n')
                 .filter(Boolean)
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             throw new Error(`Failed to grep: ${getErrorMessage(err)}`)
         }
     }
@@ -369,7 +387,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                 .split('\n')
                 .filter(Boolean)
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             throw new Error(`Failed to glob: ${getErrorMessage(err)}`)
         }
     }
@@ -394,7 +412,7 @@ export class E2BComputerSession implements ComputerSessionApi {
             )
             return result.stdout.trim()
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             throw new Error(
                 `Failed to read asset ${filePath}: ${getErrorMessage(err)}`
             )
@@ -417,7 +435,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                 mimeType: mime === false ? undefined : mime
             }
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             throw new Error(
                 `Failed to open asset ${filePath}: ${getErrorMessage(err)}`
             )
@@ -448,7 +466,6 @@ export class E2BComputerSession implements ComputerSessionApi {
                     }
                 }
             })
-            const ctx = this.ctx
 
             return {
                 id: String(handle.pid),
@@ -465,7 +482,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                             Buffer.from(data, 'utf8')
                         )
                     } catch (err) {
-                        ctx.logger.error(err)
+                        logger.error(err)
                         throw new Error(
                             `Failed to send terminal input: ${getErrorMessage(err)}`
                         )
@@ -475,7 +492,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                     try {
                         await sandbox.pty.resize(handle.pid, { cols, rows })
                     } catch (err) {
-                        ctx.logger.error(err)
+                        logger.error(err)
                         throw new Error(
                             `Failed to resize terminal: ${getErrorMessage(err)}`
                         )
@@ -485,7 +502,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                     try {
                         await handle.kill()
                     } catch (err) {
-                        ctx.logger.error(err)
+                        logger.error(err)
                         throw new Error(
                             `Failed to kill terminal: ${getErrorMessage(err)}`
                         )
@@ -493,7 +510,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                 }
             } satisfies TerminalHandle
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             throw new Error(
                 `Failed to create terminal: ${getErrorMessage(err)}`
             )
@@ -544,7 +561,7 @@ export class E2BComputerSession implements ComputerSessionApi {
                 return this._sandbox
             }
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
         }
 
         this._connected = false

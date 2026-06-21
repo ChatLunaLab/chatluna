@@ -67,7 +67,10 @@ import {
     ListConversationsOptions
 } from './types'
 import type { ConversationRuntime } from './conversation_runtime'
-import { ChatLunaError, ChatLunaErrorCode } from '../utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 const EMPTY_MODEL_NAMES = new Set(['', '无', 'empty'])
 

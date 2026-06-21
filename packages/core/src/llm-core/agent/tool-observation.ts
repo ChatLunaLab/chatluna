@@ -94,16 +94,19 @@ export function applyLoopGuidance(
 
     if (isBusyTool(tool)) {
         const count = (state.busy.get(tool) ?? 0) + 1
+        state.busy.clear()
         state.busy.set(tool, count)
 
-        if (count >= 4) {
+        if (count >= 3) {
             hints.push(
-                `Tool '${action.tool}' has been used ${count} times. ` +
-                    'Before calling it again, restate the current goal, ' +
-                    'what changed since the last call, and why another ' +
-                    'call will make progress.'
+                `Tool '${action.tool}' has been used ${count} times ` +
+                    'in a row. Before calling it again, restate the ' +
+                    'current goal, what changed since the last call, and ' +
+                    'why another call will make progress.'
             )
         }
+    } else {
+        state.busy.clear()
     }
 
     if (hints.length < 1) return observation
@@ -212,9 +215,11 @@ function repairToolInput(
     input: AgentAction['toolInput']
 ) {
     const schema = tool.schema as z.ZodTypeAny | undefined
-    if (!schema?.safeParse(input).success) {
+    if (typeof schema?.safeParse !== 'function') return input
+
+    if (!schema.safeParse(input).success) {
         const value = parseToolInput(input)
-        if (schema?.safeParse(value).success) return value
+        if (schema.safeParse(value).success) return value
 
         const obj = getObjectSchema(schema)
         if (!obj || typeof value !== 'object' || value == null) return input
@@ -346,5 +351,10 @@ function isNoProgressTool(tool: string) {
 }
 
 function isBusyTool(tool: string) {
-    return tool === 'bash' || tool.includes('mcp') || tool.includes('search')
+    return (
+        tool === 'bash' ||
+        tool.includes('mcp') ||
+        tool.includes('search') ||
+        tool.includes('reply')
+    )
 }

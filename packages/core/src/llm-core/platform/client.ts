@@ -164,9 +164,15 @@ export abstract class BasePlatformClient<
                 throw e
             }
 
-            this.ctx.logger.error(e)
+            const err = e instanceof Error ? e : new Error(String(e))
+            const cause = err instanceof ChatLunaError ? err.originError : null
+            const reason = cause?.message ?? err.message
+
+            err.message = `获取模型列表失败 (${this.platform}): ${reason}`
+
+            this.ctx.logger.error(err)
             this._modelInfos = {}
-            throw e
+            throw err
         }
     }
 

@@ -1,6 +1,5 @@
 /** @module computer/session */
 
-import { randomUUID } from 'crypto'
 import { ComputerBackendType, ComputerSessionInfo } from '../types'
 import { ComputerSessionApi } from './types'
 
@@ -144,7 +143,15 @@ export class ComputerSessionStore {
 }
 
 export function buildComputerSessionKey(opts: ComputerSessionKeyOptions) {
-    return `${opts.backend}:${opts.conversationId ?? opts.userId ?? randomUUID()}`
+    if (opts.conversationId) {
+        return `${opts.backend}:conversation:${opts.conversationId}`
+    }
+
+    if (opts.userId) {
+        return `${opts.backend}:user:${opts.userId}`
+    }
+
+    return `${opts.backend}:default`
 }
 
 export interface ComputerSessionKeyOptions {

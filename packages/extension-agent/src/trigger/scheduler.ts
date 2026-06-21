@@ -1,4 +1,5 @@
 import { Context } from 'koishi'
+import { logger } from '..'
 import type { TriggerTask } from '../types'
 
 const MAX_DELAY = 2_147_483_647
@@ -55,7 +56,7 @@ export class ChatLunaAgentTriggerScheduler {
 
                 await this.hooks.fire(task.id)
             } catch (err) {
-                this.ctx.logger.warn(err)
+                logger.warn(err)
                 const latest = await this.hooks.get(task.id)
                 if (
                     latest != null &&

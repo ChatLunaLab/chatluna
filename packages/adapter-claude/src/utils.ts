@@ -155,7 +155,21 @@ export async function langchainMessageToClaudeMessage(
     for (let i = 0; i < mappedMessages.length; i++) {
         const message = mappedMessages[i]
 
+        if (message.content == null) {
+            continue
+        }
+
         if (message.role !== 'system') {
+            if (isToolResultMessage(message)) {
+                const last = result[result.length - 1]
+                if (isToolResultMessage(last)) {
+                    ;(last.content as ClaudeMessageContentBlockParam[]).push(
+                        ...(message.content as ClaudeMessageContentBlockParam[])
+                    )
+                    continue
+                }
+            }
+
             result.push(message)
             continue
         }
@@ -186,6 +200,15 @@ export async function langchainMessageToClaudeMessage(
     }
 
     return result
+}
+
+function isToolResultMessage(message: ClaudeMessage) {
+    return (
+        message.role === 'user' &&
+        Array.isArray(message.content) &&
+        message.content.length > 0 &&
+        message.content.every((item) => item.type === 'tool_result')
+    )
 }
 
 async function processImageContent(

@@ -15,6 +15,7 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { Context } from 'koishi'
 import type {} from 'koishi-plugin-chatluna-storage-service'
+import { logger } from '..'
 import {
     AgentConfig,
     ComputerBackendStatus,
@@ -366,6 +367,62 @@ export class ChatLunaAgentComputerService {
                     await this.createSession(backend, options.userId)
                 )
                 await item.connect()
+
+                const skills = this.ctx.chatluna_agent?.skills
+                if (backend !== 'local' && skills) {
+                    const task = (async () => {
+                        const list = skills
+                            .listSkills()
+                            .filter(
+                                (info) =>
+                                    info.enabled &&
+                                    info.state === 'ready' &&
+                                    !info.remote
+                            )
+                        if (list.length < 1) return
+
+                        const started = Date.now()
+                        let done = 0
+                        const failed: string[] = []
+                        logger.info(
+                            `Started materializing ${list.length} skill(s) for ${backend} session ${item.sessionId}`
+                        )
+
+                        for (let idx = 0; idx < list.length; idx += 25) {
+                            await Promise.all(
+                                list.slice(idx, idx + 25).map(async (info) => {
+                                    const skill = skills.getScannedSkill(
+                                        info.id
+                                    )
+                                    if (!skill) {
+                                        done += 1
+                                        return
+                                    }
+
+                                    await this.materializer
+                                        .materialize(skill, item, this.ctx)
+                                        .catch((err) => {
+                                            failed.push(skill.name)
+                                            logger.debug(err)
+                                        })
+                                    done += 1
+                                })
+                            )
+                        }
+
+                        if (failed.length > 0) {
+                            logger.warn(
+                                `Failed to materialize ${failed.length} skill(s): ${failed.join(', ')}`
+                            )
+                        }
+
+                        logger.info(
+                            `Finished materializing ${done}/${list.length} skill(s) for ${backend} session ${item.sessionId} in ${Date.now() - started}ms`
+                        )
+                    })()
+                    task.catch((err) => logger.warn(err))
+                }
+
                 return item
             }
         )
@@ -944,7 +1001,7 @@ export class ChatLunaAgentComputerService {
                     }
 
                     await this.destroySession(item.id)
-                    this.ctx.logger.debug(
+                    logger.debug(
                         `Closed idle computer session ${item.id} after ${timeout}ms`
                     )
                 }

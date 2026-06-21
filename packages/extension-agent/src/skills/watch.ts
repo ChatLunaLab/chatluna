@@ -3,6 +3,7 @@ import { watch } from 'fs'
 import { readdir, stat } from 'fs/promises'
 import { join } from 'path'
 import { Context } from 'koishi'
+import { logger } from '..'
 import { AgentConfig } from '../types'
 import { toPathKey } from '../utils/path'
 import { getSkillRoots } from './scan'
@@ -46,7 +47,7 @@ export async function watchSkillFiles(
             try {
                 await reload()
             } catch (err) {
-                ctx.logger.error('Failed to hot reload skills', err)
+                logger.error('Failed to hot reload skills', err)
             } finally {
                 reloading = false
                 if (pending) {
@@ -64,13 +65,13 @@ export async function watchSkillFiles(
                 : watch(dir, schedule)
 
             watcher.on('error', (err) => {
-                ctx.logger.warn(`Skill watcher error at ${dir}: ${String(err)}`)
+                logger.warn(`Skill watcher error at ${dir}: ${String(err)}`)
                 schedule()
             })
 
             watchers.push(watcher)
         } catch (err) {
-            ctx.logger.warn(`Failed to watch skill dir ${dir}: ${String(err)}`)
+            logger.warn(`Failed to watch skill dir ${dir}: ${String(err)}`)
         }
     }
 

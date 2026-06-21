@@ -329,7 +329,7 @@ export function createDefaultComputerConfig(): ComputerConfig {
             ],
             allowedCommands: [],
             blockedCommands: [],
-            commandTimeoutMs: 30000,
+            commandTimeoutMs: 120000,
             networkPolicy: 'block'
         },
         e2b: {

@@ -1,5 +1,6 @@
 /** @module computer/materialize */
 
+import { createHash } from 'crypto'
 import { access, readFile, writeFile } from 'fs/promises'
 import path, { posix } from 'path'
 import { Context } from 'koishi'
@@ -9,7 +10,6 @@ import {
     ScannedSkill
 } from '../skills/scan'
 import { getConfigPath } from '../config/path'
-import { quoteShellPath } from '../utils/shell'
 import { ComputerSessionApi } from './types'
 
 export const AGENTCLI_SKILL_NAME = 'agentcli'
@@ -63,38 +63,42 @@ export class SkillMaterializer {
         const current = this._items.get(session.sessionId)?.get(skill.id)
         if (current) return current
 
-        const quoted = quoteShellPath(root)
-        const result = await session.execute(
-            `if [ -d ${quoted} ]; then rm -rf ${quoted}; elif [ -e ${quoted} ]; then rm -f ${quoted}; fi`,
-            { timeout: 15000 }
-        )
-        if (result.exitCode !== 0) {
-            throw new Error(
-                result.stderr.trim() ||
-                    result.stdout.trim() ||
-                    `Failed to reset remote skill dir: ${root}`
-            )
-        }
+        const entries: { path: string; content: string | Buffer }[] = [
+            { path: posix.join(root, 'SKILL.md'), content: skill.raw }
+        ]
 
         const files = await listSkillResources(skill.dir)
-        await session.writeFile(posix.join(root, 'SKILL.md'), skill.raw)
         for (const file of files) {
             const data = await readFile(path.join(skill.dir, file))
-            await session.writeFile(
-                posix.join(root, file.replaceAll('\\', '/')),
-                data
-            )
+            entries.push({
+                path: posix.join(root, file.replaceAll('\\', '/')),
+                content: data.includes(0) ? data : data.toString('utf-8')
+            })
+        }
+
+        const key = `${session.sessionId}:${skill.id}`
+        if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
+            if (!this._sandboxAgentcliPushed.has(key)) {
+                entries.push({
+                    path: posix.join(root, 'config.json'),
+                    content: (await readHostConfigBytes(ctx)).toString('utf-8')
+                })
+            }
+        }
+
+        const remote =
+            (await session.hashFiles?.(entries.map((entry) => entry.path))) ??
+            new Map<string, string>()
+
+        for (const entry of entries) {
+            if (remote.get(entry.path) === hash(entry.content)) {
+                continue
+            }
+            await session.writeFile(entry.path, entry.content)
         }
 
         if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
-            const key = `${session.sessionId}:${skill.id}`
-            if (!this._sandboxAgentcliPushed.has(key)) {
-                await session.writeFile(
-                    posix.join(root, 'config.json'),
-                    await readHostConfigBytes(ctx)
-                )
-                this._sandboxAgentcliPushed.add(key)
-            }
+            this._sandboxAgentcliPushed.add(key)
         }
 
         const map =
@@ -136,4 +140,8 @@ async function readHostConfigBytes(ctx: Context) {
         }
         throw err
     }
+}
+
+function hash(value: string | Buffer) {
+    return createHash('sha1').update(value).digest('hex')
 }
