@@ -425,7 +425,7 @@ export class PlatformService {
             throw new Error(`Tool ${name} not found`)
         }
         const tool = chatLunaTool.createTool(params)
-        this._tmpTools[name] = tool
+        this._tmpTools[name] = markRaw(tool)
         return tool
     }
 
