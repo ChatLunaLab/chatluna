@@ -43,9 +43,10 @@ export function apply(ctx: Context, config: Config) {
             )
         }
 
-        const browserManager = config.enableBrowser && ctx.puppeteer
-            ? new BrowserManager(ctx, config)
-            : undefined
+        const browserManager =
+            config.enableBrowser && ctx.puppeteer
+                ? new BrowserManager(ctx, config)
+                : undefined
         const summaryModel = computed(() => keywordExtractModel?.value)
 
         if (browserManager) {

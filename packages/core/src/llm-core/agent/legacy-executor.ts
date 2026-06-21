@@ -75,7 +75,7 @@ async function executeTools(
             const inputKey =
                 typeof action.toolInput === 'string'
                     ? action.toolInput
-                    : JSON.stringify(action.toolInput) ?? ''
+                    : (JSON.stringify(action.toolInput) ?? '')
             const toolKey = `${action.tool?.toLowerCase()}:${inputKey}`
             if (state) {
                 const count = (state.calls.get(toolKey) ?? 0) + 1
