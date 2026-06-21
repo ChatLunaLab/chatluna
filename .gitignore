@@ -19,7 +19,6 @@ tsconfig.temp.json
 *.ntvs*
 *.njsproj
 *.sln
-.tmp
 
 packages/*/node_modules
 packages/*/dist

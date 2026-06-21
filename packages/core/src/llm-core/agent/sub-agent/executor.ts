@@ -125,7 +125,6 @@ export async function runAgentTask(options: {
         title: '用户请求',
         text: getMessageContent(promptMessage.content)
     })
-    await options.runtime.refresh?.()
 
     let hasSavedUser = false
     const saveUser = () => {
@@ -136,6 +135,8 @@ export async function runAgentTask(options: {
 
     const exec = async () => {
         try {
+            await options.runtime.refresh?.()
+
             if (abort && options.signal?.aborted)
                 abort.abort(options.signal.reason)
             if (onAbort)
@@ -278,7 +279,12 @@ async function notifyFinished(
             source: options.source,
             snapshot
         })
-    } catch {}
+    } catch (err) {
+        logger.error(
+            `[SubagentOnRunFinishedError] run=${run.runId} task=${options.task.id} agent=${options.target.agent.name}`,
+            err
+        )
+    }
 }
 
 async function onTaskEvent(

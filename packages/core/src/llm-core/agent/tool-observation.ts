@@ -181,7 +181,12 @@ export function observationToMessageContent(observation: AgentObservation) {
     return isDirectToolOutput(observation) ? '' : observation
 }
 
-function findTool(name: string, tools: Record<string, StructuredTool>) {
+function findTool(
+    name: string | undefined | null,
+    tools: Record<string, StructuredTool>
+) {
+    if (!name) return undefined
+
     const direct = tools[name.toLowerCase()]
     if (direct) return direct
 

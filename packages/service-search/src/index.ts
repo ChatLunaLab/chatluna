@@ -37,7 +37,13 @@ export function apply(ctx: Context, config: Config) {
         )
 
         const searchManager = new SearchManager(ctx, config)
-        const browserManager = config.enableBrowser
+        if (config.enableBrowser && !ctx.puppeteer) {
+            logger.warn(
+                'Browser tools are disabled because puppeteer is not available.'
+            )
+        }
+
+        const browserManager = config.enableBrowser && ctx.puppeteer
             ? new BrowserManager(ctx, config)
             : undefined
         const summaryModel = computed(() => keywordExtractModel?.value)

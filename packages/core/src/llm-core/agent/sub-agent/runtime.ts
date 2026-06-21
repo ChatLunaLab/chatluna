@@ -209,7 +209,9 @@ export function createTaskTool(
                     )
                     .sort((a, b) => b.updatedAt - a.updatedAt)
                 if (list.length < 1)
-                    return 'No agent tasks in this conversation.'
+                    return action === 'list_all'
+                        ? 'No agent tasks found.'
+                        : 'No agent tasks in this conversation.'
                 return formatTaskList(
                     list,
                     (tid) => getLatestTaskRun(runs, tid),

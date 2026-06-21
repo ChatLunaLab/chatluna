@@ -108,7 +108,6 @@ export async function apply(
                 prev.every((todo, idx) => {
                     const item = todos[idx]
                     return (
-                        item != null &&
                         todo.content === item.content &&
                         todo.status === item.status &&
                         todo.priority === item.priority

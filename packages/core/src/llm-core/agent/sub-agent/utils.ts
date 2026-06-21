@@ -47,9 +47,12 @@ export function getLatestTaskRun(
     runs: Map<string, AgentTaskRun>,
     taskId: string
 ) {
-    return [...runs.values()]
-        .filter((r) => r.taskId === taskId)
-        .sort((a, b) => b.startedAt - a.startedAt)[0]
+    let latest: AgentTaskRun | undefined
+    for (const run of runs.values()) {
+        if (run.taskId !== taskId) continue
+        if (!latest || run.startedAt > latest.startedAt) latest = run
+    }
+    return latest
 }
 
 export function formatTaskResult(
