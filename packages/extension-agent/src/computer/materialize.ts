@@ -10,6 +10,7 @@ import {
     ScannedSkill
 } from '../skills/scan'
 import { getConfigPath } from '../config/path'
+import { quoteShellPath } from '../utils/shell'
 import { ComputerSessionApi } from './types'
 
 export const AGENTCLI_SKILL_NAME = 'agentcli'
@@ -69,10 +70,9 @@ export class SkillMaterializer {
 
         const files = await listSkillResources(skill.dir)
         for (const file of files) {
-            const data = await readFile(path.join(skill.dir, file))
             entries.push({
                 path: posix.join(root, file.replaceAll('\\', '/')),
-                content: data.includes(0) ? data : data.toString('utf-8')
+                content: await readFile(path.join(skill.dir, file))
             })
         }
 
@@ -95,6 +95,35 @@ export class SkillMaterializer {
                 continue
             }
             await session.writeFile(entry.path, entry.content)
+        }
+
+        const keep = new Set(entries.map((entry) => entry.path))
+        if (skill.name === AGENTCLI_SKILL_NAME && ctx) {
+            keep.add(posix.join(root, 'config.json'))
+        }
+
+        const stale = await session
+            .execute(
+                `cd ${quoteShellPath(root)} && find . -type f -printf '%P\n'`,
+                {
+                    timeout: 30000
+                }
+            )
+            .then((result) =>
+                result.stdout
+                    .split('\n')
+                    .map((file) => file.trim())
+                    .filter(Boolean)
+                    .map((file) => posix.join(root, file))
+                    .filter((file) => !keep.has(file))
+            )
+            .catch(() => [])
+
+        if (stale.length > 0) {
+            await session.execute(
+                `rm -f -- ${stale.map((file) => quoteShellPath(file)).join(' ')}`,
+                { timeout: 30000 }
+            )
         }
 
         if (skill.name === AGENTCLI_SKILL_NAME && ctx) {

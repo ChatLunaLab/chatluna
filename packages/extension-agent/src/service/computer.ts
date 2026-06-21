@@ -67,6 +67,7 @@ export class ChatLunaAgentComputerService {
     private _proxy: ChatLunaAgentComputerProxy
     private _terminals = new Map<string, Map<string, ManagedTerminal>>()
     private _jobs = new Map<string, BackgroundJob>()
+    private _tasks = new Set<Promise<void>>()
 
     readonly materializer = new SkillMaterializer()
 
@@ -92,6 +93,7 @@ export class ChatLunaAgentComputerService {
         this._toolDispose = []
         this._promptDispose?.()
         this._promptDispose = undefined
+        await Promise.allSettled(this._tasks)
         await this.closeAllTerminals()
         this._jobs.clear()
         await this._sessions.clear()
@@ -100,6 +102,7 @@ export class ChatLunaAgentComputerService {
     }
 
     async reload() {
+        await Promise.allSettled(this._tasks)
         await this.closeAllTerminals()
         this._jobs.clear()
         await this._sessions.clear()
@@ -369,7 +372,11 @@ export class ChatLunaAgentComputerService {
                 await item.connect()
 
                 const skills = this.ctx.chatluna_agent?.skills
-                if (backend !== 'local' && skills) {
+                if (
+                    backend !== 'local' &&
+                    skills &&
+                    (options.conversationId || options.userId)
+                ) {
                     const task = (async () => {
                         const list = skills
                             .listSkills()
@@ -420,7 +427,10 @@ export class ChatLunaAgentComputerService {
                             `Finished materializing ${done}/${list.length} skill(s) for ${backend} session ${item.sessionId} in ${Date.now() - started}ms`
                         )
                     })()
-                    task.catch((err) => logger.warn(err))
+                    this._tasks.add(task)
+                    task.catch((err) => logger.warn(err)).finally(() =>
+                        this._tasks.delete(task)
+                    )
                 }
 
                 return item

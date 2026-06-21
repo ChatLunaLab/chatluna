@@ -152,38 +152,38 @@ export async function langchainMessageToClaudeMessage(
         })
     )
 
-    for (let i = 0; i < mappedMessages.length; i++) {
-        const message = mappedMessages[i]
-
-        if (message.content == null) {
+    for (const [i, msg] of mappedMessages.entries()) {
+        if (msg.content == null) {
             continue
         }
 
-        if (message.role !== 'system') {
-            if (isToolResultMessage(message)) {
+        if (msg.role !== 'system') {
+            if (isToolResultMessage(msg)) {
                 const last = result[result.length - 1]
-                if (isToolResultMessage(last)) {
+                if (last && isToolResultMessage(last)) {
                     ;(last.content as ClaudeMessageContentBlockParam[]).push(
-                        ...(message.content as ClaudeMessageContentBlockParam[])
+                        ...(msg.content as ClaudeMessageContentBlockParam[])
                     )
                     continue
                 }
             }
 
-            result.push(message)
+            result.push(msg)
             continue
         }
 
         result.push({
             role: 'user',
-            content: message.content
+            content: msg.content
         })
 
-        if (mappedMessages?.[i + 1]?.role === 'assistant') {
+        const next = mappedMessages[i + 1]?.role
+
+        if (next === 'assistant') {
             continue
         }
 
-        if (mappedMessages?.[i + 1]?.role === 'user') {
+        if (next === 'user') {
             result.push({
                 role: 'assistant',
                 content: 'Okay, what do I need to do?'

@@ -198,21 +198,28 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }),
                 posix.basename(target)
             )
-            const res = await fetch(
-                this.url(
-                    `/files/upload?${new URLSearchParams({
-                        directory: posix.dirname(target)
-                    }).toString()}`
-                ),
-                {
-                    method: 'POST',
-                    headers: this.headers(),
-                    body: form
-                }
-            )
+            const ctl = new AbortController()
+            const timer = setTimeout(() => ctl.abort(), 30000)
+            try {
+                const res = await fetch(
+                    this.url(
+                        `/files/upload?${new URLSearchParams({
+                            directory: posix.dirname(target)
+                        }).toString()}`
+                    ),
+                    {
+                        method: 'POST',
+                        headers: this.headers(),
+                        body: form,
+                        signal: ctl.signal
+                    }
+                )
 
-            if (!res.ok) {
-                throw new Error(await res.text())
+                if (!res.ok) {
+                    throw new Error(await res.text())
+                }
+            } finally {
+                clearTimeout(timer)
             }
 
             return
