@@ -1,5 +1,7 @@
 /** @module utils/runtime_sync */
 
+import { Buffer } from 'node:buffer'
+import { createHash } from 'crypto'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname, join, posix } from 'path'
 import { CallbackManager } from '@langchain/core/callbacks/manager'
@@ -21,7 +23,7 @@ import { quoteShellPath } from './shell'
 interface RuntimeSyncFile {
     kind: 'skill' | 'subagent'
     targetPath: string
-    content: string
+    content: Buffer
 }
 
 export class ChatLunaAgentRuntimeSyncService {
@@ -169,7 +171,7 @@ export class ChatLunaAgentRuntimeSyncService {
 
             this._states.delete(key)
         } catch (err) {
-            this.ctx.logger.warn('Failed to flush runtime sync files', err)
+            logger.warn('Failed to flush runtime sync files', err)
         }
     }
 }
@@ -210,7 +212,7 @@ async function syncRuntimeSession(
 
     for (const item of files) {
         await mkdir(dirname(item.targetPath), { recursive: true })
-        await writeFile(item.targetPath, item.content, 'utf-8')
+        await writeFile(item.targetPath, item.content)
     }
 
     if (files.some((item) => item.kind === 'skill')) {
@@ -234,6 +236,12 @@ async function collectSyncFiles(
 ) {
     const files: RuntimeSyncFile[] = []
     const remoteFiles = await listRemoteFiles(session, remoteRoot)
+    const remotePaths = remoteFiles.map((file) =>
+        posix.join(remoteRoot, file.replaceAll('\\', '/'))
+    )
+    const remoteHashes = session.hashFiles
+        ? await session.hashFiles(remotePaths).catch(() => undefined)
+        : undefined
     if (remoteFiles.length > 0) {
         logger?.debug(
             `collectSyncFiles kind=${kind} backend=${session.backend} remoteRoot=${remoteRoot} files=${remoteFiles.length} localRoot=${localRoot}`
@@ -254,9 +262,8 @@ async function collectSyncFiles(
             }
         }
 
-        const content = await session.readFile(posix.join(remoteRoot, name))
         const targetPath = join(localRoot, ...name.split('/'))
-        const current = await readFile(targetPath, 'utf-8').catch(
+        const current = await readFile(targetPath).catch(
             (err: NodeJS.ErrnoException) => {
                 if (err.code === 'ENOENT') {
                     return undefined
@@ -266,7 +273,14 @@ async function collectSyncFiles(
             }
         )
 
-        if (current === content) {
+        const remotePath = posix.join(remoteRoot, name)
+        if (current && remoteHashes?.get(remotePath) === hash(current)) {
+            continue
+        }
+
+        const content = await readRemoteFileBytes(session, remotePath)
+
+        if (current?.equals(content)) {
             continue
         }
 
@@ -284,6 +298,22 @@ async function collectSyncFiles(
     }
 
     return files
+}
+
+async function readRemoteFileBytes(
+    session: ComputerSessionApi,
+    remotePath: string
+) {
+    const asset = await session.openAsset(remotePath)
+    const chunks: Buffer[] = []
+    for await (const chunk of asset.stream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    }
+    return Buffer.concat(chunks)
+}
+
+function hash(value: Buffer) {
+    return createHash('sha1').update(value).digest('hex')
 }
 
 async function listRemoteFiles(session: ComputerSessionApi, root: string) {

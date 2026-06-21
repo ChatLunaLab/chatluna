@@ -1,6 +1,7 @@
 import { IncomingMessage } from 'http'
 import { WebSocket } from 'ws'
 import { Context } from 'koishi'
+import { logger } from '..'
 import type { ChatLunaAgentComputerService } from '../service/computer'
 import type { WebSocketLayer } from '@koishijs/plugin-server'
 
@@ -21,7 +22,7 @@ export class ChatLunaAgentComputerProxy {
             /^\/chatluna\/computer\/terminal\/([^/?]+)\/([^/?]+)(?:\?.*)?$/,
             (socket, request) => {
                 this.acceptTerminal(socket, request).catch((err) => {
-                    this.ctx.logger.warn(
+                    logger.warn(
                         `Failed to proxy terminal websocket: ${err instanceof Error ? err.message : String(err)}`
                     )
                     socket.close()

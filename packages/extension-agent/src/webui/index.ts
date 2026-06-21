@@ -4,6 +4,7 @@ import { DataService } from '@koishijs/plugin-console'
 import { Context } from 'koishi'
 import { listModelNames } from 'koishi-plugin-chatluna/utils/schema'
 import { resolve } from 'path'
+import { logger } from '..'
 import { getSkillsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import type { ChatLunaAgentService } from '../service'
@@ -403,7 +404,7 @@ function registerTriggerListeners(ctx: Context, agent: AgentRef) {
         try {
             return await fn(bot)
         } catch (err) {
-            ctx.logger.warn(err)
+            logger.warn(err)
             return fallback
         }
     }

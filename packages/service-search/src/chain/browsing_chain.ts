@@ -59,7 +59,7 @@ export interface ChatLunaBrowsingChainInput {
     contextualCompressionPrompt?: string
     searchFailedPrompt: string
     variableService: ChatLunaPromptRenderService
-    browserManager: BrowserManager
+    browserManager?: BrowserManager
 }
 
 export class ChatLunaBrowsingChain
@@ -100,7 +100,7 @@ export class ChatLunaBrowsingChain
 
     searchFailedPrompt: string
 
-    browserManager: BrowserManager
+    browserManager?: BrowserManager
 
     private _toolMask?: ToolMask
 
@@ -432,6 +432,8 @@ export class ChatLunaBrowsingChain
         conversationId: string,
         signal: AbortSignal
     ) {
+        if (!this.browserManager) return []
+
         const runConfig = {
             configurable: {
                 model: this.model,

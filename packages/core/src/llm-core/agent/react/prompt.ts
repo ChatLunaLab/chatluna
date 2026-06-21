@@ -116,9 +116,8 @@ Here are the rules you should always follow to solve your task:
 1. ALWAYS provide tool calls within <tool_calling> tags, else you will fail.
 2. Always use the right arguments for the tools. Never use variable names as the action arguments, use the actual values instead.
 3. You can call multiple tools at once if it makes sense for efficiency.
-4. Call tools only when needed: do not call the search agent if you do not need information, try to solve the task yourself.
-If no tool call is needed, use final_answer tool to return your answer.
-5. Never re-do a tool call that you previously did with the exact same parameters.
-6. ALWAYS include your reasoning in <thought> tags before making any tool calls.
+4. Call tools only when needed: do not call the search agent if you do not need information, try to solve the task yourself. If you have enough information, immediately use final_answer.
+5. Never repeat a tool call with the exact same parameters. If a tool fails, returns empty, or makes no progress, change strategy. If you cannot proceed, use final_answer to explain the blocker.
+6. ALWAYS include your reasoning in <thought> tags before making any tool calls, including your current goal and why the tool helps.
 
 Now Begin! If you solve the task correctly, you will receive a reward of $1,000,000.`

@@ -109,8 +109,8 @@ commands:
                 archived: Include archived conversations.
                 all: Include archived conversations.
             messages:
-                success: '{0} -> {1}, {2}%'
-                skipped: 'Compression skipped. {0} -> {1}, {2}%'
+                success: 'Compressed: {0} tokens -> {1} tokens, reduced by {2} tokens ({3}%)'
+                skipped: 'Compression skipped: {0} tokens -> {1} tokens, reduced by {2} tokens ({3}%)'
                 no_conversation: 'No conversation is available to compress.'
                 failed: 'Failed to compress chat history for conversation {0} ({1}): {2}'
         delete:
@@ -210,8 +210,8 @@ commands:
                 options:
                     conversation: Target conversation by seq, ID, or title.
                 messages:
-                    success: '{0} -> {1}, {2}%'
-                    skipped: 'Compression skipped. {0} -> {1}, {2}%'
+                    success: 'Compressed: {0} tokens -> {1} tokens, reduced by {2} tokens ({3}%)'
+                    skipped: 'Compression skipped: {0} tokens -> {1} tokens, reduced by {2} tokens ({3}%)'
                     conversation_not_found: 'Conversation not found.'
                     failed: 'Failed to compress chat history for conversation {0}: {1}'
             voice:

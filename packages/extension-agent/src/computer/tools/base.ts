@@ -5,6 +5,7 @@
 
 import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
+import { logger } from '../..'
 import type { ComputerSessionApi } from '../types'
 import type { ChatLunaAgentComputerService } from '../../service/computer'
 
@@ -20,9 +21,7 @@ export abstract class ComputerToolBase extends StructuredTool {
     }
 
     protected log(session: ComputerSessionApi, message: string) {
-        this.computer.ctx.logger.info(
-            `[computer:${session.backend}] ${message}`
-        )
+        logger.info(`[computer:${session.backend}] ${message}`)
     }
 
     protected withBackend(session: ComputerSessionApi, text: string) {

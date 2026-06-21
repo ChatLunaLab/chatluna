@@ -184,13 +184,14 @@ export interface SubAgentTaskService {
     buildToolDescription(): string
     runTask(
         input: {
-            action?: 'run' | 'status' | 'list' | 'message'
+            action?: 'run' | 'status' | 'list' | 'list_all' | 'message' | 'stop'
             agent?: string
             id?: string
             prompt?: string
             reason?: string
             background?: boolean
             message?: string
+            goal?: string
         },
         runConfig?: ChatLunaToolRunnable
     ): Promise<string>

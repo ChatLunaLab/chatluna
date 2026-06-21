@@ -26,7 +26,7 @@ import { LRUCache } from 'lru-cache'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { StructuredTool } from '@langchain/core/tools'
-import { computed, ComputedRef, reactive } from '@vue/reactivity'
+import { computed, ComputedRef, markRaw, reactive } from '@vue/reactivity'
 import { randomUUID } from 'crypto'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { ToolMask } from '../agent'
@@ -38,7 +38,7 @@ export class PlatformService {
         reactive({})
 
     private _tools: Record<string, ChatLunaTool> = reactive({})
-    private _tmpTools: Record<string, StructuredTool> = reactive({})
+    private _tmpTools: Record<string, StructuredTool> = {}
     private _toolMaskResolvers: Record<string, ToolMaskResolver> = {}
     private _models: Record<string, ModelInfo[]> = reactive({})
     private _chatChains: Record<string, ChatLunaChainInfo> = reactive({})
@@ -83,7 +83,7 @@ export class PlatformService {
     registerTool(name: string, toolCreator: ChatLunaTool) {
         toolCreator.id = randomUUID()
         toolCreator.name = name
-        this._tools[name] = toolCreator
+        this._tools[name] = markRaw(toolCreator)
         delete this._tmpTools[name]
         this.ctx.emit('chatluna/tool-updated', this)
         return () => this.unregisterTool(name)
@@ -399,7 +399,7 @@ export class PlatformService {
 
         await this.refreshClient(client, platform, config)
 
-        this._platformClients[platform] = client
+        this._platformClients[platform] = markRaw(client)
 
         return client
     }
@@ -425,7 +425,7 @@ export class PlatformService {
             throw new Error(`Tool ${name} not found`)
         }
         const tool = chatLunaTool.createTool(params)
-        this._tmpTools[name] = tool
+        this._tmpTools[name] = markRaw(tool)
         return tool
     }
 
@@ -444,6 +444,7 @@ export class PlatformService {
         this._platformClients = reactive({})
         this._models = reactive({})
         this._tools = reactive({})
+        this._tmpTools = {}
         this._chatChains = reactive({})
     }
 }

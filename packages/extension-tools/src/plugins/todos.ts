@@ -102,6 +102,17 @@ export async function apply(
             const todos = input.todos as Todo[]
             const conversationId = toolConfig.configurable.conversationId
             const session = toolConfig.configurable.session
+            const prev = todosStore.get(conversationId)
+            const unchanged =
+                prev?.length === todos.length &&
+                prev.every((todo, idx) => {
+                    const item = todos[idx]
+                    return (
+                        todo.content === item.content &&
+                        todo.status === item.status &&
+                        todo.priority === item.priority
+                    )
+                })
 
             todosStore.set(conversationId, todos)
 
@@ -136,13 +147,34 @@ export async function apply(
             const pendingCount = todos.filter(
                 (t: Todo) => t.status === 'pending'
             ).length
+            const warnings: string[] = []
+            if (inProgressCount > 1) {
+                warnings.push(
+                    'Multiple tasks are marked in_progress. Keep exactly one active task.'
+                )
+            }
+            if (unchanged) {
+                warnings.push(
+                    'The todo list was submitted without changes. Avoid repeating this tool unless task state advances.'
+                )
+            }
+            if (
+                todos.length > 0 &&
+                pendingCount === 0 &&
+                inProgressCount === 0
+            ) {
+                warnings.push(
+                    'No pending or in_progress items remain. If the work is done, provide the final answer; otherwise add the next task.'
+                )
+            }
 
             return JSON.stringify({
                 success: true,
                 total: todos.length,
                 pending: pendingCount,
                 in_progress: inProgressCount,
-                completed: completedCount
+                completed: completedCount,
+                ...(warnings.length > 0 ? { warnings } : {})
             })
         },
         {

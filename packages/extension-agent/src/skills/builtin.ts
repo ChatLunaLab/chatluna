@@ -3,6 +3,7 @@
 import { copyFile, mkdir, readdir, readFile, rm, stat } from 'fs/promises'
 import { dirname, join, relative } from 'path'
 import { Context } from 'koishi'
+import { logger } from '..'
 import { AGENTCLI_SKILL_NAME } from '../computer/materialize'
 import { getSkillsRootPath } from '../config/path'
 
@@ -11,7 +12,7 @@ export async function syncBundledSkills(ctx: Context) {
     const dest = getSkillsRootPath(ctx)
 
     if (!(await stat(src).catch(() => undefined))?.isDirectory()) {
-        ctx.logger.warn('Bundled skills directory not found')
+        logger.warn('Bundled skills directory not found')
         return
     }
 
@@ -42,7 +43,7 @@ export async function syncBundledSkills(ctx: Context) {
         if (!(await syncSkillDir(from, to, force && exists)) && force && exists)
             continue
 
-        ctx.logger[force && exists ? 'debug' : 'info'](
+        logger[force && exists ? 'debug' : 'info'](
             `${force && exists ? 'Refreshed' : 'Copied'} bundled skill '${entry.name}' to ${to}`
         )
     }

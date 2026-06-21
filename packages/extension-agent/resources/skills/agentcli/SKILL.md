@@ -4,13 +4,13 @@ description: >-
     Use this skill to inspect or change ChatLuna agent admin state — skills,
     sub-agents, tools, MCP servers, MCP tools, or permission rules. The skill
     edits a working copy of the agent config inside the sandbox; the user must
-    run `chatluna.agent sync` to write changes back to the host instance.
+    run `chatluna.agent.sync` to write changes back to the host instance.
 ---
 
 This skill ships a CLI that runs inside the sandbox via the bash tool. It
 reads and writes a working copy of the agent config materialized next to the
 script (`config.json` in this skill folder). Local edits do **not** take
-effect until the user runs `chatluna.agent sync` on the host instance.
+effect until the user runs `chatluna.agent.sync` on the host instance.
 
 ## How to invoke
 
@@ -71,12 +71,12 @@ Each write rewrites `config.json` in place and keeps a `config.json.bak`.
 1. Run `node bin/agentcli.cjs show overview` to understand the current state.
 2. For each change, run the matching write command. Verify with another
    `show ...` after the edit.
-3. When the edits are ready, ask the user to run `chatluna.agent sync`. That
+3. When the edits are ready, ask the user to run `chatluna.agent.sync`. That
    validates the working copy and atomically replaces the live config.
 4. Authoring new skill or sub-agent files still requires loading
    `skill-creator` or `sub-agent-creator` first. Place those files under the
    sandbox skill / sub-agent directories shown by `show overview`. The same
-   `chatluna.agent sync` command flushes them back to the host.
+   `chatluna.agent.sync` command flushes them back to the host.
 5. Never invent paths. Read the directories from `show overview`.
 
 ## Notes
@@ -88,5 +88,5 @@ Each write rewrites `config.json` in place and keeps a `config.json.bak`.
   truth.
 - Removing a skill or sub-agent here only removes its config entry. To erase
   the actual files, delete them from the corresponding sandbox directory
-  before running `chatluna.agent sync`.
+  before running `chatluna.agent.sync`.
 - If the bash tool is unavailable, say so instead of guessing.

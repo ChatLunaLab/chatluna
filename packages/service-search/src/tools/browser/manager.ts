@@ -16,72 +16,6 @@ import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 
-export interface BrowserManagerConfig {
-    browserTimeout: number
-    browserIdleTimeout: number
-    browserMaxPages: number
-    browserOutputLimit: number
-}
-
-export interface BrowserReadOptions {
-    url?: string
-    pageId?: number
-    selector?: string
-    includeLinks?: boolean
-    maxLength?: number
-    waitUntil?: PuppeteerLifeCycleEvent
-    timeout?: number
-}
-
-export interface BrowserOpenOptions {
-    url: string
-    newPage?: boolean
-    background?: boolean
-    waitUntil?: PuppeteerLifeCycleEvent
-    timeout?: number
-}
-
-export interface BrowserNavigateOptions {
-    pageId?: number
-    action: 'url' | 'back' | 'forward' | 'reload'
-    url?: string
-    waitUntil?: PuppeteerLifeCycleEvent
-    timeout?: number
-}
-
-export interface BrowserOutputOptions {
-    name: string
-    text: string
-    limit?: number
-}
-
-interface BrowserConsoleItem {
-    type: string
-    text: string
-    url?: string
-    line?: number
-    time: string
-}
-
-interface BrowserNetworkItem {
-    method: string
-    url: string
-    type: string
-    status?: number
-    failure?: string
-    time: string
-}
-
-export interface BrowserSnapshotNode extends SerializedAXNode {
-    uid: string
-    children: BrowserSnapshotNode[]
-}
-
-export interface BrowserSnapshot {
-    root: BrowserSnapshotNode
-    nodes: Map<string, BrowserSnapshotNode>
-}
-
 export class BrowserPage {
     snapshot?: BrowserSnapshot
     console: BrowserConsoleItem[] = []
@@ -282,7 +216,7 @@ export class BrowserManager {
               )
             : this.getPage(runConfig, input.pageId)
         const text = await page.page.evaluate(
-            (selector, includeLinks) => readBrowserText(selector, includeLinks),
+            readBrowserText,
             input.selector,
             input.includeLinks ?? false
         )
@@ -318,7 +252,7 @@ export class BrowserManager {
         const page = input.url
             ? await this.open({ url: input.url }, runConfig)
             : this.getPage(runConfig, input.pageId)
-        const links = await page.page.evaluate(() => readBrowserLinks())
+        const links = await page.page.evaluate(readBrowserLinks)
         return await this.formatOutput({
             name: 'browser-links',
             text: JSON.stringify(links, null, 2),
@@ -342,7 +276,7 @@ export class BrowserManager {
               )
             : this.getPage(runConfig, input.pageId)
         const text = await page.page.evaluate(
-            (selector, includeLinks) => readBrowserText(selector, includeLinks),
+            readBrowserText,
             input.selector,
             input.includeLinks ?? false
         )
@@ -475,12 +409,11 @@ function assignSnapshotIds(
     nextId: () => string
 ): BrowserSnapshotNode {
     const uid = nextId()
-    const node = Object.assign(Object.create(Object.getPrototypeOf(raw)), raw, {
-        uid,
-        children: (raw.children ?? []).map((child) =>
-            assignSnapshotIds(child, nodes, nextId)
-        )
-    }) as BrowserSnapshotNode
+    const node = raw as BrowserSnapshotNode
+    node.uid = uid
+    node.children = (raw.children ?? []).map((child) =>
+        assignSnapshotIds(child, nodes, nextId)
+    )
     nodes.set(uid, node)
     return node
 }
@@ -590,4 +523,70 @@ function readBrowserLinks() {
     result.sameSite = result.sameSite.slice(0, 100)
     result.external = result.external.slice(0, 100)
     return result
+}
+
+export interface BrowserManagerConfig {
+    browserTimeout: number
+    browserIdleTimeout: number
+    browserMaxPages: number
+    browserOutputLimit: number
+}
+
+export interface BrowserReadOptions {
+    url?: string
+    pageId?: number
+    selector?: string
+    includeLinks?: boolean
+    maxLength?: number
+    waitUntil?: PuppeteerLifeCycleEvent
+    timeout?: number
+}
+
+export interface BrowserOpenOptions {
+    url: string
+    newPage?: boolean
+    background?: boolean
+    waitUntil?: PuppeteerLifeCycleEvent
+    timeout?: number
+}
+
+export interface BrowserNavigateOptions {
+    pageId?: number
+    action: 'url' | 'back' | 'forward' | 'reload'
+    url?: string
+    waitUntil?: PuppeteerLifeCycleEvent
+    timeout?: number
+}
+
+export interface BrowserOutputOptions {
+    name: string
+    text: string
+    limit?: number
+}
+
+interface BrowserConsoleItem {
+    type: string
+    text: string
+    url?: string
+    line?: number
+    time: string
+}
+
+interface BrowserNetworkItem {
+    method: string
+    url: string
+    type: string
+    status?: number
+    failure?: string
+    time: string
+}
+
+export interface BrowserSnapshotNode extends SerializedAXNode {
+    uid: string
+    children: BrowserSnapshotNode[]
+}
+
+export interface BrowserSnapshot {
+    root: BrowserSnapshotNode
+    nodes: Map<string, BrowserSnapshotNode>
 }

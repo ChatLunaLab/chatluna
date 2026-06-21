@@ -23,10 +23,6 @@ import {
     ChainInputs
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
 import {
-    isMessageContentComplex,
-    isMessageContentText
-} from 'koishi-plugin-chatluna/utils/langchain'
-import {
     AgentAction,
     AgentCallbackEvent,
     AgentEvent,
@@ -39,6 +35,16 @@ import {
     MessageQueue,
     ScratchpadEntry
 } from './types'
+import {
+    type AgentLoopState,
+    applyLoopGuidance,
+    coerceToAgentObservation,
+    createAgentLoopState,
+    observationToMessageContent,
+    repairToolAction,
+    toOutput,
+    toToolInputErrorObservation
+} from './tool-observation'
 import { compressChunk } from '../chain/infinite_context_chain'
 import type { ChatLunaChatModel } from '../platform/model'
 
@@ -48,7 +54,8 @@ async function executeTools(
     config: RunnableConfig | undefined,
     signal: AbortSignal | undefined,
     handleParsingErrors: boolean | string | ((e: Error) => string),
-    handleToolRuntimeErrors?: (e: Error) => string
+    handleToolRuntimeErrors?: (e: Error) => string,
+    state?: AgentLoopState
 ) {
     return Promise.all(
         actions.map(async (action) => {
@@ -65,15 +72,49 @@ async function executeTools(
                 } as AgentStep
             }
 
+            const input =
+                typeof action.toolInput === 'string'
+                    ? action.toolInput
+                    : JSON.stringify(action.toolInput)
+            const inputKey = input ?? ''
+            const toolKey = `${action.tool?.toLowerCase()}:${inputKey}`
+            if (state) {
+                const count = (state.calls.get(toolKey) ?? 0) + 1
+                state.calls.set(toolKey, count)
+
+                if (count === 2) {
+                    return {
+                        action,
+                        observation:
+                            `Warning: tool '${action.tool}' was called ` +
+                            'again with the exact same input. The call was ' +
+                            'skipped to prevent a loop. Do not repeat the ' +
+                            'same call; change arguments, use another tool, ' +
+                            'or explain the blocker.'
+                    } as AgentStep
+                }
+
+                if (count >= 3) {
+                    return {
+                        action,
+                        observation:
+                            `Error: repeated duplicate call to ` +
+                            `'${action.tool}'. Stop repeating this call, ` +
+                            'change strategy, or finish with a blocker ' +
+                            'summary for the user.'
+                    } as AgentStep
+                }
+            }
+
             const tool = toolMap[action.tool?.toLowerCase()]
 
             if (tool == null) {
                 return {
                     action,
                     observation:
-                        `${action.tool} is not a valid tool. Try another tool. ` +
-                        'If this happens repeatedly, stop the task and tell ' +
-                        'the user you cannot call these tools right now.'
+                        `Tool '${action.tool}' is not valid. Do not call ` +
+                        'this tool again. Try another tool, change strategy, ' +
+                        'or finish with a blocker summary for the user.'
                 } as AgentStep
             }
 
@@ -90,10 +131,9 @@ async function executeTools(
                     observation:
                         `Tool '${action.tool}' is not allowed for the ` +
                         `current agent. Available tools: ${allowed.join(', ')}. ` +
-                        'Try another tool, and test whether it can be ' +
-                        'called first. If this happens repeatedly, stop ' +
-                        'the task and tell the user you cannot call these ' +
-                        'tools right now.'
+                        'Do not retry this tool. Try an allowed tool, ' +
+                        'change strategy, or finish with a blocker summary ' +
+                        'for the user.'
                 } as AgentStep
             }
 
@@ -106,47 +146,73 @@ async function executeTools(
                     action,
                     observation:
                         `You do not have permission to call tool ` +
-                        `'${action.tool}'. Try another tool, and test ` +
-                        'whether it can be called first. If this happens ' +
-                        'repeatedly, stop the task and tell the user you ' +
-                        'cannot call these tools right now.'
+                        `'${action.tool}'. Do not retry this tool. Try ` +
+                        'another tool, change strategy, or finish with a ' +
+                        'blocker summary for the user.'
                 } as AgentStep
             }
 
             try {
-                const observation = await tool.invoke(action.toolInput, config)
+                const observation = coerceToAgentObservation(
+                    await tool.invoke(action.toolInput, config),
+                    tool.name
+                )
                 return {
                     action,
-                    observation: coerceToAgentObservation(
+                    observation: applyLoopGuidance(
+                        state,
+                        action,
                         observation,
-                        tool.name
+                        false
                     )
                 } as AgentStep
             } catch (e) {
                 if (e instanceof ToolInputParsingException) {
+                    const observation = coerceToAgentObservation(
+                        toToolInputErrorObservation(handleParsingErrors, e)
+                    )
                     return {
                         action,
-                        observation: coerceToAgentObservation(
-                            toToolInputErrorObservation(handleParsingErrors, e)
+                        observation: applyLoopGuidance(
+                            state,
+                            action,
+                            observation,
+                            true
                         )
                     } as AgentStep
                 }
 
                 if (handleToolRuntimeErrors != null) {
+                    const observation = coerceToAgentObservation(
+                        handleToolRuntimeErrors(e as Error),
+                        tool.name
+                    )
                     return {
                         action,
-                        observation: coerceToAgentObservation(
-                            handleToolRuntimeErrors(e as Error),
-                            tool.name
+                        observation: applyLoopGuidance(
+                            state,
+                            action,
+                            observation,
+                            true
                         )
                     } as AgentStep
                 }
 
+                const observation = coerceToAgentObservation(
+                    `Tool execution failed: ${String(e)}. Do not ` +
+                        'retry with the exact same input. Change the ' +
+                        'arguments, use a different tool, change ' +
+                        'strategy, or finish with a blocker summary.',
+                    tool.name
+                )
+
                 return {
                     action,
-                    observation: coerceToAgentObservation(
-                        `Something went wrong. Please Try Again. ${String(e)}`,
-                        tool.name
+                    observation: applyLoopGuidance(
+                        state,
+                        action,
+                        observation,
+                        true
                     )
                 } as AgentStep
             }
@@ -184,7 +250,7 @@ async function plan(
         throw new Error('No output from agent stream')
     }
 
-    if (isAgentFinish(result)) {
+    if (!Array.isArray(result) && 'returnValues' in result) {
         return result
     }
 
@@ -212,6 +278,7 @@ export async function* runAgent(
     const handleParsingErrors = options.handleParsingErrors ?? true
 
     let iterations = 0
+    const loopState = createAgentLoopState()
 
     while (iterations < maxIterations) {
         checkAborted(signal)
@@ -255,7 +322,7 @@ export async function* runAgent(
 
         checkAborted(signal)
 
-        if (isAgentFinish(output)) {
+        if (!Array.isArray(output) && 'returnValues' in output) {
             const message = output.returnValues['message'] as AIMessageChunk
 
             yield {
@@ -282,6 +349,8 @@ export async function* runAgent(
             return
         }
 
+        output = output.map((action) => repairToolAction(action, toolMap))
+
         if (output.length > 0) {
             yield {
                 type: 'round-decision'
@@ -299,7 +368,8 @@ export async function* runAgent(
             config,
             signal,
             handleParsingErrors,
-            options.handleToolRuntimeErrors
+            options.handleToolRuntimeErrors,
+            loopState
         )
 
         steps.push(...newSteps)
@@ -631,95 +701,11 @@ export interface AgentExecutorOutput extends ChainValues {
     message: AIMessage
 }
 
-function isAgentObservation(value: unknown): value is AgentObservation {
-    if (typeof value === 'string') {
-        return true
-    }
-
-    if (isDirectToolOutput(value)) {
-        return true
-    }
-
-    if (!Array.isArray(value)) {
-        return false
-    }
-
-    return value.every((item) => isMessageContentComplex(item))
-}
-
-export function coerceToAgentObservation(
-    observation: unknown,
-    toolName?: string
-): AgentObservation {
-    if (isDirectToolOutput(observation)) {
-        return observation
-    }
-
-    if (isAgentObservation(observation)) {
-        if (
-            Array.isArray(observation) &&
-            observation.every(isMessageContentText)
-        ) {
-            return observation.map((item) => item.text).join('')
-        }
-
-        return observation
-    }
-
-    logger.warn(
-        `Tool ${toolName ?? 'unknown'} returned unsupported observation type`,
-        observation
-    )
-
-    try {
-        return JSON.stringify(observation) ?? String(observation)
-    } catch {
-        return String(observation)
-    }
-}
-
-export function toToolInputErrorObservation(
-    handleParsingErrors: boolean | string | ((e: Error) => string),
-    error: ToolInputParsingException
-): AgentObservation {
-    if (handleParsingErrors === true || handleParsingErrors === false) {
-        return (
-            'Invalid or incomplete tool input.' +
-            error.message +
-            ' ' +
-            error.output +
-            'Please try again.'
-        )
-    }
-
-    if (typeof handleParsingErrors === 'string') {
-        return handleParsingErrors
-    }
-
-    return handleParsingErrors(error)
-}
-
-function toOutput(value: unknown): string {
-    if (typeof value === 'string') {
-        return value
-    }
-
-    if (Array.isArray(value) && value.every(isMessageContentText)) {
-        return value.map((item) => item.text).join('')
-    }
-
-    try {
-        return JSON.stringify(value) ?? String(value)
-    } catch {
-        return String(value)
-    }
-}
-
-function isAgentFinish(
-    output: AgentAction[] | AgentAction | AgentFinish
-): output is AgentFinish {
-    return !Array.isArray(output) && 'returnValues' in output
-}
+export {
+    coerceToAgentObservation,
+    observationToMessageContent,
+    toToolInputErrorObservation
+} from './tool-observation'
 
 function checkAborted(signal?: AbortSignal) {
     if (!signal?.aborted) {
@@ -755,8 +741,4 @@ function toParsingErrorAction(
                 : (JSON.stringify(observation) ?? ''),
         log: text
     }
-}
-
-export function observationToMessageContent(observation: AgentObservation) {
-    return isDirectToolOutput(observation) ? '' : observation
 }

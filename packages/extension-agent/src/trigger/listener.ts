@@ -1,4 +1,5 @@
 import { type Context, h, type Session } from 'koishi'
+import { logger } from '..'
 import type {
     TriggerProvider,
     TriggerProviderPassiveMatch,
@@ -122,7 +123,7 @@ export class ChatLunaAgentTriggerListener {
                     content: text
                 })
             } catch (err) {
-                this.ctx.logger.warn(err)
+                logger.warn(err)
                 continue
             }
             if (matched == null) continue
@@ -150,7 +151,7 @@ export class ChatLunaAgentTriggerListener {
                     if (cooldownMs > 0) {
                         this._cooldown.set(task.id, now + cooldownMs)
                     }
-                    this.ctx.logger.warn(err)
+                    logger.warn(err)
                 } finally {
                     this._pending.delete(task.id)
                 }

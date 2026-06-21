@@ -13,6 +13,7 @@ import {
 import type { Message, RenderType } from 'koishi-plugin-chatluna'
 import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { logger } from '..'
 import {
     parseBindingKey,
     type WakeupAction,
@@ -174,7 +175,7 @@ export class ChatLunaAgentTriggerExecutor {
                 }
             }
         } catch (err) {
-            this.ctx.logger.error(err)
+            logger.error(err)
             return {
                 ok: false,
                 requestId,

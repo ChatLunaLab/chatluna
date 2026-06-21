@@ -63,7 +63,11 @@ function _convertAgentStepToMessages(
         ) {
             return log.concat(
                 new ToolMessage({
-                    content: `The tool ${action.tool} returned no output. Try again or stop the tool call, tell the user failed to execute the tool.`,
+                    content:
+                        `The tool '${action.tool}' returned no output. ` +
+                        'Do not call this tool with the exact same input ' +
+                        'again. Change strategy, use different arguments, ' +
+                        'or finish with a blocker summary.',
                     name: action.tool,
                     tool_call_id: action.toolCallId
                 })

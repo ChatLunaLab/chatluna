@@ -57,7 +57,7 @@ export function apply(
     plugin: ChatLunaPlugin,
     manager: SearchManager
 ) {
-    if (config.searchEngine.includes('google-web')) {
+    if (config.enableBrowser && config.searchEngine.includes('google-web')) {
         manager.addProvider(new GoogleWebSearchProvider(ctx, config, plugin))
     }
 }

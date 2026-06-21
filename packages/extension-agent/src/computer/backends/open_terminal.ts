@@ -1,17 +1,18 @@
 /** @module computer/backends/open_terminal */
 
-import { randomUUID } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 import { Buffer } from 'node:buffer'
 import { posix } from 'path'
 import { Readable } from 'node:stream'
 import { Context } from 'koishi'
 import type {} from '@koishijs/plugin-proxy-agent'
 import mimeTypes from 'mime-types'
-import { quoteShell } from './types'
+import { buildHashCommand, quoteShell, readHashCommandOutput } from './types'
 import { ComputerCapability, OpenTerminalBackendConfig } from '../../types'
 import {
     ComputerSessionApi,
     ExecuteOptions,
+    ExecuteResult,
     FileContent,
     ScreenshotResult,
     StreamHandle,
@@ -68,14 +69,6 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 })
             ).cwd || '/'
         this._home = root
-
-        const homeResult = await this.execute('printf %s "$HOME"', {
-            workdir: root,
-            timeout: 5000
-        }).catch(() => undefined)
-        if (homeResult?.stdout?.startsWith('/')) {
-            this._home = homeResult.stdout.trim()
-        }
 
         if (this.options.cwd) {
             try {
@@ -197,24 +190,36 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     async writeFile(filePath: string, content: FileContent) {
         if (typeof content !== 'string') {
             const target = this.resolvePath(filePath)
-            const tmp = `${target}.${randomUUID()}.base64`
-
-            await this.execute(`mkdir -p ${quoteShell(posix.dirname(target))}`)
-            await this.writeFile(tmp, Buffer.from(content).toString('base64'))
-
+            const form = new FormData()
+            form.append(
+                'file',
+                new Blob([Buffer.from(content)], {
+                    type: 'application/octet-stream'
+                }),
+                posix.basename(target)
+            )
+            const ctl = new AbortController()
+            const timer = setTimeout(() => ctl.abort(), 30000)
             try {
-                const result = await this.execute(
-                    `base64 -d ${quoteShell(tmp)} > ${quoteShell(target)}`
+                const res = await fetch(
+                    this.url(
+                        `/files/upload?${new URLSearchParams({
+                            directory: posix.dirname(target)
+                        }).toString()}`
+                    ),
+                    {
+                        method: 'POST',
+                        headers: this.headers(),
+                        body: form,
+                        signal: ctl.signal
+                    }
                 )
-                if (result.exitCode !== 0) {
-                    throw new Error(
-                        result.stderr ||
-                            result.stdout ||
-                            `Failed to write ${filePath}`
-                    )
+
+                if (!res.ok) {
+                    throw new Error(await res.text())
                 }
             } finally {
-                await this.execute(`rm -f ${quoteShell(tmp)}`).catch(() => {})
+                clearTimeout(timer)
             }
 
             return
@@ -234,6 +239,44 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }
             }
         )
+    }
+
+    async hashFiles(paths: string[]) {
+        const hashes = await this.execute(
+            buildHashCommand(
+                paths.map((file) => [file, this.resolvePath(file)])
+            ),
+            { timeout: 30000 }
+        )
+            .then((result) => readHashCommandOutput(result))
+            .catch(() => new Map<string, string>())
+        const missing = paths.filter((file) => !hashes.has(file))
+        await Promise.all(
+            missing.map(async (file) => {
+                const result = await this.ctx
+                    .http(this.url('/files/view'), {
+                        method: 'GET',
+                        proxyAgent: '',
+                        headers: this.headers(),
+                        params: { path: this.resolvePath(file) },
+                        responseType: 'arraybuffer',
+                        validateStatus: () => true
+                    })
+                    .catch(() => undefined)
+
+                if (!result || result.status < 200 || result.status >= 300) {
+                    return
+                }
+
+                hashes.set(
+                    file,
+                    createHash('sha1')
+                        .update(Buffer.from(result.data))
+                        .digest('hex')
+                )
+            })
+        )
+        return hashes
     }
 
     async editFile(
@@ -372,151 +415,42 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
 
     async execute(command: string, options: ExecuteOptions = {}) {
         const cwd = this.resolvePath(options.workdir || this._cwd)
-        const term = await openOpenTerminal(this.ctx, {
-            url: (pathname) => this.url(pathname),
-            headers: this.headers(),
-            apiKey: this.resolveSecret(this.cfg.apiKey),
-            cwd,
-            cols: 120,
-            rows: 30
-        })
-        const id = randomUUID().replaceAll('-', '')
-        const start = `__CHATLUNA_OPEN_TERMINAL_START__${id}`
-        const end = `__CHATLUNA_OPEN_TERMINAL_END__${id}`
-        const stdoutPath = `/tmp/chatluna-${id}.stdout`
-        const stderrPath = `/tmp/chatluna-${id}.stderr`
-        const wrapped = `${
-            options.env
-                ? Object.entries(options.env)
-                      .map(
-                          ([key, value]) => `export ${key}=${quoteShell(value)}`
-                      )
-                      .join('\n') + '\n'
-                : ''
-        }stty -echo 2>/dev/null
-export PS1=''
-__chatluna_stdout=${quoteShell(stdoutPath)}
-__chatluna_stderr=${quoteShell(stderrPath)}
-rm -f "$__chatluna_stdout" "$__chatluna_stderr"
-: > "$__chatluna_stdout"
-: > "$__chatluna_stderr"
-printf '%s\n' ${quoteShell(start)}
-__chatluna_shell=$(command -v bash || command -v sh)
-"$__chatluna_shell" -lc ${quoteShell(command)} >"$__chatluna_stdout" 2>"$__chatluna_stderr"
-__chatluna_code=$?
-printf '\n${end}:%s\n' "$__chatluna_code"
-exit
-`
+        const timeout = options.timeout ?? 120000
+        const result: ExecuteResult = {
+            exitCode: 1,
+            stdout: '',
+            stderr: '',
+            timedOut: false
+        }
+        const start = Date.now()
+        let data = await this.postExecute(command, cwd, options, timeout)
+        let offset = collectOpenTerminalOutput(data, result)
+        let left = timeout <= 0 ? 300000 : timeout - (Date.now() - start)
 
-        let pending = ''
-        let started = false
-        let exitCode = 1
-        let timedOut = false
-        const timeout = options.timeout ?? 30000
-        let result = { exitCode: 1 }
-
-        try {
-            result = await new Promise<{ exitCode: number }>((resolve) => {
-                let done = false
-                let timer: NodeJS.Timeout | undefined
-                let queue = Promise.resolve()
-
-                const finish = (code: number) => {
-                    if (done) {
-                        return
-                    }
-
-                    done = true
-                    clearTimeout(timer)
-                    resolve({ exitCode: code })
-                }
-
-                const trim = () => {
-                    if (!started) {
-                        const match = pending.match(
-                            new RegExp(
-                                `(?:^|\\r\\n|\\n|\\r)${escapeRegExp(start)}(?:\\r\\n|\\n|\\r)`
-                            )
-                        )
-                        if (!match || match.index == null) {
-                            const size = start.length + 8
-                            if (pending.length > size) {
-                                pending = pending.slice(-size)
-                            }
-                            return
-                        }
-
-                        pending = pending.slice(match.index + match[0].length)
-                        started = true
-                    }
-
-                    const match = pending.match(
-                        new RegExp(
-                            `(?:[\\s\\S]*?)${escapeRegExp(end)}:(-?\\d+)(?:\\r\\n|\\n|\\r)?`
-                        )
-                    )
-                    if (!match) {
-                        const size = end.length + 64
-                        if (pending.length > size) {
-                            pending = pending.slice(-size)
-                        }
-                        return
-                    }
-
-                    exitCode = Number(match[1]) || 0
-                    finish(exitCode)
-                }
-
-                term.ws.addEventListener('message', (event) => {
-                    queue = queue
-                        .then(async () => {
-                            if (done) {
-                                return
-                            }
-
-                            pending += await readOpenTerminalMessage(event.data)
-                            trim()
-                        })
-                        .catch(() => undefined)
-                })
-
-                term.closed.then(async () => {
-                    await queue.catch(() => undefined)
-                    if (!done) {
-                        finish(exitCode)
-                    }
-                })
-
-                if (timeout > 0) {
-                    timer = setTimeout(() => {
-                        trim()
-                        if (done) {
-                            return
-                        }
-
-                        timedOut = true
-                        finish(exitCode)
-                    }, timeout)
-                }
-
-                term.ws.send(Buffer.from(wrapped, 'utf8'))
-            })
-        } finally {
-            await term.kill().catch(() => undefined)
+        while (data.id && data.status === 'running' && left > 0) {
+            data = await this.getExecuteStatus(data.id, offset, left)
+            offset = collectOpenTerminalOutput(data, result)
+            left = timeout <= 0 ? 300000 : timeout - (Date.now() - start)
         }
 
+        if (data.id && data.status === 'running') {
+            result.timedOut = true
+            await this.ctx.http
+                .delete(
+                    this.url(
+                        `/execute/${encodeURIComponent(data.id)}?force=true`
+                    ),
+                    {
+                        proxyAgent: '',
+                        headers: this.headers()
+                    }
+                )
+                .catch(() => undefined)
+        }
+
+        result.exitCode = data.exit_code ?? (result.timedOut ? 1 : 0)
         this._cwd = cwd
-        const [stdout, stderr] = await Promise.all([
-            this.readFile(stdoutPath).catch(() => ''),
-            this.readFile(stderrPath).catch(() => '')
-        ])
-
-        return {
-            exitCode: result.exitCode,
-            stdout,
-            stderr,
-            timedOut
-        }
+        return result
     }
 
     async readAsset(filePath: string) {
@@ -665,6 +599,57 @@ exit
         return this._root
     }
 
+    private async postExecute(
+        command: string,
+        cwd: string,
+        options: ExecuteOptions,
+        timeout: number
+    ) {
+        const query = new URLSearchParams({
+            wait: String(Math.min(Math.max(timeout, 0), 300000) / 1000)
+        })
+        return readOpenTerminalData<OpenTerminalExecuteData>(
+            await this.ctx.http.post(
+                this.url(`/execute?${query.toString()}`),
+                {
+                    command,
+                    cwd,
+                    env: options.env
+                },
+                {
+                    proxyAgent: '',
+                    headers: {
+                        ...this.headers(),
+                        'content-type': 'application/json'
+                    }
+                }
+            )
+        )
+    }
+
+    private async getExecuteStatus(
+        id: string,
+        offset: number,
+        timeout: number
+    ) {
+        const query = new URLSearchParams({
+            wait: String(Math.min(Math.max(timeout, 0), 300000) / 1000),
+            offset: String(offset)
+        })
+        return readOpenTerminalData<OpenTerminalExecuteData>(
+            await this.ctx.http(
+                this.url(
+                    `/execute/${encodeURIComponent(id)}/status?${query.toString()}`
+                ),
+                {
+                    method: 'GET',
+                    proxyAgent: '',
+                    headers: this.headers()
+                }
+            )
+        )
+    }
+
     private resolvePath(value: string) {
         if (value === '~') {
             return this._home
@@ -732,6 +717,14 @@ type OpenTerminalTerminalData = {
     id?: string
     created_at?: string
     pid?: number
+}
+
+type OpenTerminalExecuteData = {
+    id?: string
+    status?: string
+    exit_code?: number | null
+    output?: { type?: string; data?: string }[]
+    next_offset?: number
 }
 
 type OpenTerminalSocket = {
@@ -877,6 +870,25 @@ function readOpenTerminalData<T>(value: unknown) {
     return ((value as OpenTerminalEnvelope<T>).data ?? value) as T
 }
 
+function collectOpenTerminalOutput(
+    data: OpenTerminalExecuteData,
+    result: ExecuteResult
+) {
+    for (const item of data.output ?? []) {
+        if (!item.data) {
+            continue
+        }
+
+        if (item.type === 'stderr') {
+            result.stderr += item.data
+        } else {
+            result.stdout += item.data
+        }
+    }
+
+    return data.next_offset ?? 0
+}
+
 async function readOpenTerminalMessage(value: unknown) {
     if (typeof value === 'string') {
         return value
@@ -907,8 +919,4 @@ async function readOpenTerminalMessage(value: unknown) {
     }
 
     return ''
-}
-
-function escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

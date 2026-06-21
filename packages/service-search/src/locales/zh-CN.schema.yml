@@ -6,10 +6,6 @@ $inner:
       topK: 参考结果数量（2-50）。
       enhancedSummary: 是否使用增强摘要。
       fastEnhancedSummary: 是否使用快速增强摘要。开启后将不调用模型，直接返回搜索结果。（需要上下文较大的模型）
-      browserTimeout: 浏览器操作超时时间（毫秒）。
-      browserIdleTimeout: 浏览器空闲超时时间（毫秒）。
-      browserMaxPages: 每个会话最多保留的浏览器页面数量。
-      browserOutputLimit: 浏览器工具输出保存到文件前的最大文本长度。
       summaryModel: 处理摘要和关键词的模型。选择较小并且速度较快的模型可以获得更快的响应速度。
       searchConfidenceThreshold: 搜索决策的置信阈值。较高的值意味着更可能进行搜索。
       contextualCompression: 是否对搜索结果进行上下文压缩。将会基于选择的摘要模型对搜索结果进行压缩。
@@ -27,6 +23,12 @@ $inner:
               - 总和模式。将多个来源的搜索结果进行总和后取前 topK 个。
 
 
+    - $desc: 浏览器设置
+      enableBrowser: 是否启用浏览器功能。浏览器工具、URL 浏览、Bing (Web) 和 Google (Web) 需要开启。
+      browserTimeout: 浏览器操作超时时间（毫秒）。
+      browserIdleTimeout: 浏览器空闲超时时间（毫秒）。
+      browserMaxPages: 每个会话最多保留的浏览器页面数量。
+      browserOutputLimit: 浏览器工具输出保存到文件前的最大文本长度。
 
     - $desc: Serper 设置
       serperApiKey: Serper API 密钥。

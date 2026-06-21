@@ -6,6 +6,7 @@ import os from 'node:os'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import { logger } from '..'
 import { truncateOutput } from '../computer/backends/types'
 import type { ComputerSessionApi } from '../computer/types'
 import { createSubAgentItemConfig } from '../config/defaults'
@@ -638,7 +639,7 @@ Output too large (${input.text.length} chars). Full output saved to: ${filePath}
 Use file_read with this path plus offset/limit to inspect more.
 `
             } catch (err) {
-                this.ctx.logger.warn(err)
+                logger.warn(err)
                 return `${truncateOutput(input.text, limit)}
 
 Output too large (${input.text.length} chars). Failed to save full output: ${getErrorMessage(err)}`
@@ -661,7 +662,7 @@ Output too large (${input.text.length} chars). Full output saved to: ${filePath}
 Use file_read with this path plus offset/limit to inspect more.
 `
         } catch (err) {
-            this.ctx.logger.warn(err)
+            logger.warn(err)
             return `${truncateOutput(input.text, limit)}
 
 Output too large (${input.text.length} chars). Failed to save full output: ${getErrorMessage(err)}`

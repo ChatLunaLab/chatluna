@@ -166,11 +166,12 @@ export class OpenAIRequester
                 throw e
             }
 
-            const error = new Error(
-                'error when listing openai models, Result: ' +
-                    JSON.stringify(data)
-            )
-            throw error
+            const raw = data?.error?.message ?? data?.error ?? data
+            if (raw == null) {
+                throw new Error(e instanceof Error ? e.message : String(e))
+            }
+
+            throw new Error(typeof raw === 'string' ? raw : JSON.stringify(raw))
         }
     }
 

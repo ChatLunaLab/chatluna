@@ -37,10 +37,21 @@ export function apply(ctx: Context, config: Config) {
         )
 
         const searchManager = new SearchManager(ctx, config)
-        const browserManager = new BrowserManager(ctx, config)
+        if (config.enableBrowser && !ctx.puppeteer) {
+            logger.warn(
+                'Browser tools are disabled because puppeteer is not available.'
+            )
+        }
+
+        const browserManager =
+            config.enableBrowser && ctx.puppeteer
+                ? new BrowserManager(ctx, config)
+                : undefined
         const summaryModel = computed(() => keywordExtractModel?.value)
 
-        registerBrowserTools(plugin, browserManager, summaryModel)
+        if (browserManager) {
+            registerBrowserTools(plugin, browserManager, summaryModel)
+        }
 
         if (config.searchEngine.length > 0) {
             await providerPlugin(ctx, config, plugin, searchManager)
@@ -90,7 +101,9 @@ export function apply(ctx: Context, config: Config) {
                     const tools = getTools(
                         ctx.chatluna.platform,
                         (name) =>
-                            name === 'web_search' || name.startsWith('browser_')
+                            name === 'web_search' ||
+                            (config.enableBrowser &&
+                                name.startsWith('browser_'))
                     )
 
                     const summaryModel = computed(
@@ -154,8 +167,8 @@ export async function createModel(ctx: Context, model: string) {
 }
 
 export const inject = {
-    required: ['chatluna', 'puppeteer'],
-    optional: ['chatluna_agent']
+    required: ['chatluna'],
+    optional: ['puppeteer', 'chatluna_agent']
 }
 
 export const name = 'chatluna-search-service'
