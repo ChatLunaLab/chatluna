@@ -20,25 +20,28 @@ class GoogleWebSearchProvider extends SearchProvider {
                 waitUntil: 'networkidle2'
             }
         )
-        const summaries = await page.evaluate(() => {
-            const liElements = Array.from(
-                document.querySelector('#search > div > div').childNodes
-            ) as HTMLElement[]
-
-            return liElements.map((li) => {
-                const linkElement = li.querySelector('a')
-                const href = linkElement.getAttribute('href')
-                const title = linkElement.querySelector('a > h3').textContent
-                const abstract = Array.from(
-                    li.querySelectorAll(
-                        'div > div > div > div > div > div > span'
-                    )
+        const summaries = await page.evaluate(
+            // eslint-disable-next-line no-new-func
+            new Function(
+                `const liElements = Array.from(
+                    document.querySelector('#search > div > div').childNodes
                 )
-                    .map((e) => e.textContent)
-                    .join('')
-                return { url: href, title, description: abstract }
-            })
-        })
+
+                return liElements.map((li) => {
+                    const linkElement = li.querySelector('a')
+                    const href = linkElement.getAttribute('href')
+                    const title = linkElement.querySelector('a > h3').textContent
+                    const abstract = Array.from(
+                        li.querySelectorAll(
+                            'div > div > div > div > div > div > span'
+                        )
+                    )
+                        .map((e) => e.textContent)
+                        .join('')
+                    return { url: href, title, description: abstract }
+                })`
+            ) as () => SearchResult[]
+        )
         await page.close()
 
         return summaries.slice(0, limit)

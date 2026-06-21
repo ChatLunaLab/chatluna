@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-search-service",
     "description": "search support for chatluna",
-    "version": "1.4.0-alpha.2",
+    "version": "1.4.0-alpha.3",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -85,8 +85,8 @@
     },
     "koishi": {
         "description": {
-            "zh": "ChatLuna 的网络搜索服务插件，支持多源聚合搜索，包括 `Bing` | `Google` | `DuckDuckGo` | `Serper` | `Tavily` | `MediaWiki`",
-            "en": "Web search service plugin for ChatLuna. Support multi-source aggregation search, including `Bing` | `Google` | `DuckDuckGo` | `Serper` | `Tavily` | `MediaWiki`"
+            "zh": "ChatLuna 的网络搜索服务和浏览器功能插件，依赖 Puppeteer",
+            "en": "Web search service and browser functionality plugin for ChatLuna, depends on puppeteer"
         },
         "service": {
             "required": [
