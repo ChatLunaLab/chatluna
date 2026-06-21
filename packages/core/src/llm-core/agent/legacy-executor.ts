@@ -72,10 +72,11 @@ async function executeTools(
                 } as AgentStep
             }
 
-            const inputKey =
+            const input =
                 typeof action.toolInput === 'string'
                     ? action.toolInput
-                    : (JSON.stringify(action.toolInput) ?? '')
+                    : JSON.stringify(action.toolInput)
+            const inputKey = input ?? ''
             const toolKey = `${action.tool?.toLowerCase()}:${inputKey}`
             if (state) {
                 const count = (state.calls.get(toolKey) ?? 0) + 1
