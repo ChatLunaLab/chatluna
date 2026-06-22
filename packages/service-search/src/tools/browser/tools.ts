@@ -799,36 +799,32 @@ async function fillElement(
 ) {
     const el = await manager.getElement(page, uid)
     try {
-        await el.evaluate(
-            // eslint-disable-next-line no-new-func
-            new Function(
-                'node',
-                'value',
-                `if (node instanceof HTMLInputElement) {
-                    if (node.type === 'checkbox' || node.type === 'radio') {
-                        node.checked = value === 'true'
-                    } else {
-                        node.value = value
-                    }
-                    node.dispatchEvent(new Event('input', { bubbles: true }))
-                    node.dispatchEvent(new Event('change', { bubbles: true }))
-                    return
-                }
-                if (
-                    node instanceof HTMLTextAreaElement ||
-                    node instanceof HTMLSelectElement
-                ) {
-                    node.value = value
-                    node.dispatchEvent(new Event('input', { bubbles: true }))
-                    node.dispatchEvent(new Event('change', { bubbles: true }))
-                    return
-                }
-                node.innerText = value
-                node.dispatchEvent(new Event('input', { bubbles: true }))`
-            ) as (node: Element, value: string) => void,
-            value
-        )
+        await el.evaluate(fillBrowserElement, value)
     } finally {
         await el.dispose()
     }
+}
+
+function fillBrowserElement(node: Element, value: string) {
+    if (node instanceof HTMLInputElement) {
+        if (node.type === 'checkbox' || node.type === 'radio') {
+            node.checked = value === 'true'
+        } else {
+            node.value = value
+        }
+        node.dispatchEvent(new Event('input', { bubbles: true }))
+        node.dispatchEvent(new Event('change', { bubbles: true }))
+        return
+    }
+    if (
+        node instanceof HTMLTextAreaElement ||
+        node instanceof HTMLSelectElement
+    ) {
+        node.value = value
+        node.dispatchEvent(new Event('input', { bubbles: true }))
+        node.dispatchEvent(new Event('change', { bubbles: true }))
+        return
+    }
+    ;(node as HTMLElement).innerText = value
+    node.dispatchEvent(new Event('input', { bubbles: true }))
 }

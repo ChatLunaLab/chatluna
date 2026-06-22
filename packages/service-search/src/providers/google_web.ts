@@ -20,28 +20,7 @@ class GoogleWebSearchProvider extends SearchProvider {
                 waitUntil: 'networkidle2'
             }
         )
-        const summaries = await page.evaluate(
-            // eslint-disable-next-line no-new-func
-            new Function(
-                `const liElements = Array.from(
-                    document.querySelector('#search > div > div').childNodes
-                )
-
-                return liElements.map((li) => {
-                    const linkElement = li.querySelector('a')
-                    const href = linkElement.getAttribute('href')
-                    const title = linkElement.querySelector('a > h3').textContent
-                    const abstract = Array.from(
-                        li.querySelectorAll(
-                            'div > div > div > div > div > div > span'
-                        )
-                    )
-                        .map((e) => e.textContent)
-                        .join('')
-                    return { url: href, title, description: abstract }
-                })`
-            ) as () => SearchResult[]
-        )
+        const summaries = await page.evaluate(readGoogleResults)
         await page.close()
 
         return summaries.slice(0, limit)
@@ -52,6 +31,24 @@ class GoogleWebSearchProvider extends SearchProvider {
     })
 
     name = 'google-web'
+}
+
+function readGoogleResults() {
+    const liElements = Array.from(
+        document.querySelector('#search > div > div').children
+    )
+
+    return liElements.map((li) => {
+        const linkElement = li.querySelector('a')
+        const href = linkElement.getAttribute('href')
+        const title = linkElement.querySelector('a > h3').textContent
+        const abstract = Array.from(
+            li.querySelectorAll('div > div > div > div > div > div > span')
+        )
+            .map((el) => el.textContent)
+            .join('')
+        return { url: href, title, description: abstract }
+    })
 }
 
 export function apply(
