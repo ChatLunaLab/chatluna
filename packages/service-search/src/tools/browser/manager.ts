@@ -420,23 +420,20 @@ If a focus is provided and the page is unrelated, output exactly: [none].
 Include important facts, numbers, names, and source links when present.`
 }
 
-// eslint-disable-next-line no-new-func
-const readBrowserText = new Function(
-    'selector',
-    'includeLinks',
-    String.raw`const root = selector
+function readBrowserText(selector?: string, includeLinks?: boolean) {
+    const root = selector
         ? document.querySelector(selector)
         : (document.querySelector('article, main, [role="main"]') ??
           document.body)
     if (!root) return ''
 
-    const copy = root.cloneNode(true)
+    const copy = root.cloneNode(true) as Element
     copy.querySelectorAll(
         'script, style, noscript, svg, nav, header, footer'
     ).forEach((el) => el.remove())
 
     const lines = []
-    function walk(node) {
+    function walk(node: Node) {
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent?.replace(/\s+/g, ' ').trim()
             if (text) lines.push(text)
@@ -444,7 +441,7 @@ const readBrowserText = new Function(
         }
         if (node.nodeType !== Node.ELEMENT_NODE) return
 
-        const el = node
+        const el = node as Element
         const tag = el.tagName.toLowerCase()
         if (/^h[1-6]$/.test(tag)) {
             lines.push(
@@ -479,7 +476,11 @@ const readBrowserText = new Function(
                 const text = a.textContent?.replace(/\s+/g, ' ').trim()
                 const href = a.getAttribute('href')
                 return text && href
-                    ? \`- [\${text}](\${new URL(href, location.href).href})\`
+                    ? '- [' +
+                          text +
+                          '](' +
+                          new URL(href, location.href).href +
+                          ')'
                     : ''
             })
             .filter(Boolean)
@@ -493,24 +494,21 @@ const readBrowserText = new Function(
         .replace(/\n[ \t]+/g, '\n')
         .replace(/[ \t]{2,}/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
-        .trim()`
-) as (selector?: string, includeLinks?: boolean) => string
+        .trim()
+}
 
-// eslint-disable-next-line no-new-func
-const readBrowserHtml = new Function(
-    'selector',
-    String.raw`return selector
+function readBrowserHtml(selector?: string) {
+    return selector
         ? (document.querySelector(selector)?.outerHTML ?? '')
-        : document.documentElement.outerHTML`
-) as (selector?: string) => string
+        : document.documentElement.outerHTML
+}
 
-// eslint-disable-next-line no-new-func
-const readBrowserLinks = new Function(
-    String.raw`const current = new URL(location.href)
+function readBrowserLinks() {
+    const current = new URL(location.href)
     const host = current.hostname
     const result = {
-        sameSite: [],
-        external: []
+        sameSite: [] as { text: string; url: string }[],
+        external: [] as { text: string; url: string }[]
     }
     for (const a of Array.from(document.querySelectorAll('a[href]'))) {
         const text = a.textContent?.replace(/\s+/g, ' ').trim()
@@ -530,8 +528,8 @@ const readBrowserLinks = new Function(
     }
     result.sameSite = result.sameSite.slice(0, 100)
     result.external = result.external.slice(0, 100)
-    return result`
-) as () => Record<string, { text: string; url: string }[]>
+    return result
+}
 
 export interface BrowserManagerConfig {
     browserTimeout: number

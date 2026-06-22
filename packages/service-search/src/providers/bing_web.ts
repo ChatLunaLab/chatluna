@@ -14,31 +14,7 @@ class BingWebSearchProvider extends SearchProvider {
 
         try {
             // webdriver
-            await page.evaluateOnNewDocument(
-                // eslint-disable-next-line no-new-func
-                new Function(
-                    `const newProto = navigator['__proto__']
-                    delete newProto.webdriver
-                    navigator['__proto__'] = newProto
-
-                    window['chrome'] = {}
-                    window['chrome'].app = {
-                        InstallState: 'hehe',
-                        RunningState: 'haha',
-                        getDetails: 'xixi',
-                        getIsInstalled: 'ohno'
-                    }
-                    window['chrome'].csi = function () {}
-                    window['chrome'].loadTimes = function () {}
-                    window['chrome'].runtime = function () {}
-
-                    Object.defineProperty(navigator, 'userAgent', {
-                        get: function () {
-                            return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.4044.113 Safari/537.36'
-                        }
-                    })`
-                ) as () => unknown
-            )
+            await page.evaluateOnNewDocument(patchBrowserFingerprint)
 
             await page.goto(
                 `https://cn.bing.com/search?form=QBRE&q=${encodeURIComponent(
@@ -49,30 +25,7 @@ class BingWebSearchProvider extends SearchProvider {
                 }
             )
 
-            const summaries = await page.evaluate(
-                // eslint-disable-next-line no-new-func
-                new Function(
-                    `const liElements = Array.from(
-                        document.querySelectorAll('#b_results > .b_algo')
-                    )
-
-                    return liElements
-                        .map((li) => {
-                            const abstractElement =
-                                li.querySelector('.b_caption > p')
-                            const linkElement = li.querySelector('a')
-                            const imageElement = li.querySelector('img')
-
-                            const href = linkElement?.getAttribute('href') ?? ''
-                            const title = linkElement?.textContent ?? ''
-                            const description = abstractElement?.textContent ?? ''
-                            const image = imageElement?.getAttribute('src') ?? ''
-
-                            return { url: href, title, description, image }
-                        })
-                        .filter((summary) => summary.url && summary.title)`
-                ) as () => SearchResult[]
-            )
+            const summaries = await page.evaluate(readBingResults)
 
             return summaries.slice(0, limit)
         } finally {
@@ -85,6 +38,50 @@ class BingWebSearchProvider extends SearchProvider {
     })
 
     name = 'bing-web'
+}
+
+function patchBrowserFingerprint() {
+    const newProto = navigator['__proto__']
+    delete newProto.webdriver
+    navigator['__proto__'] = newProto
+
+    window['chrome'] = {}
+    window['chrome'].app = {
+        InstallState: 'hehe',
+        RunningState: 'haha',
+        getDetails: 'xixi',
+        getIsInstalled: 'ohno'
+    }
+    window['chrome'].csi = function () {}
+    window['chrome'].loadTimes = function () {}
+    window['chrome'].runtime = function () {}
+
+    Object.defineProperty(navigator, 'userAgent', {
+        get: function () {
+            return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.4044.113 Safari/537.36'
+        }
+    })
+}
+
+function readBingResults() {
+    const liElements = Array.from(
+        document.querySelectorAll('#b_results > .b_algo')
+    )
+
+    return liElements
+        .map((li) => {
+            const abstractElement = li.querySelector('.b_caption > p')
+            const linkElement = li.querySelector('a')
+            const imageElement = li.querySelector('img')
+
+            const href = linkElement?.getAttribute('href') ?? ''
+            const title = linkElement?.textContent ?? ''
+            const description = abstractElement?.textContent ?? ''
+            const image = imageElement?.getAttribute('src') ?? ''
+
+            return { url: href, title, description, image }
+        })
+        .filter((summary) => summary.url && summary.title)
 }
 
 export function apply(

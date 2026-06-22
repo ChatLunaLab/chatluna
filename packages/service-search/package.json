@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna-search-service",
     "description": "search support for chatluna",
-    "version": "1.4.0-alpha.3",
+    "version": "1.4.0-alpha.4",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
