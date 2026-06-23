@@ -78,7 +78,7 @@ export function apply(ctx: Context) {
                 const count =
                     await service.subAgent.abortByParentConversation(
                         conversationId
-                )
+                    )
                 return `已停止 ${count} 个 Sub Agent 任务。`
             }
 

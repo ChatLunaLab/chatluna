@@ -135,7 +135,8 @@ export class ChatLunaAgentSubAgentService {
             seen.add(item.id)
             pending.push(
                 ...list.filter(
-                    (child) => child.parentConversationId === item.conversationId
+                    (child) =>
+                        child.parentConversationId === item.conversationId
                 )
             )
 
