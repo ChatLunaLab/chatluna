@@ -12,9 +12,6 @@ import type { ChatLunaToolRunnable } from '../../platform/types'
 export function buildTaskToolDescription() {
     return [
         'Delegate focused work to a specialist agent (exact name required).',
-        'If the user explicitly asks you to use a sub-agent for a task, ' +
-            'delegate it. If that sub-agent task fails or is stopped, do ' +
-            'not try to complete the same task yourself.',
         'Set background=true for long tasks; results are delivered to you automatically - never poll status.',
         'Actions: run (new task, or resume with id), status, list, list_all, message (guide a running background task), stop (abort a running background task).'
     ].join('\n')
@@ -28,9 +25,9 @@ export function renderAvailableAgents(
     const lines = [
         '<available_sub_agents>',
         'Delegate via the task tool. background=true for long work; results arrive automatically - do not poll status.',
-        'If the user explicitly asks you to use a sub-agent for a task, ' +
-            'delegate it. If that sub-agent task fails or is stopped, do ' +
-            'not try to complete the same task yourself.',
+        'If the user explicitly asks you to use a sub-agent, delegate it. ' +
+            'If that task fails or is stopped, do not attempt the same ' +
+            'task yourself.',
         ''
     ]
     if (dir) {
