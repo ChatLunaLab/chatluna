@@ -326,6 +326,10 @@ function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
         agent().subAgent.getRuns()
     )
 
+    ctx.console.addListener('chatluna-agent/stopSubAgentTask', async (id) =>
+        agent().stopSubAgentTask(id)
+    )
+
     ctx.console.addListener(
         'chatluna-agent/saveSubAgentConfig',
         ok((cfg) => agent().saveSubAgentConfig(cfg))

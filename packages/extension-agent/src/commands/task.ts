@@ -24,7 +24,9 @@ export function apply(ctx: Context) {
                 ? undefined
                 : await ctx.chatluna.conversation.resolveConversation(session, {
                       permission: 'manage',
-                      mode: 'target'
+                      mode: 'target',
+                      allPresetLanes: true,
+                      useRoutePresetLane: true
                   })
             const id = resolved?.conversation?.id
             if (!options.all && !id) return 'No active conversation.'
@@ -61,35 +63,54 @@ export function apply(ctx: Context) {
             const service = ctx.chatluna_agent
             if (!service) return 'ChatLuna agent service is not ready.'
 
-            const resolved =
-                await ctx.chatluna.conversation.resolveConversation(session, {
+            const resolved = await ctx.chatluna.conversation
+                .resolveConversation(session, {
                     permission: 'manage',
-                    mode: 'target'
+                    mode: 'target',
+                    allPresetLanes: true,
+                    useRoutePresetLane: true
                 })
-            const conversationId = resolved.conversation?.id
-            if (!conversationId) return 'No active conversation.'
+                .catch(() => undefined)
+            const conversationId = resolved?.conversation?.id
 
             if (options.all) {
+                if (!conversationId) return 'No active conversation.'
                 const count =
                     await service.subAgent.abortByParentConversation(
                         conversationId
                     )
-                return `Stopped ${count} background sub-agent task(s).`
+                return `已停止 ${count} 个 Sub Agent 任务。`
             }
 
-            const task = await findTask(ctx, session, id, conversationId)
+            const task = id?.trim()
+                ? await findTask(ctx, session, id, conversationId)
+                : service.subAgent
+                      .getTasks()
+                      .filter((task) => {
+                          const run = latest(service.subAgent.getRuns(), task.id)
+                          return (
+                              (!conversationId ||
+                                  task.parentConversationId ===
+                                      conversationId) &&
+                              task.activeRunId &&
+                              run?.state === 'running'
+                          )
+                      })
+                      .sort((a, b) => b.startedAt - a.startedAt)[0]
             if (typeof task === 'string') return task
+            if (!task) return 'No running sub-agent task.'
 
             const run = latest(service.subAgent.getRuns(), task.id)
-            if (!run?.background)
-                return 'Foreground tasks stop with chatluna.stop.'
+            if (run?.state !== 'running') return 'Task is not running.'
 
-            if (!(await service.subAgent.stopTask(task.id))) {
+            const count = await service.subAgent.stopTaskTree(task.id)
+            if (count < 1) {
                 return 'Task is not running or not stoppable.'
             }
 
-            service.subAgent.detachAttachedTask(task.id)
-            return `Stopped sub-agent task ${task.id.slice(0, 8)}.`
+            return id?.trim()
+                ? '已停止该 Sub Agent 任务及其子任务。'
+                : `已停止 ${count} 个 Sub Agent 任务。`
         })
 
     ctx.command('chatluna.agent.pause <id:string>', 'Pause sub-agent task', {
@@ -100,7 +121,12 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            { permission: 'manage', mode: 'target' }
+            {
+                permission: 'manage',
+                mode: 'target',
+                allPresetLanes: true,
+                useRoutePresetLane: true
+            }
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -124,7 +150,12 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            { permission: 'manage', mode: 'target' }
+            {
+                permission: 'manage',
+                mode: 'target',
+                allPresetLanes: true,
+                useRoutePresetLane: true
+            }
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -145,7 +176,12 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            { permission: 'manage', mode: 'target' }
+            {
+                permission: 'manage',
+                mode: 'target',
+                allPresetLanes: true,
+                useRoutePresetLane: true
+            }
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -178,7 +214,7 @@ async function findTask(
     ctx: Context,
     session: Session,
     id: string | undefined,
-    conversationId: string
+    conversationId?: string
 ) {
     if (!id?.trim()) return 'Task id is required.'
 
@@ -187,7 +223,9 @@ async function findTask(
     const tasks = service.subAgent
         .getTasks()
         .filter((task) =>
-            all ? true : task.parentConversationId === conversationId
+            all || !conversationId
+                ? true
+                : task.parentConversationId === conversationId
         )
     const matches = tasks.filter((task) => task.id.startsWith(id.trim()))
     if (matches.length < 1) return `Task '${id}' was not found.`
@@ -202,7 +240,9 @@ async function findTask(
 }
 
 function latest(runs: AgentTaskRun[], taskId: string) {
-    return runs.filter((run) => run.taskId === taskId).at(-1)
+    return runs
+        .filter((run) => run.taskId === taskId)
+        .sort((a, b) => b.startedAt - a.startedAt)[0]
 }
 
 function state(task: AgentTaskSession, run?: AgentTaskRun) {

@@ -87,15 +87,10 @@ export async function runAgentTask(options: {
     }
 
     const isBg = options.input.background
-    const abort = isBg ? new AbortController() : undefined
+    const abort = new AbortController()
     const queue = isBg ? new MessageQueue() : undefined
-    const activeRun: ActiveAgentTaskRun | undefined =
-        abort && queue ? { abort, queue } : undefined
-    const onAbort =
-        abort && options.signal
-            ? () => abort.abort(options.signal?.reason)
-            : undefined
-    const signal = abort?.signal ?? options.signal
+    const activeRun: ActiveAgentTaskRun = { abort, queue }
+    const signal = abort.signal
     const promptMessage = new HumanMessage(options.prompt)
     const snapshot: AgentTaskSessionSnapshot | undefined = isBg
         ? {
@@ -115,7 +110,7 @@ export async function runAgentTask(options: {
     options.task.activeRunId = runId
     options.runs.set(runId, run)
     if (snapshot) options.snapshots.set(runId, snapshot)
-    if (activeRun) options.active.set(runId, activeRun)
+    options.active.set(runId, activeRun)
     options.scheduleTaskCleanup(options.task.id)
 
     run.trace.push({
@@ -134,15 +129,16 @@ export async function runAgentTask(options: {
     }
 
     const exec = async () => {
+        const abortByParent = () => abort.abort(options.signal?.reason)
+        if (!isBg && options.signal?.aborted) abortByParent()
+        if (!isBg) {
+            options.signal?.addEventListener('abort', abortByParent, {
+                once: true
+            })
+        }
+
         try {
             await options.runtime.refresh?.()
-
-            if (abort && options.signal?.aborted)
-                abort.abort(options.signal.reason)
-            if (onAbort)
-                options.signal?.addEventListener('abort', onAbort, {
-                    once: true
-                })
 
             const result = await options.target.agent.generate({
                 prompt: options.prompt,
@@ -206,7 +202,11 @@ export async function runAgentTask(options: {
             )
         } catch (err) {
             run.state = signal?.aborted ? 'aborted' : 'failed'
-            run.error = err instanceof Error ? err.message : String(err)
+            run.error = signal?.aborted
+                ? '用户已停止任务。'
+                : err instanceof Error
+                  ? err.message
+                  : String(err)
             run.trace.push({
                 id: `${runId}:error`,
                 type: 'error',
@@ -223,13 +223,18 @@ export async function runAgentTask(options: {
             await options.runtime.refresh?.()
             throw err
         } finally {
-            if (onAbort) options.signal?.removeEventListener('abort', onAbort)
+            if (!isBg) {
+                options.signal?.removeEventListener('abort', abortByParent)
+            }
             options.active.delete(runId)
         }
     }
 
     if (isBg) {
-        exec().catch((err) => logger.error('[SubagentBgTaskError]', err))
+        exec().catch((err) => {
+            if (run.state === 'aborted' || signal.aborted) return
+            logger.error('[SubagentBgTaskError]', err)
+        })
         return formatTaskStart(options.task, options.toolName)
     }
 

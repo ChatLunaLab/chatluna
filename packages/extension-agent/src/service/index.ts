@@ -590,6 +590,26 @@ export class ChatLunaAgentService extends Service {
         await this.refreshConsoleData()
     }
 
+    async stopSubAgentTask(id?: string) {
+        const runs = this.subAgent.getRuns()
+        const task = id?.trim()
+            ? this.subAgent.getTask(id.trim())
+            : this.subAgent
+                  .getTasks()
+                  .filter((item) => {
+                      const run = runs
+                          .filter((run) => run.taskId === item.id)
+                          .sort((a, b) => b.startedAt - a.startedAt)[0]
+                      return item.activeRunId && run?.state === 'running'
+                  })
+                  .sort((a, b) => b.startedAt - a.startedAt)[0]
+
+        if (!task) return 0
+        const count = await this.subAgent.stopTaskTree(task.id)
+        if (count > 0) await this.refreshConsoleData()
+        return count
+    }
+
     async getToolAvailability() {
         return this.permission.getToolAvailability()
     }

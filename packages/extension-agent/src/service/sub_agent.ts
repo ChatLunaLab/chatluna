@@ -120,6 +120,34 @@ export class ChatLunaAgentSubAgentService {
         return result
     }
 
+    async stopTaskTree(id: string) {
+        const task = this._task.getTask(id)
+        if (!task) return 0
+
+        const list = this._task.getTasks()
+        const pending = [task]
+        const seen = new Set<string>()
+        let count = 0
+
+        for (const item of pending) {
+            if (seen.has(item.id)) continue
+            seen.add(item.id)
+            pending.push(
+                ...list.filter(
+                    (child) => child.parentConversationId === item.conversationId
+                )
+            )
+
+            if (await this._task.stopTask(item.id)) {
+                this.detachAttachedTask(item.id)
+                count += 1
+            }
+        }
+
+        if (count > 0) this.ctx.chatluna_agent?.refreshConsoleData()
+        return count
+    }
+
     async pauseTask(id: string) {
         const result = await this._task.pauseTask(id)
         if (result) this.ctx.chatluna_agent?.refreshConsoleData()

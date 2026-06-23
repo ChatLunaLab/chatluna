@@ -153,7 +153,7 @@ export interface AgentTaskToolRuntime {
 
 interface ActiveAgentTaskRun {
     abort: AbortController
-    queue: MessageQueue
+    queue?: MessageQueue
     paused?: boolean
     resume?: () => void
 }
