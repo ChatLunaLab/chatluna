@@ -95,15 +95,7 @@ export async function runAgentTask(options: {
     const snapshot: AgentTaskSessionSnapshot | undefined = isBg
         ? {
               session: options.session,
-              routing: {
-                  platform: options.session.platform,
-                  selfId: options.session.selfId,
-                  userId: options.session.userId,
-                  username: options.session.username ?? undefined,
-                  guildId: options.session.guildId ?? undefined,
-                  channelId: options.session.channelId ?? undefined,
-                  isDirect: options.session.isDirect ?? false
-              }
+              routing: createTaskRouting(options.session)
           }
         : undefined
 
@@ -381,6 +373,7 @@ async function onTaskEvent(
 export function createTaskSession(
     agent: ChatLunaAgent,
     parentConversationId: string,
+    session: Session,
     parent?: SubagentContext,
     maxDepth = 1
 ): AgentTaskSession {
@@ -397,12 +390,25 @@ export function createTaskSession(
         agentName: agent.name,
         conversationId: `subagent:${id}`,
         parentConversationId,
+        routing: createTaskRouting(session),
         depth,
         maxDepth: limit,
         parentAgent: parent?.agentName ?? 'main',
         messages: [],
         startedAt: now,
         updatedAt: now
+    }
+}
+
+function createTaskRouting(session: Session) {
+    return {
+        platform: session.platform,
+        selfId: session.selfId,
+        userId: session.userId,
+        username: session.username ?? undefined,
+        guildId: session.guildId ?? undefined,
+        channelId: session.channelId ?? undefined,
+        isDirect: session.isDirect ?? false
     }
 }
 

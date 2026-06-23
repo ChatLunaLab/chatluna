@@ -82,31 +82,15 @@ export function apply(ctx: Context) {
                 return `已停止 ${count} 个 Sub Agent 任务。`
             }
 
-            const conversationIds = conversationId
-                ? [conversationId]
-                : (
-                      await ctx.chatluna.conversation.listConversationEntries(
-                          session,
-                          {
-                              allPresetLanes: true,
-                              useRoutePresetLane: true
-                          }
-                      )
-                  ).map((item) => item.conversation.id)
-
-            if (conversationIds.length < 1) return 'No active conversation.'
-
             const runs = service.subAgent.getRuns()
             const task = id?.trim()
-                ? await findTask(ctx, session, id, conversationIds)
+                ? await findTask(ctx, session, id, conversationId)
                 : service.subAgent
                       .getTasks()
                       .filter((task) => {
                           const run = latest(runs, task.id)
                           return (
-                              conversationIds.includes(
-                                  task.parentConversationId
-                              ) &&
+                              matchTaskScope(task, session, conversationId) &&
                               task.activeRunId &&
                               run?.state === 'running'
                           )
@@ -146,7 +130,7 @@ export function apply(ctx: Context) {
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
 
-        const task = await findTask(ctx, session, id, [conversationId])
+        const task = await findTask(ctx, session, id, conversationId)
         if (typeof task === 'string') return task
 
         const run = latest(service.subAgent.getRuns(), task.id)
@@ -175,7 +159,7 @@ export function apply(ctx: Context) {
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
 
-        const task = await findTask(ctx, session, id, [conversationId])
+        const task = await findTask(ctx, session, id, conversationId)
         if (typeof task === 'string') return task
 
         return (await service.subAgent.resumeTask(task.id))
@@ -201,7 +185,7 @@ export function apply(ctx: Context) {
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
 
-        const task = await findTask(ctx, session, id, [conversationId])
+        const task = await findTask(ctx, session, id, conversationId)
         if (typeof task === 'string') return task
 
         const run = latest(service.subAgent.getRuns(), task.id)
@@ -229,18 +213,15 @@ async function findTask(
     ctx: Context,
     session: Session,
     id: string | undefined,
-    conversationIds: string[]
+    conversationId?: string
 ) {
     if (!id?.trim()) return 'Task id is required.'
 
     const service = ctx.chatluna_agent
     const all = await checkAdmin(session)
-    if (!all && conversationIds.length < 1) return 'No active conversation.'
     const tasks = service.subAgent
         .getTasks()
-        .filter((task) =>
-            all ? true : conversationIds.includes(task.parentConversationId)
-        )
+        .filter((task) => all || matchTaskScope(task, session, conversationId))
     const matches = tasks.filter((task) => task.id.startsWith(id.trim()))
     if (matches.length < 1) return `Task '${id}' was not found.`
     if (matches.length > 1) {
@@ -251,6 +232,31 @@ async function findTask(
     }
 
     return matches[0]
+}
+
+function matchTaskScope(
+    task: AgentTaskSession,
+    session: Session,
+    conversationId?: string
+) {
+    if (conversationId && task.parentConversationId === conversationId) {
+        return true
+    }
+
+    const routing = task.routing
+    if (!routing) return false
+    if (routing.platform !== session.platform) return false
+    if (routing.selfId !== session.selfId) return false
+
+    if (session.isDirect) {
+        return routing.isDirect === true && routing.userId === session.userId
+    }
+
+    return (
+        routing.isDirect !== true &&
+        routing.guildId === session.guildId &&
+        routing.channelId === session.channelId
+    )
 }
 
 function latest(runs: AgentTaskRun[], taskId: string) {

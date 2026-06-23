@@ -306,6 +306,7 @@ export function createTaskTool(
                 createTaskSession(
                     target.agent,
                     conversationId,
+                    session,
                     parent,
                     options.maxDepth
                 )

@@ -22,6 +22,7 @@ export interface AgentTaskSession {
     agentName: string
     conversationId: string
     parentConversationId: string
+    routing: AgentTaskSessionRouting
     depth: number
     maxDepth: number
     parentAgent: string
@@ -29,6 +30,16 @@ export interface AgentTaskSession {
     messages: BaseMessage[]
     startedAt: number
     updatedAt: number
+}
+
+export interface AgentTaskSessionRouting {
+    platform: string
+    selfId: string
+    userId: string
+    username?: string
+    guildId?: string
+    channelId?: string
+    isDirect: boolean
 }
 
 export interface AgentTaskRunTraceEntry {
@@ -71,15 +82,7 @@ export interface AgentTaskRun {
 
 export interface AgentTaskSessionSnapshot {
     session?: Session
-    routing?: {
-        platform: string
-        selfId: string
-        userId: string
-        username?: string
-        guildId?: string
-        channelId?: string
-        isDirect: boolean
-    }
+    routing?: AgentTaskSessionRouting
     bindingKey?: string
 }
 

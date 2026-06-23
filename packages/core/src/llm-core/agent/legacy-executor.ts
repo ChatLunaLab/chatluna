@@ -157,6 +157,8 @@ async function executeTools(
                     await tool.invoke(action.toolInput, config),
                     tool.name
                 )
+                checkAborted(signal)
+
                 return {
                     action,
                     observation: applyLoopGuidance(
@@ -181,6 +183,8 @@ async function executeTools(
                         )
                     } as AgentStep
                 }
+
+                checkAborted(signal)
 
                 if (handleToolRuntimeErrors != null) {
                     const observation = coerceToAgentObservation(

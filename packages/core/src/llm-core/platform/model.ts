@@ -671,6 +671,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
                     return response
                 } catch (error) {
+                    if (options.signal?.aborted) {
+                        throw options.signal.reason ?? error
+                    }
+
                     if (
                         options.stream ||
                         this._isNonRetryableError(error) ||
