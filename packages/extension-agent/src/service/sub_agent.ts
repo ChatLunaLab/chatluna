@@ -129,7 +129,8 @@ export class ChatLunaAgentSubAgentService {
         const seen = new Set<string>()
         let count = 0
 
-        for (const item of pending) {
+        while (pending.length > 0) {
+            const item = pending.shift()!
             if (seen.has(item.id)) continue
             seen.add(item.id)
             pending.push(

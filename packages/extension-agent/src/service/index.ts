@@ -597,9 +597,7 @@ export class ChatLunaAgentService extends Service {
             : this.subAgent
                   .getTasks()
                   .filter((item) => {
-                      const run = runs
-                          .filter((run) => run.taskId === item.id)
-                          .sort((a, b) => b.startedAt - a.startedAt)[0]
+                      const run = runs.find((run) => run.taskId === item.id)
                       return item.activeRunId && run?.state === 'running'
                   })
                   .sort((a, b) => b.startedAt - a.startedAt)[0]

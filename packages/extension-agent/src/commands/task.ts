@@ -78,20 +78,21 @@ export function apply(ctx: Context) {
                 const count =
                     await service.subAgent.abortByParentConversation(
                         conversationId
-                    )
+                )
                 return `已停止 ${count} 个 Sub Agent 任务。`
             }
 
+            if (!conversationId && !id?.trim()) return 'No active conversation.'
+
+            const runs = service.subAgent.getRuns()
             const task = id?.trim()
                 ? await findTask(ctx, session, id, conversationId)
                 : service.subAgent
                       .getTasks()
                       .filter((task) => {
-                          const run = latest(service.subAgent.getRuns(), task.id)
+                          const run = latest(runs, task.id)
                           return (
-                              (!conversationId ||
-                                  task.parentConversationId ===
-                                      conversationId) &&
+                              task.parentConversationId === conversationId &&
                               task.activeRunId &&
                               run?.state === 'running'
                           )
@@ -100,7 +101,7 @@ export function apply(ctx: Context) {
             if (typeof task === 'string') return task
             if (!task) return 'No running sub-agent task.'
 
-            const run = latest(service.subAgent.getRuns(), task.id)
+            const run = latest(runs, task.id)
             if (run?.state !== 'running') return 'Task is not running.'
 
             const count = await service.subAgent.stopTaskTree(task.id)
@@ -220,12 +221,11 @@ async function findTask(
 
     const service = ctx.chatluna_agent
     const all = await checkAdmin(session)
+    if (!all && !conversationId) return 'No active conversation.'
     const tasks = service.subAgent
         .getTasks()
         .filter((task) =>
-            all || !conversationId
-                ? true
-                : task.parentConversationId === conversationId
+            all ? true : task.parentConversationId === conversationId
         )
     const matches = tasks.filter((task) => task.id.startsWith(id.trim()))
     if (matches.length < 1) return `Task '${id}' was not found.`
@@ -240,9 +240,7 @@ async function findTask(
 }
 
 function latest(runs: AgentTaskRun[], taskId: string) {
-    return runs
-        .filter((run) => run.taskId === taskId)
-        .sort((a, b) => b.startedAt - a.startedAt)[0]
+    return runs.find((run) => run.taskId === taskId)
 }
 
 function state(task: AgentTaskSession, run?: AgentTaskRun) {

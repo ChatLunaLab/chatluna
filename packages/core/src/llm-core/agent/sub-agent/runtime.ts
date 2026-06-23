@@ -352,15 +352,14 @@ export function createTaskTool(
                 const run = getLatestTaskRun(runs, next.id)
                 if (!run) throw err
                 if (run.state === 'aborted') {
-                    return formatTaskResult(
-                        next,
-                        run,
-                        [
-                            'The user manually stopped this sub-agent task. Do not continue it.',
-                            'If needed, ask the user to clarify the task requirements.'
-                        ].join('\n'),
-                        toolName
-                    )
+                    return [
+                        'The user manually stopped this sub-agent task. Do not continue it.',
+                        'If needed, ask the user to clarify the task requirements.',
+                        '',
+                        `task_id: ${next.id}`,
+                        `agent: ${next.agentName}`,
+                        `state: ${run.state}`
+                    ].join('\n')
                 }
                 return formatTaskResult(
                     next,
