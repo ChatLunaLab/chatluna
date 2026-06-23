@@ -300,6 +300,10 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             } catch (error) {
                 await this._closeStream(stream)
 
+                if (options.signal?.aborted) {
+                    throw options.signal.reason ?? error
+                }
+
                 if (
                     this._shouldRethrowStreamError(
                         error,

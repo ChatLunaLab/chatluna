@@ -169,6 +169,8 @@ async function executeTools(
                     )
                 } as AgentStep
             } catch (e) {
+                checkAborted(signal)
+
                 if (e instanceof ToolInputParsingException) {
                     const observation = coerceToAgentObservation(
                         toToolInputErrorObservation(handleParsingErrors, e)
@@ -183,8 +185,6 @@ async function executeTools(
                         )
                     } as AgentStep
                 }
-
-                checkAborted(signal)
 
                 if (handleToolRuntimeErrors != null) {
                     const observation = coerceToAgentObservation(

@@ -87,20 +87,22 @@ export function apply(ctx: Context) {
                 ? await findTask(ctx, session, id, conversationId)
                 : service.subAgent
                       .getTasks()
-                      .filter((task) => {
-                          const run = latest(runs, task.id)
+                      .map((task) => ({ task, run: latest(runs, task.id) }))
+                      .filter((item) => {
                           return (
-                              matchTaskScope(task, session, conversationId) &&
-                              task.activeRunId &&
-                              run?.state === 'running'
+                              matchTaskScope(
+                                  item.task,
+                                  session,
+                                  conversationId
+                              ) &&
+                              item.task.activeRunId &&
+                              item.run?.state === 'running'
                           )
                       })
-                      .sort((a, b) => b.startedAt - a.startedAt)[0]
+                      .sort((a, b) => b.run!.startedAt - a.run!.startedAt)[0]
+                      ?.task
             if (typeof task === 'string') return task
             if (!task) return 'No running sub-agent task.'
-
-            const run = latest(runs, task.id)
-            if (run?.state !== 'running') return 'Task is not running.'
 
             const count = await service.subAgent.stopTaskTree(task.id)
             if (count < 1) {
@@ -243,19 +245,20 @@ function matchTaskScope(
         return true
     }
 
-    const routing = task.routing
-    if (!routing) return false
-    if (routing.platform !== session.platform) return false
-    if (routing.selfId !== session.selfId) return false
+    if (task.routing.platform !== session.platform) return false
+    if (task.routing.selfId !== session.selfId) return false
 
     if (session.isDirect) {
-        return routing.isDirect === true && routing.userId === session.userId
+        return (
+            task.routing.isDirect === true &&
+            task.routing.userId === session.userId
+        )
     }
 
     return (
-        routing.isDirect !== true &&
-        routing.guildId === session.guildId &&
-        routing.channelId === session.channelId
+        task.routing.isDirect !== true &&
+        task.routing.guildId === session.guildId &&
+        task.routing.channelId === session.channelId
     )
 }
 
