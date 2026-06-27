@@ -122,9 +122,9 @@ export async function runAgentTask(options: {
 
     const exec = async () => {
         const abortByParent = () => abort.abort(options.signal?.reason)
-        if (!isBg && options.signal?.aborted) abortByParent()
-        if (!isBg) {
-            options.signal?.addEventListener('abort', abortByParent, {
+        if (!isBg && options.signal) {
+            if (options.signal.aborted) abortByParent()
+            options.signal.addEventListener('abort', abortByParent, {
                 once: true
             })
         }
@@ -143,24 +143,22 @@ export async function runAgentTask(options: {
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
-                pauseGate: activeRun
-                    ? async (sig) => {
-                          while (activeRun.paused) {
-                              if (sig?.aborted) return
-                              await new Promise<void>((resolve) => {
-                                  const done = () => {
-                                      sig?.removeEventListener('abort', done)
-                                      activeRun.resume = undefined
-                                      resolve()
-                                  }
-                                  activeRun.resume = done
-                                  sig?.addEventListener('abort', done, {
-                                      once: true
-                                  })
-                              })
-                          }
-                      }
-                    : undefined,
+                pauseGate: async (sig) => {
+                    while (activeRun.paused) {
+                        if (sig?.aborted) return
+                        await new Promise<void>((resolve) => {
+                            const done = () => {
+                                sig?.removeEventListener('abort', done)
+                                activeRun.resume = undefined
+                                resolve()
+                            }
+                            activeRun.resume = done
+                            sig?.addEventListener('abort', done, {
+                                once: true
+                            })
+                        })
+                    }
+                },
                 toolMask,
                 subagentContext: subCtx,
                 source: options.source,

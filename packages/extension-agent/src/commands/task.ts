@@ -7,6 +7,13 @@ import type {
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 
+const TARGET_RESOLVE = {
+    permission: 'manage',
+    mode: 'target',
+    allPresetLanes: true,
+    useRoutePresetLane: true
+} as const
+
 export function apply(ctx: Context) {
     ctx.command('chatluna.agent.list', 'List sub-agent tasks', {
         authority: 1
@@ -22,12 +29,10 @@ export function apply(ctx: Context) {
 
             const resolved = options.all
                 ? undefined
-                : await ctx.chatluna.conversation.resolveConversation(session, {
-                      permission: 'manage',
-                      mode: 'target',
-                      allPresetLanes: true,
-                      useRoutePresetLane: true
-                  })
+                : await ctx.chatluna.conversation.resolveConversation(
+                      session,
+                      TARGET_RESOLVE
+                  )
             const id = resolved?.conversation?.id
             if (!options.all && !id) return 'No active conversation.'
 
@@ -64,12 +69,7 @@ export function apply(ctx: Context) {
             if (!service) return 'ChatLuna agent service is not ready.'
 
             const resolved = await ctx.chatluna.conversation
-                .resolveConversation(session, {
-                    permission: 'manage',
-                    mode: 'target',
-                    allPresetLanes: true,
-                    useRoutePresetLane: true
-                })
+                .resolveConversation(session, TARGET_RESOLVE)
                 .catch(() => undefined)
             const conversationId = resolved?.conversation?.id
 
@@ -82,25 +82,11 @@ export function apply(ctx: Context) {
                 return `已停止 ${count} 个 Sub Agent 任务。`
             }
 
-            const runs = service.subAgent.getRuns()
             const task = id?.trim()
                 ? await findTask(ctx, session, id, conversationId)
-                : service.subAgent
-                      .getTasks()
-                      .map((task) => ({ task, run: latest(runs, task.id) }))
-                      .filter((item) => {
-                          return (
-                              matchTaskScope(
-                                  item.task,
-                                  session,
-                                  conversationId
-                              ) &&
-                              item.task.activeRunId &&
-                              item.run?.state === 'running'
-                          )
-                      })
-                      .sort((a, b) => b.run!.startedAt - a.run!.startedAt)[0]
-                      ?.task
+                : service.subAgent.getLatestRunningTask((t) =>
+                      matchTaskScope(t, session, conversationId)
+                  )
             if (typeof task === 'string') return task
             if (!task) return 'No running sub-agent task.'
 
@@ -122,12 +108,7 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            {
-                permission: 'manage',
-                mode: 'target',
-                allPresetLanes: true,
-                useRoutePresetLane: true
-            }
+            TARGET_RESOLVE
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -151,12 +132,7 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            {
-                permission: 'manage',
-                mode: 'target',
-                allPresetLanes: true,
-                useRoutePresetLane: true
-            }
+            TARGET_RESOLVE
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -177,12 +153,7 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            {
-                permission: 'manage',
-                mode: 'target',
-                allPresetLanes: true,
-                useRoutePresetLane: true
-            }
+            TARGET_RESOLVE
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'

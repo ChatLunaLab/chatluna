@@ -114,6 +114,18 @@ export class ChatLunaAgentSubAgentService {
         return this._task.getTask(id)
     }
 
+    getLatestRunningTask(filter?: (t: AgentTaskSession) => boolean) {
+        const runs = this.getRuns()
+        return this.getTasks()
+            .filter(
+                (t) =>
+                    t.activeRunId &&
+                    runs.find((r) => r.taskId === t.id)?.state === 'running' &&
+                    (filter?.(t) ?? true)
+            )
+            .sort((a, b) => b.startedAt - a.startedAt)[0]
+    }
+
     async stopTask(id: string) {
         const result = await this._task.stopTask(id)
         if (result) this.ctx.chatluna_agent?.refreshConsoleData()
