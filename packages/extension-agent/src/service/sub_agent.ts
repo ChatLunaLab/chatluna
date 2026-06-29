@@ -115,15 +115,15 @@ export class ChatLunaAgentSubAgentService {
     }
 
     getLatestRunningTask(filter?: (t: AgentTaskSession) => boolean) {
-        const runs = this.getRuns()
-        return this.getTasks()
-            .filter(
-                (t) =>
-                    t.activeRunId &&
-                    runs.find((r) => r.taskId === t.id)?.state === 'running' &&
-                    (filter?.(t) ?? true)
+        const tasks = this.getTasks()
+        for (const run of this.getRuns()) {
+            if (run.state !== 'running') continue
+
+            const task = tasks.find(
+                (t) => t.id === run.taskId && t.activeRunId === run.runId
             )
-            .sort((a, b) => b.startedAt - a.startedAt)[0]
+            if (task && (filter?.(task) ?? true)) return task
+        }
     }
 
     async stopTask(id: string) {
