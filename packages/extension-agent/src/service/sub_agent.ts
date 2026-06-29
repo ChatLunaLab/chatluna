@@ -114,10 +114,52 @@ export class ChatLunaAgentSubAgentService {
         return this._task.getTask(id)
     }
 
+    getLatestRunningTask(filter?: (t: AgentTaskSession) => boolean) {
+        const tasks = this.getTasks()
+        for (const run of this.getRuns()) {
+            if (run.state !== 'running') continue
+
+            const task = tasks.find(
+                (t) => t.id === run.taskId && t.activeRunId === run.runId
+            )
+            if (task && (filter?.(task) ?? true)) return task
+        }
+    }
+
     async stopTask(id: string) {
         const result = await this._task.stopTask(id)
         if (result) this.ctx.chatluna_agent?.refreshConsoleData()
         return result
+    }
+
+    async stopTaskTree(id: string) {
+        const task = this._task.getTask(id)
+        if (!task) return 0
+
+        const list = this._task.getTasks()
+        const pending = [task]
+        const seen = new Set<string>()
+        let count = 0
+
+        while (pending.length > 0) {
+            const item = pending.shift()!
+            if (seen.has(item.id)) continue
+            seen.add(item.id)
+            pending.push(
+                ...list.filter(
+                    (child) =>
+                        child.parentConversationId === item.conversationId
+                )
+            )
+
+            if (await this._task.stopTask(item.id)) {
+                this.detachAttachedTask(item.id)
+                count += 1
+            }
+        }
+
+        if (count > 0) this.ctx.chatluna_agent?.refreshConsoleData()
+        return count
     }
 
     async pauseTask(id: string) {

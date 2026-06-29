@@ -87,35 +87,22 @@ export async function runAgentTask(options: {
     }
 
     const isBg = options.input.background
-    const abort = isBg ? new AbortController() : undefined
+    const abort = new AbortController()
     const queue = isBg ? new MessageQueue() : undefined
-    const activeRun: ActiveAgentTaskRun | undefined =
-        abort && queue ? { abort, queue } : undefined
-    const onAbort =
-        abort && options.signal
-            ? () => abort.abort(options.signal?.reason)
-            : undefined
-    const signal = abort?.signal ?? options.signal
+    const activeRun: ActiveAgentTaskRun = { abort, queue }
+    const signal = abort.signal
     const promptMessage = new HumanMessage(options.prompt)
     const snapshot: AgentTaskSessionSnapshot | undefined = isBg
         ? {
               session: options.session,
-              routing: {
-                  platform: options.session.platform,
-                  selfId: options.session.selfId,
-                  userId: options.session.userId,
-                  username: options.session.username ?? undefined,
-                  guildId: options.session.guildId ?? undefined,
-                  channelId: options.session.channelId ?? undefined,
-                  isDirect: options.session.isDirect ?? false
-              }
+              routing: createTaskRouting(options.session)
           }
         : undefined
 
     options.task.activeRunId = runId
     options.runs.set(runId, run)
     if (snapshot) options.snapshots.set(runId, snapshot)
-    if (activeRun) options.active.set(runId, activeRun)
+    options.active.set(runId, activeRun)
     options.scheduleTaskCleanup(options.task.id)
 
     run.trace.push({
@@ -134,15 +121,16 @@ export async function runAgentTask(options: {
     }
 
     const exec = async () => {
+        const abortByParent = () => abort.abort(options.signal?.reason)
+        if (!isBg && options.signal) {
+            if (options.signal.aborted) abortByParent()
+            options.signal.addEventListener('abort', abortByParent, {
+                once: true
+            })
+        }
+
         try {
             await options.runtime.refresh?.()
-
-            if (abort && options.signal?.aborted)
-                abort.abort(options.signal.reason)
-            if (onAbort)
-                options.signal?.addEventListener('abort', onAbort, {
-                    once: true
-                })
 
             const result = await options.target.agent.generate({
                 prompt: options.prompt,
@@ -155,24 +143,22 @@ export async function runAgentTask(options: {
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
-                pauseGate: activeRun
-                    ? async (sig) => {
-                          while (activeRun.paused) {
-                              if (sig?.aborted) return
-                              await new Promise<void>((resolve) => {
-                                  const done = () => {
-                                      sig?.removeEventListener('abort', done)
-                                      activeRun.resume = undefined
-                                      resolve()
-                                  }
-                                  activeRun.resume = done
-                                  sig?.addEventListener('abort', done, {
-                                      once: true
-                                  })
-                              })
-                          }
-                      }
-                    : undefined,
+                pauseGate: async (sig) => {
+                    while (activeRun.paused) {
+                        if (sig?.aborted) return
+                        await new Promise<void>((resolve) => {
+                            const done = () => {
+                                sig?.removeEventListener('abort', done)
+                                activeRun.resume = undefined
+                                resolve()
+                            }
+                            activeRun.resume = done
+                            sig?.addEventListener('abort', done, {
+                                once: true
+                            })
+                        })
+                    }
+                },
                 toolMask,
                 subagentContext: subCtx,
                 source: options.source,
@@ -206,7 +192,11 @@ export async function runAgentTask(options: {
             )
         } catch (err) {
             run.state = signal?.aborted ? 'aborted' : 'failed'
-            run.error = err instanceof Error ? err.message : String(err)
+            run.error = signal?.aborted
+                ? '用户已停止任务。'
+                : err instanceof Error
+                  ? err.message
+                  : String(err)
             run.trace.push({
                 id: `${runId}:error`,
                 type: 'error',
@@ -223,13 +213,18 @@ export async function runAgentTask(options: {
             await options.runtime.refresh?.()
             throw err
         } finally {
-            if (onAbort) options.signal?.removeEventListener('abort', onAbort)
+            if (!isBg) {
+                options.signal?.removeEventListener('abort', abortByParent)
+            }
             options.active.delete(runId)
         }
     }
 
     if (isBg) {
-        exec().catch((err) => logger.error('[SubagentBgTaskError]', err))
+        exec().catch((err) => {
+            if (run.state === 'aborted' || signal.aborted) return
+            logger.error('[SubagentBgTaskError]', err)
+        })
         return formatTaskStart(options.task, options.toolName)
     }
 
@@ -376,6 +371,7 @@ async function onTaskEvent(
 export function createTaskSession(
     agent: ChatLunaAgent,
     parentConversationId: string,
+    session: Session,
     parent?: SubagentContext,
     maxDepth = 1
 ): AgentTaskSession {
@@ -392,12 +388,25 @@ export function createTaskSession(
         agentName: agent.name,
         conversationId: `subagent:${id}`,
         parentConversationId,
+        routing: createTaskRouting(session),
         depth,
         maxDepth: limit,
         parentAgent: parent?.agentName ?? 'main',
         messages: [],
         startedAt: now,
         updatedAt: now
+    }
+}
+
+function createTaskRouting(session: Session) {
+    return {
+        platform: session.platform,
+        selfId: session.selfId,
+        userId: session.userId,
+        username: session.username ?? undefined,
+        guildId: session.guildId ?? undefined,
+        channelId: session.channelId ?? undefined,
+        isDirect: session.isDirect ?? false
     }
 }
 

@@ -8,6 +8,7 @@ export type {
     AgentTaskDescriptor,
     AgentTaskTarget,
     AgentTaskSession,
+    AgentTaskSessionRouting,
     AgentTaskRunTraceEntry,
     AgentTaskRun,
     AgentTaskSessionSnapshot,

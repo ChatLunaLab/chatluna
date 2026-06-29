@@ -10,36 +10,58 @@
         </div>
 
         <div v-if="runs.length > 0" class="runs-list">
-            <button
+            <div
                 v-for="item in runs"
                 :key="item.runId"
-                type="button"
                 class="run-row"
+                role="button"
+                tabindex="0"
                 @click="selectedRunId = item.runId"
+                @keydown.enter.prevent="selectedRunId = item.runId"
+                @keydown.space.prevent="selectedRunId = item.runId"
             >
                 <div class="run-main">
-                    <div class="run-title">{{ item.agentName }}</div>
+                    <div class="run-header">
+                        <div class="run-title">{{ item.agentName }}</div>
+                        <el-tag
+                            size="small"
+                            effect="plain"
+                            :type="runTag(item.state)"
+                        >
+                            {{ item.state }}
+                        </el-tag>
+                    </div>
                     <div class="run-meta">
-                        {{ formatTime(item.startedAt) }}
-                        · 深度 {{ item.depth }} · 工具 {{ item.toolCount }} ·
-                        回合 {{ item.turnCount }} · 耗时 {{ formatDuration(item) }}
+                        <span>{{ formatTime(item.startedAt) }}</span>
+                        <span class="meta-divider">·</span>
+                        <span>深度 {{ item.depth }}</span>
+                        <span class="meta-divider">·</span>
+                        <span>工具 {{ item.toolCount }}</span>
+                        <span class="meta-divider">·</span>
+                        <span>回合 {{ item.turnCount }}</span>
+                        <span class="meta-divider">·</span>
+                        <span>耗时 {{ formatDuration(item) }}</span>
+                    </div>
+                    <div class="run-last">
+                        <span class="last-label">最后工具:</span>
+                        <code class="last-tool">{{ item.lastTool || '无' }}</code>
                     </div>
                 </div>
 
-                <div class="run-side">
-                    <el-tag
+                <div class="run-actions">
+                    <el-button
+                        v-if="item.state === 'running'"
                         size="small"
-                        effect="plain"
-                        :type="runTag(item.state)"
+                        :loading="stoppingId === item.taskId"
+                        @click.stop="stopRun(item)"
                     >
-                        {{ item.state }}
-                    </el-tag>
-                    <div class="run-last">
-                        {{ item.lastTool || '尚未调用工具' }}
-                    </div>
-                    <div class="run-link">查看详情</div>
+                        停止
+                    </el-button>
+                    <el-button size="small" @click.stop="selectedRunId = item.runId">
+                        详情
+                    </el-button>
                 </div>
-            </button>
+            </div>
         </div>
 
         <div v-else class="empty-state">
@@ -76,13 +98,23 @@
                             · 耗时 {{ formatDuration(selectedRun) }}
                         </div>
                     </div>
-                    <el-tag
-                        size="small"
-                        effect="plain"
-                        :type="runTag(selectedRun.state)"
-                    >
-                        {{ selectedRun.state }}
-                    </el-tag>
+                    <div class="dialog-actions">
+                        <el-button
+                            v-if="selectedRun.state === 'running'"
+                            size="small"
+                            :loading="stoppingId === selectedRun.taskId"
+                            @click="stopRun(selectedRun)"
+                        >
+                            停止
+                        </el-button>
+                        <el-tag
+                            size="small"
+                            effect="plain"
+                            :type="runTag(selectedRun.state)"
+                        >
+                            {{ selectedRun.state }}
+                        </el-tag>
+                    </div>
                 </div>
             </template>
 
@@ -136,7 +168,7 @@
                     <el-empty description="该次运行暂时没有可展示的详情。" />
                 </div>
 
-                <div v-if="selectedRun.error" class="error-box">
+                <div v-if="selectedRun.error && selectedRun.state !== 'aborted'" class="error-box">
                     <div class="trace-title">运行错误</div>
                     <pre class="trace-content">{{ selectedRun.error }}</pre>
                 </div>
@@ -146,6 +178,7 @@
 </template>
 
 <script setup lang="ts">
+import { send } from '@koishijs/client'
 import { CopyDocument } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, ref } from 'vue'
@@ -156,6 +189,7 @@ const props = defineProps<{
 }>()
 
 const selectedRunId = ref('')
+const stoppingId = ref('')
 
 const selectedRun = computed(() => {
     return props.runs.find((item) => item.runId === selectedRunId.value)
@@ -298,6 +332,22 @@ async function copyTrace(
         '已复制该条运行记录 Markdown'
     )
 }
+
+async function stopRun(run: SubAgentRunInfo) {
+    try {
+        stoppingId.value = run.taskId
+        const count = await send('chatluna-agent/stopSubAgentTask', run.taskId)
+        if (count > 0) {
+            ElMessage.success(`已发送停止请求，共 ${count} 个任务。`)
+        } else {
+            ElMessage.warning('该任务当前不可停止。')
+        }
+    } catch {
+        ElMessage.error('停止 Agent 任务失败。')
+    } finally {
+        stoppingId.value = ''
+    }
+}
 </script>
 
 <style scoped>
@@ -354,50 +404,101 @@ async function copyTrace(
 
 .run-row {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     width: 100%;
-    padding: 14px;
-    border: 1px solid
-        var(--trace-border);
-    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid var(--trace-border);
+    border-radius: 12px;
     background: var(--trace-surface);
     text-align: left;
     cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .run-row:hover {
     border-color: color-mix(in srgb, var(--k-text-light), transparent 60%);
-    background: color-mix(in srgb, var(--trace-surface), white 2%);
+    background: color-mix(in srgb, var(--trace-surface), var(--k-text-dark) 4%);
 }
 
 .run-main {
     min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
-.run-side {
-    min-width: 120px;
-    text-align: right;
+.run-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.run-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--k-text-light);
+}
+
+.meta-divider {
+    opacity: 0.5;
 }
 
 .run-last {
-    margin-top: 8px;
+    font-size: 12px;
+    color: var(--k-text-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
 }
 
-.run-link {
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--el-color-primary);
+.last-label {
+    flex-shrink: 0;
+}
+
+.last-tool {
+    background: color-mix(in srgb, var(--k-text-light), transparent 90%);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--k-text-dark);
+    font-family: monospace;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.run-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.run-row:hover .run-actions {
+    opacity: 1;
 }
 
 .dialog-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: 16px;
     padding-right: 8px;
+}
+
+.dialog-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .dialog-title {
@@ -413,7 +514,6 @@ async function copyTrace(
 }
 
 .dialog-meta,
-.trace-meta,
 .summary-label {
     margin-top: 4px;
     font-size: 12px;
@@ -423,10 +523,13 @@ async function copyTrace(
 
 .trace-wrap {
     max-height: 76vh;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding-right: 6px;
     scrollbar-width: thin;
     scrollbar-color: var(--trace-scrollbar) transparent;
+    display: flex;
+    flex-direction: column;
 }
 
 .trace-wrap::-webkit-scrollbar {
@@ -465,11 +568,15 @@ async function copyTrace(
     background: var(--trace-surface);
     padding: 16px;
     transition: border-color 0.2s ease, background 0.2s ease;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .trace-item:hover {
     border-color: color-mix(in srgb, var(--k-text-light), transparent 60%);
-    background: color-mix(in srgb, var(--trace-surface), white 2%);
+    background: color-mix(in srgb, var(--trace-surface), var(--k-text-dark) 4%);
 }
 
 .summary-card code {
@@ -483,6 +590,8 @@ async function copyTrace(
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 0;
+    width: 100%;
 }
 
 .trace-head {
@@ -490,12 +599,29 @@ async function copyTrace(
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+    width: 100%;
+}
+
+.trace-head > div:first-child {
+    min-width: 0;
+    flex: 1;
 }
 
 .trace-title {
     font-size: 14px;
     font-weight: 600;
     color: var(--k-text-dark);
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+.trace-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--k-text-light);
+    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 .icon-btn {
@@ -525,7 +651,8 @@ async function copyTrace(
 .trace-content {
     margin: 12px 0 0;
     white-space: pre-wrap;
-    word-break: break-word;
+    word-break: break-all;
+    overflow-wrap: anywhere;
     font-size: 12px;
     line-height: 1.7;
     color: var(--k-text-dark);
@@ -607,11 +734,12 @@ async function copyTrace(
     .run-row {
         flex-direction: column;
         align-items: flex-start;
+        gap: 12px;
     }
 
-    .run-side {
-        min-width: 0;
-        text-align: left;
+    .run-actions {
+        width: 100%;
+        justify-content: flex-end;
     }
 
     .dialog-header,

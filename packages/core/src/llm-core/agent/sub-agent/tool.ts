@@ -25,6 +25,9 @@ export function renderAvailableAgents(
     const lines = [
         '<available_sub_agents>',
         'Delegate via the task tool. background=true for long work; results arrive automatically - do not poll status.',
+        'If the user explicitly asks you to use a sub-agent, delegate it. ' +
+            'If that task fails or is stopped, do not attempt the same ' +
+            'task yourself.',
         ''
     ]
     if (dir) {

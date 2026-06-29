@@ -157,6 +157,8 @@ async function executeTools(
                     await tool.invoke(action.toolInput, config),
                     tool.name
                 )
+                checkAborted(signal)
+
                 return {
                     action,
                     observation: applyLoopGuidance(
@@ -167,6 +169,8 @@ async function executeTools(
                     )
                 } as AgentStep
             } catch (e) {
+                checkAborted(signal)
+
                 if (e instanceof ToolInputParsingException) {
                     const observation = coerceToAgentObservation(
                         toToolInputErrorObservation(handleParsingErrors, e)

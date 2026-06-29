@@ -187,6 +187,7 @@ declare module '@koishijs/plugin-console' {
         ) => Promise<SkillExportResult | undefined>
         'chatluna-agent/getSubAgents': () => Promise<SubAgentInfo[]>
         'chatluna-agent/getSubAgentRuns': () => Promise<SubAgentRunInfo[]>
+        'chatluna-agent/stopSubAgentTask': (id?: string) => Promise<number>
         'chatluna-agent/addSubAgent': (
             input: ManualSubAgentInput
         ) => Promise<SubAgentInfo>

@@ -7,6 +7,13 @@ import type {
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 
+const TARGET_RESOLVE = {
+    permission: 'manage',
+    mode: 'target',
+    allPresetLanes: true,
+    useRoutePresetLane: true
+} as const
+
 export function apply(ctx: Context) {
     ctx.command('chatluna.agent.list', 'List sub-agent tasks', {
         authority: 1
@@ -22,10 +29,10 @@ export function apply(ctx: Context) {
 
             const resolved = options.all
                 ? undefined
-                : await ctx.chatluna.conversation.resolveConversation(session, {
-                      permission: 'manage',
-                      mode: 'target'
-                  })
+                : await ctx.chatluna.conversation.resolveConversation(
+                      session,
+                      TARGET_RESOLVE
+                  )
             const id = resolved?.conversation?.id
             if (!options.all && !id) return 'No active conversation.'
 
@@ -61,35 +68,36 @@ export function apply(ctx: Context) {
             const service = ctx.chatluna_agent
             if (!service) return 'ChatLuna agent service is not ready.'
 
-            const resolved =
-                await ctx.chatluna.conversation.resolveConversation(session, {
-                    permission: 'manage',
-                    mode: 'target'
-                })
-            const conversationId = resolved.conversation?.id
-            if (!conversationId) return 'No active conversation.'
+            const resolved = await ctx.chatluna.conversation
+                .resolveConversation(session, TARGET_RESOLVE)
+                .catch(() => undefined)
+            const conversationId = resolved?.conversation?.id
 
             if (options.all) {
+                if (!conversationId) return 'No active conversation.'
                 const count =
                     await service.subAgent.abortByParentConversation(
                         conversationId
                     )
-                return `Stopped ${count} background sub-agent task(s).`
+                return `已停止 ${count} 个 Sub Agent 任务。`
             }
 
-            const task = await findTask(ctx, session, id, conversationId)
+            const task = id?.trim()
+                ? await findTask(ctx, session, id, conversationId)
+                : service.subAgent.getLatestRunningTask((t) =>
+                      matchTaskScope(t, session, conversationId)
+                  )
             if (typeof task === 'string') return task
+            if (!task) return 'No running sub-agent task.'
 
-            const run = latest(service.subAgent.getRuns(), task.id)
-            if (!run?.background)
-                return 'Foreground tasks stop with chatluna.stop.'
-
-            if (!(await service.subAgent.stopTask(task.id))) {
+            const count = await service.subAgent.stopTaskTree(task.id)
+            if (count < 1) {
                 return 'Task is not running or not stoppable.'
             }
 
-            service.subAgent.detachAttachedTask(task.id)
-            return `Stopped sub-agent task ${task.id.slice(0, 8)}.`
+            return id?.trim()
+                ? '已停止该 Sub Agent 任务及其子任务。'
+                : `已停止 ${count} 个 Sub Agent 任务。`
         })
 
     ctx.command('chatluna.agent.pause <id:string>', 'Pause sub-agent task', {
@@ -100,7 +108,7 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            { permission: 'manage', mode: 'target' }
+            TARGET_RESOLVE
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -124,7 +132,7 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            { permission: 'manage', mode: 'target' }
+            TARGET_RESOLVE
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -145,7 +153,7 @@ export function apply(ctx: Context) {
 
         const resolved = await ctx.chatluna.conversation.resolveConversation(
             session,
-            { permission: 'manage', mode: 'target' }
+            TARGET_RESOLVE
         )
         const conversationId = resolved.conversation?.id
         if (!conversationId) return 'No active conversation.'
@@ -178,7 +186,7 @@ async function findTask(
     ctx: Context,
     session: Session,
     id: string | undefined,
-    conversationId: string
+    conversationId?: string
 ) {
     if (!id?.trim()) return 'Task id is required.'
 
@@ -186,9 +194,7 @@ async function findTask(
     const all = await checkAdmin(session)
     const tasks = service.subAgent
         .getTasks()
-        .filter((task) =>
-            all ? true : task.parentConversationId === conversationId
-        )
+        .filter((task) => all || matchTaskScope(task, session, conversationId))
     const matches = tasks.filter((task) => task.id.startsWith(id.trim()))
     if (matches.length < 1) return `Task '${id}' was not found.`
     if (matches.length > 1) {
@@ -201,8 +207,34 @@ async function findTask(
     return matches[0]
 }
 
+function matchTaskScope(
+    task: AgentTaskSession,
+    session: Session,
+    conversationId?: string
+) {
+    if (conversationId && task.parentConversationId === conversationId) {
+        return true
+    }
+
+    if (task.routing.platform !== session.platform) return false
+    if (task.routing.selfId !== session.selfId) return false
+
+    if (session.isDirect) {
+        return (
+            task.routing.isDirect === true &&
+            task.routing.userId === session.userId
+        )
+    }
+
+    return (
+        task.routing.isDirect !== true &&
+        task.routing.guildId === session.guildId &&
+        task.routing.channelId === session.channelId
+    )
+}
+
 function latest(runs: AgentTaskRun[], taskId: string) {
-    return runs.filter((run) => run.taskId === taskId).at(-1)
+    return runs.find((run) => run.taskId === taskId)
 }
 
 function state(task: AgentTaskSession, run?: AgentTaskRun) {

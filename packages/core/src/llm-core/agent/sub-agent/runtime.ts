@@ -1,5 +1,9 @@
 import { logger } from 'koishi-plugin-chatluna'
 import { HumanMessage } from '@langchain/core/messages'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { createTaskSession, runAgentTask } from './executor'
 import { AgentTaskTool, buildTaskToolDescription } from './tool'
 import {
@@ -81,7 +85,9 @@ export function createTaskTool(
         if (run) run.paused = false
         item.paused = false
         item.resume?.()
-        item.abort.abort()
+        item.abort.abort(
+            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+        )
         return true
     }
 
@@ -163,7 +169,7 @@ export function createTaskTool(
 
             const runId = task.activeRunId
             const item = runId ? active.get(runId) : undefined
-            if (runId && item) {
+            if (runId && item?.queue) {
                 item.queue.push(new HumanMessage(prompt))
                 task.updatedAt = Date.now()
                 scheduleTaskCleanup(task.id)
@@ -261,7 +267,7 @@ export function createTaskTool(
                 if (!task.activeRunId)
                     return `Task '${task.id}' is not running. Use action=run with the same id to continue it.`
                 const item = active.get(task.activeRunId)
-                if (!item)
+                if (!item?.queue)
                     return `Task '${task.id}' is not accepting live messages because it was not started in background.`
                 item.queue.push(new HumanMessage(input.message.trim()))
                 task.updatedAt = Date.now()
@@ -300,6 +306,7 @@ export function createTaskTool(
                 createTaskSession(
                     target.agent,
                     conversationId,
+                    session,
                     parent,
                     options.maxDepth
                 )
@@ -345,6 +352,16 @@ export function createTaskTool(
             } catch (err) {
                 const run = getLatestTaskRun(runs, next.id)
                 if (!run) throw err
+                if (run.state === 'aborted') {
+                    return [
+                        'The user manually stopped this sub-agent task. Do not continue it.',
+                        'If needed, ask the user to clarify the task requirements.',
+                        '',
+                        `task_id: ${next.id}`,
+                        `agent: ${next.agentName}`,
+                        `state: ${run.state}`
+                    ].join('\n')
+                }
                 return formatTaskResult(
                     next,
                     run,
