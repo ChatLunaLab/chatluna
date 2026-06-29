@@ -139,7 +139,12 @@
                                 <el-button
                                     size="small"
                                     :loading="serverToolsBusy[item.name]"
-                                    :disabled="item.updating || item.tools.length === 0"
+                                    :disabled="
+                                        serverToolsBusy[item.name] ||
+                                        item.updating ||
+                                        item.tools.length === 0 ||
+                                        item.tools.some((t) => t.updating)
+                                    "
                                     @click="toggleServerTools(item.name)"
                                 >
                                     {{
@@ -1192,8 +1197,12 @@ async function toggleTool(item: McpToolInfo, enabled: boolean) {
 }
 
 async function toggleServerTools(name: string) {
+    if (serverToolsBusy.value[name]) return
+
     const srv = servers.value.find((s) => s.name === name)
-    if (!srv || srv.tools.length === 0) return
+    if (!srv || srv.tools.length === 0 || srv.tools.some((t) => t.updating)) {
+        return
+    }
 
     const enabled = !srv.tools.some((t) => t.enabled)
     const prev = srv.tools.map((t) => ({ name: t.name, enabled: t.enabled }))
