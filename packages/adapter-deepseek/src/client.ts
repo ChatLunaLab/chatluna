@@ -56,7 +56,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
 
                 if (!model.startsWith('deepseek-v4-')) continue
                 if (model.endsWith('-thinking')) continue
-                if (model.endsWith('-instance')) continue
+                if (model.endsWith('-instant')) continue
 
                 models.push(
                     `${model}-high-thinking`,
@@ -129,7 +129,7 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                     model.includes('reasoner') ||
                     model.includes('thinking') ||
                     (model.startsWith('deepseek-v4-') &&
-                        !model.endsWith('-instance'))
+                        !model.endsWith('-instant'))
             })
         }
 

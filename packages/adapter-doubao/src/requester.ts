@@ -66,7 +66,7 @@ export class DoubaoRequester
         }
 
         const baseRequest = (await buildChatCompletionParams(
-            { ...params, model },
+            params,
             this._plugin,
             false,
             [
@@ -85,6 +85,10 @@ export class DoubaoRequester
             baseRequest.thinking = {
                 type: enabledThinking ? 'enabled' : 'disabled'
             }
+        }
+
+        if (parsedModel.reasoningEffort === 'none') {
+            delete baseRequest.reasoning_effort
         }
 
         // Make the request using the shared post method
