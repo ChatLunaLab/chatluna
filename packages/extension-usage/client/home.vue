@@ -71,75 +71,73 @@
                         @change="changeListRange"
                     />
 
-                    <div class="model-filter-row">
-                        <el-select
-                            v-model="listQuery.platform"
-                            filterable
-                            allow-create
-                            default-first-option
-                            clearable
-                            placeholder="模型平台"
-                        >
-                            <el-option
-                                v-for="item in platformOptions"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                        <el-select
-                            v-model="listQuery.model"
-                            filterable
-                            allow-create
-                            default-first-option
-                            clearable
-                            placeholder="模型名称"
-                        >
-                            <el-option
-                                v-for="item in modelOptions"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                        <el-select
-                            v-model="listQuery.callType"
-                            filterable
-                            default-first-option
-                            clearable
-                            placeholder="模型类型"
-                        >
-                            <el-option
-                                v-for="item in typeOptions"
-                                :key="item"
-                                :label="typeText(item)"
-                                :value="item"
-                            />
-                        </el-select>
-                        <el-select
-                            v-model="listQuery.success"
-                            clearable
-                            placeholder="成功状态"
-                        >
-                            <el-option label="成功" :value="true" />
-                            <el-option label="失败" :value="false" />
-                        </el-select>
-                        <el-select
-                            v-model="listQuery.source"
-                            filterable
-                            allow-create
-                            default-first-option
-                            clearable
-                            placeholder="插件来源"
-                        >
-                            <el-option
-                                v-for="item in sourceOptions"
-                                :key="item"
-                                :label="item"
-                                :value="item"
-                            />
-                        </el-select>
-                    </div>
+                    <el-select
+                        v-model="listQuery.model"
+                        filterable
+                        allow-create
+                        default-first-option
+                        clearable
+                        placeholder="模型名称"
+                    >
+                        <el-option
+                            v-for="item in modelOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                    <el-select
+                        v-model="listQuery.platform"
+                        filterable
+                        allow-create
+                        default-first-option
+                        clearable
+                        placeholder="模型平台"
+                    >
+                        <el-option
+                            v-for="item in platformOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                    <el-select
+                        v-model="listQuery.source"
+                        filterable
+                        allow-create
+                        default-first-option
+                        clearable
+                        placeholder="插件来源"
+                    >
+                        <el-option
+                            v-for="item in sourceOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                    <el-select
+                        v-model="listQuery.callType"
+                        filterable
+                        default-first-option
+                        clearable
+                        placeholder="模型类型"
+                    >
+                        <el-option
+                            v-for="item in typeOptions"
+                            :key="item"
+                            :label="typeText(item)"
+                            :value="item"
+                        />
+                    </el-select>
+                    <el-select
+                        v-model="listQuery.success"
+                        clearable
+                        placeholder="成功状态"
+                    >
+                        <el-option label="成功" :value="true" />
+                        <el-option label="失败" :value="false" />
+                    </el-select>
                 </div>
 
                 <el-table
@@ -192,13 +190,14 @@
                     <el-table-column
                         prop="source"
                         label="插件来源"
-                        :width="sourceWidth"
+                        width="120"
+                        show-overflow-tooltip
                         sortable
                     />
                     <el-table-column
                         prop="callType"
                         label="类型"
-                        :min-width="128"
+                        min-width="200"
                         sortable
                     >
                         <template #default="scope">
@@ -208,9 +207,7 @@
                     <el-table-column
                         prop="totalMs"
                         label="性能"
-                        width="220"
-                        align="right"
-                        header-align="left"
+                        width="190"
                         sortable="custom"
                     >
                         <template #default="scope">
@@ -275,14 +272,9 @@
                     <el-table-column
                         prop="totalTokens"
                         label="Tokens"
-                        width="290"
-                        align="right"
-                        header-align="left"
+                        width="180"
                         sortable="custom"
                     >
-                        <template #header>
-                            <span class="token-header">Tokens</span>
-                        </template>
                         <template #default="scope">
                             <el-tooltip
                                 placement="right"
@@ -370,7 +362,7 @@
                                                 />
                                             </svg>
                                             <strong>
-                                                {{ fmt(scope.row.inputTokens) }}
+                                                {{ short(scope.row.inputTokens) }}
                                             </strong>
                                         </span>
                                         <span class="token-item token-output">
@@ -402,7 +394,7 @@
                                                 />
                                             </svg>
                                             <strong>
-                                                {{ fmt(scope.row.outputTokens) }}
+                                                {{ short(scope.row.outputTokens) }}
                                             </strong>
                                         </span>
                                     </div>
@@ -432,7 +424,7 @@
                                                 />
                                             </svg>
                                             <strong>
-                                                {{ fmt(scope.row.reasoningTokens) }}
+                                                {{ short(scope.row.reasoningTokens) }}
                                             </strong>
                                         </span>
                                         <span class="token-item token-cache">
@@ -461,7 +453,7 @@
                                                 />
                                             </svg>
                                             <strong>
-                                                {{ fmt(scope.row.cachedTokens) }}
+                                                {{ short(scope.row.cachedTokens) }}
                                             </strong>
                                         </span>
                                     </div>
@@ -515,6 +507,7 @@ import {
     scope,
     scopes,
     setScope,
+    short,
     time,
     usage
 } from './state'
@@ -567,9 +560,6 @@ const platformWidth = computed(
         Math.max(4, ...platformOptions.value.map((item) => size(item))) * 8 + 52
 )
 
-const sourceWidth = computed(
-    () => Math.max(8, ...sourceOptions.value.map((item) => size(item))) * 8 + 52
-)
 
 const typeOptions = computed(
     () =>
@@ -815,8 +805,10 @@ function changeSort(data: {
 }
 
 .token-card {
-    --token-columns-shift: -0.35rem;
+    --token-columns-shift: 0;
 
+    justify-content: flex-start;
+    gap: 1.1rem;
     min-height: 150px;
     padding: 1.2rem 1.4rem;
 }
@@ -957,19 +949,14 @@ function changeSort(data: {
 
 .token-columns {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0;
-    margin: 1.15rem 0 0;
+    grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
+    gap: 0.85rem 1.15rem;
+    margin: 0;
     transform: translateY(var(--token-columns-shift));
 
     div {
         min-width: 0;
-        padding: 0 0.8rem;
-        text-align: center;
-
-        & + div {
-            border-left: 1px solid var(--k-card-border);
-        }
+        text-align: left;
     }
 
     span,
@@ -991,6 +978,8 @@ function changeSort(data: {
         font-size: 1.25rem;
         font-weight: 500;
         line-height: 1.15;
+        overflow: visible;
+        text-overflow: clip;
     }
 }
 
@@ -1042,7 +1031,7 @@ function changeSort(data: {
 
 .source-pie {
     width: 100%;
-    height: 240px;
+    height: 200px;
 }
 
 .source-detail {
@@ -1206,13 +1195,8 @@ function changeSort(data: {
     display: grid;
     box-sizing: border-box;
     gap: 0.8rem;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     padding: 0.5rem 0.9rem 1rem;
-}
-
-.chatluna-usage-table .model-filter-row {
-    display: grid;
-    gap: 0.85rem;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .chatluna-usage-table .el-input,
@@ -1234,9 +1218,10 @@ function changeSort(data: {
 }
 
 .chatluna-usage-table .el-date-editor.date-filter {
+    grid-column: span 2;
     max-width: none;
     min-width: 0;
-    width: calc(40% - 1.75rem);
+    width: 100%;
 }
 
 .chatluna-usage-table .el-date-editor.date-filter .el-range__icon {
@@ -1363,25 +1348,21 @@ function changeSort(data: {
 }
 
 .token-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
+    display: inline-grid;
+    grid-template-columns: minmax(4.25rem, max-content) max-content;
+    gap: 0.38rem 0.75rem;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-    min-width: 12rem;
+    min-width: 0;
     white-space: nowrap;
 }
 
 .token-row {
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
+    display: contents;
 }
 
-.token-header {
-    display: inline-block;
-    text-align: left;
-    vertical-align: middle;
+.perf-cell {
+    grid-template-columns: minmax(4.75rem, max-content) max-content;
 }
 
 .nowrap-cell {
@@ -1536,11 +1517,12 @@ function changeSort(data: {
         flex-direction: column;
     }
 
-    .chatluna-usage-table .model-filter-row {
+    .chatluna-usage-table .filter-body {
         grid-template-columns: 1fr;
     }
 
     .chatluna-usage-table .el-date-editor.date-filter {
+        grid-column: span 1;
         width: 100%;
     }
 }

@@ -12,7 +12,7 @@ import { ElMessage } from 'element-plus'
 import type { EChartsOption } from 'echarts'
 import type { ChatLunaUsage } from 'koishi-plugin-chatluna-usage'
 import { chartTheme } from '../theme'
-import { query, usage } from '../state'
+import { query, short, usage } from '../state'
 import { escapeHtml, Tooltip } from './utils'
 
 type Tab =
@@ -55,7 +55,8 @@ function hour(date: string | Date) {
 function tooltip(
     params: { marker?: string; seriesName: string; value: number }[],
     theme: typeof chartTheme.value,
-    skipZero = true
+    skipZero = true,
+    format = (value: number) => value.toLocaleString()
 ) {
     const row =
         'display:flex;align-items:center;justify-content:space-between;' +
@@ -73,7 +74,7 @@ function tooltip(
             (item) =>
                 `<div style="${row}">
                     <span style="${name}">${item.marker ?? ''}${escapeHtml(item.seriesName)}</span>
-                    <strong style="${value}">${Number(item.value).toLocaleString()}</strong>
+                    <strong style="${value}">${format(Number(item.value))}</strong>
                 </div>`
         )
         .join('')
@@ -220,13 +221,13 @@ export default (ctx: Context) => {
                                     colors.value[index % colors.value.length]
                             ),
                             tooltip: Tooltip.axis<number>(
-                                (params) => tooltip(params, theme),
+                                (params) => tooltip(params, theme, true, short),
                                 theme,
                                 'shadow'
                             ),
                             title: {
                                 text: 'Token 消耗历史',
-                                subtext: `总计：${data.totals.totalTokens.toLocaleString()}`,
+                                subtext: `总计：${short(data.totals.totalTokens)}`,
                                 left: 20,
                                 top: 18,
                                 textStyle: {
@@ -243,6 +244,13 @@ export default (ctx: Context) => {
                             xAxis: {
                                 ...common.xAxis,
                                 data: hours
+                            },
+                            yAxis: {
+                                ...common.yAxis,
+                                axisLabel: {
+                                    ...common.yAxis.axisLabel,
+                                    formatter: (value: number) => short(value)
+                                }
                             },
                             series: list.map((model) => {
                                 const points =
@@ -423,12 +431,12 @@ export default (ctx: Context) => {
                                 colors.value[index % colors.value.length]
                         ),
                         tooltip: Tooltip.axis<number>(
-                            (params) => tooltip(params, theme),
+                            (params) => tooltip(params, theme, true, short),
                             theme
                         ),
                         title: {
                             text: 'Token 消耗趋势',
-                            subtext: `总计：${data.totals.totalTokens.toLocaleString()}`,
+                            subtext: `总计：${short(data.totals.totalTokens)}`,
                             left: 20,
                             top: 18,
                             textStyle: {
@@ -445,6 +453,13 @@ export default (ctx: Context) => {
                         xAxis: {
                             ...common.xAxis,
                             data: hours
+                        },
+                        yAxis: {
+                            ...common.yAxis,
+                            axisLabel: {
+                                ...common.yAxis.axisLabel,
+                                formatter: (value: number) => short(value)
+                            }
                         },
                         series: list.map((model) => {
                             const points =

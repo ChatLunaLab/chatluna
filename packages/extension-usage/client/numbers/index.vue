@@ -94,7 +94,7 @@
 import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
-import { fmt, pct, query, usage } from '../state'
+import { fmt, pct, query, short, usage } from '../state'
 
 const compact = new Intl.NumberFormat('en', {
     notation: 'compact',
@@ -197,13 +197,11 @@ const tokens = computed(() => {
     const item = usage.value?.totals
     if (!item) return []
 
-    const big = (value: number) =>
-        value >= 1000000 ? compact.format(value) : fmt(value)
-
     return [
-        { label: '输入', value: big(item.inputTokens) },
-        { label: '输出', value: big(item.outputTokens) },
-        { label: '缓存', value: big(item.cachedTokens) }
+        { label: '输入', value: short(item.inputTokens) },
+        { label: '输出', value: short(item.outputTokens) },
+        { label: '思考', value: short(item.reasoningTokens) },
+        { label: '缓存', value: short(item.cachedTokens) }
     ]
 })
 </script>
