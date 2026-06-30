@@ -6,7 +6,7 @@
             </div>
             <strong class="source-total">
                 <span>消耗总量</span>
-                {{ fmt(tokens) }}
+                {{ short(tokens) }}
             </strong>
         </header>
 
@@ -46,7 +46,7 @@
                                 </el-tooltip>
                                 <strong>
                                     {{ pct(row.totalTokens / modelTokens) }} ·
-                                    {{ fmt(row.totalTokens) }}
+                                    {{ short(row.totalTokens) }}
                                 </strong>
                                 <span class="source-model-bar">
                                     <span
@@ -79,7 +79,7 @@ import { ElMessage } from 'element-plus'
 import type { EChartsOption } from 'echarts'
 import type { ChatLunaUsage } from 'koishi-plugin-chatluna-usage'
 import { chartTheme } from '../theme'
-import { fmt, pct, query, usage } from '../state'
+import { fmt, pct, query, short, usage } from '../state'
 import { escapeHtml } from '../charts/utils'
 
 interface SourceClick {
@@ -140,7 +140,7 @@ const option = computed<EChartsOption>(() => {
 
                 return [
                     escapeHtml(row.name),
-                    `Token ${fmt(row.value)}`,
+                    `Token ${short(row.value)}`,
                     `调用 ${fmt(row.calls)}`,
                     `占比 ${pct(row.value / tokens.value)}`
                 ].join('<br/>')
@@ -155,14 +155,14 @@ const option = computed<EChartsOption>(() => {
             {
                 name: '插件 Token',
                 type: 'pie',
-                radius: ['46%', '72%'],
-                center: ['50%', '52%'],
+                radius: ['52%', '78%'],
+                center: ['50%', '50%'],
                 selectedMode: 'single',
                 avoidLabelOverlap: true,
                 itemStyle: {
                     borderColor: theme.surface,
-                    borderRadius: 6,
-                    borderWidth: 3
+                    borderRadius: 3,
+                    borderWidth: 2
                 },
                 label: {
                     color: theme.muted,

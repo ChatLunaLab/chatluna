@@ -2,7 +2,7 @@
     <div class="model-pie-panel" v-if="rows.length && tokens">
         <div class="model-chart-title">
             <h3>模型消耗分布</h3>
-            <p>总计：{{ fmt(tokens) }} Tokens</p>
+            <p>总计：{{ short(tokens) }} Tokens</p>
         </div>
 
         <div class="model-pie-body">
@@ -140,7 +140,7 @@ const option = computed<EChartsOption>(() => {
                 }
                 return [
                     escapeHtml(row.name),
-                    `Token ${fmt(row.value)}`,
+                    `Token ${short(row.value)}`,
                     `调用 ${fmt(row.calls)}`,
                     `占比 ${pct(row.value / tokens.value)}`
                 ].join('<br/>')
@@ -155,13 +155,13 @@ const option = computed<EChartsOption>(() => {
             {
                 name: '模型 Token',
                 type: 'pie',
-                radius: ['32%', '60%'],
-                center: ['50%', '40%'],
+                radius: ['40%', '68%'],
+                center: ['50%', '50%'],
                 avoidLabelOverlap: true,
                 itemStyle: {
                     borderColor: theme.surface,
-                    borderRadius: 6,
-                    borderWidth: 3
+                    borderRadius: 3,
+                    borderWidth: 2
                 },
                 label: { show: false },
                 labelLine: { show: false },
