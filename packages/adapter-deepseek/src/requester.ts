@@ -45,9 +45,9 @@ export class DeepseekRequester
         params: ModelRequestParams
     ): AsyncGenerator<ChatGenerationChunk> {
         const rawModel = params.model
-        const disabled = rawModel.endsWith('-instance')
+        const disabled = rawModel.endsWith('-instant')
         const parsedModel = parseOpenAIModelNameWithReasoningEffort(
-            disabled ? rawModel.slice(0, -'-instance'.length) : rawModel
+            disabled ? rawModel.slice(0, -'-instant'.length) : rawModel
         )
         const model = parsedModel.model
         const requestContext = createRequestContext(

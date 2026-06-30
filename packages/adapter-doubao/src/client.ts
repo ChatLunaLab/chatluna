@@ -108,6 +108,7 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 for (const variant of expandReasoningEffortModelVariants(
                     model,
                     [
+                        'non-thinking',
                         'minimal-thinking',
                         'low-thinking',
                         'medium-thinking',
