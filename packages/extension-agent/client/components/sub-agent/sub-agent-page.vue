@@ -866,9 +866,9 @@ async function savePreview() {
         }
 
         if (item.scope === 'data') {
-            await send('chatluna-agent/addSubAgent', input)
-        } else {
             await send('chatluna-agent/saveSubAgentContent', item.id, input)
+        } else {
+            await send('chatluna-agent/addSubAgent', input)
         }
         ElMessage.success('保存内容成功。')
         showPreview.value = false

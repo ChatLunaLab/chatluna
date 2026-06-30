@@ -146,6 +146,9 @@ async function scanTarget(target: ScanTarget, cfg: AgentConfig['subAgent']) {
                 ? createSubAgentItemConfig({
                       ...base,
                       ...saved,
+                      name: base.name,
+                      description: base.description,
+                      format: base.format,
                       permissions: {
                           skills:
                               saved.permissions?.skills ??
