@@ -126,6 +126,35 @@
                     </div>
 
                     <div class="server-actions">
+                        <el-tooltip
+                            effect="dark"
+                            :content="
+                                item.tools.some((t) => t.enabled)
+                                    ? '禁用该服务器的所有工具'
+                                    : '启用该服务器的所有工具'
+                            "
+                            placement="top"
+                        >
+                            <span class="tooltip-trigger-wrapper">
+                                <el-button
+                                    size="small"
+                                    :loading="serverToolsBusy[item.name]"
+                                    :disabled="
+                                        serverToolsBusy[item.name] ||
+                                        item.updating ||
+                                        item.tools.length === 0 ||
+                                        item.tools.some((t) => t.updating)
+                                    "
+                                    @click="toggleServerTools(item.name)"
+                                >
+                                    {{
+                                        item.tools.some((t) => t.enabled)
+                                            ? '禁用全部'
+                                            : '启用全部'
+                                    }}
+                                </el-button>
+                            </span>
+                        </el-tooltip>
                         <el-button
                             size="small"
                             :disabled="item.updating"
@@ -857,6 +886,7 @@ const serverMode = ref<'form' | 'json'>('form')
 const serverJson = ref('')
 const syncing = ref(false)
 const serverBusy = ref<Record<string, boolean>>({})
+const serverToolsBusy = ref<Record<string, boolean>>({})
 const toolBusy = ref<Record<string, boolean>>({})
 const toolEnabled = ref<Record<string, boolean>>({})
 
@@ -1163,6 +1193,55 @@ async function toggleTool(item: McpToolInfo, enabled: boolean) {
         ElMessage.error('更新工具状态失败，请稍后重试。')
     } finally {
         toolBusy.value[item.name] = false
+    }
+}
+
+async function toggleServerTools(name: string) {
+    if (serverToolsBusy.value[name]) return
+
+    const srv = servers.value.find((s) => s.name === name)
+    if (!srv || srv.tools.length === 0 || srv.tools.some((t) => t.updating)) {
+        return
+    }
+
+    const enabled = !srv.tools.some((t) => t.enabled)
+    const prev = srv.tools.map((t) => ({ name: t.name, enabled: t.enabled }))
+
+    try {
+        serverToolsBusy.value[name] = true
+        for (const t of srv.tools) {
+            toolEnabled.value[t.name] = enabled
+            toolBusy.value[t.name] = true
+        }
+
+        const nextTools = { ...props.config.tools }
+        for (const t of srv.tools) {
+            const cur = nextTools[t.name]
+            nextTools[t.name] = {
+                name: t.name,
+                enabled,
+                timeout: cur?.timeout ?? t.timeout ?? undefined,
+                selector: cur?.selector ?? t.selector ?? []
+            }
+        }
+
+        await send('chatluna-agent/saveMcp', {
+            ...props.config,
+            tools: nextTools
+        })
+        ElMessage.success(
+            enabled ? '已启用该服务器的所有工具。' : '已停用该服务器的所有工具。'
+        )
+    } catch {
+        for (const p of prev) {
+            toolEnabled.value[p.name] = p.enabled
+        }
+        ElMessage.error('更新工具状态失败，请稍后重试。')
+    } finally {
+        serverToolsBusy.value[name] = false
+        for (const t of srv.tools) {
+            toolBusy.value[t.name] = false
+        }
     }
 }
 
@@ -1864,5 +1943,14 @@ async function saveTool() {
         justify-content: flex-start;
         flex-wrap: wrap;
     }
+}
+
+.tooltip-trigger-wrapper {
+    display: inline-flex;
+}
+
+.tooltip-trigger-wrapper :deep(.el-button.is-disabled),
+.tooltip-trigger-wrapper :deep(.el-button.is-loading) {
+    pointer-events: none;
 }
 </style>
