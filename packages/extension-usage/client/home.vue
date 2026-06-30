@@ -144,7 +144,7 @@
                     ref="table"
                     :data="list?.rows ?? []"
                     :default-sort="{ prop: 'createdAt', order: 'descending' }"
-                    table-layout="auto"
+                    table-layout="fixed"
                     stripe
                     @sort-change="changeSort"
                 >
@@ -155,13 +155,21 @@
                         sortable
                     >
                         <template #default="scope">
-                            {{ time(scope.row.createdAt) }}
+                            <el-tooltip
+                                :content="time(scope.row.createdAt)"
+                                placement="top"
+                                effect="dark"
+                            >
+                                <span class="nowrap-cell">
+                                    {{ time(scope.row.createdAt) }}
+                                </span>
+                            </el-tooltip>
                         </template>
                     </el-table-column>
                     <el-table-column
                         prop="model"
                         label="模型"
-                        :width="modelWidth"
+                        min-width="150"
                         sortable
                     >
                         <template #default="scope">
@@ -183,21 +191,21 @@
                     <el-table-column
                         prop="platform"
                         label="渠道"
-                        :width="platformWidth"
+                        min-width="120"
                         show-overflow-tooltip
                         sortable
                     />
                     <el-table-column
                         prop="source"
                         label="插件来源"
-                        width="120"
+                        min-width="100"
                         show-overflow-tooltip
                         sortable
                     />
                     <el-table-column
                         prop="callType"
                         label="类型"
-                        min-width="200"
+                        min-width="110"
                         sortable
                     >
                         <template #default="scope">
@@ -207,7 +215,7 @@
                     <el-table-column
                         prop="totalMs"
                         label="性能"
-                        width="190"
+                        width="220"
                         sortable="custom"
                     >
                         <template #default="scope">
@@ -514,13 +522,6 @@ import {
 
 const table = ref<TableInstance>()
 
-function size(text: string) {
-    return Array.from(text).reduce(
-        (sum, ch) => sum + (ch.charCodeAt(0) > 255 ? 2 : 1),
-        0
-    )
-}
-
 const platformOptions = computed(
     () =>
         [
@@ -550,16 +551,6 @@ const sourceOptions = computed(
             ])
         ].filter(Boolean) as string[]
 )
-
-const modelWidth = computed(
-    () => Math.max(8, ...modelOptions.value.map((item) => size(item))) * 8 + 52
-)
-
-const platformWidth = computed(
-    () =>
-        Math.max(4, ...platformOptions.value.map((item) => size(item))) * 8 + 52
-)
-
 
 const typeOptions = computed(
     () =>
@@ -1367,6 +1358,9 @@ function changeSort(data: {
 
 .nowrap-cell {
     display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
     vertical-align: middle;
 }
