@@ -1,6 +1,7 @@
 /** @module service/computer */
 
 import { randomUUID } from 'node:crypto'
+import os from 'node:os'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import which from 'which'
@@ -147,6 +148,34 @@ export class ChatLunaAgentComputerService {
         }
 
         return '~'
+    }
+
+    async getPromptTempDir(
+        conversationId?: string,
+        backend?: ComputerBackendType
+    ) {
+        if (!this._status.enabled) {
+            return undefined
+        }
+
+        const type =
+            backend ??
+            this.resolveProvider() ??
+            this.config.computer.defaultProvider
+        if (conversationId) {
+            const session = this._sessions.get(
+                buildComputerSessionKey({ backend: type, conversationId })
+            )
+            if (session) {
+                return await session.getTempDir()
+            }
+        }
+
+        if (type === 'local') {
+            return os.tmpdir()
+        }
+
+        return '/tmp'
     }
 
     getTerminal(sessionId: string, terminalId: string) {
@@ -1142,11 +1171,29 @@ export class ChatLunaAgentComputerService {
                     return next()
                 }
 
+                const agentContext = runtime.configurable?.agentContext as {
+                    conversationId?: string
+                    subagentContext?: { parentConversationId?: string }
+                }
+                const sub =
+                    agentContext?.subagentContext ??
+                    runtime.configurable?.subagentContext
+                const conversationId =
+                    sub?.parentConversationId ??
+                    agentContext?.conversationId ??
+                    runtime.configurable?.conversationId
+                const type =
+                    this.resolveProvider() ??
+                    this.config.computer.defaultProvider
+                const cwd = this.getPromptWorkdir(conversationId, type)
+                const tmp = await this.getPromptTempDir(conversationId, type)
                 const msg = new SystemMessage(
                     [
                         '<computer_use>',
-                        `Default provider: ${this.resolveProvider() ?? this.config.computer.defaultProvider}`,
+                        `Default provider: ${type}`,
                         `Available capabilities: ${capabilities.join(', ')}`,
+                        `Current working directory: ${cwd}`,
+                        `Temporary directory: ${tmp}`,
                         'Prefer isolated backends when available. ' +
                             'Local computer access runs directly on the host machine and should only be used when explicitly enabled.',
                         'Use these capabilities when file operations, code search, shell execution, terminal interaction, or preview access are needed.',
