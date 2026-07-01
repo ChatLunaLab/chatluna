@@ -1171,14 +1171,16 @@ export class ChatLunaAgentComputerService {
                     return next()
                 }
 
+                const agentContext = runtime.configurable?.agentContext as {
+                    conversationId?: string
+                    subagentContext?: { parentConversationId?: string }
+                }
                 const sub =
-                    (
-                        runtime.configurable?.agentContext as {
-                            subagentContext?: { parentConversationId?: string }
-                        }
-                    )?.subagentContext ?? runtime.configurable?.subagentContext
+                    agentContext?.subagentContext ??
+                    runtime.configurable?.subagentContext
                 const conversationId =
                     sub?.parentConversationId ??
+                    agentContext?.conversationId ??
                     runtime.configurable?.conversationId
                 const type =
                     this.resolveProvider() ??
