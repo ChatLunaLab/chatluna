@@ -287,19 +287,49 @@ export function createTaskTool(
             if (!session || !conversationId)
                 return 'Task invocation is missing session context.'
 
-            const agentName = input.agent?.trim() ?? task?.agentName
-            if (!agentName) return 'agent is required when starting a new task.'
-
-            const target = await options.get(agentName, {
+            const raw = input.prompt?.trim() ?? ''
+            const name = input.agent?.trim()
+            const agentName = name ?? task?.agentName
+            const ctx = {
                 session,
                 source,
                 conversationId,
                 parent,
                 runConfig
-            })
-            if (!target) return `Agent '${agentName}' is not available.`
+            }
+            let promptContent: string | undefined
+            const target =
+                task?.promptContent && !name
+                    ? await options.create?.({
+                          ...ctx,
+                          id: task.agentId,
+                          name: task.agentName,
+                          prompt: task.promptContent
+                      })
+                    : agentName
+                      ? await options.get(agentName, ctx)
+                      : options.create && raw
+                        ? await options.create({ ...ctx, prompt: raw })
+                        : undefined
+
+            if (!target) {
+                if (agentName && !task?.promptContent) {
+                    return `Agent '${agentName}' is not available.`
+                }
+                if (task?.promptContent) {
+                    return `Task '${task.id}' prompt-only sub-agent is not available.`
+                }
+                if (!options.create) {
+                    return 'agent is required when starting a new task.'
+                }
+                return 'Task prompt is empty.'
+            }
+
+            if (!task && !name) {
+                promptContent = raw
+            }
             if (task && target.agent.id !== task.agentId)
-                return `Task '${task.id}' belongs to '${task.agentName}', not '${agentName}'.`
+                return `Task '${task.id}' belongs to '${task.agentName}', not '${target.agent.name}'.`
 
             const next =
                 task ??
@@ -308,13 +338,13 @@ export function createTaskTool(
                     conversationId,
                     session,
                     parent,
-                    options.maxDepth
+                    options.maxDepth,
+                    promptContent
                 )
             if (!task) tasks.set(next.id, next)
             if (next.activeRunId)
                 return `Task '${next.id}' is already running; result will arrive automatically. Use action=message to guide it.`
 
-            const raw = input.prompt?.trim() ?? ''
             const parts: string[] = []
             if (input.goal?.trim()) parts.push(`Goal:\n${input.goal.trim()}`)
             if (raw) parts.push(`Task:\n${raw}`)

@@ -27,6 +27,7 @@ export interface AgentTaskSession {
     maxDepth: number
     parentAgent: string
     activeRunId?: string
+    promptContent?: string
     messages: BaseMessage[]
     startedAt: number
     updatedAt: number
@@ -118,11 +119,20 @@ export interface AgentTaskResolveContext extends AgentTaskQueryContext {
     runConfig?: ChatLunaToolRunnable
 }
 
+export interface AgentTaskCreateContext extends AgentTaskResolveContext {
+    prompt: string
+    id?: string
+    name?: string
+}
+
 export interface CreateTaskToolOptions {
     list: (ctx: AgentTaskQueryContext) => Awaitable<AgentTaskDescriptor[]>
     get: (
         name: string,
         ctx: AgentTaskResolveContext
+    ) => Awaitable<AgentTaskTarget | undefined>
+    create?: (
+        ctx: AgentTaskCreateContext
     ) => Awaitable<AgentTaskTarget | undefined>
     refresh?: () => Awaitable<void>
     maxDepth?: number

@@ -307,6 +307,23 @@ export class ChatLunaAgentSubAgentService {
     }
 
     private _createTaskRuntime() {
+        const buildTarget = async (
+            info: SubAgentInfo,
+            ctx: AgentTaskResolveContext
+        ) => ({
+            agent: await createSubAgent({
+                ctx: this.ctx,
+                permission: this.permission,
+                info,
+                model: ctx.runConfig?.configurable?.model
+            }),
+            toolMask: await this.permission.createSubAgentToolMask(
+                info,
+                ctx.session,
+                ctx.source ?? 'chatluna'
+            )
+        })
+
         return createTaskTool({
             list: ({ session, source }) =>
                 this.listRunnableAgents(session, source).map((item) => ({
@@ -325,19 +342,20 @@ export class ChatLunaAgentSubAgentService {
                     return undefined
                 }
 
-                return {
-                    agent: await createSubAgent({
-                        ctx: this.ctx,
-                        permission: this.permission,
-                        info,
-                        model: ctx.runConfig?.configurable?.model
+                return await buildTarget(info, ctx)
+            },
+            create: async (ctx) => {
+                return await buildTarget(
+                    createManualAgent(this.ctx, {
+                        id: ctx.id,
+                        name: ctx.name ?? 'one-shot',
+                        description: 'Prompt-only one-shot sub-agent',
+                        promptContent: ctx.prompt,
+                        permissions: this.config.subAgent.defaults,
+                        allowKoishiMessageTransform: false
                     }),
-                    toolMask: await this.permission.createSubAgentToolMask(
-                        info,
-                        ctx.session,
-                        ctx.source ?? 'chatluna'
-                    )
-                }
+                    ctx
+                )
             },
             refresh: async () => {
                 await this.ctx.chatluna_agent?.refreshConsoleData()
@@ -365,13 +383,10 @@ export class ChatLunaAgentSubAgentService {
         this._toolDispose?.()
         this._toolDispose = undefined
 
-        if (this.listRunnableAgents().length < 1) return
-
         this._toolDispose = this.ctx.chatluna.platform.registerTool('task', {
             description: this.buildToolDescription(),
-            selector: () => this.listRunnableAgents().length > 0,
-            authorization: (session) =>
-                this.listRunnableAgents(session, 'chatluna').length > 0,
+            selector: () => true,
+            authorization: () => true,
             createTool: () => this._task.createTool(),
             meta: {
                 source: 'extension',
@@ -415,8 +430,6 @@ export class ChatLunaAgentSubAgentService {
                 }
 
                 const agents = this.listRunnableAgents(session, source)
-                if (agents.length < 1) return next()
-
                 const status = this.ctx.chatluna_agent?.computer.getStatus()
                 const remote =
                     status != null && status.defaultProvider !== 'local'

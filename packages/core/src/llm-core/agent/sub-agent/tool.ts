@@ -11,7 +11,7 @@ import type { ChatLunaToolRunnable } from '../../platform/types'
 
 export function buildTaskToolDescription() {
     return [
-        'Delegate focused work to a specialist agent (exact name required).',
+        'Delegate focused work to a specialist agent, or omit agent to create a prompt-only one-shot sub-agent.',
         'Set background=true for long tasks; results are delivered to you automatically - never poll status.',
         'Actions: run (new task, or resume with id), status, list, list_all, message (guide a running background task), stop (abort a running background task).'
     ].join('\n')
@@ -44,7 +44,7 @@ export function renderAvailableAgents(
     }
     lines.push(
         '',
-        'Use exact names. Include goal, context, and expected result in the prompt.',
+        'Use exact names, or omit agent for a prompt-only one-shot sub-agent. Include goal, context, and expected result in the prompt.',
         '</available_sub_agents>'
     )
     return new SystemMessage(lines.join('\n'))
@@ -67,7 +67,7 @@ class AgentTaskTool extends StructuredTool {
                 .string()
                 .optional()
                 .describe(
-                    'Exact agent name. Required for new tasks; optional when resuming by id.'
+                    'Exact agent name. Optional for new prompt-only one-shot tasks and when resuming by id.'
                 ),
             id: z
                 .string()
