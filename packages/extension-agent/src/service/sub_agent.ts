@@ -345,17 +345,26 @@ export class ChatLunaAgentSubAgentService {
                 return await buildTarget(info, ctx)
             },
             create: async (ctx) => {
-                return await buildTarget(
-                    createManualAgent(this.ctx, {
-                        id: ctx.id,
-                        name: ctx.name ?? 'one-shot',
-                        description: 'Prompt-only one-shot sub-agent',
-                        promptContent: ctx.prompt,
-                        permissions: this.config.subAgent.defaults,
-                        allowKoishiMessageTransform: false
-                    }),
-                    ctx
-                )
+                const info = createManualAgent(this.ctx, {
+                    id: ctx.id,
+                    name: ctx.name ?? 'one-shot',
+                    description: 'Prompt-only one-shot sub-agent',
+                    promptContent: ctx.prompt,
+                    permissions: this.config.subAgent.defaults,
+                    allowKoishiMessageTransform: false
+                })
+
+                if (
+                    !this.permission.canUseSubAgent(
+                        info,
+                        ctx.session,
+                        ctx.source
+                    )
+                ) {
+                    return undefined
+                }
+
+                return await buildTarget(info, ctx)
             },
             refresh: async () => {
                 await this.ctx.chatluna_agent?.refreshConsoleData()
