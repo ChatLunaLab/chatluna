@@ -313,7 +313,7 @@ export function createTaskTool(
                         : undefined
 
             if (!target) {
-                if (agentName && !task?.promptContent) {
+                if (agentName && (!task?.promptContent || name)) {
                     return `Agent '${agentName}' is not available.`
                 }
                 if (task?.promptContent) {
@@ -321,6 +321,9 @@ export function createTaskTool(
                 }
                 if (!options.create) {
                     return 'agent is required when starting a new task.'
+                }
+                if (raw) {
+                    return 'Failed to create a prompt-only sub-agent.'
                 }
                 return 'Task prompt is empty.'
             }
