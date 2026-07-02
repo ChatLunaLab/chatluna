@@ -14,6 +14,7 @@ export type {
     AgentTaskSessionSnapshot,
     AgentTaskFinishedPayload,
     AgentTaskInput,
+    AgentTaskCreateContext,
     AgentTaskQueryContext,
     AgentTaskResolveContext,
     CreateTaskToolOptions,

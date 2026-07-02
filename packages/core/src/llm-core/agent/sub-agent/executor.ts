@@ -373,7 +373,8 @@ export function createTaskSession(
     parentConversationId: string,
     session: Session,
     parent?: SubagentContext,
-    maxDepth = 1
+    maxDepth = 1,
+    promptContent?: string
 ): AgentTaskSession {
     const id = randomUUID()
     const depth = (parent?.depth ?? 0) + 1
@@ -392,6 +393,7 @@ export function createTaskSession(
         depth,
         maxDepth: limit,
         parentAgent: parent?.agentName ?? 'main',
+        promptContent,
         messages: [],
         startedAt: now,
         updatedAt: now
