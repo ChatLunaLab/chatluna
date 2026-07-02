@@ -297,20 +297,21 @@ export function createTaskTool(
                 parent,
                 runConfig
             }
+            let target
             let promptContent: string | undefined
-            const target =
-                task?.promptContent && !name
-                    ? await options.create?.({
-                          ...ctx,
-                          id: task.agentId,
-                          name: task.agentName,
-                          prompt: task.promptContent
-                      })
-                    : agentName
-                      ? await options.get(agentName, ctx)
-                      : options.create && raw
-                        ? await options.create({ ...ctx, prompt: raw })
-                        : undefined
+
+            if (task?.promptContent && !name) {
+                target = await options.create?.({
+                    ...ctx,
+                    id: task.agentId,
+                    name: task.agentName,
+                    prompt: task.promptContent
+                })
+            } else if (agentName) {
+                target = await options.get(agentName, ctx)
+            } else if (options.create && raw) {
+                target = await options.create({ ...ctx, prompt: raw })
+            }
 
             if (!target) {
                 if (agentName && (!task?.promptContent || name)) {
