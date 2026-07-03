@@ -4,6 +4,7 @@ import {
     BaseMessage,
     MessageContentImageUrl,
     MessageType,
+    ToolMessage,
     UsageMetadata
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
@@ -48,6 +49,7 @@ export async function langchainMessageToOllamaMessage(
     supportImage: boolean
 ): Promise<OllamaMessage[]> {
     const result: OllamaMessage[] = []
+    const toolNames = new Map<string, string>()
 
     for (const rawMessage of messages) {
         if (rawMessage.additional_kwargs.images != null) {
@@ -95,40 +97,29 @@ export async function langchainMessageToOllamaMessage(
             }
 
             if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-                msg.tool_calls = toolCalls.map((toolCall, index) => ({
-                    type: 'function',
-                    function: {
-                        index,
-                        name: toolCall.name,
-                        arguments: toolCall.args
+                msg.tool_calls = toolCalls.map((toolCall, index) => {
+                    if (toolCall.id != null) {
+                        toolNames.set(toolCall.id, toolCall.name)
                     }
-                }))
+
+                    return {
+                        type: 'function',
+                        function: {
+                            index,
+                            name: toolCall.name,
+                            arguments: toolCall.args
+                        }
+                    }
+                })
             }
         }
 
         if (msg.role === 'tool') {
-            msg.tool_name = rawMessage.name
+            const id = (rawMessage as ToolMessage).tool_call_id
+            msg.tool_name = rawMessage.name ?? toolNames.get(id)
         }
 
         result.push(msg)
-    }
-
-    for (let i = 0; i < result.length; i++) {
-        if (result[i].role !== 'assistant') continue
-
-        const calls = result[i].tool_calls
-        if (calls == null) continue
-
-        for (
-            let j = i + 1;
-            j < result.length && result[j].role === 'tool';
-            j++
-        ) {
-            const call = calls[j - i - 1]
-            if (result[j].tool_name == null && call != null) {
-                result[j].tool_name = call.function.name
-            }
-        }
     }
 
     return result
