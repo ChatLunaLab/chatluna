@@ -5,11 +5,11 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { MessageContentComplex } from '@langchain/core/messages'
 import {
-    isMessageContentImageUrl,
+    isMessageContentComplex,
     isMessageContentText
-} from 'koishi-plugin-chatluna/utils/string'
-import { MessageContent } from '@langchain/core/messages'
+} from '../utils/langchain'
 
 export class MessageTransformer {
     private _beforeTransformFunctions: BeforeTransformFunctionWithPriority[] =
@@ -75,27 +75,6 @@ export class MessageTransformer {
                 }
             )
 
-            const extractText = (content: MessageContent) => {
-                if (typeof content === 'string') return content
-                return Array.isArray(content)
-                    ? content
-                          .filter((item) => isMessageContentText(item))
-                          .map((item) => item.text)
-                          .join('')
-                    : ''
-            }
-
-            const extractImages = (content: MessageContent) =>
-                Array.isArray(content)
-                    ? content.filter((item) => isMessageContentImageUrl(item))
-                    : []
-
-            const quoteText = extractText(quoteMessage.content)
-            const quoteImages = extractImages(quoteMessage.content)
-            const hasImages =
-                extractImages(message.content).length > 0 ||
-                quoteImages.length > 0
-
             // 构建引用消息的完整格式：时间 + 发言人 + 内容
             const quoteUsername =
                 session.quote.user?.name || session.quote.user?.id || 'Unknown'
@@ -115,32 +94,52 @@ export class MessageTransformer {
                 ? `${quoteTimestamp} ${quoteUsername}`
                 : quoteUsername
 
-            if (hasImages) {
-                if (typeof message.content === 'string') {
-                    message.content =
-                        message.content.trim().length > 0
-                            ? [{ type: 'text', text: message.content }]
-                            : []
-                }
+            if (
+                typeof message.content === 'string' &&
+                typeof quoteMessage.content === 'string'
+            ) {
+                message.content = [
+                    `The Referenced message is ${quoteHeader} ${quoteSaid} said\n`,
+                    quoteMessage.content,
+                    `\n\n User's current message\n`,
+                    message.content
+                ].join('')
 
-                if (quoteText && quoteText !== '[image]') {
-                    const currentText = extractText(message.content)
-                    const quotedContent = `Referenced message: [${quoteHeader} ${quoteSaid}："${quoteText}"]\n\nUser's message: ${currentText}`
-
-                    message.content = message.content.filter(
-                        (item) => item.type !== 'text'
-                    )
-                    message.content.unshift({
-                        type: 'text',
-                        text: quotedContent
-                    })
-                }
-
-                message.content = [...quoteImages, ...message.content]
-            } else if (quoteText && quoteText !== '[image]') {
-                const currentText = extractText(message.content)
-                message.content = `Referenced message: [${quoteHeader} ${quoteSaid}："${quoteText}"]\n\nUser's message: ${currentText}`
+                return message
             }
+
+            const messageContent = [
+                `The Referenced message is ${quoteHeader} ${quoteSaid} said`,
+                ...(Array.isArray(quoteMessage.content)
+                    ? quoteMessage.content
+                    : [quoteMessage.content]),
+                `\n\n User's current message`,
+                ...(Array.isArray(message.content)
+                    ? message.content
+                    : [message.content])
+            ]
+
+            message.content = messageContent
+                .map((content) => {
+                    if (isMessageContentComplex(content)) return content
+                    return { type: 'text', text: content }
+                })
+                .reduce((acc, item) => {
+                    const last = acc[acc.length - 1]
+                    if (
+                        isMessageContentText(item) &&
+                        last != null &&
+                        isMessageContentText(last)
+                    ) {
+                        acc[acc.length - 1] = {
+                            type: 'text',
+                            text: last.text + item.text
+                        }
+                    } else {
+                        acc.push(item)
+                    }
+                    return acc
+                }, [] as MessageContentComplex[])
         }
 
         return message
