@@ -5,9 +5,8 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { isMessageContentText } from 'koishi-plugin-chatluna/utils/string'
 import { MessageContentComplex } from '@langchain/core/messages'
-import { isMessageContentComplex } from '../utils/langchain'
+import { isMessageContentComplex, isMessageContentText } from '../utils/langchain'
 
 export class MessageTransformer {
     private _beforeTransformFunctions: BeforeTransformFunctionWithPriority[] =
@@ -92,45 +91,51 @@ export class MessageTransformer {
                 ? `${quoteTimestamp} ${quoteUsername}`
                 : quoteUsername
 
+            if (
+                typeof message.content === 'string' &&
+                typeof quoteMessage.content === 'string'
+            ) {
+                message.content = [
+                    `The Referenced message is ${quoteHeader} ${quoteSaid} said\n`,
+                    quoteMessage.content,
+                    `\n\n User's current message\n`,
+                    message.content
+                ].join('')
+
+                return message
+            }
+
             const messageContent = [
                 `The Referenced message is ${quoteHeader} ${quoteSaid} said`,
                 ...(Array.isArray(quoteMessage.content)
                     ? quoteMessage.content
                     : [quoteMessage.content]),
                 `\n\n User's current message`,
-                ...message.content
+                ...(Array.isArray(message.content)
+                    ? message.content
+                    : [message.content])
             ]
 
-            if (
-                typeof message.content === 'string' &&
-                typeof quoteMessage.content === 'string'
-            ) {
-                message.content = messageContent
-                    .filter((content) => isMessageContentText(content))
-                    .map((content) => content.text)
-                    .join()
-            } else {
-                message.content = messageContent
-                    .map((content) => {
-                        if (isMessageContentComplex(content)) return content
-                        return { type: 'text', text: content }
-                    })
-                    .reduce((acc, item) => {
-                        const last = acc[acc.length - 1]
-                        if (
-                            isMessageContentText(item) &&
-                            isMessageContentText(last)
-                        ) {
-                            acc[acc.length - 1] = {
-                                type: 'text',
-                                text: last.text + item.text
-                            }
-                        } else {
-                            acc.push(item)
+            message.content = messageContent
+                .map((content) => {
+                    if (isMessageContentComplex(content)) return content
+                    return { type: 'text', text: content }
+                })
+                .reduce((acc, item) => {
+                    const last = acc[acc.length - 1]
+                    if (
+                        isMessageContentText(item) &&
+                        isMessageContentText(last)
+                    ) {
+                        acc[acc.length - 1] = {
+                            type: 'text',
+                            text: last.text + item.text
                         }
-                        return acc
-                    }, [] as MessageContentComplex[])
-            }
+                    } else {
+                        acc.push(item)
+                    }
+                    return acc
+                }, [] as MessageContentComplex[])
         }
 
         return message
