@@ -214,8 +214,6 @@ export function transformMessageContentToElements(content: MessageContent) {
 export function pickForwardMessageId(element: h): string | null {
     const attrs = (element.attrs ?? {}) as Record<string, unknown>
 
-    // Only use the common message id field used across other message APIs.
-    // Keep both snake_case and camelCase for adapter compatibility.
     for (const key of ['message_id', 'messageId']) {
         const normalizedId = normalizeForwardMessageId(attrs[key])
         if (normalizedId) return normalizedId

@@ -165,7 +165,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         transformedMessage.additional_kwargs.forwardMessageIds =
                             state.ids
                     }
-                    addMessageContent(transformedMessage, '[聊天记录]')
+                    addMessageContent(
+                        transformedMessage,
+                        state.ids.length > 0
+                            ? state.ids
+                                  .map((id) => `<forward id="${id}"/>`)
+                                  .join('')
+                            : '<forward/>'
+                    )
                 }
             }
 

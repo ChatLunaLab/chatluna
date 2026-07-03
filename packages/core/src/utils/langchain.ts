@@ -35,32 +35,37 @@ type MessageContentUrlPart =
     | MessageContentVideo
 
 export function isMessageContentImageUrl(
-    message: MessageContentComplex
+    message: string | MessageContentComplex
 ): message is MessageContentImageUrl {
+    if (typeof message === 'string') return false
     return message.type === 'image_url' && message['image_url'] != null
 }
 
 export function isMessageContentText(
-    message: MessageContentComplex
+    message: string | MessageContentComplex
 ): message is MessageContentText {
+    if (typeof message === 'string') return false
     return message.type === 'text' && message.text != null
 }
 
 export function isMessageContentFileUrl(
-    message: MessageContentComplex
+    message: string | MessageContentComplex
 ): message is MessageContentFileUrl {
+    if (typeof message === 'string') return false
     return message.type === 'file_url' && message['file_url'] != null
 }
 
 export function isMessageContentAudio(
-    message: MessageContentComplex
+    message: string | MessageContentComplex
 ): message is MessageContentAudio {
+    if (typeof message === 'string') return false
     return message.type === 'audio_url' && message['audio_url'] != null
 }
 
 export function isMessageContentVideo(
-    message: MessageContentComplex
+    message: string | MessageContentComplex
 ): message is MessageContentVideo {
+    if (typeof message === 'string') return false
     return message.type === 'video_url' && message['video_url'] != null
 }
 
