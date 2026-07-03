@@ -125,6 +125,7 @@ export class MessageTransformer {
                     const last = acc[acc.length - 1]
                     if (
                         isMessageContentText(item) &&
+                        last != null &&
                         isMessageContentText(last)
                     ) {
                         acc[acc.length - 1] = {
