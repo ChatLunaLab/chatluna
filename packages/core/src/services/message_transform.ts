@@ -6,7 +6,10 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { MessageContentComplex } from '@langchain/core/messages'
-import { isMessageContentComplex, isMessageContentText } from '../utils/langchain'
+import {
+    isMessageContentComplex,
+    isMessageContentText
+} from '../utils/langchain'
 
 export class MessageTransformer {
     private _beforeTransformFunctions: BeforeTransformFunctionWithPriority[] =
