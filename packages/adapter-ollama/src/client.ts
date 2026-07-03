@@ -19,6 +19,7 @@ import { OllamaRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
+import type { OllamaShowResponse } from './types'
 
 export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig> {
     platform = 'ollama'
@@ -45,9 +46,16 @@ export class OllamaClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
 
             const models = await Promise.all(
                 rawModels.map(async (model) => {
-                    const show = await this._requester.getModelDetails(
-                        model.name
-                    )
+                    let show: OllamaShowResponse
+                    try {
+                        show = await this._requester.getModelDetails(model.name)
+                    } catch (e) {
+                        logger.warn(
+                            `Failed to get model details for ${model.name}`,
+                            e
+                        )
+                        show = { details: model.details }
+                    }
                     const caps = (show.capabilities ?? []).map((cap) =>
                         cap.toLowerCase()
                     )

@@ -1,4 +1,3 @@
-import { AIMessageChunk, type UsageMetadata } from '@langchain/core/messages'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import {
     EmbeddingsRequester,
@@ -15,7 +14,10 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { rawSeeAsIterable } from 'koishi-plugin-chatluna/utils/sse'
+import {
+    checkResponse,
+    rawSeeAsIterable
+} from 'koishi-plugin-chatluna/utils/sse'
 import { Context } from 'koishi'
 import {
     OllamaDeltaResponse,
@@ -27,74 +29,16 @@ import {
 } from './types'
 import {
     formatToolsToOllamaTools,
-    langchainMessageToOllamaMessage
+    langchainMessageToOllamaMessage,
+    ollamaChunkToGeneration
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config, logger as pluginLogger } from '.'
 import {
     ModelCapabilities,
-    ModelInfo
+    ModelInfo,
+    ModelType
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-
-function ollamaUsageToUsageMetadata(
-    chunk: OllamaDeltaResponse
-): UsageMetadata | undefined {
-    if (chunk.prompt_eval_count == null && chunk.eval_count == null) {
-        return undefined
-    }
-
-    const inputTokens = chunk.prompt_eval_count ?? 0
-    const outputTokens = chunk.eval_count ?? 0
-
-    return {
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        total_tokens: inputTokens + outputTokens
-    }
-}
-
-function ollamaChunkToGeneration(chunk: OllamaDeltaResponse) {
-    const content = chunk.message?.content ?? ''
-    const thinking = chunk.message?.thinking
-    const toolCallChunks =
-        chunk.message?.tool_calls?.map((call, index) => ({
-            name: call.function.name,
-            args: JSON.stringify(call.function.arguments),
-            id: call.id ?? `call_${call.function.index ?? index}`,
-            index: call.function.index ?? index
-        })) ?? []
-    const usageMetadata = ollamaUsageToUsageMetadata(chunk)
-
-    if (
-        content.length < 1 &&
-        thinking == null &&
-        toolCallChunks.length < 1 &&
-        usageMetadata == null
-    ) {
-        return undefined
-    }
-
-    return new ChatGenerationChunk({
-        generationInfo:
-            usageMetadata == null
-                ? undefined
-                : {
-                      usage_metadata: usageMetadata
-                  },
-        message: new AIMessageChunk({
-            content,
-            tool_call_chunks: toolCallChunks,
-            usage_metadata: usageMetadata,
-            additional_kwargs:
-                thinking == null
-                    ? {}
-                    : {
-                          reasoning_content: thinking
-                      }
-        }),
-        text: content
-    })
-}
 
 export class OllamaRequester
     extends ModelRequester<ClientConfig>
@@ -137,7 +81,13 @@ export class OllamaRequester
                 model = model.slice(0, -'-thinking'.length)
             }
 
-            const info = (this._models[rawModel] ?? this._models[model])!
+            const info = this._models[rawModel] ??
+                this._models[model] ?? {
+                    name: model,
+                    type: ModelType.llm,
+                    capabilities: [],
+                    maxTokens: 128000
+                }
 
             if (
                 think == null &&
@@ -186,6 +136,8 @@ export class OllamaRequester
                 }
             )
 
+            await checkResponse(response)
+
             let buffer = ''
 
             for await (const rawData of rawSeeAsIterable(response, 0)) {
@@ -197,7 +149,14 @@ export class OllamaRequester
                 for (const part of parts) {
                     if (part.trim().length < 1) continue
 
-                    const chunk = JSON.parse(part) as OllamaDeltaResponse
+                    let chunk: OllamaDeltaResponse
+                    try {
+                        chunk = JSON.parse(part) as OllamaDeltaResponse
+                    } catch (e) {
+                        this.logger.warn('invalid json: ', part, e)
+                        continue
+                    }
+
                     const generation = ollamaChunkToGeneration(chunk)
 
                     if (generation != null) {
@@ -209,11 +168,15 @@ export class OllamaRequester
             }
 
             if (buffer.trim().length > 0) {
-                const chunk = JSON.parse(buffer) as OllamaDeltaResponse
-                const generation = ollamaChunkToGeneration(chunk)
+                try {
+                    const chunk = JSON.parse(buffer) as OllamaDeltaResponse
+                    const generation = ollamaChunkToGeneration(chunk)
 
-                if (generation != null) {
-                    yield generation
+                    if (generation != null) {
+                        yield generation
+                    }
+                } catch (e) {
+                    this.logger.warn('invalid json in buffer: ', buffer, e)
                 }
             }
         } catch (e) {

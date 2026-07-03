@@ -1,11 +1,18 @@
 import {
     AIMessage,
+    AIMessageChunk,
     BaseMessage,
     MessageContentImageUrl,
-    MessageType
+    MessageType,
+    UsageMetadata
 } from '@langchain/core/messages'
 import { StructuredTool } from '@langchain/core/tools'
-import { OllamaMessage, OllamaRole, OllamaTool } from './types'
+import {
+    OllamaDeltaResponse,
+    OllamaMessage,
+    OllamaRole,
+    OllamaTool
+} from './types'
 import {
     getMessageContent,
     isMessageContentImageUrl
@@ -16,6 +23,7 @@ import {
     formatToolsToOpenAITools
 } from '@chatluna/v1-shared-adapter'
 import { logger } from '.'
+import { ChatGenerationChunk } from '@langchain/core/outputs'
 
 export function formatToolsToOllamaTools(
     tools: StructuredTool[]
@@ -159,4 +167,67 @@ export function messageTypeToOllamaRole(type: MessageType): OllamaRole {
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
+}
+
+export function ollamaUsageToUsageMetadata(
+    chunk: OllamaDeltaResponse
+): UsageMetadata | undefined {
+    if (chunk.prompt_eval_count == null && chunk.eval_count == null) {
+        return undefined
+    }
+
+    const inputTokens = chunk.prompt_eval_count ?? 0
+    const outputTokens = chunk.eval_count ?? 0
+
+    return {
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        total_tokens: inputTokens + outputTokens
+    }
+}
+
+export function ollamaChunkToGeneration(chunk: OllamaDeltaResponse) {
+    const content = chunk.message?.content ?? ''
+    const thinking = chunk.message?.thinking
+    const toolCallChunks =
+        chunk.message?.tool_calls?.map((call, index) => ({
+            name: call.function?.name,
+            args:
+                call.function?.arguments != null
+                    ? JSON.stringify(call.function.arguments)
+                    : '{}',
+            id: call.id ?? `call_${call.function?.index ?? index}`,
+            index: call.function?.index ?? index
+        })) ?? []
+    const usageMetadata = ollamaUsageToUsageMetadata(chunk)
+
+    if (
+        content.length < 1 &&
+        thinking == null &&
+        toolCallChunks.length < 1 &&
+        usageMetadata == null
+    ) {
+        return undefined
+    }
+
+    return new ChatGenerationChunk({
+        generationInfo:
+            usageMetadata == null
+                ? undefined
+                : {
+                      usage_metadata: usageMetadata
+                  },
+        message: new AIMessageChunk({
+            content,
+            tool_call_chunks: toolCallChunks,
+            usage_metadata: usageMetadata,
+            additional_kwargs:
+                thinking == null
+                    ? {}
+                    : {
+                          reasoning_content: thinking
+                      }
+        }),
+        text: content
+    })
 }
