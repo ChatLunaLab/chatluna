@@ -1,16 +1,38 @@
 import {
+    AIMessage,
     BaseMessage,
     MessageContentImageUrl,
     MessageType
 } from '@langchain/core/messages'
-import { OllamaMessage } from './types'
+import { StructuredTool } from '@langchain/core/tools'
+import { OllamaMessage, OllamaRole, OllamaTool } from './types'
 import {
     getMessageContent,
     isMessageContentImageUrl
 } from 'koishi-plugin-chatluna/utils/string'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { fetchImageUrl } from '@chatluna/v1-shared-adapter'
+import {
+    fetchImageUrl,
+    formatToolsToOpenAITools
+} from '@chatluna/v1-shared-adapter'
 import { logger } from '.'
+
+export function formatToolsToOllamaTools(
+    tools: StructuredTool[]
+): OllamaTool[] | undefined {
+    if (tools.length < 1) {
+        return undefined
+    }
+
+    return formatToolsToOpenAITools(tools, false).map((tool) => ({
+        type: 'function',
+        function: {
+            name: tool.function.name,
+            description: tool.function.description,
+            parameters: tool.function.parameters as Record<string, unknown>
+        }
+    }))
+}
 
 export async function langchainMessageToOllamaMessage(
     messages: BaseMessage[],
@@ -19,85 +41,86 @@ export async function langchainMessageToOllamaMessage(
 ): Promise<OllamaMessage[]> {
     const result: OllamaMessage[] = []
 
-    const mappedMessage = await Promise.all(
-        messages.map(async (rawMessage) => {
-            if (rawMessage.additional_kwargs.images != null) {
-                logger.warn(
-                    'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
-                )
+    for (const rawMessage of messages) {
+        if (rawMessage.additional_kwargs.images != null) {
+            logger.warn(
+                'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
+            )
+        }
+
+        const images: string[] | undefined = supportImage
+            ? typeof rawMessage.content === 'string'
+                ? undefined
+                : await Promise.all(
+                      rawMessage.content
+                          .filter((part) => isMessageContentImageUrl(part))
+                          .map((part) =>
+                              processOllamaImageContent(plugin, part)
+                          )
+                  )
+            : undefined
+
+        const msg: OllamaMessage = {
+            role: messageTypeToOllamaRole(rawMessage.getType()),
+            content: getMessageContent(rawMessage.content),
+            images: images?.filter((image): image is string => image != null)
+        }
+
+        if (msg.images == null) {
+            delete msg.images
+        } else if (msg.images.length === 0) {
+            delete msg.images
+        } else {
+            msg.images = msg.images.map((image) =>
+                image.replace(/^data:image\/\w+;base64,/, '')
+            )
+        }
+
+        if (rawMessage.getType() === 'ai') {
+            const toolCalls = (rawMessage as AIMessage).tool_calls
+            const thinking = rawMessage.additional_kwargs.reasoning_content as
+                | string
+                | undefined
+
+            if (thinking != null) {
+                msg.thinking = thinking
             }
 
-            const images: string[] | undefined = supportImage
-                ? typeof rawMessage.content === 'string'
-                    ? undefined
-                    : await Promise.all(
-                          rawMessage.content
-                              .filter((part) => isMessageContentImageUrl(part))
-                              .map((part) =>
-                                  processOllamaImageContent(plugin, part)
-                              )
-                      )
-                : undefined
-
-            const result = {
-                role: messageTypeToOllamaRole(rawMessage.getType()),
-                content: getMessageContent(rawMessage.content),
-                images: images?.filter(
-                    (image): image is string => image != null
-                )
+            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                msg.tool_calls = toolCalls.map((toolCall, index) => ({
+                    type: 'function',
+                    function: {
+                        index,
+                        name: toolCall.name,
+                        arguments: toolCall.args
+                    }
+                }))
             }
-
-            if (result.images == null) {
-                delete result.images
-            } else if (result.images.length === 0) {
-                delete result.images
-            } else {
-                result.images = result.images.map((image) =>
-                    // replace base64 headers
-                    image.replace(/^data:image\/\w+;base64,/, '')
-                )
-            }
-            return result
-        })
-    )
-
-    for (let i = 0; i < mappedMessage.length; i++) {
-        const message = {
-            ...mappedMessage[i]
         }
 
-        if (message.role !== 'system') {
-            result.push(message)
-            continue
+        if (msg.role === 'tool') {
+            msg.tool_name = rawMessage.name
         }
 
-        /*   if (removeSystemMessage) {
-            continue
-        } */
-
-        result.push({
-            role: 'user',
-            content: message.content
-        })
-
-        if (mappedMessage?.[i + 1]?.role === 'assistant') {
-            continue
-        }
-
-        if (mappedMessage?.[i + 1]?.role === 'user') {
-            result.push({
-                role: 'assistant',
-                content: 'Okay, what do I need to do?'
-            })
-        }
+        result.push(msg)
     }
 
-    if (result[result.length - 1].role === 'model') {
-        result.push({
-            role: 'user',
-            content:
-                'Continue what I said to you last message. Follow these instructions.'
-        })
+    for (let i = 0; i < result.length; i++) {
+        if (result[i].role !== 'assistant') continue
+
+        const calls = result[i].tool_calls
+        if (calls == null) continue
+
+        for (
+            let j = i + 1;
+            j < result.length && result[j].role === 'tool';
+            j++
+        ) {
+            const call = calls[j - i - 1]
+            if (result[j].tool_name == null && call != null) {
+                result[j].tool_name = call.function.name
+            }
+        }
     }
 
     return result
@@ -122,7 +145,7 @@ async function processOllamaImageContent(
     return url
 }
 
-export function messageTypeToOllamaRole(type: MessageType): string {
+export function messageTypeToOllamaRole(type: MessageType): OllamaRole {
     switch (type) {
         case 'system':
             return 'system'
@@ -131,7 +154,8 @@ export function messageTypeToOllamaRole(type: MessageType): string {
         case 'human':
             return 'user'
         case 'function':
-            return 'function'
+        case 'tool':
+            return 'tool'
         default:
             throw new Error(`Unknown message type: ${type}`)
     }
