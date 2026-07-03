@@ -61,7 +61,7 @@ export async function langchainMessageToOllamaMessage(
                 ? undefined
                 : await Promise.all(
                       rawMessage.content
-                          .filter((part) => isMessageContentImageUrl(part))
+                          .filter(isMessageContentImageUrl)
                           .map((part) =>
                               processOllamaImageContent(plugin, part)
                           )
