@@ -9,7 +9,7 @@ import { MessageContentComplex } from '@langchain/core/messages'
 import {
     isMessageContentComplex,
     isMessageContentText
-} from '../utils/langchain'
+} from 'koishi-plugin-chatluna/utils/langchain'
 
 export class MessageTransformer {
     private _beforeTransformFunctions: BeforeTransformFunctionWithPriority[] =
