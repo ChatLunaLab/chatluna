@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process'
 import path from 'path'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
+import { getPosixShell, getPosixShellArgs } from './shell'
 
 const PROTECTED_NAMES = ['.git', '.chatluna', '.agents', '.codex', '.claude']
 const BWRAP_PROBE_CACHE = new Set<string>()
@@ -116,6 +117,7 @@ export function wrapCommandWithSandbox(
     }
 
     if (!BWRAP_PROBE_CACHE.has(bwrap)) {
+        const shell = getPosixShell()
         const result = spawnSync(
             bwrap,
             [
@@ -129,9 +131,8 @@ export function wrapCommandWithSandbox(
                 '/dev',
                 '--proc',
                 '/proc',
-                'sh',
-                '-lc',
-                'true'
+                shell,
+                ...getPosixShellArgs(shell, 'true')
             ],
             { encoding: 'utf8' }
         )
@@ -149,6 +150,7 @@ export function wrapCommandWithSandbox(
         }
     }
 
+    const shell = getPosixShell()
     const args = [
         quote(bwrap),
         '--ro-bind / /',
@@ -170,8 +172,8 @@ export function wrapCommandWithSandbox(
         '--proc /proc',
         '--die-with-parent',
         ...(cfg.networkPolicy === 'block' ? ['--unshare-net'] : []),
-        'sh -lc',
-        quote(command)
+        quote(shell),
+        ...getPosixShellArgs(shell, command).map((arg) => quote(arg))
     ].filter((arg): arg is string => arg != null)
 
     return args.join(' ')

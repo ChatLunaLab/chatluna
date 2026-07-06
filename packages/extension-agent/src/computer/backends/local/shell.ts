@@ -36,6 +36,38 @@ export function findPowerShell(): string | undefined {
     )
 }
 
+export function getPosixShell() {
+    return (
+        process.env['SHELL'] ||
+        which.sync('zsh', { nothrow: true }) ||
+        which.sync('bash', { nothrow: true }) ||
+        which.sync('sh', { nothrow: true }) ||
+        'sh'
+    )
+}
+
+export function getPosixShellArgs(shell: string, command?: string) {
+    const name = path.basename(shell).replace(/\.exe$/i, '')
+
+    if (command == null) {
+        if (name.includes('fish')) {
+            return ['--interactive']
+        }
+
+        return ['-i']
+    }
+
+    if (name.includes('fish')) {
+        return ['--interactive', '--command', command]
+    }
+
+    if (name.includes('bash') || name.includes('zsh')) {
+        return ['-ic', command]
+    }
+
+    return ['-c', command]
+}
+
 function resolvePowerShellCommand(command: string): ResolvedShellCommand {
     return {
         file: findPowerShell() ?? 'powershell.exe',
@@ -64,9 +96,10 @@ export async function resolveInteractiveShellCommand(
     cfg: LocalBackendConfig
 ): Promise<ResolvedShellCommand> {
     if (process.platform !== 'win32') {
+        const shell = getPosixShell()
         return {
-            file: process.env['SHELL'] || 'bash',
-            args: ['-i']
+            file: shell,
+            args: getPosixShellArgs(shell)
         }
     }
 
@@ -103,9 +136,10 @@ export async function resolveShellCommand(
     cfg: LocalBackendConfig
 ): Promise<ResolvedShellCommand> {
     if (process.platform !== 'win32') {
+        const shell = getPosixShell()
         return {
-            file: process.env['SHELL'] || 'bash',
-            args: ['-lc', command]
+            file: shell,
+            args: getPosixShellArgs(shell, command)
         }
     }
 
