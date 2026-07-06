@@ -38,7 +38,12 @@ Usage:
                 computer,
                 `Published files:\n${files
                     .map((file) => `- ${file.name}: ${file.url}`)
-                    .join('\n')}`
+                    .join('\n')}` +
+                    '\n\nImportant:\n' +
+                    '- If you are a sub-agent or delegated worker, pass these links to the main agent exactly as returned ' +
+                    'and remind the main agent to send the files to the user.\n' +
+                    '- If you are the main agent, use the links, file formats, and current environment ' +
+                    'to send or present the files to the user.'
             )
         } catch (err) {
             return this.formatResult(
