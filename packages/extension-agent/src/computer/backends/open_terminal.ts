@@ -7,7 +7,7 @@ import { Readable } from 'node:stream'
 import { Context } from 'koishi'
 import type {} from '@koishijs/plugin-proxy-agent'
 import mimeTypes from 'mime-types'
-import { buildHashCommand, quoteShell, readHashCommandOutput } from './types'
+import { buildHashCommand, readHashCommandOutput } from './types'
 import { ComputerCapability, OpenTerminalBackendConfig } from '../../types'
 import {
     ComputerSessionApi,
@@ -679,6 +679,7 @@ exit
         if (this.options.userId) {
             headers['X-User-Id'] = this.options.userId
         }
+        headers['X-Session-Id'] = this.sessionId
 
         this._headers = headers
         return headers
@@ -745,6 +746,18 @@ async function openOpenTerminal(
         rows?: number
     }
 ) {
+    await ctx.http.post(
+        options.url('/files/cwd'),
+        { path: options.cwd },
+        {
+            proxyAgent: '',
+            headers: {
+                ...options.headers,
+                'content-type': 'application/json'
+            }
+        }
+    )
+
     const result = readOpenTerminalData<OpenTerminalTerminalData>(
         await ctx.http.post(options.url('/api/terminals'), undefined, {
             proxyAgent: '',
@@ -806,7 +819,6 @@ async function openOpenTerminal(
                         })
                     )
                 }
-                ws.send(Buffer.from(`cd ${quoteShell(options.cwd)}\n`, 'utf8'))
                 resolve()
             })
 
