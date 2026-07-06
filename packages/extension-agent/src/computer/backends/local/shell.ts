@@ -46,22 +46,22 @@ export function getPosixShell() {
     )
 }
 
-export function getPosixShellArgs(command?: string) {
-    const shell = path.basename(getPosixShell()).replace(/\.exe$/i, '')
+export function getPosixShellArgs(shell: string, command?: string) {
+    const name = path.basename(shell).replace(/\.exe$/i, '')
 
     if (command == null) {
-        if (shell.includes('fish')) {
+        if (name.includes('fish')) {
             return ['--interactive']
         }
 
         return ['-i']
     }
 
-    if (shell.includes('fish')) {
+    if (name.includes('fish')) {
         return ['--interactive', '--command', command]
     }
 
-    if (shell.includes('bash') || shell.includes('zsh')) {
+    if (name.includes('bash') || name.includes('zsh')) {
         return ['-ic', command]
     }
 
@@ -99,7 +99,7 @@ export async function resolveInteractiveShellCommand(
         const shell = getPosixShell()
         return {
             file: shell,
-            args: getPosixShellArgs()
+            args: getPosixShellArgs(shell)
         }
     }
 
@@ -139,7 +139,7 @@ export async function resolveShellCommand(
         const shell = getPosixShell()
         return {
             file: shell,
-            args: getPosixShellArgs(command)
+            args: getPosixShellArgs(shell, command)
         }
     }
 

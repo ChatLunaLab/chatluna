@@ -132,7 +132,7 @@ export function wrapCommandWithSandbox(
                 '--proc',
                 '/proc',
                 shell,
-                ...getPosixShellArgs('true')
+                ...getPosixShellArgs(shell, 'true')
             ],
             { encoding: 'utf8' }
         )
@@ -173,7 +173,7 @@ export function wrapCommandWithSandbox(
         '--die-with-parent',
         ...(cfg.networkPolicy === 'block' ? ['--unshare-net'] : []),
         quote(shell),
-        ...getPosixShellArgs(command).map((arg) => quote(arg))
+        ...getPosixShellArgs(shell, command).map((arg) => quote(arg))
     ].filter((arg): arg is string => arg != null)
 
     return args.join(' ')
