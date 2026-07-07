@@ -1367,6 +1367,10 @@ function formatUsageMetadata(usage: UsageMetadata): [string, ...unknown[]] {
         input.push('audio=%c')
         params.push(usage.input_token_details.audio)
     }
+    if (usage.input_token_details?.image != null) {
+        input.push('image=%c')
+        params.push(usage.input_token_details.image)
+    }
     if (usage.input_token_details?.cache_read != null) {
         input.push('cache_read=%c')
         params.push(usage.input_token_details.cache_read)
@@ -1378,6 +1382,10 @@ function formatUsageMetadata(usage: UsageMetadata): [string, ...unknown[]] {
     if (usage.output_token_details?.audio != null) {
         output.push('audio=%c')
         params.push(usage.output_token_details.audio)
+    }
+    if (usage.output_token_details?.image != null) {
+        output.push('image=%c')
+        params.push(usage.output_token_details.image)
     }
     if (usage.output_token_details?.reasoning != null) {
         output.push('reasoning=%c')
