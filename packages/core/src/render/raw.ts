@@ -1,7 +1,7 @@
-import { Message, RenderMessage, RenderOptions } from '../types'
-import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
-import { Renderer } from './default'
 import { h, Schema } from 'koishi'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
+import { Message, RenderMessage, RenderOptions } from '../types'
+import { Renderer } from './base'
 
 export class RawRenderer extends Renderer {
     async render(

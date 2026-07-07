@@ -9,42 +9,6 @@ commands:
                 limit: Items per page.
                 archived: Include archived conversations.
                 preset: Preset lane.
-            new:
-                description: Create and switch to a new conversation.
-                arguments:
-                    title: Conversation title.
-            switch:
-                description: Switch the active conversation.
-                arguments:
-                    conversation: Target conversation by seq, ID, or title.
-            list:
-                description: List conversations in the current route.
-            current:
-                description: Show the current active conversation.
-            rename:
-                description: Rename the current or target conversation.
-                arguments:
-                    title: New conversation title.
-            archive:
-                description: Archive a conversation.
-                arguments:
-                    conversation: Target conversation by seq, ID, or title.
-            restore:
-                description: Restore an archived conversation.
-                arguments:
-                    conversation: Target conversation by seq, ID, or title.
-            export:
-                description: Export a conversation as a markdown transcript.
-                arguments:
-                    conversation: Target conversation by seq, ID, or title.
-            compress:
-                description: Compress a conversation without referencing rooms.
-                arguments:
-                    conversation: Target conversation by seq, ID, or title.
-            delete:
-                description: Delete the current or target conversation.
-                arguments:
-                    conversation: Target conversation by seq, ID, or title.
         new:
             description: Create and switch to a new conversation.
             arguments:
@@ -540,6 +504,7 @@ chatluna:
     quote_said: 'said'
     aborted: 'Current conversation generation stopped successfully.'
     thinking_message: 'Processing... {0} messages in queue. Please wait.'
+    tool_call: 'Calling {0} tool.'
     error_message: 'ChatLuna error occurred. Error code: %s. Contact developer for assistance.'
     middleware_error: 'Error in {0}: {1}'
     not_available_model: 'No models are currently available. Please check your configuration to ensure model adapters are properly installed and configured.'

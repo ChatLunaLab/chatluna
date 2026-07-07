@@ -276,6 +276,7 @@
         "socks": "^2.8.7",
         "socks-proxy-agent": "^8.0.5",
         "undici": "^6.21.3",
+        "unicode-segmenter": "^0.17.0",
         "ws": "^8.18.3",
         "zod": "3.25.76",
         "zod-to-json-schema": "^3.24.6"

@@ -22,7 +22,7 @@ export interface Config {
     sendThinkingMessage: boolean
     sendThinkingMessageTimeout: number
     showThoughtMessage: boolean
-    splitMessage: boolean
+    splitMessage: 'none' | 'punctuation' | 'paragraph'
     blackList: Computed<Awaitable<number>>
     censor: boolean
     autoArchive: boolean
@@ -124,7 +124,11 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         outputMode: Schema.dynamic('output-mode').default('text'),
-        splitMessage: Schema.boolean().default(false),
+        splitMessage: Schema.union([
+            Schema.const('none'),
+            Schema.const('punctuation'),
+            Schema.const('paragraph')
+        ]).default('none'),
         censor: Schema.boolean().default(false),
         rawOnCensor: Schema.boolean().default(false),
         streamResponse: Schema.boolean().default(false)

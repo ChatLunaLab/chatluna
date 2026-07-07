@@ -9,9 +9,11 @@ export interface RenderOptions {
     voice?: {
         speakerId?: number
     }
-    split?: boolean
+    split?: SplitMode
     type: RenderType
     session?: Session
+    prefix?: string
+    postfix?: string
 }
 
 export interface Message {
@@ -34,7 +36,17 @@ export interface RenderMessage {
     element: h | h[]
 }
 
-export type RenderType = 'raw' | 'voice' | 'text' | 'image' | 'mixed'
+export type RenderType =
+    | 'raw'
+    | 'voice'
+    | 'text'
+    | 'image'
+    | 'mixed'
+    | 'mixed-voice'
+    | 'koishi-element'
+    | 'pure-text'
+
+export type SplitMode = 'none' | 'punctuation' | 'paragraph'
 
 export type ConversationStatus = 'active' | 'archived' | 'deleted' | 'broken'
 export type RouteMode = 'personal' | 'shared' | 'custom'

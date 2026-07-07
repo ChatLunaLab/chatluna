@@ -3,15 +3,17 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
-import { Config } from './config'
-import { Message, RenderMessage, RenderOptions, RenderType } from './types'
-import { TextRenderer } from './renders/text'
-import { VoiceRenderer } from './renders/voice'
-import { RawRenderer } from './renders/raw'
-import { KoishiElementRenderer } from './renders/koishi-element'
-import { MixedVoiceRenderer } from './renders/mixed-voice'
-import { Renderer } from './renders/default'
-import { PureTextRenderer } from './renders/pure-text'
+import { ChainMiddlewareContext } from '../chains/chain'
+import { Config } from '../config'
+import { Message, RenderMessage, RenderOptions, RenderType } from '../types'
+import { KoishiElementRenderer } from './koishi-element'
+import { MixedVoiceRenderer } from './mixed-voice'
+import { PureTextRenderer } from './pure-text'
+import { RawRenderer } from './raw'
+import { Renderer } from './base'
+import { ReplyStream, ReplyStreamOptions } from './stream'
+import { TextRenderer } from './text'
+import { VoiceRenderer } from './voice'
 
 export class DefaultRenderer {
     defaultOptions: RenderOptions
@@ -32,9 +34,7 @@ export class DefaultRenderer {
 
         ctx.inject(['chatluna'], (ctx) => {
             this.addRenderer('text', () => new TextRenderer(ctx))
-
             this.addRenderer('voice', () => new VoiceRenderer(ctx))
-
             this.addRenderer('raw', () => new RawRenderer(ctx))
             this.addRenderer('mixed-voice', () => new MixedVoiceRenderer(ctx))
             this.addRenderer(
@@ -61,9 +61,9 @@ export class DefaultRenderer {
                     : this.getRenderer('raw')
 
             if (message.additionalReplyMessages) {
-                for (const additionalMessage of message.additionalReplyMessages) {
+                for (const msg of message.additionalReplyMessages) {
                     const elements = await rawRenderer
-                        .render(additionalMessage, options)
+                        .render(msg, options)
                         .then((r) => r.element)
 
                     result.push({
@@ -82,6 +82,57 @@ export class DefaultRenderer {
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.RENDER_ERROR, e)
         }
+    }
+
+    public createStream(
+        context: ChainMiddlewareContext,
+        options: ReplyStreamOptions
+    ) {
+        const renderOptions = Object.assign(
+            {},
+            this.defaultOptions,
+            options.renderOptions,
+            { session: context.session }
+        )
+        return new ReplyStream(
+            this.ctx,
+            this.config,
+            context,
+            this.getRenderer(renderOptions.type),
+            {
+                ...options,
+                renderOptions,
+                renderMessage: (message) => this.render(message, renderOptions),
+                renderAdditional: (message) =>
+                    this.renderAdditionalMessages(message, renderOptions)
+            }
+        )
+    }
+
+    private async renderAdditionalMessages(
+        message: Message,
+        options: RenderOptions
+    ) {
+        if (!message.additionalReplyMessages) return []
+
+        const rawRenderer = this.getRenderer('raw')
+        const result: h[][] = []
+
+        for (const msg of message.additionalReplyMessages) {
+            const elements = await rawRenderer
+                .render(msg, options)
+                .then((r) => r.element)
+
+            result.push([
+                h(
+                    'message',
+                    { forward: true },
+                    Array.isArray(elements) ? elements : [elements]
+                )
+            ])
+        }
+
+        return result
     }
 
     public addRenderer(
@@ -123,4 +174,5 @@ export class DefaultRenderer {
     }
 }
 
-export * from './renders/default'
+export * from './base'
+export * from './types'
