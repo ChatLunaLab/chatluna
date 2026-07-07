@@ -302,35 +302,10 @@ export interface ChatCompletionRequestMessageToolCall {
     }
 }
 
-/**
- *
- * @export
- * @interface CreateEmbeddingResponse
- */
 export interface CreateEmbeddingResponse {
-    /**
-     *
-     * @type {string}
-     * @memberof CreateEmbeddingResponse
-     */
     object: string
-    /**
-     *
-     * @type {string}
-     * @memberof CreateEmbeddingResponse
-     */
     model: string
-    /**
-     *
-     * @type {Array<CreateEmbeddingResponseDataInner>}
-     * @memberof CreateEmbeddingResponse
-     */
     data: CreateEmbeddingResponseDataInner[]
-    /**
-     *
-     * @type {CreateEmbeddingResponseUsage}
-     * @memberof CreateEmbeddingResponse
-     */
     usage: CreateEmbeddingResponseUsage
 }
 
@@ -339,48 +314,14 @@ export interface CreateEmbeddingRequest {
     input: string | string[]
 }
 
-/**
- *
- * @export
- * @interface CreateEmbeddingResponseDataInner
- */
 export interface CreateEmbeddingResponseDataInner {
-    /**
-     *
-     * @type {number}
-     * @memberof CreateEmbeddingResponseDataInner
-     */
     index: number
-    /**
-     *
-     * @type {string}
-     * @memberof CreateEmbeddingResponseDataInner
-     */
     object: string
-    /**
-     *
-     * @type {Array<number>}
-     * @memberof CreateEmbeddingResponseDataInner
-     */
     embedding: number[]
 }
-/**
- *
- * @export
- * @interface CreateEmbeddingResponseUsage
- */
+
 export interface CreateEmbeddingResponseUsage {
-    /**
-     *
-     * @type {number}
-     * @memberof CreateEmbeddingResponseUsage
-     */
     prompt_tokens: number
-    /**
-     *
-     * @type {number}
-     * @memberof CreateEmbeddingResponseUsage
-     */
     total_tokens: number
 }
 

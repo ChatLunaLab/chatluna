@@ -118,6 +118,12 @@ export async function buildChatCompletionParams(
 ) {
     const parsedModel = parseOpenAIModelNameWithReasoningEffort(params.model)
     const normalizedModel = parsedModel.model
+    const lowerModel = normalizedModel.toLowerCase()
+    const isOpenAIReasoningModel =
+        lowerModel.startsWith('o1') ||
+        lowerModel.startsWith('o3') ||
+        lowerModel.startsWith('o4') ||
+        lowerModel.startsWith('gpt-5')
 
     const base = {
         model: normalizedModel,
@@ -138,13 +144,6 @@ export async function buildChatCompletionParams(
         max_tokens: normalizedModel.includes('vision')
             ? undefined
             : params.maxTokens,
-        temperature: params.temperature === 0 ? undefined : params.temperature,
-        presence_penalty:
-            params.presencePenalty === 0 ? undefined : params.presencePenalty,
-        frequency_penalty:
-            params.frequencyPenalty === 0 ? undefined : params.frequencyPenalty,
-        n: params.n,
-        top_p: params.topP,
         prompt_cache_key: params.id,
         prompt_cache_retention: undefined,
         prediction: undefined,
@@ -159,20 +158,23 @@ export async function buildChatCompletionParams(
         }
     }
 
-    const lowerModel = normalizedModel.toLowerCase()
-    const isOpenAIReasoningModel =
-        lowerModel.startsWith('o1') ||
-        lowerModel.startsWith('o3') ||
-        lowerModel.startsWith('o4') ||
-        lowerModel.startsWith('gpt-5')
-
-    if (isOpenAIReasoningModel) {
-        delete base.temperature
-        delete base.presence_penalty
-        delete base.frequency_penalty
-        delete base.n
-        delete base.top_p
+    if (!isOpenAIReasoningModel) {
+        Object.assign(base, {
+            temperature:
+                params.temperature === 0 ? undefined : params.temperature,
+            presence_penalty:
+                params.presencePenalty === 0
+                    ? undefined
+                    : params.presencePenalty,
+            frequency_penalty:
+                params.frequencyPenalty === 0
+                    ? undefined
+                    : params.frequencyPenalty,
+            n: params.n,
+            top_p: params.topP
+        })
     }
+
     return deepAssign({}, base, params.overrideRequestParams ?? {})
 }
 
@@ -287,11 +289,8 @@ export async function* processStreamResponse<
 
                 reasoningState.end()
 
-                defaultRole = (
-                    (choice.message.role?.length ?? 0) > 0
-                        ? choice.message.role
-                        : defaultRole
-                ) as ChatCompletionResponseMessageRoleEnum
+                defaultRole = (choice.message.role ||
+                    defaultRole) as ChatCompletionResponseMessageRoleEnum
 
                 yield new ChatGenerationChunk({
                     message: messageChunk,
@@ -337,16 +336,10 @@ export async function* processStreamResponse<
                     (messageChunk.tool_call_chunks?.length ?? 0) > 0) ||
                 messageChunk.additional_kwargs.function_call != null
 
-            if (!hasMessageChunk) {
-                defaultRole = (
-                    (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
-                ) as ChatCompletionResponseMessageRoleEnum
-                continue
-            }
+            defaultRole = (delta.role ||
+                defaultRole) as ChatCompletionResponseMessageRoleEnum
 
-            defaultRole = (
-                (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
-            ) as ChatCompletionResponseMessageRoleEnum
+            if (!hasMessageChunk) continue
 
             yield new ChatGenerationChunk({
                 message: messageChunk,
@@ -937,7 +930,6 @@ export async function createEmbeddings<
     embeddingUrl: string = 'embeddings'
 ): Promise<EmbeddingsResult> {
     const { modelRequester } = requestContext
-    let data: CreateEmbeddingResponse | string
 
     try {
         const response = await modelRequester.post(embeddingUrl, {
@@ -945,8 +937,7 @@ export async function createEmbeddings<
             model: params.model
         })
 
-        data = await response.text()
-        data = JSON.parse(data as string) as CreateEmbeddingResponse
+        const data = (await response.json()) as CreateEmbeddingResponse
 
         if (data.data && data.data.length > 0) {
             return data.usage
@@ -1060,49 +1051,34 @@ export async function getModels<
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawModels = data.data.map((model: any) => model.id) as string[]
 
-        const expanded: string[] = []
         const seen = new Set<string>()
 
-        const isOpenAIReasoningModel = (model: string) => {
+        for (const model of rawModels) {
+            seen.add(model)
+
             const lower = model.toLowerCase()
-            return (
+            const isReasoning =
                 lower.startsWith('gpt-5') ||
                 lower.startsWith('o1') ||
                 lower.startsWith('o3') ||
                 lower.startsWith('o4')
-            )
-        }
+            if (!isReasoning) continue
 
-        const hasThinkingTag = (model: string) => {
-            const lower = model.toLowerCase()
-            return (
+            const hasThinking =
                 lower.includes('thinking') ||
                 ['minimal', 'low', 'medium', 'high', 'xhigh'].some((level) =>
                     lower.includes(level)
                 )
-            )
-        }
-
-        const push = (model: string) => {
-            if (seen.has(model)) return
-            seen.add(model)
-            expanded.push(model)
-        }
-
-        for (const model of rawModels) {
-            push(model)
-
-            if (!isOpenAIReasoningModel(model)) continue
-            if (hasThinkingTag(model)) continue
+            if (hasThinking) continue
 
             // OpenAI-style "thinking" via model suffixes. These are virtual
             // variants that map to request params (e.g. reasoning_effort).
             for (const variant of expandReasoningEffortModelVariants(model)) {
-                push(variant)
+                seen.add(variant)
             }
         }
 
-        return expanded
+        return Array.from(seen)
     } catch (e) {
         if (e instanceof ChatLunaError) {
             throw e

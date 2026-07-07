@@ -40,7 +40,6 @@ import {
     isChatLunaUserMessage,
     isMessageContentAudio
 } from 'koishi-plugin-chatluna/utils/langchain'
-import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { isZodSchemaV3 } from '@langchain/core/utils/types'
 import {
     DEFAULT_AUDIO_MAX_BASE64_BYTES,
@@ -97,30 +96,29 @@ export function createUsageMetadata(data: {
     cacheCreationTokens?: number
     reasoningTokens?: number
 }): UsageMetadata {
-    const inputTokenDetails = {
-        ...(data.inputAudioTokens != null
-            ? { audio: data.inputAudioTokens }
-            : {}),
-        ...(data.inputImageTokens != null
-            ? { image: data.inputImageTokens }
-            : {}),
-        ...(data.cacheReadTokens != null
-            ? { cache_read: data.cacheReadTokens }
-            : {}),
-        ...(data.cacheCreationTokens != null
-            ? { cache_creation: data.cacheCreationTokens }
-            : {})
+    const inputTokenDetails: UsageMetadata['input_token_details'] = {}
+    const outputTokenDetails: UsageMetadata['output_token_details'] = {}
+
+    if (data.inputAudioTokens != null) {
+        inputTokenDetails.audio = data.inputAudioTokens
     }
-    const outputTokenDetails = {
-        ...(data.outputAudioTokens != null
-            ? { audio: data.outputAudioTokens }
-            : {}),
-        ...(data.outputImageTokens != null
-            ? { image: data.outputImageTokens }
-            : {}),
-        ...(data.reasoningTokens != null
-            ? { reasoning: data.reasoningTokens }
-            : {})
+    if (data.inputImageTokens != null) {
+        inputTokenDetails.image = data.inputImageTokens
+    }
+    if (data.cacheReadTokens != null) {
+        inputTokenDetails.cache_read = data.cacheReadTokens
+    }
+    if (data.cacheCreationTokens != null) {
+        inputTokenDetails.cache_creation = data.cacheCreationTokens
+    }
+    if (data.outputAudioTokens != null) {
+        outputTokenDetails.audio = data.outputAudioTokens
+    }
+    if (data.outputImageTokens != null) {
+        outputTokenDetails.image = data.outputImageTokens
+    }
+    if (data.reasoningTokens != null) {
+        outputTokenDetails.reasoning = data.reasoningTokens
     }
 
     return {
@@ -336,15 +334,14 @@ export function responseOutputToolCalls(response: ResponseObject) {
 }
 
 export function responseOutputImageItems(response: ResponseObject) {
-    return (response.output ?? [])
-        .filter((item) => item.type === 'image_generation_call' && item.result)
-        .map(
-            (item) =>
-                item as Extract<
-                    ResponseOutputItem,
-                    { type: 'image_generation_call' }
-                >
-        )
+    return (response.output ?? []).filter(
+        (
+            item
+        ): item is Extract<
+            ResponseOutputItem,
+            { type: 'image_generation_call' }
+        > => item.type === 'image_generation_call' && !!item.result
+    )
 }
 
 export async function langchainMessageToOpenAIMessage(
@@ -662,28 +659,12 @@ type MessageContentFileLike = MessageContentComplex &
     )
 
 function getFileLikeUrlInfo(content: MessageContentFileLike) {
-    switch (content.type) {
-        case 'file_url': {
-            const raw = content.file_url
-            return {
-                url: typeof raw === 'string' ? raw : raw.url,
-                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
-            }
-        }
-        case 'audio_url': {
-            const raw = content.audio_url
-            return {
-                url: typeof raw === 'string' ? raw : raw.url,
-                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
-            }
-        }
-        case 'video_url': {
-            const raw = content.video_url
-            return {
-                url: typeof raw === 'string' ? raw : raw.url,
-                mimeType: typeof raw === 'string' ? undefined : raw.mimeType
-            }
-        }
+    const raw = content[content.type] as
+        | string
+        | { url: string; mimeType?: string }
+    return {
+        url: typeof raw === 'string' ? raw : raw.url,
+        mimeType: typeof raw === 'string' ? undefined : raw.mimeType
     }
 }
 
@@ -894,10 +875,7 @@ export function convertMessageToMessageChunk(
 ) {
     const content = message.content ?? ''
     const reasoningContent = message.reasoning_content
-
-    const role = (
-        (message.role?.length ?? 0) > 0 ? message.role : 'assistant'
-    ).toLowerCase()
+    const role = (message.role || 'assistant').toLowerCase()
 
     const additionalKwargs: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
@@ -912,45 +890,35 @@ export function convertMessageToMessageChunk(
         additionalKwargs.reasoning_content = reasoningContent
     }
 
-    if (role === 'user') {
-        return new HumanMessageChunk({ content })
-    } else if (role === 'assistant') {
-        const toolCallChunks: ToolCallChunk[] = []
-        if (Array.isArray(message.tool_calls)) {
-            for (const rawToolCall of message.tool_calls) {
-                let name = rawToolCall.function?.name
-
-                if (name != null && name.length < 1) {
-                    name = undefined
-                }
-                toolCallChunks.push({
-                    name,
-                    args: rawToolCall.function?.arguments,
-                    id: rawToolCall.id
-                })
-            }
-        }
-        return new AIMessageChunk({
-            content,
-            tool_call_chunks: toolCallChunks,
-            additional_kwargs: additionalKwargs
-        })
-    } else if (role === 'system') {
-        return new SystemMessageChunk({ content })
-    } else if (role === 'function') {
-        return new FunctionMessageChunk({
-            content,
-            additional_kwargs: additionalKwargs,
-            name: message.name
-        })
-    } else if (role === 'tool') {
-        return new ToolMessageChunk({
-            content,
-            additional_kwargs: additionalKwargs,
-            tool_call_id: message.tool_call_id
-        })
-    } else {
-        return new ChatMessageChunk({ content, role })
+    switch (role) {
+        case 'user':
+            return new HumanMessageChunk({ content })
+        case 'assistant':
+            return new AIMessageChunk({
+                content,
+                tool_call_chunks: (message.tool_calls ?? []).map((call) => ({
+                    name: call.function?.name || undefined,
+                    args: call.function?.arguments,
+                    id: call.id
+                })),
+                additional_kwargs: additionalKwargs
+            })
+        case 'system':
+            return new SystemMessageChunk({ content })
+        case 'function':
+            return new FunctionMessageChunk({
+                content,
+                additional_kwargs: additionalKwargs,
+                name: message.name
+            })
+        case 'tool':
+            return new ToolMessageChunk({
+                content,
+                additional_kwargs: additionalKwargs,
+                tool_call_id: message.tool_call_id
+            })
+        default:
+            return new ChatMessageChunk({ content, role })
     }
 }
 
@@ -959,23 +927,17 @@ export function convertDeltaToMessageChunk(
     delta: Record<string, any>,
     defaultRole?: ChatCompletionResponseMessageRoleEnum
 ) {
-    const role = (
-        (delta.role?.length ?? 0) > 0 ? delta.role : defaultRole
-    ).toLowerCase()
+    const role = (delta.role || defaultRole).toLowerCase()
     const content = delta.content ?? ''
     const reasoningContent = delta.reasoning_content as string | undefined
 
-    let additionalKwargs: {
+    const additionalKwargs: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/naming-convention
         function_call?: any
         reasoning_content?: string
-    }
+    } = {}
     if (delta.function_call) {
-        additionalKwargs = {
-            function_call: delta.function_call
-        }
-    } else {
-        additionalKwargs = {}
+        additionalKwargs.function_call = delta.function_call
     }
 
     // Preserve empty reasoning_content for DeepSeek-V4 thinking mode.
@@ -983,47 +945,40 @@ export function convertDeltaToMessageChunk(
         additionalKwargs.reasoning_content = reasoningContent
     }
 
-    if (role === 'user') {
-        return new HumanMessageChunk({ content })
-    } else if (role === 'assistant') {
-        const toolCallChunks = []
-        if (Array.isArray(delta.tool_calls)) {
-            for (const rawToolCall of delta.tool_calls) {
-                const toolCall = {
-                    name: rawToolCall.function?.name,
-                    args: rawToolCall.function?.arguments,
-                    id: rawToolCall.id === '' ? undefined : rawToolCall.id,
-                    index: rawToolCall.index
-                }
+    switch (role) {
+        case 'user':
+            return new HumanMessageChunk({ content })
+        case 'assistant': {
+            const toolCallChunks = Array.isArray(delta.tool_calls)
+                ? delta.tool_calls.map((call) => ({
+                      name: call.function?.name || undefined,
+                      args: call.function?.arguments,
+                      id: call.id === '' ? undefined : call.id,
+                      index: call.index
+                  }))
+                : []
 
-                if (toolCall.name != null && toolCall.name.length < 1) {
-                    delete toolCall.name
-                }
-
-                toolCallChunks.push(toolCall)
-            }
+            return new AIMessageChunk({
+                content,
+                tool_call_chunks: toolCallChunks,
+                additional_kwargs: additionalKwargs
+            })
         }
-
-        return new AIMessageChunk({
-            content,
-            tool_call_chunks: toolCallChunks,
-            additional_kwargs: additionalKwargs
-        })
-    } else if (role === 'system') {
-        return new SystemMessageChunk({ content })
-    } else if (role === 'function') {
-        return new FunctionMessageChunk({
-            content,
-            additional_kwargs: additionalKwargs,
-            name: delta.name
-        })
-    } else if (role === 'tool') {
-        return new ToolMessageChunk({
-            content,
-            additional_kwargs: additionalKwargs,
-            tool_call_id: delta.tool_call_id
-        })
-    } else {
-        return new ChatMessageChunk({ content, role })
+        case 'system':
+            return new SystemMessageChunk({ content })
+        case 'function':
+            return new FunctionMessageChunk({
+                content,
+                additional_kwargs: additionalKwargs,
+                name: delta.name
+            })
+        case 'tool':
+            return new ToolMessageChunk({
+                content,
+                additional_kwargs: additionalKwargs,
+                tool_call_id: delta.tool_call_id
+            })
+        default:
+            return new ChatMessageChunk({ content, role })
     }
 }

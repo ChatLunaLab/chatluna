@@ -100,7 +100,7 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
         const betas = new Set<string>()
         const rawBetas = request.anthropicBeta ?? request['anthropic-beta']
 
-        if (typeof rawBetas === 'string' && rawBetas.length > 0) {
+        if (typeof rawBetas === 'string') {
             for (const beta of rawBetas.split(',')) {
                 const trimmed = beta.trim()
                 if (trimmed.length > 0) {
@@ -109,7 +109,7 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
             }
         } else if (Array.isArray(rawBetas)) {
             for (const beta of rawBetas) {
-                const trimmed = typeof beta === 'string' ? beta.trim() : ''
+                const trimmed = beta.trim()
                 if (trimmed.length > 0) {
                     betas.add(trimmed)
                 }
@@ -199,54 +199,48 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
                 continue
             }
 
-            if (
-                parsedRawChunk.type === 'content_block_start' &&
-                parsedRawChunk.content_block.type === 'thinking'
-            ) {
-                const content = parsedRawChunk.content_block.thinking ?? ''
+            if (parsedRawChunk.type === 'content_block_start') {
+                const block = parsedRawChunk.content_block
+                if (block.type === 'thinking') {
+                    const content = block.thinking ?? ''
 
-                reasoningState.append(content)
-                reasoningState.blocks[parsedRawChunk.index] = {
-                    type: 'thinking',
-                    thinking: content,
-                    signature: parsedRawChunk.content_block.signature ?? ''
+                    reasoningState.append(content)
+                    reasoningState.blocks[parsedRawChunk.index] = {
+                        type: 'thinking',
+                        thinking: content,
+                        signature: block.signature ?? ''
+                    }
+                    continue
                 }
-                continue
+
+                if (block.type === 'redacted_thinking') {
+                    reasoningState.blocks[parsedRawChunk.index] = {
+                        type: 'redacted_thinking',
+                        data: block.data ?? ''
+                    }
+                    continue
+                }
             }
 
-            if (
-                parsedRawChunk.type === 'content_block_start' &&
-                parsedRawChunk.content_block.type === 'redacted_thinking'
-            ) {
-                reasoningState.blocks[parsedRawChunk.index] = {
-                    type: 'redacted_thinking',
-                    data: parsedRawChunk.content_block.data ?? ''
-                }
-                continue
-            }
+            if (parsedRawChunk.type === 'content_block_delta') {
+                const delta = parsedRawChunk.delta
+                if (delta.type === 'thinking_delta') {
+                    reasoningState.append(delta.thinking)
 
-            if (
-                parsedRawChunk.type === 'content_block_delta' &&
-                parsedRawChunk.delta.type === 'thinking_delta'
-            ) {
-                reasoningState.append(parsedRawChunk.delta.thinking)
-
-                const block = reasoningState.blocks[parsedRawChunk.index]
-                if (block?.type === 'thinking') {
-                    block.thinking += parsedRawChunk.delta.thinking
+                    const block = reasoningState.blocks[parsedRawChunk.index]
+                    if (block?.type === 'thinking') {
+                        block.thinking += delta.thinking
+                    }
+                    continue
                 }
-                continue
-            }
 
-            if (
-                parsedRawChunk.type === 'content_block_delta' &&
-                parsedRawChunk.delta.type === 'signature_delta'
-            ) {
-                const block = reasoningState.blocks[parsedRawChunk.index]
-                if (block?.type === 'thinking') {
-                    block.signature = parsedRawChunk.delta.signature
+                if (delta.type === 'signature_delta') {
+                    const block = reasoningState.blocks[parsedRawChunk.index]
+                    if (block?.type === 'thinking') {
+                        block.signature = delta.signature
+                    }
+                    continue
                 }
-                continue
             }
 
             const parsedChunk = convertDeltaToMessageChunk(parsedRawChunk)
