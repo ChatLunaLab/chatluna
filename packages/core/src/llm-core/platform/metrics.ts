@@ -26,13 +26,6 @@ export function attachInvocationMetrics(
         ...chunk.generationInfo,
         [chatlunaMetricsKey]: metrics
     }
-    const message = chunk.message as AIMessageChunk | undefined
-    if (message != null) {
-        message.response_metadata = {
-            ...message.response_metadata,
-            [chatlunaMetricsKey]: metrics
-        }
-    }
 }
 
 export function readInvocationMetrics(
@@ -57,7 +50,9 @@ export function createModelUsageTiming(
 ): ModelUsageTiming {
     const totalMs = Math.max(Date.now() - start, MIN_LATENCY_MS)
     const outputTokens =
-        usage?.output_tokens + (usage?.output_token_details?.reasoning ?? 0)
+        usage == null
+            ? undefined
+            : usage.output_tokens + (usage.output_token_details?.reasoning ?? 0)
     if (firstAt == null) {
         return {
             totalMs,

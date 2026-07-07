@@ -209,7 +209,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             const content = data.answer
 
             if (content != null) {
-                const messageChunk = new AIMessageChunk(content)
+                const messageChunk = new AIMessageChunk({ content })
                 const generationChunk = new ChatGenerationChunk({
                     message: messageChunk,
                     text: content
@@ -314,7 +314,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             const content = data.answer
 
             if (content != null) {
-                const messageChunk = new AIMessageChunk(content)
+                const messageChunk = new AIMessageChunk({ content })
                 const generationChunk = new ChatGenerationChunk({
                     message: messageChunk,
                     text: content

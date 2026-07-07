@@ -106,7 +106,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
                 queue.turns.push(turn)
                 logger.debug(
-                    `Creating new turn for ${conversationId}, messageId: ${messageId}, user: ${userName}, queue: ${queue.turns.length}`
+                    'Creating new turn for %c, user: %c, queue: %c',
+                    conversationId,
+                    userName,
+                    queue.turns.length
                 )
             }
 

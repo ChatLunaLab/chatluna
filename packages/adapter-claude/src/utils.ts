@@ -37,16 +37,6 @@ type ClaudeInlineDataContent = MessageContentComplex & {
     }
 }
 
-function isClaudeInlineDataContent(
-    message: MessageContentComplex
-): message is ClaudeInlineDataContent {
-    return (
-        message != null &&
-        typeof message === 'object' &&
-        'inline_data' in message
-    )
-}
-
 export async function langchainMessageToClaudeMessage(
     messages: BaseMessage[],
     plugin: ChatLunaPlugin,
@@ -119,7 +109,7 @@ export async function langchainMessageToClaudeMessage(
 
                 if (Array.isArray(content)) {
                     blocks.push(...content)
-                } else if ((content?.length ?? 0) > 0) {
+                } else if (content) {
                     blocks.push({
                         type: 'text',
                         text: content
@@ -177,13 +167,7 @@ export async function langchainMessageToClaudeMessage(
             content: msg.content
         })
 
-        const next = mappedMessages[i + 1]?.role
-
-        if (next === 'assistant') {
-            continue
-        }
-
-        if (next === 'user') {
+        if (mappedMessages[i + 1]?.role === 'user') {
             result.push({
                 role: 'assistant',
                 content: 'Okay, what do I need to do?'
@@ -332,41 +316,42 @@ async function processMessageContent(
     plugin: ChatLunaPlugin,
     content: MessageContentComplex[]
 ) {
-    const mappedContent = await Promise.all(
-        content.map(async (message) => {
-            if (message.type === 'text') {
-                return {
-                    type: 'text',
-                    text: message.text as string
-                } as const
-            }
+    const mappedContent: (ClaudeInputContentBlockParam | null | undefined)[] =
+        await Promise.all(
+            content.map(async (message) => {
+                if (message.type === 'text') {
+                    return {
+                        type: 'text',
+                        text: message.text as string
+                    } as const
+                }
 
-            if (isMessageContentImageUrl(message)) {
-                return await processImageContent(plugin, message)
-            }
+                if (isMessageContentImageUrl(message)) {
+                    return await processImageContent(plugin, message)
+                }
 
-            if (isClaudeInlineDataContent(message)) {
-                return processInlineDataContent(message)
-            }
+                if (
+                    message != null &&
+                    typeof message === 'object' &&
+                    'inline_data' in message
+                ) {
+                    return processInlineDataContent(
+                        message as ClaudeInlineDataContent
+                    )
+                }
 
-            if (message.type === 'file_url') {
-                return await processFileContent(
-                    plugin,
-                    message as MessageContentFile
-                )
-            }
-        })
+                if (message.type === 'file_url') {
+                    return await processFileContent(
+                        plugin,
+                        message as MessageContentFile
+                    )
+                }
+            })
+        )
+
+    return mappedContent.filter(
+        (message): message is ClaudeInputContentBlockParam => message != null
     )
-
-    const result: ClaudeInputContentBlockParam[] = []
-
-    for (const message of mappedContent) {
-        if (message != null) {
-            result.push(message)
-        }
-    }
-
-    return result
 }
 
 export function messageTypeToClaudeRole(
@@ -389,10 +374,6 @@ export function messageTypeToClaudeRole(
 export function formatToolsToClaudeTools(
     tools: StructuredTool[]
 ): ClaudeTool[] {
-    if (tools.length < 1) {
-        return []
-    }
-
     return tools.map(formatToolToClaudeTool)
 }
 
@@ -413,80 +394,74 @@ export function formatToolToClaudeTool(tool: StructuredTool): ClaudeTool {
 }
 
 export function convertDeltaToMessageChunk(delta: ClaudeDeltaResponse) {
-    if (delta.type === 'message_start') {
-        return new AIMessageChunk({
-            content: '',
-            id: delta.message.id
-        })
-    }
-
-    if (delta.type === 'content_block_start') {
-        if (delta.content_block.type === 'tool_use') {
+    switch (delta.type) {
+        case 'message_start':
             return new AIMessageChunk({
                 content: '',
-                tool_call_chunks: [
-                    {
-                        id: delta.content_block.id,
-                        index: delta.index,
-                        name: delta.content_block.name,
-                        args: ''
-                    }
-                ],
-                additional_kwargs: {}
+                id: delta.message.id
             })
-        }
-
-        if (delta.content_block.type === 'text') {
-            const content = delta.content_block.text
-            if (content !== undefined) {
+        case 'content_block_start': {
+            const block = delta.content_block
+            if (block.type === 'tool_use') {
                 return new AIMessageChunk({
-                    content,
+                    content: '',
+                    tool_call_chunks: [
+                        {
+                            id: block.id,
+                            index: delta.index,
+                            name: block.name,
+                            args: ''
+                        }
+                    ],
                     additional_kwargs: {}
                 })
             }
+
+            if (block.type === 'text' && block.text !== undefined) {
+                return new AIMessageChunk({
+                    content: block.text,
+                    additional_kwargs: {}
+                })
+            }
+
+            return
         }
-
-        return
-    }
-
-    if (delta.type !== 'content_block_delta') {
-        return
-    }
-
-    if (delta.delta.type === 'text_delta') {
-        return new AIMessageChunk({
-            content: delta.delta.text
-        })
-    }
-
-    if (delta.delta.type === 'input_json_delta') {
-        return new AIMessageChunk({
-            content: '',
-            tool_call_chunks: [
-                {
-                    index: delta.index,
-                    args: delta.delta.partial_json
-                }
-            ],
-            additional_kwargs: {}
-        })
-    }
-
-    if (delta.delta.type === 'thinking_delta') {
-        return new AIMessageChunk({
-            content: '',
-            additional_kwargs: {
-                reasoning_content: delta.delta.thinking
+        case 'content_block_delta': {
+            const chunk = delta.delta
+            switch (chunk.type) {
+                case 'text_delta':
+                    return new AIMessageChunk({
+                        content: chunk.text
+                    })
+                case 'input_json_delta':
+                    return new AIMessageChunk({
+                        content: '',
+                        tool_call_chunks: [
+                            {
+                                index: delta.index,
+                                args: chunk.partial_json
+                            }
+                        ],
+                        additional_kwargs: {}
+                    })
+                case 'thinking_delta':
+                    return new AIMessageChunk({
+                        content: '',
+                        additional_kwargs: {
+                            reasoning_content: chunk.thinking
+                        }
+                    })
+                case 'signature_delta':
+                    return new AIMessageChunk({
+                        content: '',
+                        additional_kwargs: {
+                            reasoning_signature: chunk.signature
+                        }
+                    })
+                default:
             }
-        })
-    }
-
-    if (delta.delta.type === 'signature_delta') {
-        return new AIMessageChunk({
-            content: '',
-            additional_kwargs: {
-                reasoning_signature: delta.delta.signature
-            }
-        })
+            break
+        }
+        default:
     }
 }

@@ -102,7 +102,6 @@ export class OpenAIRequester
         const generation = await this.completion(params)
 
         yield new ChatGenerationChunk({
-            generationInfo: generation.generationInfo,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             message: generation.message as any as BaseMessageChunk,
             text: generation.text

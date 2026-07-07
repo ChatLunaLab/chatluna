@@ -53,7 +53,10 @@ import type {} from 'koishi-plugin-chatluna-storage-service'
 import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
-import { createUsageMetadata } from '@chatluna/v1-shared-adapter'
+import {
+    createUsageMetadata,
+    ReasoningState
+} from '@chatluna/v1-shared-adapter'
 
 export class GeminiRequester
     extends ModelRequester<ClientConfig, Config>
@@ -117,7 +120,8 @@ export class GeminiRequester
                 await trackLogToLocal(
                     'Request',
                     JSON.stringify(chatGenerationParams),
-                    logger
+                    logger,
+                    'warn'
                 )
             }
             if (e instanceof ChatLunaError) {
@@ -164,7 +168,8 @@ export class GeminiRequester
                 await trackLogToLocal(
                     'Request',
                     JSON.stringify(chatGenerationParams),
-                    logger
+                    logger,
+                    'warn'
                 )
             }
             if (e instanceof ChatLunaError) {
@@ -320,11 +325,18 @@ export class GeminiRequester
 
         let result: ChatGenerationChunk
 
-        let reasoningContent = ''
+        const reasoningState = new ReasoningState()
         for await (const chunk of this._processChunks(iterable)) {
             if (chunk.type === 'reasoning') {
-                reasoningContent = chunk.content
+                reasoningState.set(chunk.content)
             } else {
+                if (
+                    reasoningState.endedAt == null &&
+                    reasoningState.content.length > 0
+                ) {
+                    reasoningState.end()
+                }
+
                 result =
                     result != null
                         ? result.concat(chunk.generation)
@@ -340,7 +352,7 @@ export class GeminiRequester
         }
 
         const finalChunk = this._handleFinalContent(
-            reasoningContent,
+            reasoningState,
             groundingContent.value
         )
 
@@ -361,17 +373,24 @@ export class GeminiRequester
             currentGroundingIndex
         )
 
-        let reasoningContent = ''
+        const reasoningState = new ReasoningState()
         for await (const chunk of this._processChunks(iterable)) {
             if (chunk.type === 'reasoning') {
-                reasoningContent = chunk.content
+                reasoningState.set(chunk.content)
             } else {
+                if (
+                    reasoningState.endedAt == null &&
+                    reasoningState.content.length > 0
+                ) {
+                    reasoningState.end()
+                }
+
                 yield chunk.generation
             }
         }
 
         const finalContent = this._handleFinalContent(
-            reasoningContent,
+            reasoningState,
             groundingContent.value
         )
 
@@ -524,9 +543,6 @@ export class GeminiRequester
                 yield {
                     type: 'generation',
                     generation: new ChatGenerationChunk({
-                        generationInfo: {
-                            usage_metadata: usageMetadata
-                        },
                         message: new AIMessageChunk({
                             content: '',
                             usage_metadata: usageMetadata
@@ -679,11 +695,11 @@ export class GeminiRequester
     }
 
     private _handleFinalContent(
-        reasoningContent: string,
+        reasoningState: ReasoningState,
         groundingContent: string
     ) {
-        if (reasoningContent.length > 0) {
-            logger.debug(`reasoning content: ${reasoningContent}`)
+        if (reasoningState.content.length > 0) {
+            logger.debug(reasoningState.format, ...reasoningState.params)
         }
 
         if (groundingContent.length > 0) {

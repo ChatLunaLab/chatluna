@@ -428,7 +428,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             return
         }
 
-        logger.debug(formatUsageMetadata(latestTokenUsage))
+        logger.debug(...formatUsageMetadata(latestTokenUsage))
     }
 
     private async _reportStreamUsage(
@@ -554,17 +554,12 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 total_tokens: completionTokens + promptTokens
             }
         } else if (options.stream !== true) {
-            logger.debug(formatUsageMetadata(usageMetadata))
+            logger.debug(...formatUsageMetadata(usageMetadata))
         }
 
         if (response.message.getType() === 'ai') {
             ;(response.message as AIMessage | AIMessageChunk).usage_metadata =
                 usageMetadata
-        }
-
-        response.generationInfo = {
-            ...response.generationInfo,
-            usage_metadata: usageMetadata
         }
 
         await this._reportUsage(
@@ -574,9 +569,14 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             metrics.timing
         )
 
+        const llmOutput = {
+            ...response.generationInfo,
+            usage_metadata: usageMetadata
+        }
+
         return {
             generations: [response],
-            llmOutput: response.generationInfo
+            llmOutput
         }
     }
 
@@ -1353,31 +1353,44 @@ function usageContextFromOptions(options: ChatLunaModelCallOptions) {
         : undefined
 }
 
-function formatUsageMetadata(usage: UsageMetadata) {
-    const result = [
-        `Token usage from API: input=${usage.input_tokens}`,
-        `output=${usage.output_tokens}`,
-        `total=${usage.total_tokens}`
+function formatUsageMetadata(usage: UsageMetadata): [string, ...unknown[]] {
+    const result = ['Token usage from API: input=%c', 'output=%c', 'total=%c']
+    const params: unknown[] = [
+        usage.input_tokens,
+        usage.output_tokens,
+        usage.total_tokens
     ]
-    const input = [
-        ...(usage.input_token_details?.audio != null
-            ? [`audio=${usage.input_token_details.audio}`]
-            : []),
-        ...(usage.input_token_details?.cache_read != null
-            ? [`cache_read=${usage.input_token_details.cache_read}`]
-            : []),
-        ...(usage.input_token_details?.cache_creation != null
-            ? [`cache_creation=${usage.input_token_details.cache_creation}`]
-            : [])
-    ]
-    const output = [
-        ...(usage.output_token_details?.audio != null
-            ? [`audio=${usage.output_token_details.audio}`]
-            : []),
-        ...(usage.output_token_details?.reasoning != null
-            ? [`reasoning=${usage.output_token_details.reasoning}`]
-            : [])
-    ]
+    const input: string[] = []
+    const output: string[] = []
+
+    if (usage.input_token_details?.audio != null) {
+        input.push('audio=%c')
+        params.push(usage.input_token_details.audio)
+    }
+    if (usage.input_token_details?.image != null) {
+        input.push('image=%c')
+        params.push(usage.input_token_details.image)
+    }
+    if (usage.input_token_details?.cache_read != null) {
+        input.push('cache_read=%c')
+        params.push(usage.input_token_details.cache_read)
+    }
+    if (usage.input_token_details?.cache_creation != null) {
+        input.push('cache_creation=%c')
+        params.push(usage.input_token_details.cache_creation)
+    }
+    if (usage.output_token_details?.audio != null) {
+        output.push('audio=%c')
+        params.push(usage.output_token_details.audio)
+    }
+    if (usage.output_token_details?.image != null) {
+        output.push('image=%c')
+        params.push(usage.output_token_details.image)
+    }
+    if (usage.output_token_details?.reasoning != null) {
+        output.push('reasoning=%c')
+        params.push(usage.output_token_details.reasoning)
+    }
 
     if (input.length > 0) {
         result.push(`| input(${input.join(', ')})`)
@@ -1387,5 +1400,5 @@ function formatUsageMetadata(usage: UsageMetadata) {
         result.push(`| output(${output.join(', ')})`)
     }
 
-    return result.join(' ')
+    return [result.join(' '), ...params]
 }
