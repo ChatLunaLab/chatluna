@@ -37,6 +37,7 @@ import {
     langchainMessageToResponseInput,
     openAIResponseUsageToUsageMetadata,
     openAIUsageToUsageMetadata,
+    ReasoningState,
     responseOutputImageItems,
     responseOutputText,
     responseOutputToolCalls
@@ -234,12 +235,7 @@ export async function* processStreamResponse<
 ) {
     let defaultRole: ChatCompletionResponseMessageRoleEnum = 'assistant'
     let errorCount = 0
-    const reasoningState = {
-        content: '',
-        seen: false,
-        startedAt: Date.now(),
-        endedAt: undefined as number | undefined
-    }
+    const reasoningState = new ReasoningState()
 
     for await (const event of iterator) {
         const chunk = event.data
@@ -289,9 +285,7 @@ export async function* processStreamResponse<
 
                 reasoningState.content = ''
 
-                if (reasoningState.endedAt == null) {
-                    reasoningState.endedAt = Date.now()
-                }
+                reasoningState.end()
 
                 defaultRole = (
                     (choice.message.role?.length ?? 0) > 0
@@ -311,9 +305,7 @@ export async function* processStreamResponse<
                 (delta.tool_calls?.length ?? 0) > 0 ||
                 delta.function_call != null
 
-            if (reasoningState.endedAt == null && hasResult) {
-                reasoningState.endedAt = Date.now()
-            }
+            if (hasResult) reasoningState.end()
 
             // DeepSeek-V4 thinking mode may emit reasoning_content === "".
             // Track field presence so we can echo it back verbatim later.
@@ -324,7 +316,7 @@ export async function* processStreamResponse<
                     !hasResult &&
                     typeof delta.reasoning_content === 'string'
                 ) {
-                    reasoningState.content += delta.reasoning_content
+                    reasoningState.append(delta.reasoning_content)
                 }
             }
 
@@ -387,8 +379,7 @@ export async function* processStreamResponse<
     }
 
     if (reasoningState.seen || reasoningState.content.length > 0) {
-        const reasoningTime =
-            (reasoningState.endedAt ?? Date.now()) - reasoningState.startedAt
+        const reasoningTime = reasoningState.time
 
         yield new ChatGenerationChunk({
             message: new AIMessageChunk({
@@ -406,7 +397,8 @@ export async function* processStreamResponse<
         })
 
         requestContext.modelRequester.logger.debug(
-            `Reasoning Content: ${reasoningState.content}. Thought for: ${(reasoningTime ?? 0) / 1000}s`
+            reasoningState.format,
+            ...reasoningState.params
         )
     }
 }

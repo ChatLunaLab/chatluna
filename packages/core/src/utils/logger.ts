@@ -53,7 +53,9 @@ export async function trackLogToLocal(
         await fs.promises.writeFile(logFile, output)
 
         logger[level](
-            `[${tag}] A local log file has been created at ${logFile}`
+            '[%s] A local log file has been created at %s',
+            tag,
+            logFile
         )
 
         // Clean up old log files (older than 7 days)

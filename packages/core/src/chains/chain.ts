@@ -288,7 +288,7 @@ export class ChatChain {
 
             if (shouldLogTime) {
                 logger.debug(
-                    `middleware %c executed in %s`,
+                    `[Middleware] %c completed in %c`,
                     middleware.name,
                     formatDuration(executionTime)
                 )

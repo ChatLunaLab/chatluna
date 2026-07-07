@@ -212,12 +212,23 @@ export class ChatLunaChatPrompt
 
         // Debug logging
         if (logger?.level === Logger.DEBUG) {
-            logger?.debug(
-                `[Agent ${runtime.configurable?.subagentContext?.agentName || 'main'}] ` +
-                    (runtime.usedTokens > runtime.sendTokenLimit
-                        ? `Used tokens: ${runtime.usedTokens} exceed limit: ${runtime.sendTokenLimit}`
-                        : `Used tokens: ${runtime.usedTokens}, token limit: ${runtime.sendTokenLimit}`)
-            )
+            const name =
+                runtime.configurable?.subagentContext?.agentName || 'main'
+            if (runtime.usedTokens > runtime.sendTokenLimit) {
+                logger?.debug(
+                    '[Agent %s] Used tokens: %c exceed limit: %c',
+                    name,
+                    runtime.usedTokens,
+                    runtime.sendTokenLimit
+                )
+            } else {
+                logger?.debug(
+                    '[Agent %s] Used tokens: %c, token limit: %c',
+                    name,
+                    runtime.usedTokens,
+                    runtime.sendTokenLimit
+                )
+            }
 
             const mapMessages = runtime.result.map((msg) => {
                 const original = msg?.toDict?.()

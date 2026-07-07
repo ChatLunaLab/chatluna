@@ -49,6 +49,42 @@ import {
     supportImageInput
 } from './client'
 
+export class ReasoningState<T = unknown> {
+    content = ''
+    seen = false
+    startedAt = Date.now()
+    endedAt?: number
+    blocks: T[] = []
+
+    append(content: string) {
+        this.content += content
+        this.seen = true
+    }
+
+    set(content: string) {
+        this.content = content
+        this.seen = true
+    }
+
+    end() {
+        if (this.endedAt == null) {
+            this.endedAt = Date.now()
+        }
+    }
+
+    get time() {
+        return (this.endedAt ?? Date.now()) - this.startedAt
+    }
+
+    get format() {
+        return 'Thought for %c: %s'
+    }
+
+    get params() {
+        return [`${this.time / 1000}s`, this.content]
+    }
+}
+
 export function createUsageMetadata(data: {
     inputTokens: number
     outputTokens: number
