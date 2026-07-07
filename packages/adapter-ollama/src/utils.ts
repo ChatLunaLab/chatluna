@@ -202,12 +202,6 @@ export function ollamaChunkToGeneration(chunk: OllamaDeltaResponse) {
     }
 
     return new ChatGenerationChunk({
-        generationInfo:
-            usageMetadata == null
-                ? undefined
-                : {
-                      usage_metadata: usageMetadata
-                  },
         message: new AIMessageChunk({
             content,
             tool_call_chunks: toolCallChunks,

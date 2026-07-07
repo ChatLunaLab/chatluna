@@ -33,7 +33,8 @@ export function clearLogger() {
 export async function trackLogToLocal(
     tag: string,
     output: string,
-    logger: Logger
+    logger: Logger,
+    level: 'debug' | 'warn' = 'debug'
 ) {
     const currentTime = new Date()
         .toISOString()
@@ -50,7 +51,10 @@ export async function trackLogToLocal(
 
     const writeAndCleanup = async () => {
         await fs.promises.writeFile(logFile, output)
-        logger.info(`[${tag}] A local log file has been created at ${logFile}`)
+
+        logger[level](
+            `[${tag}] A local log file has been created at ${logFile}`
+        )
 
         // Clean up old log files (older than 7 days)
         const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000

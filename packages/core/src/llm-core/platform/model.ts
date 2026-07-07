@@ -562,11 +562,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 usageMetadata
         }
 
-        response.generationInfo = {
-            ...response.generationInfo,
-            usage_metadata: usageMetadata
-        }
-
         await this._reportUsage(
             usageMetadata,
             estimated,
@@ -574,9 +569,14 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             metrics.timing
         )
 
+        const llmOutput = {
+            ...response.generationInfo,
+            usage_metadata: usageMetadata
+        }
+
         return {
             generations: [response],
-            llmOutput: response.generationInfo
+            llmOutput
         }
     }
 

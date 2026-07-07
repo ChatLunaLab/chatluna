@@ -264,9 +264,6 @@ export async function* processStreamResponse<
             if (data.usage) {
                 const usageMetadata = openAIUsageToUsageMetadata(data.usage)
                 yield new ChatGenerationChunk({
-                    generationInfo: {
-                        usage_metadata: usageMetadata
-                    },
                     message: new AIMessageChunk({
                         content: '',
                         usage_metadata: usageMetadata
@@ -474,13 +471,7 @@ export async function processResponse<
 
         return new ChatGenerationChunk({
             message: messageChunk,
-            text: getMessageContent(messageChunk.content),
-            generationInfo:
-                usageMetadata == null
-                    ? undefined
-                    : {
-                          usage_metadata: usageMetadata
-                      }
+            text: getMessageContent(messageChunk.content)
         })
     } catch (e) {
         if (e instanceof ChatLunaError) {
@@ -551,12 +542,6 @@ export async function responseToChatGeneration(
     })
 
     return new ChatGenerationChunk({
-        generationInfo:
-            usageMetadata == null
-                ? undefined
-                : {
-                      usage_metadata: usageMetadata
-                  },
         message,
         text
     })
@@ -639,7 +624,7 @@ export async function* processResponseApiStream<
 
             if (data.type === 'response.output_text.delta' && data.delta) {
                 yield new ChatGenerationChunk({
-                    message: new AIMessageChunk(data.delta),
+                    message: new AIMessageChunk({ content: data.delta }),
                     text: data.delta
                 })
                 continue
@@ -726,9 +711,6 @@ export async function* processResponseApiStream<
 
                 if (usageMetadata) {
                     yield new ChatGenerationChunk({
-                        generationInfo: {
-                            usage_metadata: usageMetadata
-                        },
                         message: new AIMessageChunk({
                             content: '',
                             usage_metadata: usageMetadata
@@ -802,7 +784,8 @@ export async function* completionStream<
             await trackLogToLocal(
                 'Request',
                 JSON.stringify(chatCompletionParams),
-                requestContext.ctx.logger('')
+                requestContext.ctx.logger(''),
+                'warn'
             )
         }
         if (e instanceof ChatLunaError) {
@@ -853,7 +836,8 @@ export async function completion<
             await trackLogToLocal(
                 'Request',
                 JSON.stringify(chatCompletionParams),
-                requestContext.ctx.logger('')
+                requestContext.ctx.logger(''),
+                'warn'
             )
         }
         if (e instanceof ChatLunaError) {
@@ -898,7 +882,8 @@ export async function* responseApiCompletionStream<
             await trackLogToLocal(
                 'Request',
                 JSON.stringify(request),
-                requestContext.ctx.logger('')
+                requestContext.ctx.logger(''),
+                'warn'
             )
         }
         if (e instanceof ChatLunaError) throw e
@@ -942,7 +927,8 @@ export async function responseApiCompletion<
             await trackLogToLocal(
                 'Request',
                 JSON.stringify(request),
-                requestContext.ctx.logger('')
+                requestContext.ctx.logger(''),
+                'warn'
             )
         }
         if (e instanceof ChatLunaError) throw e

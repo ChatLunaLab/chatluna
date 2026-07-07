@@ -185,9 +185,6 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
                 })
 
                 yield new ChatGenerationChunk({
-                    generationInfo: {
-                        usage_metadata: usageMetadata
-                    },
                     message: new AIMessageChunk({
                         content: '',
                         usage_metadata: usageMetadata
