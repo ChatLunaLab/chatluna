@@ -111,7 +111,7 @@ export function transformAndEscape(source: h[]) {
             return h.parse(element.attrs['content']).map(unescape)
         } catch (e) {
             logger.error(e)
-            return [h.text(source)]
+            return [h.text(element.attrs['content'])]
         }
     })
 }

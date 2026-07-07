@@ -70,6 +70,13 @@ export class ReplyStream {
 
         if (frame.type === 'done') {
             this.finalMessage = frame.message
+            return
+        }
+
+        if (frame.type === 'error') {
+            await this.context.recallThinkingMessage?.()
+            await this.queue.finish()
+            throw frame.error
         }
     }
 
@@ -84,6 +91,7 @@ export class ReplyStream {
             if (this.finalMessage != null) {
                 await this.sendMessage(this.finalMessage, 'split')
             }
+            await this.sendAdditional()
             await this.queue.finish()
             return
         }

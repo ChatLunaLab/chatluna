@@ -87,10 +87,22 @@ class TextStreamSession extends BufferedRenderStreamSession {
     }
 
     protected renderText(text: string) {
-        return transformAndEscape(
+        const transformed = transformAndEscape(
             transformMessageContentToElements(text),
             this.options.session?.platform ?? 'sandbox'
         )
+
+        if (transformed[0]?.type === 'p') {
+            const element = transformed.shift()
+            const content = element.attrs['content']
+            if (content) {
+                transformed.unshift(h.text(content))
+            } else {
+                transformed.unshift(...element.children)
+            }
+        }
+
+        return transformed
     }
 }
 

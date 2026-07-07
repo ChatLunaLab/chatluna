@@ -13,25 +13,25 @@ export class PureTextRenderer extends Renderer {
         message: Message,
         options: RenderOptions
     ): Promise<RenderMessage> {
-        let transformed = transformMessageContentToElements(message.content)
+        const transformed = transformMessageContentToElements(message.content)
 
         if (options.split && options.split !== 'none') {
-            transformed = transformed.flatMap((element) => {
-                if (element.type !== 'text') return element
-                const content = element.attrs['content'] as string
-                return splitText(content, options.split).map((text) =>
-                    h.text(text)
-                )
-            })
+            return {
+                element: transformed.flatMap((element) => {
+                    if (element.type !== 'text') return h('message', element)
+                    const content = element.attrs['content'] as string
+                    return splitText(content, options.split).map((text) =>
+                        h('message', h.text(stripMarkdown(text)))
+                    )
+                })
+            }
         }
 
-        transformed = transformed.map((element) => {
-            if (element.type !== 'text') return element
-            return h.text(stripMarkdown(element.attrs['content']))
-        })
-
         return {
-            element: transformed
+            element: transformed.map((element) => {
+                if (element.type !== 'text') return element
+                return h.text(stripMarkdown(element.attrs['content']))
+            })
         }
     }
 

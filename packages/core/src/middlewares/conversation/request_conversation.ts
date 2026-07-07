@@ -153,13 +153,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     }
                 )
             } catch (e) {
-                if (e?.message?.includes('output values have 1 keys')) {
-                    throw new ChatLunaError(
-                        ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
-                    )
-                } else {
-                    throw e
-                }
+                const err = e?.message?.includes('output values have 1 keys')
+                    ? new ChatLunaError(
+                          ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
+                      )
+                    : e
+
+                await replyStream.end({ type: 'error', error: err })
+                throw err
             }
 
             context.options.finalResponseMessage = responseMessage
