@@ -26,11 +26,11 @@ export function trackLogToLocal(
     logger: Logger,
     level: 'debug' | 'warn' = 'debug'
 ) {
-    const dir = `${os.tmpdir()}/chatluna/logs`,
-        logFile = `${dir}/chatluna-log-${new Date().toISOString().replace(/[T:]/g, '-').slice(0, 19)}.log`
-    fs.mkdirSync(dir, { recursive: true })
     setTimeout(() => {
         try {
+            const dir = `${os.tmpdir()}/chatluna/logs`,
+                logFile = `${dir}/chatluna-log-${new Date().toISOString().replace(/[T:.]/g, '-')}-${process.hrtime.bigint()}.log`
+            fs.mkdirSync(dir, { recursive: true })
             fs.writeFileSync(logFile, output)
             logger[level](
                 `[${tag}] A local log file has been created at ${logFile}`
