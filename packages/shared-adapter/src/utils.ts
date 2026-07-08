@@ -658,9 +658,7 @@ type MessageContentFileLike = MessageContentComplex &
 
 function getFileLikeUrlInfo(content: MessageContentFileLike) {
     const raw = content[content.type] as
-    const raw = content[content.type] as
-        | string
-        | { url: string; mimeType?: string }
+        string | { url: string; mimeType?: string }
     return {
         url: typeof raw === 'string' ? raw : raw.url,
         mimeType: typeof raw === 'string' ? undefined : raw.mimeType
