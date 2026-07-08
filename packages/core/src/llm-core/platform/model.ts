@@ -391,6 +391,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         return (
             hasContent ||
             this._hasToolCallChunk(message) ||
+            kwargs?.function_call != null ||
             kwargs?.thought_data != null
         )
     }

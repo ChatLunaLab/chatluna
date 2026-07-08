@@ -100,14 +100,12 @@ function sentenceCut(text: string, parts: Segment[], flush: boolean) {
 function softCut(text: string, parts: Segment[]) {
     if (parts.length < SOFT_LEN) return -1
 
-    for (let idx = parts.length - 1; idx >= MIN_SOFT_LEN; idx--) {
-        if (
-            !SOFT_CHARS.includes(parts[idx].segment) ||
-            isOpen(text, parts[idx].index)
-        ) {
-            continue
-        }
-
+    for (
+        let idx = Math.min(parts.length - 1, HARD_LEN - 1);
+        idx >= MIN_SOFT_LEN;
+        idx--
+    ) {
+        if (!SOFT_CHARS.includes(parts[idx].segment)) continue
         let endIdx = idx + 1
         while (
             endIdx < parts.length &&
@@ -115,7 +113,9 @@ function softCut(text: string, parts: Segment[]) {
         ) {
             endIdx++
         }
-        return parts[endIdx]?.index ?? text.length
+        const end = parts[endIdx]?.index ?? text.length
+        if (isOpen(text, end)) continue
+        return end
     }
 
     if (parts.length < HARD_LEN) return -1
