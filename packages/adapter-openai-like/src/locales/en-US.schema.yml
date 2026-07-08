@@ -39,6 +39,7 @@ $inner:
       frequencyPenalty: 'Token frequency penalty (-2 to 2, step 0.1, reduces repetition)'
       nonStreaming: 'Force disable streaming response. When enabled, requests will always be made in non-streaming mode, even if the stream parameter is configured.'
       responseApi: 'Enable OpenAI Responses API. Disabled by default; when disabled, Chat Completions API is used.'
+      setCacheKey: 'Whether to send prompt_cache_key. When disabled, requests will not include prompt_cache_key.'
 
     - $desc: Other settings
       googleSearch: Whether to enable Google search. (Only valid for Gemini models that support Google search and use the new-api)

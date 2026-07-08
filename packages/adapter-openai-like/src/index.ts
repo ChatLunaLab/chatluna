@@ -69,6 +69,7 @@ export interface Config extends ChatLunaPlugin.Config {
     frequencyPenalty: number
     nonStreaming: boolean
     responseApi: boolean
+    setCacheKey: boolean
     googleSearch: boolean
     googleSearchSupportModel: string[]
     responseBuiltinTools: ResponseBuiltinToolName[]
@@ -134,7 +135,8 @@ export const Config: Schema<Config> = Schema.intersect([
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         nonStreaming: Schema.boolean().default(false),
-        responseApi: Schema.boolean().default(false)
+        responseApi: Schema.boolean().default(false),
+        setCacheKey: Schema.boolean().default(true)
     }),
     Schema.object({
         googleSearch: Schema.boolean().default(false),
