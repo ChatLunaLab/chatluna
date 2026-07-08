@@ -27,36 +27,37 @@ export function trackLogToLocal(
     level: 'debug' | 'warn' = 'debug'
 ) {
     setTimeout(() => {
-        try {
+        ;(async () => {
             const dir = `${os.tmpdir()}/chatluna/logs`,
                 logFile = `${dir}/chatluna-log-${new Date().toISOString().replace(/[T:.]/g, '-')}-${process.hrtime.bigint()}.log`
-            fs.mkdirSync(dir, { recursive: true })
-            fs.writeFileSync(logFile, output)
+            await fs.promises.mkdir(dir, { recursive: true })
+            await fs.promises.writeFile(logFile, output)
             logger[level](
                 `[${tag}] A local log file has been created at ${logFile}`
             )
             const cutoff = Date.now() - 604800000
-            const logs = fs
-                .readdirSync(dir)
-                .filter((f) => f.endsWith('.log'))
-                .map((f) => {
-                    const p = `${dir}/${f}`,
-                        s = fs.statSync(p)
-                    return { p, size: s.size, time: s.mtimeMs }
-                })
-                .sort((a, b) => a.time - b.time)
+            const logs = await Promise.all(
+                (await fs.promises.readdir(dir))
+                    .filter((f) => f.endsWith('.log'))
+                    .map(async (f) => {
+                        const p = `${dir}/${f}`,
+                            s = await fs.promises.stat(p)
+                        return { p, size: s.size, time: s.mtimeMs }
+                    })
+            )
+            logs.sort((a, b) => a.time - b.time)
             let total = logs.reduce((s, l) => s + l.size, 0),
                 deleted = 0
             for (const l of logs) {
                 if (l.time >= cutoff && total <= 1073741824) break
                 try {
-                    fs.unlinkSync(l.p)
+                    await fs.promises.unlink(l.p)
                     total -= l.size
                     deleted++
                 } catch {}
             }
             if (deleted)
                 logger.debug(`[${tag}] Deleted ${deleted} old log file(s).`)
-        } catch {}
+        })().catch(() => undefined)
     }, 0)
 }
