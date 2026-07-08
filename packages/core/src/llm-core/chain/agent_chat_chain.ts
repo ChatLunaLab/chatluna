@@ -252,6 +252,37 @@ export class ChatLunaPluginChain
         let error
 
         const request = () => {
+            const manager =
+                CallbackManager.configure(callbacks) ?? new CallbackManager()
+
+            manager.addHandler(
+                CallbackManager.fromHandlers({
+                    async handleLLMEnd(out) {
+                        usedToken +=
+                            out.llmOutput?.usage_metadata?.total_tokens ?? 0
+                    },
+                    async handleAgentAction(action: AgentAction) {
+                        await events?.['llm-call-tool']?.(
+                            action.tool,
+                            action.toolInput,
+                            action.content,
+                            action.log
+                        )
+                    },
+                    async handleToolEnd(out) {
+                        logger.debug('Tool end:', sanitizeToolLogValue(out))
+                    },
+                    async handleLLMNewToken(token) {
+                        await events?.['llm-new-token']?.(token)
+                    },
+                    async handleCustomEvent(name, data) {
+                        if (name === 'LLMNewChunk') {
+                            await events?.['llm-new-chunk']?.(data)
+                        }
+                    }
+                }).handlers[0]
+            )
+
             return runner.invoke(
                 {
                     ...requests,
@@ -259,38 +290,7 @@ export class ChatLunaPluginChain
                 },
                 {
                     signal,
-                    callbacks: CallbackManager.configure(
-                        callbacks,
-                        CallbackManager.fromHandlers({
-                            async handleLLMEnd(out) {
-                                usedToken +=
-                                    out.llmOutput?.usage_metadata
-                                        ?.total_tokens ?? 0
-                            },
-                            async handleAgentAction(action: AgentAction) {
-                                await events?.['llm-call-tool']?.(
-                                    action.tool,
-                                    action.toolInput,
-                                    action.content,
-                                    action.log
-                                )
-                            },
-                            async handleToolEnd(out) {
-                                logger.debug(
-                                    'Tool end:',
-                                    sanitizeToolLogValue(out)
-                                )
-                            },
-                            async handleLLMNewToken(token) {
-                                await events?.['llm-new-token']?.(token)
-                            },
-                            async handleCustomEvent(name, data) {
-                                if (name === 'LLMNewChunk') {
-                                    await events?.['llm-new-chunk']?.(data)
-                                }
-                            }
-                        })
-                    ),
+                    callbacks: manager,
                     metadata: { chatlunaAgent: ctx },
                     configurable: {
                         session,

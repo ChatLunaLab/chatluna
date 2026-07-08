@@ -21,12 +21,7 @@ export interface InsertResponse {
 }
 
 export type QueryMode =
-    | 'local'
-    | 'global'
-    | 'hybrid'
-    | 'naive'
-    | 'mix'
-    | 'bypass'
+    'local' | 'global' | 'hybrid' | 'naive' | 'mix' | 'bypass'
 
 export interface QueryRequest {
     query: string

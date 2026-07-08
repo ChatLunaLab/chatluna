@@ -119,10 +119,7 @@ export interface ChatCompletionMessage {
 }
 
 export type ChatCompletionMessageRoleEnum =
-    | 'system'
-    | 'assistant'
-    | 'user'
-    | 'tool'
+    'system' | 'assistant' | 'user' | 'tool'
 
 export type ChatCompletionToolChoice =
     | 'auto'

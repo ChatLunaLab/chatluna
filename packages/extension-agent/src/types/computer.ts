@@ -44,11 +44,7 @@ export interface OpenTerminalBackendConfig {
 }
 
 export type ComputerBackendState =
-    | 'idle'
-    | 'connecting'
-    | 'connected'
-    | 'error'
-    | 'unsupported'
+    'idle' | 'connecting' | 'connected' | 'error' | 'unsupported'
 
 export type ComputerCapability =
     | 'file_read'
@@ -97,11 +93,7 @@ export interface ComputerTerminalInfo {
 }
 
 export type ComputerBackgroundJobState =
-    | 'running'
-    | 'completed'
-    | 'failed'
-    | 'killed'
-    | 'timed_out'
+    'running' | 'completed' | 'failed' | 'killed' | 'timed_out'
 
 export interface ComputerBackgroundJobInfo {
     id: string

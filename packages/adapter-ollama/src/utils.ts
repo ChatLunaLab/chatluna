@@ -89,8 +89,7 @@ export async function langchainMessageToOllamaMessage(
         if (rawMessage.getType() === 'ai') {
             const toolCalls = (rawMessage as AIMessage).tool_calls
             const thinking = rawMessage.additional_kwargs.reasoning_content as
-                | string
-                | undefined
+                string | undefined
 
             if (thinking != null) {
                 msg.thinking = thinking

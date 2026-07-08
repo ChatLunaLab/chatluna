@@ -9,42 +9,6 @@ commands:
                 limit: 每页数量。
                 archived: 包含已归档会话。
                 preset: 预设分流。
-            new:
-                description: 创建并切换到一个新会话。
-                arguments:
-                    title: 会话标题。
-            switch:
-                description: 切换当前活跃会话。
-                arguments:
-                    conversation: 目标会话，可使用序号、ID 或标题。
-            list:
-                description: 列出当前路由下的会话。
-            current:
-                description: 查看当前活跃会话。
-            rename:
-                description: 重命名当前会话或目标会话。
-                arguments:
-                    title: 新的会话标题。
-            archive:
-                description: 归档一个会话。
-                arguments:
-                    conversation: 目标会话，可使用序号、ID 或标题。
-            restore:
-                description: 恢复一个已归档会话。
-                arguments:
-                    conversation: 目标会话，可使用序号、ID 或标题。
-            export:
-                description: 将会话导出为 Markdown 记录。
-                arguments:
-                    conversation: 目标会话，可使用序号、ID 或标题。
-            compress:
-                description: 在不引用房间的情况下压缩一个会话。
-                arguments:
-                    conversation: 目标会话，可使用序号、ID 或标题。
-            delete:
-                description: 删除当前会话或目标会话。
-                arguments:
-                    conversation: 目标会话，可使用序号、ID 或标题。
         new:
             description: 创建并切换到一个新会话。
             arguments:
@@ -539,6 +503,7 @@ chatluna:
     quote_said: '说'
     aborted: '已成功停止当前对话的生成。'
     thinking_message: '我还在思考中，前面还有 {0} 条消息等着我回复呢，稍等一下~'
+    tool_call: '正在调用 {0} 工具。'
     error_message: '使用 ChatLuna 时出现错误，错误码为 %s。请联系开发者以解决此问题。'
     middleware_error: '执行 {0} 时出现错误: {1}'
     not_available_model: '当前没有可用的模型，请检查你的配置，是否正常安装了模型适配器并配置。'

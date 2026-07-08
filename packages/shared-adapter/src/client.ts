@@ -6,13 +6,7 @@ export const DEFAULT_AUDIO_MAX_BASE64_BYTES = 50 * 1024 * 1024
 export const DEFAULT_IMAGE_MAX_BASE64_BYTES = 50 * 1024 * 1024
 
 export type OpenAIReasoningEffort =
-    | 'none'
-    | 'minimal'
-    | 'low'
-    | 'medium'
-    | 'high'
-    | 'max'
-    | 'xhigh'
+    'none' | 'minimal' | 'low' | 'medium' | 'high' | 'max' | 'xhigh'
 
 export const reasoningEffortModelSuffixes = [
     'non-thinking',

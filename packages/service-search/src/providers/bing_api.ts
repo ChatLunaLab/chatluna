@@ -37,13 +37,11 @@ class BingAPISearchProvider extends SearchProvider {
             ]
         }
 
-        return results.map(
-            (item): SearchResult => ({
-                title: item.name,
-                description: item.snippet,
-                url: item.url
-            })
-        )
+        return results.map((item): SearchResult => ({
+            title: item.name,
+            description: item.snippet,
+            url: item.url
+        }))
     }
 
     static schema = Schema.const('bing-api').i18n({

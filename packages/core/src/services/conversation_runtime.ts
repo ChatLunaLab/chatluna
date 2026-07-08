@@ -187,11 +187,9 @@ export class ConversationRuntime {
 
     private buildReply(aiMessage: AIMessage): Message {
         const reasoning = aiMessage.additional_kwargs?.reasoning_content as
-            | string
-            | undefined
+            string | undefined
         const reasoningTime = aiMessage.additional_kwargs?.reasoning_time as
-            | number
-            | undefined
+            number | undefined
         const usage = aiMessage.usage_metadata
         const showThought = this.service.currentConfig.showThoughtMessage
         const additionalReplyMessages: Message[] = []
@@ -505,8 +503,7 @@ function wrapEvents(source: ChatEvents | undefined, touch: () => void) {
     const out: Record<string, (...args: unknown[]) => Promise<void>> = {}
     for (const key of EVENT_KEYS) {
         const fn = source?.[key] as
-            | ((...a: unknown[]) => Promise<void>)
-            | undefined
+            ((...a: unknown[]) => Promise<void>) | undefined
         out[key] = async (...args: unknown[]) => {
             touch()
             await fn?.(...args)

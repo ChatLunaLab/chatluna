@@ -45,11 +45,7 @@ export interface ChatCompletionResponseMessage {
 }
 
 export type ChatCompletionResponseMessageRoleEnum =
-    | 'system'
-    | 'assistant'
-    | 'user'
-    | 'function'
-    | 'tool'
+    'system' | 'assistant' | 'user' | 'function' | 'tool'
 
 export interface ChatCompletionFunction {
     name: string

@@ -539,21 +539,8 @@ export function getSystemPromptVariables(
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function formatToolCall(tool: string, arg: any, log: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-
-    let rawArg = arg
-
-    if (Object.keys(rawArg).length === 1) {
-        rawArg = rawArg?.input ?? rawArg?.arguments ?? rawArg
-    }
-
-    if (typeof rawArg !== 'string') {
-        rawArg = JSON.stringify(rawArg, null, 2) || ''
-    }
-
-    return `{\n  tool: '${tool}',\n  arg: '${rawArg}',\n  log: '${log}'\n}`
+export function formatToolCall(session: Session, tool: string) {
+    return session.text('chatluna.tool_call', [tool])
 }
 
 export async function formatUserPromptString(

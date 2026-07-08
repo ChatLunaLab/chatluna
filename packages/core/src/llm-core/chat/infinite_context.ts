@@ -175,8 +175,7 @@ function compactExpiredToolResults(messages: BaseMessage[]): BaseMessage[] {
     const result = messages.map((msg) => {
         if (msg.getType() !== 'tool') return msg
         const meta = msg.response_metadata?.chatluna as
-            | ChatLunaMessageMeta
-            | undefined
+            ChatLunaMessageMeta | undefined
         if (!meta?.createdAt) return msg
         if (Date.now() - new Date(meta.createdAt).getTime() < 3600000)
             return msg
@@ -242,8 +241,7 @@ function formatTranscript(messages: BaseMessage[]): string {
             const content = getMessageContent(msg.content).trim()
 
             const toolCalls = msg['tool_calls'] as
-                | { name: string; args: unknown }[]
-                | undefined
+                { name: string; args: unknown }[] | undefined
             const toolInfo =
                 toolCalls?.length > 0
                     ? '\nTool calls: ' +

@@ -159,10 +159,7 @@ export interface CreateEmbeddingResponse {
 }
 
 export type ChatCompletionResponseMessageRoleEnum =
-    | 'system'
-    | 'model'
-    | 'user'
-    | 'function'
+    'system' | 'model' | 'user' | 'function'
 
 export interface GeminiModelInfo {
     name: string

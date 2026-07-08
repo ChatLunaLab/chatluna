@@ -152,9 +152,7 @@ export interface ChatCompletionTool {
  * functions are present.
  */
 export type ChatCompletionToolChoiceOption =
-    | 'none'
-    | 'auto'
-    | ChatCompletionNamedToolChoice
+    'none' | 'auto' | ChatCompletionNamedToolChoice
 
 export interface ChatCompletionToolMessageParam {
     /**
@@ -202,9 +200,7 @@ export type AgentDirectToolObservation = DirectToolOutput & {
 }
 
 export type AgentObservation =
-    | AgentObservationComplexContent[]
-    | AgentDirectToolObservation
-    | string
+    AgentObservationComplexContent[] | AgentDirectToolObservation | string
 
 export interface ToolMask {
     mode: 'all' | 'allow' | 'deny'

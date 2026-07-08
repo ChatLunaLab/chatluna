@@ -361,7 +361,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         const message = chunk.message as AIMessageChunk | undefined
         const hasToolCallChunk = this._hasToolCallChunk(message)
 
-        if (hasToolCallChunk) {
+        if (!hasToolCallChunk) {
             // eslint-disable-next-line no-void
             void runManager?.handleCustomEvent('LLMNewChunk', message)
         }
@@ -391,7 +391,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         return (
             hasContent ||
             this._hasToolCallChunk(message) ||
-            ((kwargs?.tool_calls as unknown[] | undefined)?.length ?? 0) > 0 ||
             kwargs?.function_call != null ||
             kwargs?.thought_data != null
         )
@@ -419,7 +418,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         latestTokenUsage: TokenUsageTracker,
         runManager?: CallbackManagerForLLMRun
     ) {
-        if (hasToolCallChunk) {
+        if (!hasToolCallChunk) {
             // eslint-disable-next-line no-void
             void runManager?.handleCustomEvent('LLMNewChunk', undefined)
         }

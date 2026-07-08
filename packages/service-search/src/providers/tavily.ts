@@ -60,21 +60,17 @@ class TavilySearchProvider extends SearchProvider {
             ]
         }
 
-        const formattedResults = res.results.map(
-            (r): SearchResult => ({
-                title: r.title,
-                description: r.content,
-                url: r.url
-            })
-        )
+        const formattedResults = res.results.map((r): SearchResult => ({
+            title: r.title,
+            description: r.content,
+            url: r.url
+        }))
 
-        const formattedImages = (res.images ?? []).map(
-            (img): SearchResult => ({
-                title: 'Image',
-                description: img.description,
-                url: img.url
-            })
-        )
+        const formattedImages = (res.images ?? []).map((img): SearchResult => ({
+            title: 'Image',
+            description: img.description,
+            url: img.url
+        }))
 
         return [...formattedResults, ...formattedImages].slice(0, limit)
     }

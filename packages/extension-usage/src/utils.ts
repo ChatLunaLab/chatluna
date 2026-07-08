@@ -76,12 +76,7 @@ export namespace ChatLunaUsage {
 
     export type Period = 'day' | 'month' | 'year'
     export type GroupBy =
-        | 'source'
-        | 'model'
-        | 'guild'
-        | 'platform'
-        | 'chatPlatform'
-        | 'callType'
+        'source' | 'model' | 'guild' | 'platform' | 'chatPlatform' | 'callType'
     export type SortBy =
         | 'calls'
         | 'successfulCalls'

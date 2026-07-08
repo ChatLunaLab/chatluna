@@ -1,4 +1,4 @@
-import { Context, Element, Fragment, Logger, Session } from 'koishi'
+import { Context, Logger, Session } from 'koishi'
 import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import {
     ChatLunaError,
@@ -12,7 +12,6 @@ import {
 } from 'koishi-plugin-chatluna/chains'
 import { Config } from '../../config'
 import { Message } from '../../types'
-import { renderMessage } from '../chat/render_message'
 import {
     formatToolCall,
     formatUserPromptString,
@@ -22,17 +21,13 @@ import {
 } from 'koishi-plugin-chatluna/utils/string'
 import type { ConversationRecord } from '../../types'
 import {
-    MessageEditQueue,
-    sendInitialMessage,
-    StreamingBufferText
-} from '../../utils/buffer_text'
-import {
     BaseMessageChunk,
     MessageContent,
     MessageContentComplex,
     UsageMetadata
 } from '@langchain/core/messages'
 import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
+import { ReplyStream } from '../../render/stream'
 
 let logger: Logger
 
@@ -95,12 +90,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 )
             }
 
-            const bufferText = new StreamingBufferText(
-                3,
-                presetTemplate.config?.postHandler?.prefix,
-                presetTemplate.config?.postHandler?.postfix
-            )
-
             const postHandler = presetTemplate.config?.postHandler
                 ? new PresetPostHandler(
                       ctx,
@@ -110,30 +99,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 : undefined
 
             const shouldSend = shouldSendTriggerReply(context)
-            const stream = config.streamResponse && shouldSend
-            let streamPromise: Promise<void> = Promise.resolve()
-            if (stream) {
-                const isEditMessage =
-                    session.bot.editMessage != null &&
-                    session.bot.platform !== 'onebot'
-
-                if (isEditMessage) {
-                    streamPromise = setupEditMessageStream(
-                        context,
-                        session,
-                        config,
-                        bufferText
-                    )
-                } else {
-                    streamPromise = setupRegularMessageStream(
-                        context,
-                        config,
-                        config.splitMessage
-                            ? bufferText.splitByPunctuations()
-                            : bufferText.splitByMarkdown()
-                    )
+            const replyStream = ctx.chatluna.renderer.createStream(context, {
+                enabled: config.streamResponse && shouldSend,
+                send: shouldSend,
+                renderOptions: {
+                    ...context.options.renderOptions,
+                    prefix: presetTemplate.config?.postHandler?.prefix,
+                    postfix: presetTemplate.config?.postHandler?.postfix
                 }
-            }
+            })
 
             let responseMessage: Message
 
@@ -152,53 +126,48 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const chatCallbacks = createChatCallbacks(
                 context,
                 config,
-                bufferText
+                replyStream
             )
 
             try {
-                ;[responseMessage] = await Promise.all([
-                    ctx.chatluna.conversationRuntime.chat(
-                        session,
-                        conversation,
-                        inputMessage,
-                        {
-                            event: chatCallbacks,
-                            stream,
-                            variables: {
-                                prompt: getMessageContent(originContent),
-                                ...getSystemPromptVariables(
-                                    session,
-                                    config,
-                                    conversation
-                                ),
-                                ...wakeup?.variables
-                            },
-                            postHandler,
-                            requestId,
-                            toolMask: wakeup?.toolMask,
-                            signal: wakeup?.signal
-                        }
-                    ),
-                    streamPromise
-                ])
+                responseMessage = await ctx.chatluna.conversationRuntime.chat(
+                    session,
+                    conversation,
+                    inputMessage,
+                    {
+                        event: chatCallbacks,
+                        stream: config.streamResponse && shouldSend,
+                        variables: {
+                            prompt: getMessageContent(originContent),
+                            ...getSystemPromptVariables(
+                                session,
+                                config,
+                                conversation
+                            ),
+                            ...wakeup?.variables
+                        },
+                        postHandler,
+                        requestId,
+                        toolMask: wakeup?.toolMask,
+                        signal: wakeup?.signal
+                    }
+                )
             } catch (e) {
-                if (e?.message?.includes('output values have 1 keys')) {
-                    throw new ChatLunaError(
-                        ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
-                    )
-                } else {
-                    throw e
-                }
+                const err = e?.message?.includes('output values have 1 keys')
+                    ? new ChatLunaError(
+                          ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
+                      )
+                    : e
+
+                await replyStream.end({ type: 'error', error: err })
+                throw err
             }
 
             context.options.finalResponseMessage = responseMessage
+            await replyStream.end({ type: 'done', message: responseMessage })
 
-            if (!stream) {
-                context.options.responseMessage = responseMessage
-            } else {
-                context.options.responseMessage = null
-                context.message = null
-            }
+            context.options.responseMessage = null
+            context.message = null
 
             await ctx.chatluna.conversation.touchConversation(conversation.id, {
                 lastChatAt: new Date()
@@ -212,13 +181,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 function createChatCallbacks(
     context: ChainMiddlewareContext,
     config: Config,
-    bufferText: StreamingBufferText
+    stream: ReplyStream
 ) {
     return {
-        'llm-new-chunk': createChunkHandler(context, bufferText),
+        'llm-new-chunk': createChunkHandler(stream),
         'llm-queue-waiting': createQueueWaitingHandler(context),
         'llm-usage': createUsageHandler(context),
-        'llm-call-tool': createToolCallHandler(context, config)
+        'llm-call-tool': createToolCallHandler(context, stream, config)
     }
 }
 
@@ -229,28 +198,14 @@ function createUsageHandler(context: ChainMiddlewareContext) {
     }
 }
 
-function createChunkHandler(
-    context: ChainMiddlewareContext,
-    bufferText: StreamingBufferText
-) {
-    let firstResponse = true
-
-    return async (chunk: BaseMessageChunk) => {
+function createChunkHandler(stream: ReplyStream) {
+    return async (chunk?: BaseMessageChunk) => {
         if (chunk == null) {
-            await bufferText.end()
+            await stream.end()
             return
         }
 
-        await bufferText.writeChunk(chunk)
-
-        if (firstResponse === true) {
-            firstResponse = false
-            try {
-                await context?.recallThinkingMessage()
-            } finally {
-                firstResponse = false
-            }
-        }
+        await stream.write({ type: 'content', chunk })
     }
 }
 
@@ -262,6 +217,7 @@ function createQueueWaitingHandler(context: ChainMiddlewareContext) {
 
 function createToolCallHandler(
     context: ChainMiddlewareContext,
+    stream: ReplyStream,
     config: Config
 ) {
     return async (
@@ -278,13 +234,12 @@ function createToolCallHandler(
             ((typeof content === 'string' && content.trim().length > 0) ||
                 (Array.isArray(content) && content.length > 0))
         ) {
-            await sendRenderedMessage(
-                context,
-                {
-                    content
-                },
-                config
-            )
+            await stream.write({
+                type: 'mark',
+                name: 'tool_result',
+                content,
+                instant: true
+            })
 
             return
         }
@@ -294,11 +249,21 @@ function createToolCallHandler(
         }
 
         if (!(log.includes('Invoking') && log.includes('with'))) {
-            await sendMessage(context, log, config)
+            await stream.write({
+                type: 'mark',
+                name: 'tool',
+                content: log,
+                instant: true
+            })
             return
         }
 
-        await sendMessage(context, formatToolCall(tool, arg, log), config)
+        await stream.write({
+            type: 'mark',
+            name: 'tool',
+            content: formatToolCall(context.session, tool),
+            instant: true
+        })
     }
 }
 
@@ -350,136 +315,10 @@ function sortContentByType(content: MessageContentComplex[]) {
     })
 }
 
-async function setupRegularMessageStream(
-    context: ChainMiddlewareContext,
-    config: Config,
-    textStream: ReadableStream<Element>
-) {
-    const reader = textStream.getReader()
-    try {
-        while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            await sendMessage(context, value, config)
-        }
-    } catch (error) {
-        logger.error('Error in message stream:', error)
-    } finally {
-        reader.releaseLock()
-    }
-}
-
-async function setupEditMessageStream(
-    context: ChainMiddlewareContext,
-    session: Session,
-    config: Config,
-    bufferText: StreamingBufferText
-) {
-    const cachedStream = bufferText.getCached()
-    const { ctx } = context
-    let messageId: string | null = null
-    const messageQueue = new MessageEditQueue()
-
-    const reader = cachedStream.getReader()
-    try {
-        while (true) {
-            const { done, value } = await reader.read()
-
-            if (done) break
-
-            let processedElements = value
-            if (config.censor) {
-                processedElements = await ctx.censor
-                    .transform(value, session)
-                    .then((result) => result)
-            }
-
-            if (messageId == null) {
-                messageId = await sendInitialMessage(session, processedElements)
-            } else {
-                await messageQueue.enqueue(
-                    messageId,
-                    session,
-                    processedElements
-                )
-            }
-        }
-        messageQueue.finish()
-    } catch (error) {
-        logger.error('Error in edit message stream:', error)
-    } finally {
-        reader.releaseLock()
-    }
-}
-
-async function renderMessageWithCensor(
-    context: ChainMiddlewareContext,
-    message: Message,
-    config: Config
-) {
-    const renderedMessage = await renderMessage(context.ctx, message, {
-        ...context.options.renderOptions,
-        session: context.session
-    })
-
-    if (config.censor) {
-        for (const key in renderedMessage) {
-            renderedMessage[key] = await context.ctx.censor.transform(
-                renderedMessage[key],
-                context.session
-            )
-        }
-    }
-
-    return renderedMessage
-}
-
-async function sendMessage(
-    context: ChainMiddlewareContext,
-    text: Fragment,
-    config: Config
-) {
-    await sendRenderedMessage(
-        context,
-        {
-            content: typeof text === 'string' ? text : text.toString()
-        },
-        config
-    )
-}
-
-async function sendRenderedMessage(
-    context: ChainMiddlewareContext,
-    message: Message,
-    config: Config
-) {
-    if (!shouldSendTriggerReply(context)) {
-        return
-    }
-
-    const { content } = message
-    if (
-        content == null ||
-        (typeof content === 'string' && content.trim() === '') ||
-        (Array.isArray(content) && content.length === 0)
-    ) {
-        return
-    }
-
-    const renderedMessage = await renderMessageWithCensor(
-        context,
-        message,
-        config
-    )
-
-    await context.send(renderedMessage)
-}
-
 function shouldSendTriggerReply(context: ChainMiddlewareContext) {
     return (
-        context.options.triggerWakeup?.replyTo == null ||
-        context.options.triggerWakeup.replyTo === 'channel'
+        context.options?.triggerWakeup?.replyTo == null ||
+        context.options?.triggerWakeup?.replyTo === 'channel'
     )
 }
 
