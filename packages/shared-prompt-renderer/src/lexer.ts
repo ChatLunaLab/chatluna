@@ -85,8 +85,7 @@ export function clearTokenizeCache(): void {
  * Template lexer token types
  */
 export type TemplateLexerToken =
-    | { type: 'text'; value: string }
-    | { type: 'tag'; content: string } // content is what's between { and }
+    { type: 'text'; value: string } | { type: 'tag'; content: string } // content is what's between { and }
 
 /**
  * Expression lexer token types

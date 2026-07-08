@@ -112,8 +112,7 @@ export type ClaudeImageBlockParam = {
 }
 
 export type ClaudeContentBlockSourceContent =
-    | ClaudeTextBlockParam
-    | ClaudeImageBlockParam
+    ClaudeTextBlockParam | ClaudeImageBlockParam
 
 export type ClaudeDocumentSourceParam =
     | {
@@ -194,8 +193,7 @@ export type ClaudeRedactedThinkingBlockParam = {
 }
 
 export type ClaudeReasoningBlockParam =
-    | ClaudeThinkingBlockParam
-    | ClaudeRedactedThinkingBlockParam
+    ClaudeThinkingBlockParam | ClaudeRedactedThinkingBlockParam
 
 export type ClaudeServerToolUseBlockParam = {
     type: 'server_tool_use'
@@ -338,10 +336,7 @@ export type ClaudeDeltaResponse =
       }
 
 export type ChatCompletionResponseMessageRoleEnum =
-    | 'system'
-    | 'assistant'
-    | 'user'
-    | 'tool'
+    'system' | 'assistant' | 'user' | 'tool'
 
 export interface ClaudeModelInfo {
     id: string

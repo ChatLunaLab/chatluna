@@ -238,8 +238,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
         config: { apiKey: string; workflowName: string; workflowType: string }
     ): AsyncGenerator<ChatGenerationChunk> {
         const lastMessage = params.input[params.input.length - 1] as
-            | BaseMessage
-            | undefined
+            BaseMessage | undefined
         const difyUser = this.resolveDifyUser(params)
         const { files, chatlunaMultimodal } = await this.prepareFiles(
             params,

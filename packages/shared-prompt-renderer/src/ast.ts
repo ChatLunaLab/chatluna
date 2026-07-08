@@ -61,12 +61,7 @@ export interface ConditionalExpression {
 // Template Token Types
 
 export type Token =
-    | TextToken
-    | ExpressionToken
-    | IfToken
-    | ForToken
-    | WhileToken
-    | RepeatToken
+    TextToken | ExpressionToken | IfToken | ForToken | WhileToken | RepeatToken
 
 export interface TextToken {
     type: 'text'

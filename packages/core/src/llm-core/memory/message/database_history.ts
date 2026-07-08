@@ -563,8 +563,7 @@ function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
 
 function readMessageMeta(message: BaseMessage) {
     const meta = message.response_metadata?.chatluna as
-        | ChatLunaMessageMeta
-        | undefined
+        ChatLunaMessageMeta | undefined
 
     return {
         recordId:

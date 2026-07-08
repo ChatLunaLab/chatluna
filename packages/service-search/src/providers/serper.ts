@@ -44,13 +44,11 @@ class SerperSearchProvider extends SearchProvider {
             ]
         }
 
-        return res.organic.slice(0, limit).map(
-            (item): SearchResult => ({
-                title: item.title,
-                description: item.snippet,
-                url: item.link
-            })
-        )
+        return res.organic.slice(0, limit).map((item): SearchResult => ({
+            title: item.title,
+            description: item.snippet,
+            url: item.link
+        }))
     }
 
     static schema = Schema.const('serper').i18n({

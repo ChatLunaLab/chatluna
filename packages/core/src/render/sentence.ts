@@ -28,13 +28,19 @@ export function splitText(text: string, mode: SplitMode = 'none') {
 }
 
 export function nextTextCut(text: string, flush: boolean) {
-    const end = sentenceCut(text, flush)
-    return end === -1 ? softCut(text) : end
+    const parts = Array.from(graphemeSegments(text))
+    const match = /\n\n+/.exec(text)
+    const end = sentenceCut(text, parts, flush)
+    if (end !== -1 && match != null) {
+        return Math.min(end, match.index + match[0].length)
+    }
+    if (end !== -1) return end
+    if (match != null) return match.index + match[0].length
+
+    return softCut(text, parts)
 }
 
-function sentenceCut(text: string, flush: boolean) {
-    const parts = Array.from(graphemeSegments(text))
-
+function sentenceCut(text: string, parts: Segment[], flush: boolean) {
     for (let idx = 0; idx < parts.length; idx++) {
         if (!isEnd(text, parts, idx)) continue
 
@@ -47,7 +53,26 @@ function sentenceCut(text: string, flush: boolean) {
             endIdx++
         }
 
+        let nextIdx = endIdx
+        while (nextIdx < parts.length && isSpace(parts[nextIdx].segment)) {
+            nextIdx++
+        }
+        if (
+            nextIdx < parts.length &&
+            /\p{Extended_Pictographic}/u.test(parts[nextIdx].segment)
+        ) {
+            endIdx = nextIdx + 1
+            while (
+                endIdx < parts.length &&
+                /\p{Extended_Pictographic}/u.test(parts[endIdx].segment)
+            ) {
+                endIdx++
+            }
+        }
+
         const end = parts[endIdx]?.index ?? text.length
+
+        if (isOpen(text, end)) continue
 
         if (end === text.length) return flush ? end : -1
 
@@ -55,6 +80,7 @@ function sentenceCut(text: string, flush: boolean) {
             while (endIdx < parts.length && isSpace(parts[endIdx].segment)) {
                 endIdx++
             }
+            if (endIdx >= parts.length) return flush ? text.length : -1
             return parts[endIdx]?.index ?? text.length
         }
 
@@ -71,9 +97,7 @@ function sentenceCut(text: string, flush: boolean) {
     return -1
 }
 
-function softCut(text: string) {
-    const parts = Array.from(graphemeSegments(text))
-
+function softCut(text: string, parts: Segment[]) {
     if (parts.length < SOFT_LEN) return -1
 
     for (let idx = parts.length - 1; idx >= MIN_SOFT_LEN; idx--) {
@@ -105,11 +129,7 @@ function softCut(text: string) {
     return parts[HARD_LEN]?.index ?? text.length
 }
 
-function isEnd(
-    text: string,
-    parts: { segment: string; index: number }[],
-    idx: number
-) {
+function isEnd(text: string, parts: Segment[], idx: number) {
     const char = parts[idx].segment
     if (char === '.') return dotEnds(text, parts, idx)
     if (
@@ -121,11 +141,7 @@ function isEnd(
     return END_CHARS.includes(char)
 }
 
-function dotEnds(
-    text: string,
-    parts: { segment: string; index: number }[],
-    idx: number
-) {
+function dotEnds(text: string, parts: Segment[], idx: number) {
     const prev = parts[idx - 1]?.segment
     const next = parts[idx + 1]?.segment
 
@@ -162,7 +178,7 @@ function isUpper(char: string) {
 function isOpen(text: string, end: number) {
     const stack: string[] = []
 
-    for (const char of text.slice(0, end + 1)) {
+    for (const char of text.slice(0, end)) {
         if (char === '"') {
             if (stack[stack.length - 1] === char) stack.pop()
             else stack.push(char)
@@ -221,3 +237,5 @@ const DOT_WORDS = new Set([
     'e.g',
     'i.e'
 ])
+
+type Segment = { segment: string; index: number }

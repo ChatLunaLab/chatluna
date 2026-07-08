@@ -66,8 +66,7 @@ async function formatLongHistory(
     const summaryPrompt =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (runtime as any)._conversationSummaryPrompt as
-            | HumanMessagePromptTemplate
-            | undefined
+            HumanMessagePromptTemplate | undefined
 
     if (!summaryPrompt) return usedTokens
 

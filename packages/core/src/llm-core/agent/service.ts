@@ -15,13 +15,9 @@ export interface CreateChatLunaAgentOptions {
     name?: string
     description?: string
     model:
-        | string
-        | ChatLunaChatModel
-        | ComputedRef<ChatLunaChatModel | undefined>
+        string | ChatLunaChatModel | ComputedRef<ChatLunaChatModel | undefined>
     embeddings?:
-        | string
-        | ChatLunaBaseEmbeddings
-        | ComputedRef<Embeddings | undefined>
+        string | ChatLunaBaseEmbeddings | ComputedRef<Embeddings | undefined>
     tools?: string[] | ChatLunaTool[] | ComputedRef<ChatLunaTool[]>
     mode?: 'tool-calling' | 'react'
     preset?: string | ComputedRef<PresetTemplate>

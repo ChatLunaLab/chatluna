@@ -375,25 +375,27 @@ export async function callChatLunaChain(
     callbacks?: Callbacks
 ): Promise<ChainValues> {
     let usedToken = 0
+    const manager =
+        CallbackManager.configure(callbacks) ?? new CallbackManager()
+
+    manager.addHandler(
+        CallbackManager.fromHandlers({
+            async handleLLMNewToken(token: string) {
+                await events?.['llm-new-token']?.(token)
+            },
+            async handleLLMEnd(output) {
+                usedToken += output.llmOutput?.usage_metadata?.total_tokens ?? 0
+            },
+            async handleCustomEvent(eventName, data) {
+                if (eventName === 'LLMNewChunk') {
+                    await events?.['llm-new-chunk']?.(data)
+                }
+            }
+        }).handlers[0]
+    )
 
     const response = await chain.invoke(values, {
-        callbacks: CallbackManager.configure(
-            callbacks,
-            CallbackManager.fromHandlers({
-                async handleLLMNewToken(token: string) {
-                    await events?.['llm-new-token']?.(token)
-                },
-                async handleLLMEnd(output) {
-                    usedToken +=
-                        output.llmOutput?.usage_metadata?.total_tokens ?? 0
-                },
-                async handleCustomEvent(eventName, data) {
-                    if (eventName === 'LLMNewChunk') {
-                        await events?.['llm-new-chunk']?.(data)
-                    }
-                }
-            })
-        )
+        callbacks: manager
     })
 
     await events?.['llm-used-token-count']?.(usedToken)

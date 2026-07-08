@@ -110,8 +110,7 @@ async function resolveAudioSourceUrl(
     element: h
 ): Promise<string | null> {
     const src = (element.attrs['src'] ?? element.attrs['url']) as
-        | string
-        | undefined
+        string | undefined
     if (src?.startsWith('http')) return src
     if (session.platform !== 'onebot') return src ?? null
 

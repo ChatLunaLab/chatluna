@@ -388,13 +388,11 @@ export async function* runAgent(
 
         // Compress scratchpad if input tokens are approaching context limit
         const model = config?.configurable?.['model'] as
-            | ChatLunaChatModel
-            | undefined
+            ChatLunaChatModel | undefined
         if (model && scratchpad.length > 6) {
             // Get input_tokens from the AI message that triggered tool calls
             const aiMsg = output[0]?.['messageLog']?.[0] as
-                | AIMessage
-                | undefined
+                AIMessage | undefined
             const inputTokens = (aiMsg as AIMessage)?.usage_metadata
                 ?.input_tokens
             if (inputTokens > 0) {

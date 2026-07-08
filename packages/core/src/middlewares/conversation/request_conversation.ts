@@ -199,8 +199,9 @@ function createUsageHandler(context: ChainMiddlewareContext) {
 }
 
 function createChunkHandler(stream: ReplyStream) {
-    return async (chunk: BaseMessageChunk) => {
+    return async (chunk?: BaseMessageChunk) => {
         if (chunk == null) {
+            await stream.end()
             return
         }
 
@@ -316,8 +317,8 @@ function sortContentByType(content: MessageContentComplex[]) {
 
 function shouldSendTriggerReply(context: ChainMiddlewareContext) {
     return (
-        context.options.triggerWakeup?.replyTo == null ||
-        context.options.triggerWakeup.replyTo === 'channel'
+        context.options?.triggerWakeup?.replyTo == null ||
+        context.options?.triggerWakeup?.replyTo === 'channel'
     )
 }
 

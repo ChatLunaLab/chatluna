@@ -2,11 +2,7 @@ import { buildChatCompletionParams } from '@chatluna/v1-shared-adapter'
 import { formatToolsToWenxinTools } from './utils'
 
 export type WenxinMessageRole =
-    | 'assistant'
-    | 'user'
-    | 'system'
-    | 'function'
-    | 'tool'
+    'assistant' | 'user' | 'system' | 'function' | 'tool'
 
 export type WenxinMessageContent =
     | string

@@ -845,7 +845,7 @@ function appendQQAttachments(session: Session, elements: h[]) {
         return
     }
 
-    const qq = session.qq as QQ.Payload
+    const qq = session['qq'] as QQ.Payload
 
     // wtf this
     const attachments = qq?.['d']?.attachments

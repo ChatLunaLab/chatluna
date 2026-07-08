@@ -21,31 +21,28 @@ export class TextStreamSplitter {
     }
 
     writeText(text: string) {
-        const result: string[] = []
-        if (!text || this.stopped) return result
+        if (!text || this.stopped) return []
+        this.buf += text
 
-        for (const char of text) {
-            this.buf += char
-
-            if (!this.inContent) {
-                if (this.opts.prefix && this.buf.endsWith(this.opts.prefix)) {
-                    this.inContent = true
-                    this.buf = ''
-                }
-                continue
-            }
-
-            if (this.opts.postfix && this.buf.endsWith(this.opts.postfix)) {
-                this.buf = this.buf.slice(0, -this.opts.postfix.length)
-                result.push(...this.drain(true))
-                this.stopped = true
-                break
-            }
-
-            result.push(...this.drain(false))
+        if (!this.inContent) {
+            const idx = this.opts.prefix
+                ? this.buf.indexOf(this.opts.prefix)
+                : -1
+            if (idx === -1) return []
+            this.inContent = true
+            this.buf = this.buf.slice(idx + this.opts.prefix.length)
         }
 
-        return result
+        if (this.opts.postfix) {
+            const idx = this.buf.indexOf(this.opts.postfix)
+            if (idx !== -1) {
+                this.buf = this.buf.slice(0, idx)
+                this.stopped = true
+                return this.drain(true)
+            }
+        }
+
+        return this.drain(false)
     }
 
     flush() {
@@ -69,12 +66,13 @@ export class TextStreamSplitter {
     private drainParagraph(flush: boolean) {
         const result: string[] = []
 
-        while (this.buf.includes('\n\n')) {
-            const match = /\n\n+/.exec(this.buf)
+        let match = /\n\n+/.exec(this.buf)
+        while (match != null) {
             const idx = match!.index
             const content = this.buf.slice(0, idx)
             if (content.trim()) result.push(content)
             this.buf = this.buf.slice(idx + match![0].length)
+            match = /\n\n+/.exec(this.buf)
         }
 
         if (flush && this.buf.trim()) {

@@ -42,14 +42,12 @@ class SearxNGSearchProvider extends SearchProvider {
             ]
         }
 
-        const snippets = results.map(
-            (item): SearchResult => ({
-                url: item.url,
-                title: item.title,
-                description: item.content,
-                image: item.thumbnail
-            })
-        )
+        const snippets = results.map((item): SearchResult => ({
+            url: item.url,
+            title: item.title,
+            description: item.content,
+            image: item.thumbnail
+        }))
 
         return snippets.slice(0, limit)
     }

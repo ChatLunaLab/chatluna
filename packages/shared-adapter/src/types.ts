@@ -385,11 +385,7 @@ export interface CreateEmbeddingResponseUsage {
 }
 
 export type ChatCompletionResponseMessageRoleEnum =
-    | 'system'
-    | 'assistant'
-    | 'user'
-    | 'function'
-    | 'tool'
+    'system' | 'assistant' | 'user' | 'function' | 'tool'
 
 export interface CreateRerankRequest {
     model: string

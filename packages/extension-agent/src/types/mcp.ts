@@ -12,11 +12,7 @@ export interface McpIcon {
 }
 
 export type McpServerState =
-    | 'idle'
-    | 'connecting'
-    | 'connected'
-    | 'reconnecting'
-    | 'error'
+    'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error'
 
 export interface McpServerConfig {
     command?: string

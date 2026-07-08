@@ -67,8 +67,7 @@ export class ChatLunaAgentRuntimeSyncService {
 
                     const context = (metadata?.chatlunaAgent ??
                         metadata?.['chatlunaAgent']) as
-                        | AgentRunContext
-                        | undefined
+                        AgentRunContext | undefined
                     if (!context) {
                         return
                     }

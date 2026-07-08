@@ -99,7 +99,7 @@ export interface ChatEvents {
         content: AgentAction['content'],
         log: string
     ) => Promise<void>
-    'llm-new-chunk'?: (chunk: BaseMessageChunk) => Promise<void>
+    'llm-new-chunk'?: (chunk?: BaseMessageChunk) => Promise<void>
 }
 
 export interface ChatCallbackProviderInput {

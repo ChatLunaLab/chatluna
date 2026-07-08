@@ -214,8 +214,7 @@ export function responseInputContent(
 
             if (part.type === 'image_url') {
                 const raw = part.image_url as
-                    | string
-                    | { url: string; detail?: 'low' | 'high' }
+                    string | { url: string; detail?: 'low' | 'high' }
                 const imageUrl = typeof raw === 'string' ? raw : raw.url
                 const detail = typeof raw === 'string' ? undefined : raw.detail
 
@@ -228,8 +227,7 @@ export function responseInputContent(
 
             if (part.type === 'file_url') {
                 const raw = part['file_url'] as
-                    | string
-                    | { url: string; filename?: string }
+                    string | { url: string; filename?: string }
                 return {
                     type: 'input_file',
                     file_url: typeof raw === 'string' ? raw : raw.url,

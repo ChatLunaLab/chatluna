@@ -94,19 +94,20 @@ export class DefaultRenderer {
             options.renderOptions,
             { session: context.session }
         )
-        return new ReplyStream(
-            this.ctx,
-            this.config,
-            context,
-            this.getRenderer(renderOptions.type),
-            {
-                ...options,
-                renderOptions,
-                renderMessage: (message) => this.render(message, renderOptions),
-                renderAdditional: (message) =>
-                    this.renderAdditionalMessages(message, renderOptions)
-            }
-        )
+        const renderer = this.getRenderer(renderOptions.type)
+        return new ReplyStream(this.ctx, this.config, context, renderer, {
+            ...options,
+            renderOptions,
+            renderMessage: async (message) => {
+                try {
+                    return [await renderer.render(message, renderOptions)]
+                } catch (e) {
+                    throw new ChatLunaError(ChatLunaErrorCode.RENDER_ERROR, e)
+                }
+            },
+            renderAdditional: (message) =>
+                this.renderAdditionalMessages(message, renderOptions)
+        })
     }
 
     private async renderAdditionalMessages(

@@ -28,8 +28,7 @@ import { ToolException } from './types'
 
 async function collectResourceBlocks(
     resource:
-        | EmbeddedResource['resource']
-        | ReadResourceResult['contents'][number],
+        EmbeddedResource['resource'] | ReadResourceResult['contents'][number],
     client: Client
 ): Promise<
     (

@@ -1,4 +1,3 @@
-import { BaseMessageChunk } from '@langchain/core/messages'
 import { Context, Fragment, h, Logger, Session } from 'koishi'
 import { ChainMiddlewareContext } from '../chains/chain'
 import { Config } from '../config'
@@ -25,6 +24,7 @@ export class ReplyStream {
     private finalMessage: Message | null = null
     private send = true
     private sentAdditional = false
+    private closed = false
     private renderMessage: (message: Message) => Promise<RenderMessage[]>
     private renderAdditional?: (message: Message) => Promise<h[][]>
 
@@ -52,19 +52,29 @@ export class ReplyStream {
             opts.renderMessage ??
             (async (message) => [await this.renderer.render(message, options)])
         this.renderAdditional = opts.renderAdditional
-        this.options = options
     }
-
-    private readonly options: RenderOptions
 
     async write(frame: ReplyFrame) {
         if (frame.type === 'content') {
-            await this.writeChunk(frame.chunk)
+            if (this.closed) return
+
+            if (this.firstChunk) {
+                this.firstChunk = false
+                await this.context.recallThinkingMessage?.()
+            }
+
+            const elements = await this.stream.write(frame.chunk)
+            if (elements != null && elements.length > 0) {
+                await this.sendElements(elements)
+            }
             return
         }
 
         if (frame.type === 'mark' && frame.instant) {
-            await this.writeMark(frame)
+            await this.sendMessage(
+                { content: frame.content ?? frame.name },
+                'split'
+            )
             return
         }
 
@@ -85,42 +95,44 @@ export class ReplyStream {
             await this.write(frame)
         }
 
+        if (frame?.type === 'done' && this.mode === 'split' && !this.closed) {
+            return
+        }
+
+        if (this.closed) {
+            if (frame?.type === 'done') {
+                if (this.mode === 'edit') {
+                    await this.sendMessage(frame.message, 'edit')
+                } else if (this.firstChunk) {
+                    await this.sendMessage(frame.message, 'split')
+                }
+            }
+            return await this.finish()
+        }
+
+        this.closed = true
+
         await this.context.recallThinkingMessage?.()
 
         if (this.mode === 'buffer') {
             if (this.finalMessage != null) {
                 await this.sendMessage(this.finalMessage, 'split')
             }
-            await this.sendAdditional()
-            await this.queue.finish()
-            return
+            return await this.finish()
         }
 
-        const elements = await this.stream.flush()
-        if (elements != null && elements.length > 0) {
-            await this.sendElements(elements)
-        } else if (this.firstChunk && this.finalMessage != null) {
-            await this.sendMessage(this.finalMessage, 'split')
-        }
-        await this.sendAdditional()
-        await this.queue.finish()
-    }
-
-    private async writeChunk(chunk: BaseMessageChunk) {
-        if (this.firstChunk) {
-            this.firstChunk = false
-            await this.context.recallThinkingMessage?.()
+        if (this.mode === 'edit' && this.finalMessage != null) {
+            await this.sendMessage(this.finalMessage, 'edit')
+        } else {
+            const elements = await this.stream.flush()
+            if (elements != null && elements.length > 0) {
+                await this.sendElements(elements)
+            } else if (this.firstChunk && this.finalMessage != null) {
+                await this.sendMessage(this.finalMessage, 'split')
+            }
         }
 
-        const elements = await this.stream.write(chunk)
-        if (elements != null && elements.length > 0) {
-            await this.sendElements(elements)
-        }
-    }
-
-    private async writeMark(frame: Extract<ReplyFrame, { type: 'mark' }>) {
-        const content = frame.content ?? frame.name
-        await this.sendMessage({ content }, 'split')
+        await this.finish()
     }
 
     private async sendMessage(message: Message, mode: RenderStreamMode) {
@@ -135,8 +147,8 @@ export class ReplyStream {
 
     private async sendAdditional() {
         if (this.sentAdditional) return
-        this.sentAdditional = true
         if (this.finalMessage == null || this.renderAdditional == null) return
+        this.sentAdditional = true
 
         const messages = await this.renderAdditional(this.finalMessage)
         for (const elements of messages) {
@@ -154,8 +166,7 @@ export class ReplyStream {
         if (processed.length < 1) return
 
         if (mode === 'edit') {
-            await this.queue.edit(processed)
-            return
+            return await this.queue.edit(processed)
         }
 
         await this.context.send(processed)
@@ -165,63 +176,51 @@ export class ReplyStream {
         if (!this.config.censor) return elements
         return await this.ctx.censor.transform(elements, this.context.session)
     }
+
+    private async finish() {
+        await this.sendAdditional()
+        await this.queue.finish()
+    }
 }
 
 class ReplyQueue {
     private messageId: string | null = null
     private current: Fragment | null = null
-    private processing = false
-    private finished = false
+    private queue: Promise<void> = Promise.resolve()
 
     constructor(private readonly session: Session) {}
 
-    async send(elements: Fragment) {
-        const ids = await this.session.bot.sendMessage(
-            this.session.channelId,
-            elements
-        )
-        this.messageId = ids[0]
-    }
-
-    async edit(elements: Fragment) {
+    edit(elements: Fragment) {
         this.current = elements
-
-        if (this.messageId == null) {
-            await this.send(elements)
-            return
-        }
-
-        if (!this.processing) {
-            this.processEditQueue()
-        }
+        this.queue = this.queue.then(() => this.dispatch())
+        return this.queue
     }
 
-    private async processEditQueue() {
-        this.processing = true
+    private async dispatch() {
+        if (this.current == null) return
+        const current = this.current
+        this.current = null
 
-        let last: Fragment | null = null
-        while (!this.finished || this.current !== last) {
-            if (this.current == null || this.current === last) break
-            last = this.current
-
-            try {
+        try {
+            if (this.messageId == null) {
+                const ids = await this.session.bot.sendMessage(
+                    this.session.channelId,
+                    current
+                )
+                this.messageId = ids[0]
+            } else {
                 await this.session.bot.editMessage(
                     this.session.channelId,
                     this.messageId!,
-                    last
+                    current
                 )
-            } catch (err) {
-                logger.error('Error editing message:', err)
             }
+        } catch (err) {
+            logger.error('Error editing message:', err)
         }
-
-        this.processing = false
     }
 
-    async finish() {
-        this.finished = true
-        while (this.processing) {
-            await new Promise((resolve) => setTimeout(resolve, 50))
-        }
+    finish() {
+        return this.queue
     }
 }

@@ -36,6 +36,8 @@ export class PureTextRenderer extends Renderer {
     }
 
     getStreamPlan(options: RenderOptions): RenderStreamPlan {
+        if (options.split && options.split !== 'none') return { mode: 'split' }
+
         const session = options.session
         const canEdit =
             session?.bot?.editMessage != null &&

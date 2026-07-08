@@ -22,8 +22,7 @@ export function markChatLunaUserMessage(msg: BaseMessage) {
 
 export function isChatLunaUserMessage(msg: BaseMessage) {
     const meta = msg.response_metadata?.chatluna as
-        | ChatLunaMessageMeta
-        | undefined
+        ChatLunaMessageMeta | undefined
 
     return meta?.source === 'user'
 }

@@ -218,8 +218,7 @@ export interface ResolvedConversationContext {
 export type ConversationResolveMode = 'context' | 'active' | 'target'
 
 export type ConversationResolutionErrorCode =
-    | 'ambiguous_target'
-    | 'target_outside_route'
+    'ambiguous_target' | 'target_outside_route'
 
 export class ConversationResolutionError extends Error {
     constructor(public readonly code: ConversationResolutionErrorCode) {
