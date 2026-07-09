@@ -529,6 +529,7 @@ export function getSystemPromptVariables(
             platform: session.platform,
             conversationId: conversation.id
         },
+        message_id: session.messageId,
         noop: '',
         time: new Date().toLocaleTimeString(),
         weekday: getCurrentWeekday(),

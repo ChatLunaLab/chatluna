@@ -47,6 +47,18 @@ export class OpenAIRequester
         super(ctx, _configPool, _pluginConfig, _plugin)
     }
 
+    public post(
+        url: string,
+        data: Parameters<ModelRequester['post']>[1],
+        params?: Parameters<ModelRequester['post']>[2]
+    ) {
+        if (!this._pluginConfig.setCacheKey) {
+            delete data.prompt_cache_key
+        }
+
+        return super.post(url, data, params)
+    }
+
     async completion(params: ModelRequestParams): Promise<ChatGeneration> {
         if (
             !this._pluginConfig.nonStreaming &&

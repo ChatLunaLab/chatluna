@@ -39,6 +39,7 @@ $inner:
       frequencyPenalty: 频率惩罚系数，数值越高，越不易重复出现次数较多的 Token（范围：-2~2，步长：0.1）。
       nonStreaming: 强制不启用流式返回。开启后，将总是以非流式发起请求，即便配置了 stream 参数。
       responseApi: 是否启用 OpenAI Responses API。默认关闭，关闭时继续使用 Chat Completions API。
+      setCacheKey: 是否上传 prompt_cache_key。关闭后请求中不会包含 prompt_cache_key。
 
     - $desc: 其他设置
       googleSearch: 是否启用 Google 搜索。（只对支持 google 搜索的 gemini 模型 且为 new-api 的端点有效）
