@@ -36,15 +36,19 @@ export function trackLogToLocal(
                 `[${tag}] A local log file has been created at ${logFile}`
             )
             const cutoff = Date.now() - 604800000
-            const logs = await Promise.all(
-                (await fs.promises.readdir(dir))
-                    .filter((f) => f.endsWith('.log'))
-                    .map(async (f) => {
-                        const p = `${dir}/${f}`,
-                            s = await fs.promises.stat(p)
-                        return { p, size: s.size, time: s.mtimeMs }
-                    })
-            )
+            const logs: { p: string; size: number; time: number }[] = []
+            for (const f of await fs.promises.readdir(dir)) {
+                if (!f.endsWith('.log')) continue
+                const p = `${dir}/${f}`
+                try {
+                    const s = await fs.promises.stat(p)
+                    logs.push({ p, size: s.size, time: s.mtimeMs })
+                } catch (e) {
+                    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+                        logger.error(e)
+                    }
+                }
+            }
             logs.sort((a, b) => a.time - b.time)
             let total = logs.reduce((s, l) => s + l.size, 0),
                 deleted = 0
@@ -54,10 +58,14 @@ export function trackLogToLocal(
                     await fs.promises.unlink(l.p)
                     total -= l.size
                     deleted++
-                } catch {}
+                } catch (e) {
+                    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+                        logger.error(e)
+                    }
+                }
             }
             if (deleted)
                 logger.debug(`[${tag}] Deleted ${deleted} old log file(s).`)
-        })().catch(() => undefined)
+        })().catch((e) => logger.error(e))
     }, 0)
 }
