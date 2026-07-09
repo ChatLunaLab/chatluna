@@ -1,7 +1,7 @@
 {
     "name": "koishi-plugin-chatluna",
     "description": "chatluna for koishi",
-    "version": "1.4.0-alpha.36",
+    "version": "1.4.0-alpha.37",
     "main": "lib/index.cjs",
     "module": "lib/index.mjs",
     "typings": "lib/index.d.ts",
@@ -262,7 +262,7 @@
         "langchain"
     ],
     "dependencies": {
-        "@chatluna/shared-prompt-renderer": "^1.0.5",
+        "@chatluna/shared-prompt-renderer": "^1.0.6",
         "@langchain/core": "^0.3.80",
         "@vue/reactivity": "^3.6.0-alpha.2",
         "decimal.js": "^10.6.0",
