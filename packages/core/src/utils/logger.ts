@@ -59,7 +59,10 @@ export function trackLogToLocal(
                     total -= l.size
                     deleted++
                 } catch (e) {
-                    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+                    if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+                        total -= l.size
+                        deleted++
+                    } else {
                         logger.error(e)
                     }
                 }
