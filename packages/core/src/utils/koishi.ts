@@ -31,6 +31,11 @@ const marked = new Marked({
 const htmlVoidElements = new Set(
     'area base br col embed hr img input link meta source track wbr'.split(' ')
 )
+const htmlOptionalEndElements = new Set(
+    'html head body p li dt dd rt rp optgroup option colgroup thead tbody tfoot tr td th'.split(
+        ' '
+    )
+)
 
 export function parseElements(source: string): h[]
 export function parseElements(
@@ -87,7 +92,15 @@ export function parseElements(source: string, partial = false) {
                     .slice(parser.startIndex, parser.endIndex + 1)
                     .trimEnd()
                     .endsWith('/>')
-                if (implied && !empty) {
+                const truncated =
+                    parser.startIndex >= source.length ||
+                    source.startsWith('</', parser.startIndex)
+                if (
+                    implied &&
+                    !empty &&
+                    truncated &&
+                    !htmlOptionalEndElements.has(name)
+                ) {
                     entry[1][entry[2]!] = h.text(
                         source.slice(entry[3], parser.startIndex)
                     )
