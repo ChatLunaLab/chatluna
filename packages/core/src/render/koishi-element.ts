@@ -1,8 +1,8 @@
 import { BaseMessageChunk } from '@langchain/core/messages'
 import { h, Schema } from 'koishi'
-import he from 'he'
 import { logger } from 'koishi-plugin-chatluna'
 import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/string'
+import { parseElements } from 'koishi-plugin-chatluna/utils/koishi'
 import { Message, RenderMessage, RenderOptions } from '../types'
 import { Renderer } from './base'
 import { MessageElementSplitter } from './split'
@@ -18,7 +18,9 @@ export class KoishiElementRenderer extends Renderer {
         transformed = transformAndEscape(transformed)
 
         if (options.split && options.split !== 'none') {
-            transformed = transformed.map((element) => h('message', element))
+            transformed = transformed.map((element) =>
+                element.type === 'message' ? element : h('message', element)
+            )
         }
 
         return {
@@ -63,6 +65,7 @@ class KoishiElementStreamSession implements RenderStreamSession {
     }
 
     write(chunk: BaseMessageChunk) {
+        if (this.plan.mode === 'buffer') return null
         const text = getChunkText(chunk)
         if (!text) return null
 
@@ -76,6 +79,7 @@ class KoishiElementStreamSession implements RenderStreamSession {
     }
 
     flush() {
+        if (this.plan.mode === 'buffer') return null
         if (this.plan.mode === 'edit' && this.text.trim()) {
             return transformAndEscape([h.text(this.text)])
         }
@@ -94,23 +98,13 @@ function getChunkText(chunk: BaseMessageChunk) {
         .join('')
 }
 
-function unescape(element: h): h {
-    if (element.type === 'text') {
-        element.attrs['content'] = he.decode(element.attrs['content'])
-    }
-    if (element.children && element.children.length > 0) {
-        element.children = element.children.map(unescape)
-    }
-    return element
-}
-
 export function transformAndEscape(source: h[]) {
     return source.flatMap((element) => {
         if (element.type !== 'text') {
             return element
         }
         try {
-            return h.parse(element.attrs['content']).map(unescape)
+            return parseElements(element.attrs['content'])
         } catch (e) {
             logger.error(e)
             return [h.text(element.attrs['content'])]

@@ -1,6 +1,7 @@
 import { BaseMessageChunk } from '@langchain/core/messages'
 import { h } from 'koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { parseElements } from 'koishi-plugin-chatluna/utils/koishi'
 import type { RenderOptions, SplitMode } from '../types'
 import { nextTextCut, splitText as splitByMode } from './sentence'
 
@@ -114,31 +115,20 @@ export class MessageElementSplitter {
     writeText(text: string) {
         if (!text) return []
         this.buf += text
-        return this.parseMessageElements(false)
+        const result = parseElements(this.buf, true)
+        this.buf = result.rest
+        return result.elements
     }
 
     flush() {
         if (!this.buf.trim()) return []
-        return this.parseMessageElements(true)
-    }
-
-    private parseMessageElements(flush: boolean) {
         try {
-            const elements = h.parse(this.buf)
-            if (!elements.some((el) => el.type === 'message')) {
-                return flush ? this.flushText() : []
-            }
-            this.buf = ''
-            return elements
+            return parseElements(this.buf)
         } catch {
-            return flush ? this.flushText() : []
+            return [h.text(this.buf)]
+        } finally {
+            this.buf = ''
         }
-    }
-
-    private flushText() {
-        const elements = [h.text(this.buf)]
-        this.buf = ''
-        return elements
     }
 }
 
