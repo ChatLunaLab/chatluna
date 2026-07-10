@@ -53,6 +53,7 @@ export interface ChatLunaLLMCallArg {
     toolMask?: ToolMask
     subagentContext?: SubagentContext
     callbacks?: Callbacks
+    persist?: boolean
 }
 
 export interface ChatLunaLLMChainInput extends ChainInputs {

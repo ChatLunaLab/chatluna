@@ -23,7 +23,6 @@ import type { ConversationRecord } from '../../types'
 import {
     BaseMessageChunk,
     MessageContent,
-    MessageContentComplex,
     UsageMetadata
 } from '@langchain/core/messages'
 import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -36,7 +35,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('request_conversation', async (session, context) => {
             const { inputMessage } = context.options
-            const wakeup = context.options.triggerWakeup
+            const invocation = context.options.invocation
             const existing = context.options.conversation
             const resolved =
                 existing?.mode === 'active' && existing.conversation != null
@@ -52,15 +51,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                               useRoutePresetLane: false
                           }
                       )
-            const base = resolved.conversation
-            const conversation =
-                wakeup?.chatMode == null || wakeup.chatMode === base.chatMode
-                    ? base
-                    : { ...base, chatMode: wakeup.chatMode }
-
-            if (conversation !== base) {
-                await ctx.chatluna.clearCache(base)
-            }
+            const conversation = resolved.conversation
 
             context.options.conversation = {
                 ...resolved,
@@ -98,12 +89,22 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                   )
                 : undefined
 
-            const shouldSend = shouldSendTriggerReply(context)
+            const shouldSend =
+                invocation?.delivery !== 'capture' &&
+                invocation?.delivery !== 'silent'
+            const captureOnly =
+                invocation?.delivery === 'capture' ||
+                invocation?.delivery === 'silent'
+            const deliverySession = context.options.deliverySession ?? session
             const replyStream = ctx.chatluna.renderer.createStream(context, {
-                enabled: config.streamResponse && shouldSend,
-                send: shouldSend,
+                enabled:
+                    config.streamResponse &&
+                    shouldSend &&
+                    context.options.deliverySession == null,
+                send: shouldSend && !captureOnly,
                 renderOptions: {
                     ...context.options.renderOptions,
+                    session: deliverySession,
                     prefix: presetTemplate.config?.postHandler?.prefix,
                     postfix: presetTemplate.config?.postHandler?.postfix
                 }
@@ -112,21 +113,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             let responseMessage: Message
 
             inputMessage.conversationId = conversation.id
-            if (wakeup?.source.kind === 'agent-task') {
-                inputMessage.name = 'task'
-            } else {
-                inputMessage.name =
-                    session.author?.name ??
-                    session.author?.id ??
-                    session.username
-            }
+            inputMessage.name =
+                context.options.messageName ??
+                (invocation?.source.kind === 'agent-task'
+                    ? 'task'
+                    : (session.author?.name ??
+                      session.author?.id ??
+                      session.username))
 
             const requestId = context.options.messageId
 
             const chatCallbacks = createChatCallbacks(
                 context,
                 config,
-                replyStream
+                replyStream,
+                captureOnly
             )
 
             try {
@@ -144,12 +145,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 config,
                                 conversation
                             ),
-                            ...wakeup?.variables
+                            ...invocation?.variables
                         },
                         postHandler,
                         requestId,
-                        toolMask: wakeup?.toolMask,
-                        signal: wakeup?.signal
+                        toolMask: invocation?.toolMask,
+                        signal: invocation?.signal,
+                        persist: invocation?.persist !== false
                     }
                 )
             } catch (e) {
@@ -164,14 +166,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             }
 
             context.options.finalResponseMessage = responseMessage
-            await replyStream.end({ type: 'done', message: responseMessage })
+            if (!captureOnly) {
+                await replyStream.end({
+                    type: 'done',
+                    message: responseMessage
+                })
+            }
 
             context.options.responseMessage = null
             context.message = null
 
-            await ctx.chatluna.conversation.touchConversation(conversation.id, {
-                lastChatAt: new Date()
-            })
+            if (invocation?.persist !== false) {
+                await ctx.chatluna.conversation.touchConversation(
+                    conversation.id,
+                    {
+                        lastChatAt: new Date()
+                    }
+                )
+            }
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
@@ -181,20 +193,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 function createChatCallbacks(
     context: ChainMiddlewareContext,
     config: Config,
-    stream: ReplyStream
+    stream: ReplyStream,
+    captureOnly: boolean
 ) {
     return {
-        'llm-new-chunk': createChunkHandler(stream),
+        'llm-new-chunk': captureOnly
+            ? async () => {}
+            : createChunkHandler(stream),
         'llm-queue-waiting': createQueueWaitingHandler(context),
         'llm-usage': createUsageHandler(context),
-        'llm-call-tool': createToolCallHandler(context, stream, config)
+        'llm-call-tool': captureOnly
+            ? async () => {}
+            : createToolCallHandler(context, stream, config)
     }
 }
 
 function createUsageHandler(context: ChainMiddlewareContext) {
     return async (usage: UsageMetadata) => {
-        const state = context.options.triggerWakeup?.state
-        if (state != null) state.tokens = usage
+        if (context.options.invocation != null) {
+            context.options.invocation.usage = usage
+        }
     }
 }
 
@@ -287,9 +305,9 @@ async function processUserPrompt(
         ).then((result) => result.text)
     }
 
-    const sortedContent = sortContentByType(originContent)
+    // Preserve interleaved multimodal order; do not sort text ahead of media.
     return await Promise.all(
-        sortedContent.map(async (message) =>
+        originContent.map(async (message) =>
             message.type === 'text'
                 ? {
                       type: 'text',
@@ -303,22 +321,6 @@ async function processUserPrompt(
                   }
                 : message
         )
-    )
-}
-
-function sortContentByType(content: MessageContentComplex[]) {
-    return [...content].sort((a, b) => {
-        if (a.type === b.type) return 0
-        if (a.type === 'text') return -1
-        if (b.type === 'text') return 1
-        return a.type < b.type ? -1 : 1
-    })
-}
-
-function shouldSendTriggerReply(context: ChainMiddlewareContext) {
-    return (
-        context.options?.triggerWakeup?.replyTo == null ||
-        context.options?.triggerWakeup?.replyTo === 'channel'
     )
 }
 

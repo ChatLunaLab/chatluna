@@ -1,5 +1,80 @@
-import { AIMessage, MessageContent } from '@langchain/core/messages'
+import {
+    AIMessage,
+    MessageContent,
+    MessageContentComplex,
+    UsageMetadata
+} from '@langchain/core/messages'
 import { h, Session } from 'koishi'
+import type { ToolMask } from './llm-core/agent'
+
+export interface ChatInvocationRouting {
+    platform: string
+    selfId: string
+    userId: string
+    username?: string
+    guildId?: string
+    channelId?: string
+    isDirect: boolean
+}
+
+export interface ChatInvocationInput {
+    session?: Session
+    routing?: ChatInvocationRouting
+    message: string | MessageContentComplex[]
+    messageName?: string
+    model?: string
+    preset?: string
+    conversation:
+        | { type: 'route' }
+        | { type: 'task'; key: string }
+        | { type: 'fresh' }
+        | { type: 'existing'; id: string }
+        | { type: 'ephemeral' }
+    tools?: ToolMask
+    variables?: Record<string, unknown>
+    signal?: AbortSignal
+    timeout?: number
+    delivery: 'channel' | 'direct' | 'silent' | 'capture'
+    source: { kind: string; id?: string; detail?: unknown }
+    /** When false, do not persist conversation/message history. */
+    persist?: boolean
+}
+
+export interface ChatInvocationResult {
+    ok: boolean
+    requestId: string
+    model?: string
+    conversation?: ConversationRecord
+    reply?: Message
+    usage?: UsageMetadata
+    error?: { code: string; message: string }
+}
+
+export interface ChatInvocationContext {
+    requestId: string
+    delivery: ChatInvocationInput['delivery']
+    source: ChatInvocationInput['source']
+    variables: Record<string, unknown>
+    toolMask?: ToolMask
+    signal?: AbortSignal
+    usage?: UsageMetadata
+    persist?: boolean
+}
+
+export interface ChatLunaObservedMessage {
+    id: string
+    at: Date
+    session: Session
+    platform: string
+    selfId: string
+    userId: string
+    username?: string
+    guildId?: string
+    channelId: string
+    isDirect: boolean
+    content: string
+    elements: h[]
+}
 
 /**
  * 渲染参数

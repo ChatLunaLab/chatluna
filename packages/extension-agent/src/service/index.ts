@@ -78,7 +78,7 @@ export class ChatLunaAgentService extends Service {
             args.config,
             this.permission
         )
-        this.trigger = new ChatLunaAgentTriggerService(ctx, args.config.trigger)
+        this.trigger = new ChatLunaAgentTriggerService(ctx)
     }
 
     async start() {
@@ -603,22 +603,6 @@ export class ChatLunaAgentService extends Service {
         return this.permission.getToolAvailability()
     }
 
-    async setTriggerProviderEnabled(kind: string, enabled: boolean) {
-        await this.updateConfig(
-            'trigger',
-            {
-                ...this.args.config.trigger,
-                providers: {
-                    ...this.args.config.trigger.providers,
-                    [kind]: { enabled }
-                }
-            },
-            async () => {
-                await this.trigger.setProviderEnabled(kind, enabled)
-            }
-        )
-    }
-
     async getPresetNames() {
         return this.ctx.chatluna.preset.getAllPreset(false).value
     }
@@ -731,7 +715,6 @@ Output too large (${input.text.length} chars). Failed to save full output: ${get
         this.mcp.config = cfg
         this.skills.config = cfg
         this.subAgent.config = cfg
-        this.trigger.config = cfg.trigger
     }
 
     private async afterConfigUpdate(
@@ -757,12 +740,6 @@ Output too large (${input.text.length} chars). Failed to save full output: ${get
 
         if (section === 'subAgent') {
             await this.subAgent.reload()
-            return
-        }
-
-        if (section === 'trigger') {
-            await this.trigger.stop()
-            await this.trigger.start()
         }
     }
 

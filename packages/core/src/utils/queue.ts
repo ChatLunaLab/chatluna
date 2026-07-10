@@ -106,6 +106,7 @@ export class RequestIdQueue {
 
         const lock = this._queueLocks[key]
         const items: QueueItem[] = []
+        let removed: QueueItem | undefined
 
         try {
             await lock.runLocked(async () => {
@@ -118,7 +119,7 @@ export class RequestIdQueue {
                 if (index === -1) return
 
                 // Remove the item
-                this._queue[key].splice(index, 1)
+                removed = this._queue[key].splice(index, 1)[0]
 
                 if (this._queue[key].length === 0) {
                     delete this._queue[key]
@@ -142,6 +143,17 @@ export class RequestIdQueue {
                     items.push(item)
                 }
             })
+
+            // Settle removed waiters so abort/cancel paths do not hang.
+            if (removed != null && !removed.active) {
+                removed.notifyPromise.reject(
+                    new ChatLunaError(
+                        ChatLunaErrorCode.ABORTED,
+                        undefined,
+                        true
+                    )
+                )
+            }
 
             items.forEach((item) => item.notifyPromise.resolve())
         } catch (error) {

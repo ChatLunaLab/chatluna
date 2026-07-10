@@ -1,13 +1,7 @@
-import { randomUUID } from 'crypto'
-
 import { HumanMessage } from '@langchain/core/messages'
-import { Context, h, Universal } from 'koishi'
-import { buildVirtualSession } from 'koishi-plugin-chatluna/utils/virtual_session'
+import { Context, Universal } from 'koishi'
 import type { Config } from '../../config'
-import {
-    type AgentTaskFinishedPayload,
-    formatAgentTaskWakeup
-} from './sub-agent'
+import { formatAgentTaskWakeup } from './sub-agent'
 
 export function applyAgentTaskWakeup(ctx: Context, config: Config) {
     ctx.on('chatluna/agent-task-finished', async (payload) => {
@@ -40,62 +34,40 @@ export function applyAgentTaskWakeup(ctx: Context, config: Config) {
             return
         }
 
-        const session = restoreSession(ctx, payload)
-        if (session == null) {
+        const live = payload.snapshot?.session
+        const routing = payload.snapshot?.routing
+        if (live == null && routing == null) {
             ctx.logger.warn(
-                'agent task %s finished but bot %s:%s is offline; result kept until TTL.',
-                payload.taskId,
-                payload.snapshot?.routing?.platform,
-                payload.snapshot?.routing?.selfId
+                'agent task %s finished without a delivery target.',
+                payload.taskId
             )
             return
         }
 
-        const resolved = await ctx.chatluna.conversation.resolveConversation(
-            session,
-            {
-                mode: 'active',
-                bindingKey:
-                    payload.snapshot?.bindingKey ?? conversation.bindingKey,
-                conversationId: conversation.id
-            }
-        )
-        if (resolved.conversation == null) return
-
-        await ctx.chatluna.chatChain.receiveCommand(session, 'chat', {
-            message: [h.text(content)],
-            messageId: randomUUID(),
-            conversation: resolved,
-            triggerWakeup: {
-                requestId: randomUUID(),
-                source: {
-                    kind: 'agent-task',
-                    detail: {
-                        taskId: payload.taskId,
-                        runId: payload.run.runId,
-                        agent: payload.agentName,
-                        state: payload.run.state
-                    }
+        const result = await ctx.chatluna.invoke({
+            session:
+                live?.bot.status === Universal.Status.ONLINE ? live : undefined,
+            routing,
+            message: content,
+            messageName: 'task',
+            conversation: { type: 'existing', id: conversation.id },
+            delivery: 'channel',
+            source: {
+                kind: 'agent-task',
+                id: payload.taskId,
+                detail: {
+                    runId: payload.run.runId,
+                    agent: payload.agentName,
+                    state: payload.run.state
                 }
-            },
-            inputMessage: { content, name: 'task' }
+            }
         })
+        if (!result.ok) {
+            ctx.logger.warn(
+                'agent task %s wakeup failed: %s',
+                payload.taskId,
+                result.error?.message
+            )
+        }
     })
-}
-
-function restoreSession(ctx: Context, payload: AgentTaskFinishedPayload) {
-    const live = payload.snapshot?.session
-    if (live?.bot?.status === Universal.Status.ONLINE) return live
-
-    const routing = payload.snapshot?.routing
-    if (routing == null) return undefined
-
-    const bot = ctx.bots[`${routing.platform}:${routing.selfId}`]
-    if (bot == null || bot.status !== Universal.Status.ONLINE) return undefined
-
-    return buildVirtualSession(
-        bot,
-        { ...routing, username: 'task' },
-        { message: '', messageName: 'task' }
-    )
 }

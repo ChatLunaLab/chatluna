@@ -6,12 +6,10 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { Config } from '../config'
-import type { ConversationResolution } from '../types'
+import type { ChatInvocationContext, ConversationResolution } from '../types'
 import { lifecycleNames } from '../middlewares/system/lifecycle'
 import { formatDuration } from '../utils/time'
 import type { QQBot } from '@koishijs/plugin-adapter-qq'
-import type { UsageMetadata } from '@langchain/core/messages'
-import type { ToolMask } from '../llm-core/agent'
 
 let logger: Logger
 
@@ -86,13 +84,34 @@ export class ChatChain {
         options: ChainMiddlewareContextOptions = {},
         ctx: Context = this.ctx
     ) {
+        return (await this.runCommand(session, command, options, ctx)).ok
+    }
+
+    async runCommand(
+        session: Session,
+        command: string,
+        options: ChainMiddlewareContextOptions = {},
+        ctx: Context = this.ctx
+    ) {
         const context: ChainMiddlewareContext = {
             config: this.config,
             message: options?.message ?? session.content,
             ctx,
             session,
             command,
-            send: (message) => this.sendMessage(session, message, context),
+            send: async (message) => {
+                if (
+                    options.invocation?.delivery === 'silent' ||
+                    options.invocation?.delivery === 'capture'
+                ) {
+                    return
+                }
+                await this.sendMessage(
+                    options.deliverySession ?? session,
+                    message,
+                    context
+                )
+            },
             recallThinkingMessage: this._createRecallThinkingMessage(
                 {} as ChainMiddlewareContext
             ),
@@ -105,11 +124,11 @@ export class ChatChain {
         context.recallThinkingMessage =
             this._createRecallThinkingMessage(context)
 
-        const result = await this._runMiddleware(session, context)
+        const ok = await this._runMiddleware(session, context)
 
         await context.recallThinkingMessage()
 
-        return result
+        return { ok, context }
     }
 
     middleware<T extends keyof ChainMiddlewareName>(
@@ -164,8 +183,10 @@ export class ChatChain {
                 }
 
                 if (result.status === 'error') {
+                    context.options.error = result.error
                     await this._handleMiddlewareError(
                         session,
+                        context,
                         result.middlewareName!,
                         result.error!
                     )
@@ -190,7 +211,7 @@ export class ChatChain {
         }
 
         if (context.message != null && context.message !== originMessage) {
-            await this.sendMessage(session, context.message, context)
+            await context.send(context.message)
         }
 
         return true
@@ -338,7 +359,7 @@ export class ChatChain {
         isOutputLog: boolean
     ) {
         if (context.message != null && context.message !== originMessage) {
-            await this.sendMessage(session, context.message, context)
+            await context.send(context.message)
         }
 
         if (isOutputLog) {
@@ -348,15 +369,18 @@ export class ChatChain {
 
     private async _handleMiddlewareError(
         session: Session,
+        context: ChainMiddlewareContext,
         middlewareName: string,
         error: Error
     ) {
+        if (context.options.invocation != null) return
+
         if (error instanceof ChatLunaError) {
             const message =
                 error.errorCode === ChatLunaErrorCode.ABORTED
                     ? session.text('chatluna.aborted')
                     : error.message
-            await this.sendMessage(session, message, undefined)
+            await context.send(message)
             return
         }
 
@@ -365,13 +389,11 @@ export class ChatChain {
         error.cause && logger.error(error.cause)
         logger.debug('-'.repeat(40) + '\n')
 
-        await this.sendMessage(
-            session,
+        await context.send(
             session.text('chatluna.middleware_error', [
                 middlewareName,
                 error.message
-            ]),
-            undefined
+            ])
         )
     }
 }
@@ -1162,25 +1184,12 @@ export interface ChainMiddlewareContext {
     send: (message: h[][] | h[] | h | string) => Promise<void>
 }
 
-export interface TriggerWakeupContext {
-    requestId: string
-    replyTo?: 'channel' | 'user' | 'silent' | 'callback'
-    source: {
-        kind: string
-        taskId?: number
-        providerKind?: string
-        detail?: unknown
-    }
-    chatMode?: string
-    signal?: AbortSignal
-    toolMask?: ToolMask
-    variables?: Record<string, unknown>
-    state?: { tokens?: UsageMetadata }
-}
-
 export interface ChainMiddlewareContextOptions {
     conversation?: ConversationResolution
-    triggerWakeup?: TriggerWakeupContext
+    invocation?: ChatInvocationContext
+    deliverySession?: Session
+    messageName?: string
+    error?: Error
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any
 }

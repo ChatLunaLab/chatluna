@@ -562,11 +562,26 @@ export class ConversationService {
             preset: string
             chatMode: string
             setActive?: boolean
+            /**
+             * When set, re-check for an existing active conversation with this
+             * bindingKey inside the lock and return it instead of creating.
+             */
+            reuseBindingKey?: string
         }
     ) {
         this.checkChatMode(options.chatMode)
 
         return runLock(this._bindingLocks, options.bindingKey, async () => {
+            if (options.reuseBindingKey != null) {
+                const existing = (
+                    (await this.ctx.database.get('chatluna_conversation', {
+                        bindingKey: options.reuseBindingKey,
+                        status: 'active'
+                    })) as ConversationRecord[]
+                )[0]
+                if (existing != null) return existing
+            }
+
             const now = new Date()
             const conversation: ConversationRecord = {
                 id: randomUUID(),

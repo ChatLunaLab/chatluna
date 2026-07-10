@@ -4,6 +4,7 @@ import {
     ACLRecord,
     ArchiveRecord,
     BindingRecord,
+    ChatLunaObservedMessage,
     ConstraintRecord,
     ConversationRecord,
     Message,
@@ -191,10 +192,9 @@ declare module 'koishi' {
             session: Session
         }): Promise<void>
         'chatluna/before-check-sender'(session: Session): Promise<boolean>
-        'chatluna/check-passive-trigger'(
-            session: Session,
-            content: string
-        ): Promise<boolean>
+        'chatluna/message-observed'(
+            msg: ChatLunaObservedMessage
+        ): Awaitable<void>
     }
 
     interface Tables {

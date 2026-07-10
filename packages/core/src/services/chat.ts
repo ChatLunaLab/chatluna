@@ -1,4 +1,5 @@
 import { CallbackManager } from '@langchain/core/callbacks/manager'
+import { randomUUID } from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -6,9 +7,11 @@ import {
     Computed,
     Context,
     Dict,
+    h,
     Schema,
     Service,
-    Session
+    Session,
+    Universal
 } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ChatInterface } from 'koishi-plugin-chatluna/llm-core/chat/app'
@@ -48,7 +51,16 @@ import {
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { PresetService } from 'koishi-plugin-chatluna/preset'
-import { ConstraintRecord, ConversationRecord, Message } from '../types'
+import {
+    ChatInvocationContext,
+    ChatInvocationInput,
+    ChatInvocationResult,
+    ConstraintRecord,
+    ConversationRecord,
+    ConversationResolution,
+    ConversationResolutionError,
+    Message
+} from '../types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -72,6 +84,15 @@ import { RunnableConfig } from '@langchain/core/runnables'
 import type { Notifier } from '@koishijs/plugin-notifier'
 import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
+import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
+import { buildVirtualSession } from 'koishi-plugin-chatluna/utils/virtual_session'
+
+export type {
+    ChatInvocationContext,
+    ChatInvocationInput,
+    ChatInvocationResult,
+    ChatInvocationRouting
+} from '../types'
 
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
@@ -220,6 +241,540 @@ export class ChatLunaService extends Service<Config> {
 
     getPlugin(platformName: string) {
         return this._plugins[platformName]
+    }
+
+    async invoke(input: ChatInvocationInput): Promise<ChatInvocationResult> {
+        const requestId = randomUUID()
+        const controller = new AbortController()
+        const onAbort = () => controller.abort(input.signal?.reason)
+        let timedOut = false
+
+        if (input.signal?.aborted) {
+            controller.abort(input.signal.reason)
+        } else {
+            input.signal?.addEventListener('abort', onAbort, { once: true })
+        }
+
+        const timer =
+            input.timeout == null
+                ? undefined
+                : this.ctx.setTimeout(() => {
+                      timedOut = true
+                      controller.abort()
+                  }, input.timeout)
+
+        try {
+            if (controller.signal.aborted) {
+                return {
+                    ok: false,
+                    requestId,
+                    error: {
+                        code: timedOut ? 'timeout' : 'aborted',
+                        message: timedOut
+                            ? 'Chat invocation timed out.'
+                            : 'Chat invocation was aborted.'
+                    }
+                }
+            }
+
+            let session = input.session
+            if (session == null && input.routing != null) {
+                const bot =
+                    this.ctx.bots[
+                        `${input.routing.platform}:${input.routing.selfId}`
+                    ]
+                if (bot != null) {
+                    session = buildVirtualSession(bot, input.routing, {
+                        message: input.message,
+                        messageName: input.messageName
+                    })
+                }
+            }
+
+            if (session == null) {
+                return {
+                    ok: false,
+                    requestId,
+                    error: {
+                        code:
+                            input.routing == null
+                                ? 'routing_required'
+                                : 'bot_not_found',
+                        message:
+                            input.routing == null
+                                ? 'A session or routing target is required.'
+                                : `Bot ${input.routing.platform}:${input.routing.selfId} was not found.`
+                    }
+                }
+            }
+
+            if (session.bot.status !== Universal.Status.ONLINE) {
+                return {
+                    ok: false,
+                    requestId,
+                    error: {
+                        code: 'bot_offline',
+                        message: `Bot ${session.platform}:${session.selfId} is offline.`
+                    }
+                }
+            }
+
+            if (input.model != null) {
+                const [platform, model] = parseRawModelName(input.model)
+                const info =
+                    platform == null || model == null
+                        ? null
+                        : this.platform.findModel(platform, model).value
+                if (info == null || info.type !== ModelType.llm) {
+                    return {
+                        ok: false,
+                        requestId,
+                        error: {
+                            code: 'model_not_found',
+                            message: `Model ${input.model} is not available.`
+                        }
+                    }
+                }
+            }
+
+            if (
+                input.preset != null &&
+                this.preset.getPreset(input.preset, false).value == null
+            ) {
+                return {
+                    ok: false,
+                    requestId,
+                    error: {
+                        code: 'preset_not_found',
+                        message: `Preset ${input.preset} was not found.`
+                    }
+                }
+            }
+
+            const persist = input.persist !== false
+            const ephemeral = input.conversation.type === 'ephemeral'
+            let resolved: ConversationResolution
+
+            if (ephemeral || !persist) {
+                const base = await this.conversation.resolveConversation(
+                    session,
+                    { mode: 'context' }
+                )
+                const model = input.model ?? base.effectiveModel
+                const preset = input.preset ?? base.effectivePreset
+                if (model == null) {
+                    return {
+                        ok: false,
+                        requestId,
+                        error: {
+                            code: 'model_not_found',
+                            message: 'No model is available for this route.'
+                        }
+                    }
+                }
+                if (
+                    preset == null ||
+                    this.preset.getPreset(preset, false).value == null
+                ) {
+                    return {
+                        ok: false,
+                        requestId,
+                        error: {
+                            code: 'preset_not_found',
+                            message: `Preset ${preset} was not found.`
+                        }
+                    }
+                }
+                const now = new Date()
+                const conversation: ConversationRecord = {
+                    id: randomUUID(),
+                    bindingKey: `ephemeral:${requestId}`,
+                    title: 'Ephemeral Conversation',
+                    model,
+                    preset,
+                    chatMode: base.effectiveChatMode ?? 'chat',
+                    createdBy: session.userId,
+                    createdAt: now,
+                    updatedAt: now,
+                    lastChatAt: now,
+                    status: 'active',
+                    latestMessageId: null,
+                    additional_kwargs: null,
+                    compression: null,
+                    archivedAt: null,
+                    archiveId: null,
+                    legacyRoomId: null,
+                    legacyMeta: null,
+                    autoTitle: false
+                }
+                resolved = {
+                    ...base,
+                    mode: 'active',
+                    conversationId: conversation.id,
+                    conversation,
+                    effectiveModel: model,
+                    effectivePreset: preset
+                }
+            } else if (input.conversation.type === 'route') {
+                resolved =
+                    await this.conversation.ensureActiveConversation(session)
+            } else if (input.conversation.type === 'existing') {
+                resolved = await this.conversation.resolveConversation(
+                    session,
+                    {
+                        mode: 'target',
+                        conversationId: input.conversation.id
+                    }
+                )
+                if (
+                    resolved.conversation == null ||
+                    resolved.conversation.status !== 'active'
+                ) {
+                    return {
+                        ok: false,
+                        requestId,
+                        error: {
+                            code: 'conversation_not_found',
+                            message: `Conversation ${input.conversation.id} was not found.`
+                        }
+                    }
+                }
+            } else {
+                const base = await this.conversation.resolveConversation(
+                    session,
+                    { mode: 'context' }
+                )
+                const bindingKey =
+                    input.conversation.type === 'task'
+                        ? `task:${session.platform}:${session.selfId}:${session.userId}:${input.conversation.key}`
+                        : `fresh:${requestId}`
+
+                if (input.conversation.type === 'task') {
+                    const current = (
+                        (await this.ctx.database.get('chatluna_conversation', {
+                            bindingKey,
+                            status: 'active'
+                        })) as ConversationRecord[]
+                    )[0]
+                    if (current != null) {
+                        resolved = await this.conversation.resolveConversation(
+                            session,
+                            {
+                                mode: 'target',
+                                bindingKey,
+                                conversationId: current.id
+                            }
+                        )
+                    } else {
+                        if (!base.constraint.allowNew) {
+                            return {
+                                ok: false,
+                                requestId,
+                                error: {
+                                    code: 'allow_new_disabled',
+                                    message:
+                                        'Creating a new conversation is disabled for this route.'
+                                }
+                            }
+                        }
+                        const model =
+                            input.model ??
+                            this.conversation.pickModel(base.constraint, null)
+                        const preset = input.preset ?? base.effectivePreset
+                        if (model == null) {
+                            return {
+                                ok: false,
+                                requestId,
+                                error: {
+                                    code: 'model_not_found',
+                                    message:
+                                        'No model is available for this route.'
+                                }
+                            }
+                        }
+                        if (
+                            preset == null ||
+                            this.preset.getPreset(preset, false).value == null
+                        ) {
+                            return {
+                                ok: false,
+                                requestId,
+                                error: {
+                                    code: 'preset_not_found',
+                                    message: `Preset ${preset} was not found.`
+                                }
+                            }
+                        }
+                        const conversation =
+                            await this.conversation.createConversation(
+                                session,
+                                {
+                                    bindingKey,
+                                    title: 'Task Conversation',
+                                    model,
+                                    preset,
+                                    chatMode: base.effectiveChatMode,
+                                    setActive: false,
+                                    reuseBindingKey: bindingKey
+                                }
+                            )
+                        resolved = {
+                            ...base,
+                            mode: 'active',
+                            conversationId: conversation.id,
+                            conversation
+                        }
+                    }
+                } else {
+                    if (!base.constraint.allowNew) {
+                        return {
+                            ok: false,
+                            requestId,
+                            error: {
+                                code: 'allow_new_disabled',
+                                message:
+                                    'Creating a new conversation is disabled for this route.'
+                            }
+                        }
+                    }
+                    const model =
+                        input.model ??
+                        this.conversation.pickModel(base.constraint, null)
+                    const preset = input.preset ?? base.effectivePreset
+                    if (model == null) {
+                        return {
+                            ok: false,
+                            requestId,
+                            error: {
+                                code: 'model_not_found',
+                                message: 'No model is available for this route.'
+                            }
+                        }
+                    }
+                    if (
+                        preset == null ||
+                        this.preset.getPreset(preset, false).value == null
+                    ) {
+                        return {
+                            ok: false,
+                            requestId,
+                            error: {
+                                code: 'preset_not_found',
+                                message: `Preset ${preset} was not found.`
+                            }
+                        }
+                    }
+                    const conversation =
+                        await this.conversation.createConversation(session, {
+                            bindingKey,
+                            title: 'Fresh Conversation',
+                            model,
+                            preset,
+                            chatMode: base.effectiveChatMode,
+                            setActive: false
+                        })
+                    resolved = {
+                        ...base,
+                        mode: 'active',
+                        conversationId: conversation.id,
+                        conversation
+                    }
+                }
+            }
+
+            const defaultModel = this.conversation.pickModel(
+                resolved.constraint,
+                null
+            )
+            const overlayModel =
+                input.model ?? defaultModel ?? resolved.conversation.model
+            const overlayPreset =
+                input.preset ??
+                resolved.conversation.preset ??
+                resolved.effectivePreset
+
+            const conversation = {
+                ...resolved.conversation,
+                model: overlayModel,
+                preset: overlayPreset
+            }
+            resolved = {
+                ...resolved,
+                mode: 'active',
+                conversationId: conversation.id,
+                conversation,
+                effectiveModel: conversation.model,
+                effectivePreset: conversation.preset,
+                constraint: {
+                    ...resolved.constraint,
+                    fixedModel: input.model ?? resolved.constraint.fixedModel,
+                    fixedPreset: input.preset ?? resolved.constraint.fixedPreset
+                }
+            }
+
+            const [platform, model] = parseRawModelName(conversation.model)
+            const info =
+                platform == null || model == null
+                    ? null
+                    : this.platform.findModel(platform, model).value
+            if (info == null || info.type !== ModelType.llm) {
+                return {
+                    ok: false,
+                    requestId,
+                    conversation,
+                    error: {
+                        code: 'model_not_found',
+                        message: `Model ${conversation.model} is not available.`
+                    }
+                }
+            }
+            if (
+                this.preset.getPreset(conversation.preset, false).value == null
+            ) {
+                return {
+                    ok: false,
+                    requestId,
+                    conversation,
+                    error: {
+                        code: 'preset_not_found',
+                        message: `Preset ${conversation.preset} was not found.`
+                    }
+                }
+            }
+
+            const deliverySession =
+                input.delivery === 'direct' && !session.isDirect
+                    ? buildVirtualSession(
+                          session.bot,
+                          {
+                              platform: session.platform,
+                              selfId: session.selfId,
+                              userId: session.userId,
+                              username: session.username,
+                              isDirect: true
+                          },
+                          {
+                              message: input.message,
+                              messageName: input.messageName
+                          }
+                      )
+                    : undefined
+            const invocation: ChatInvocationContext = {
+                requestId,
+                delivery: input.delivery,
+                source: input.source,
+                variables: input.variables ?? {},
+                toolMask: input.tools,
+                signal: controller.signal,
+                persist: persist && !ephemeral
+            }
+
+            if (controller.signal.aborted) {
+                return {
+                    ok: false,
+                    requestId,
+                    conversation,
+                    error: {
+                        code: timedOut ? 'timeout' : 'aborted',
+                        message: timedOut
+                            ? 'Chat invocation timed out.'
+                            : 'Chat invocation was aborted.'
+                    }
+                }
+            }
+
+            const run = await this.chatChain.runCommand(session, 'chat', {
+                message:
+                    typeof input.message === 'string'
+                        ? [h.text(input.message)]
+                        : transformMessageContentToElements(input.message),
+                messageId: requestId,
+                messageName: input.messageName,
+                conversation: resolved,
+                invocation,
+                deliverySession
+            })
+            const reply = run.context.options.finalResponseMessage
+            const error = run.context.options.error
+            const delivered = reply != null
+
+            if (!run.ok || (controller.signal.aborted && !delivered)) {
+                return {
+                    ok: false,
+                    requestId,
+                    conversation,
+                    usage: invocation.usage,
+                    error: {
+                        code: timedOut
+                            ? 'timeout'
+                            : controller.signal.aborted
+                              ? 'aborted'
+                              : error instanceof ChatLunaError
+                                ? `chatluna_${error.errorCode}`
+                                : 'chain_stopped',
+                        message: timedOut
+                            ? 'Chat invocation timed out.'
+                            : controller.signal.aborted
+                              ? 'Chat invocation was aborted.'
+                              : (error?.message ??
+                                'Chat invocation stopped before completion.')
+                    }
+                }
+            }
+
+            if (invocation.persist === false) {
+                await this.ctx.database
+                    .remove('chatluna_message', {
+                        conversationId: conversation.id
+                    })
+                    .catch(() => {})
+                await this.ctx.database
+                    .remove('chatluna_conversation', {
+                        id: conversation.id
+                    })
+                    .catch(() => {})
+                await this.conversationRuntime.clearConversationCache(
+                    conversation.id
+                )
+            }
+
+            return {
+                ok: true,
+                requestId,
+                model: conversation.model,
+                conversation:
+                    invocation.persist === false ? undefined : conversation,
+                reply: input.delivery === 'silent' ? undefined : reply,
+                usage: invocation.usage
+            }
+        } catch (err) {
+            const error = err as Error
+            return {
+                ok: false,
+                requestId,
+                error: {
+                    code: timedOut
+                        ? 'timeout'
+                        : controller.signal.aborted ||
+                            error.name === 'AbortError'
+                          ? 'aborted'
+                          : error instanceof ConversationResolutionError
+                            ? error.code
+                            : error instanceof ChatLunaError
+                              ? `chatluna_${error.errorCode}`
+                              : 'invoke_failed',
+                    message: timedOut
+                        ? 'Chat invocation timed out.'
+                        : controller.signal.aborted ||
+                            error.name === 'AbortError'
+                          ? 'Chat invocation was aborted.'
+                          : error.message
+                }
+            }
+        } finally {
+            timer?.()
+            input.signal?.removeEventListener('abort', onAbort)
+        }
     }
 
     chat(

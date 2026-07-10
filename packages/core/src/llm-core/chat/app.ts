@@ -149,7 +149,7 @@ export class ChatInterface {
         let hasSavedUser = false
 
         const saveUser = async () => {
-            if (hasSavedUser) {
+            if (hasSavedUser || arg.persist === false) {
                 return
             }
 
@@ -225,7 +225,7 @@ export class ChatInterface {
         const messageContent = getMessageContent(displayResponse.content)
 
         // Update chat history
-        if (messageContent.trim().length > 0) {
+        if (messageContent.trim().length > 0 && arg.persist !== false) {
             await saveUser()
             let saveMessage = responseMessage
             if (!this.chatluna.currentConfig.rawOnCensor) {
@@ -235,29 +235,30 @@ export class ChatInterface {
             await this._chatHistory.addMessage(saveMessage)
         }
 
-        // Process response
-        try {
-            await this.ctx.parallel(
-                'chatluna/after-chat',
-                arg.conversationId,
-                arg.message,
-                displayResponse as AIMessage,
-                { ...arg.variables, chatCount: this._chatCount },
-                this,
-                arg.session
-            )
-        } catch (error) {
-            await this.handleChatError(arg, wrapper, error, false)
-        }
+        if (arg.persist !== false) {
+            try {
+                await this.ctx.parallel(
+                    'chatluna/after-chat',
+                    arg.conversationId,
+                    arg.message,
+                    displayResponse as AIMessage,
+                    { ...arg.variables, chatCount: this._chatCount },
+                    this,
+                    arg.session
+                )
+            } catch (error) {
+                await this.handleChatError(arg, wrapper, error, false)
+            }
 
-        if (this._input.autoTitle !== false) {
-            autoSummarizeTitle(
-                this.chatluna,
-                arg.conversationId,
-                wrapper,
-                arg.message,
-                displayResponse as AIMessage
-            ).catch((e) => logger.error('autoSummarizeTitle error:', e))
+            if (this._input.autoTitle !== false) {
+                autoSummarizeTitle(
+                    this.chatluna,
+                    arg.conversationId,
+                    wrapper,
+                    arg.message,
+                    displayResponse as AIMessage
+                ).catch((e) => logger.error('autoSummarizeTitle error:', e))
+            }
         }
 
         return { message: displayResponse }

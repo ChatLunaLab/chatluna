@@ -1,175 +1,91 @@
-import { randomUUID } from 'crypto'
-import { type Context, type Session, Universal } from 'koishi'
+import { SystemMessage } from '@langchain/core/messages'
+import { type Context } from 'koishi'
+import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     countMessageTokens,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
-import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
-import type { MessageContentComplex } from '@langchain/core/messages'
-import {
-    bindingKeyFromRouting,
-    routingFromSession,
-    type TriggerAdhocWakeupInput,
-    type TriggerConfig,
-    type TriggerCreateTaskInput,
-    type TriggerProvider,
-    type TriggerRoutingChoice,
-    type TriggerStatus,
-    type TriggerTask,
-    type WakeupAction,
-    type WakeupResult,
-    type WakeupRouting,
-    type WakeupScope,
-    type WakeupTarget,
-    type WakeupTemplate
+import type {
+    TriggerActor,
+    TriggerCondition,
+    TriggerCreateInput,
+    TriggerRun,
+    TriggerStatus,
+    TriggerTask,
+    TriggerTaskStatus,
+    TriggerUpdateInput,
+    TriggerWakeupInput
 } from '../types'
-import { ChatLunaAgentTriggerExecutor } from '../trigger/executor'
-import { ChatLunaAgentTriggerListener } from '../trigger/listener'
-import { ChatLunaAgentTriggerProviderRegistry } from '../trigger/provider_registry'
-import { ChatLunaAgentTriggerScheduler } from '../trigger/scheduler'
-import { ChatLunaAgentTriggerTaskRegistry } from '../trigger/task_registry'
-import { TriggerTool } from '../trigger/tool'
+import { TriggerRunControl } from '../trigger/control'
+import { TriggerObserver } from '../trigger/observer'
+import { TriggerPlanner } from '../trigger/planner'
+import { TriggerRunner } from '../trigger/runner'
+import { TriggerScheduler } from '../trigger/scheduler'
 import {
-    renderTriggerProviders,
-    renderTriggerSelfControl
-} from '../trigger/render'
-import { activityTriggerProvider } from '../trigger/providers/activity'
-import { cronTriggerProvider } from '../trigger/providers/cron'
-import { keywordTriggerProvider } from '../trigger/providers/keyword'
-import { onceTriggerProvider } from '../trigger/providers/once'
-import { logger } from '..'
+    finishTriggerRunSchema,
+    triggerCreateInputSchema,
+    triggerUpdateInputSchema,
+    triggerWakeupInputSchema
+} from '../trigger/schema'
+import { TriggerStore } from '../trigger/store'
+import { FinishTriggerRunTool, TriggerTool } from '../trigger/tool'
 
-const RETRYABLE_FIRE_CODES = new Set([
-    'conversation-unavailable',
-    'no-routing',
-    'invalid-binding-key'
-])
-
-/** Convenience options for {@link ChatLunaAgentTriggerService.wakeup}. */
-export interface WakeupOptions extends WakeupTemplate {
-    scope?: WakeupScope
-    source?: WakeupAction['source']
-    requestId?: string
-    signal?: AbortSignal
-}
-
-interface DeferredWakeup {
-    /** Pre-stripped action; never carries a live session. */
-    action?: Partial<WakeupAction>
-    mutateSchedule: boolean
-    taskId?: number
-}
-
-interface RunningTask {
-    taskId: number
-    mutateSchedule: boolean
-}
-
-/**
- * Convenience input for `createTask` when the caller has a session.
- * Routing fields are derived from the session.
- */
-export interface CreateTaskFromSessionOptions extends Omit<
-    TriggerCreateTaskInput,
-    | 'bindingKey'
-    | 'platform'
-    | 'selfId'
-    | 'userId'
-    | 'username'
-    | 'guildId'
-    | 'channelId'
-    | 'isDirect'
-    | 'createdBy'
-> {
-    bindingKey?: string
-    scope?: WakeupScope
-    createdBy?: string
+export interface TriggerListFilter {
+    status?: TriggerTaskStatus
+    conditionType?: TriggerCondition['type']
+    enabled?: boolean
 }
 
 export class ChatLunaAgentTriggerService {
-    private readonly _deferred = new Map<string, Map<string, DeferredWakeup>>()
-    private readonly _executor: ChatLunaAgentTriggerExecutor
-    private readonly _listener: ChatLunaAgentTriggerListener
-    private readonly _providers = new ChatLunaAgentTriggerProviderRegistry()
-    private readonly _registry: ChatLunaAgentTriggerTaskRegistry
-    private readonly _runningTasks = new Map<string, RunningTask>()
-    private readonly _scheduler: ChatLunaAgentTriggerScheduler
-    private _botDispose?: () => void
+    private readonly _store: TriggerStore
+    private readonly _planner: TriggerPlanner
+    private readonly _control: TriggerRunControl
+    private readonly _runner: TriggerRunner
+    private readonly _scheduler: TriggerScheduler
+    private readonly _observer: TriggerObserver
     private _toolDispose?: () => void
+    private _finishDispose?: () => void
     private _promptDispose?: () => void
+    private _started = false
     private _status: TriggerStatus = {
         total: 0,
         enabled: 0,
-        scheduled: 0,
-        passive: 0
+        waiting: 0,
+        running: 0,
+        paused: 0,
+        error: 0
     }
 
-    constructor(
-        public readonly ctx: Context,
-        public config: TriggerConfig
-    ) {
-        this._executor = new ChatLunaAgentTriggerExecutor(ctx)
-        this._registry = new ChatLunaAgentTriggerTaskRegistry(ctx)
-        this.registerProvider(cronTriggerProvider)
-        this.registerProvider(onceTriggerProvider)
-        this.registerProvider(activityTriggerProvider)
-        this.registerProvider(keywordTriggerProvider)
-        this._scheduler = new ChatLunaAgentTriggerScheduler(ctx, {
-            list: async () =>
-                (await this._registry.list({ enabled: true })).filter(
-                    (task) =>
-                        task.providerKind == null ||
-                        this.isProviderEnabled(task.providerKind)
-                ),
-            get: async (id) => await this._registry.get(id),
-            update: async (id, patch) => {
-                const task = await this.updateTask(id, patch)
-                this._scheduler.sync(task)
-                return task
-            },
-            fire: async (id) => {
-                await this._fireTask(id, undefined, true)
-                await this._afterMutate()
+    constructor(public readonly ctx: Context) {
+        this._store = new TriggerStore(ctx)
+        this._planner = new TriggerPlanner()
+        this._control = new TriggerRunControl()
+        this._runner = new TriggerRunner(
+            ctx,
+            this._store,
+            this._planner,
+            this._control,
+            {
+                refresh: async () => await this._afterChange()
             }
-        })
-        this._listener = new ChatLunaAgentTriggerListener(ctx, {
-            list: async (bindingKey) =>
-                await this._registry.listByBindingKey(bindingKey, true, true),
-            getProvider: (kind) =>
-                this.isProviderEnabled(kind)
-                    ? this._providers.get(kind)
-                    : undefined,
-            fire: async (id, input) =>
-                await this._fireTask(
-                    id,
-                    {
-                        target: input.session,
-                        message: input.message,
-                        messageName: input.messageName,
-                        source: {
-                            kind: 'passive',
-                            taskId: id,
-                            providerKind:
-                                (await this._registry.get(id))?.providerKind ??
-                                undefined,
-                            detail: input.detail
-                        }
-                    },
-                    true
-                )
-        })
+        )
+        this._scheduler = new TriggerScheduler(ctx, this._store, this._runner)
+        this._observer = new TriggerObserver(
+            ctx,
+            this._store,
+            this._runner,
+            this._scheduler
+        )
     }
 
     async start() {
-        this._botDispose?.()
-        this._botDispose = this.ctx.on('bot-status-updated', async (bot) => {
-            if (bot.status !== Universal.Status.ONLINE) return
-            await this._replayDeferred(bot.platform, bot.selfId)
-        })
-        this._toolDispose?.()
+        if (this._started) return
+        this._started = true
+
         this._toolDispose = this.ctx.chatluna.platform.registerTool('trigger', {
             description: new TriggerTool(this).description,
             selector: () => true,
+            authorization: () => true,
             createTool: () => new TriggerTool(this),
             meta: {
                 source: 'extension',
@@ -183,241 +99,318 @@ export class ChatLunaAgentTriggerService {
                 }
             }
         })
-        await this._refreshStatus()
-        await this._scheduler.start()
-        this._listener.start()
-        this._syncPrompt()
+        this._finishDispose = this.ctx.chatluna.platform.registerTool(
+            'finish_trigger_run',
+            {
+                description: new FinishTriggerRunTool(this._control)
+                    .description,
+                selector: () => true,
+                authorization: () => true,
+                createTool: () => new FinishTriggerRunTool(this._control),
+                meta: {
+                    source: 'extension',
+                    group: 'agent',
+                    tags: ['trigger', 'control'],
+                    defaultAvailability: {
+                        enabled: false,
+                        main: false,
+                        chatluna: false,
+                        characterScope: 'none'
+                    }
+                }
+            }
+        )
+        this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
+            'after_system_prompts',
+            async (runtime: PromptContextRuntime, next) => {
+                if (!runtime.configurable?.conversationId) return next()
+                if (runtime.configurable?.subagentContext) return next()
+
+                const mask = (runtime.configurable as { toolMask?: ToolMask })
+                    .toolMask
+                if (
+                    mask != null &&
+                    !this.ctx.chatluna.platform
+                        .getFilteredTools(mask)
+                        .includes('trigger')
+                ) {
+                    return next()
+                }
+
+                const msg = new SystemMessage(
+                    '<trigger_tool>Use the trigger tool for persistent ' +
+                        'scheduled or message-driven tasks. Use structured ' +
+                        'actions and inspect a task before changing it. ' +
+                        'Immediate work that should not persist does not need ' +
+                        'a trigger task.</trigger_tool>'
+                )
+                runtime.result.push(msg)
+                runtime.usedTokens += await countMessageTokens(
+                    msg,
+                    runtime.tokenCounter
+                )
+                return next()
+            },
+            10
+        )
+
+        try {
+            this._runner.start()
+            await this._reconcileStale()
+            await this._observer.start()
+            await this._scheduler.start()
+            await this._refreshStatus()
+        } catch (err) {
+            await this.stop()
+            throw err
+        }
     }
 
     async stop() {
-        this._botDispose?.()
-        this._botDispose = undefined
+        if (!this._started) return
+        this._started = false
+
+        await this._observer.stop()
+        await this._scheduler.stop()
+        await this._runner.stop()
+        this._control.clear()
         this._toolDispose?.()
         this._toolDispose = undefined
+        this._finishDispose?.()
+        this._finishDispose = undefined
         this._promptDispose?.()
         this._promptDispose = undefined
-        this._listener.stop()
-        this._scheduler.stop()
-        this._deferred.clear()
-        this._status = { total: 0, enabled: 0, scheduled: 0, passive: 0 }
     }
 
-    // ---- Public wakeup API -----------------------------------------------
-
-    /**
-     * Wake up an agent for the given target. The target may be a session
-     * (most common; everything else is derived), a routing tuple, or a
-     * `{ bindingKey }` reference.
-     */
-    async wakeup(
-        target: WakeupTarget,
-        opts: WakeupOptions = {}
-    ): Promise<WakeupResult> {
-        const action: WakeupAction = {
-            ...opts,
-            target,
-            source: opts.source ?? { kind: 'adhoc' }
-        }
-        const result = await this._executor.wakeup(action)
-        if (result.deferred != null) {
-            this._queueDeferred(
-                `wakeup:${result.requestId ?? Date.now()}`,
-                result.deferred.pendingKey,
-                {
-                    action: this._stripReplayFields(action),
-                    mutateSchedule: false
-                }
-            )
-        }
-        return result
+    async create(actor: TriggerActor, input: TriggerCreateInput) {
+        const parsed = triggerCreateInputSchema.parse(input)
+        this._checkTarget(actor, parsed.target)
+        const now = new Date()
+        const condition = this._planner.validate(parsed.condition)
+        const draft = {
+            ...parsed,
+            condition,
+            ownerKey: actor.key,
+            id: 0,
+            state: {
+                status: 'waiting' as const,
+                runCount: 0
+            },
+            createdAt: now,
+            updatedAt: now
+        } satisfies TriggerTask
+        const task = await this._store.create({
+            ...parsed,
+            condition,
+            ownerKey: actor.key,
+            state: this._planner.initialState(draft, now)
+        })
+        await this._afterChange()
+        return task
     }
 
-    /** Webui-only entry. Normalizes a flat record then forwards to wakeup. */
-    async adhocWakeup(input: TriggerAdhocWakeupInput) {
-        const { bindingKey, platform, selfId, userId, ...rest } = input
-        if (
-            bindingKey == null &&
-            platform != null &&
-            selfId != null &&
-            userId != null
-        ) {
-            const routing: WakeupRouting = {
-                platform,
-                selfId,
-                userId,
-                guildId: input.guildId ?? undefined,
-                channelId: input.channelId ?? undefined,
-                isDirect: input.isDirect ?? false
+    async update(actor: TriggerActor, id: number, input: TriggerUpdateInput) {
+        const current = await this._getOwned(actor, id)
+        const parsed = triggerUpdateInputSchema.parse(input)
+        this._checkTarget(actor, parsed.target)
+        const now = new Date()
+        const condition = this._planner.validate(parsed.condition)
+        const draft = {
+            ...current,
+            ...parsed,
+            condition,
+            updatedAt: now
+        }
+        const task = await this._store.update(id, {
+            ...parsed,
+            condition,
+            state: parsed.enabled
+                ? {
+                      ...this._planner.initialState(draft, now),
+                      runCount: current.state.runCount,
+                      lastRunAt: current.state.lastRunAt,
+                      lastDecision: current.state.lastDecision,
+                      lastError: current.state.lastError
+                  }
+                : {
+                      ...current.state,
+                      status: 'paused',
+                      nextRunAt: null,
+                      suppressedUntil: null
+                  }
+        })
+        await this._afterChange()
+        return task
+    }
+
+    async remove(actor: TriggerActor, id: number) {
+        await this._getOwned(actor, id)
+        await this._runner.abortTask(id)
+        await this._store.remove(id)
+        await this._afterChange()
+    }
+
+    async get(actor: TriggerActor, id: number) {
+        return await this._getOwned(actor, id)
+    }
+
+    async list(actor: TriggerActor, filter?: TriggerListFilter) {
+        return (await this._store.list()).filter(
+            (task) =>
+                (actor.authority >= 3 || task.ownerKey === actor.key) &&
+                (filter?.enabled == null || task.enabled === filter.enabled) &&
+                (filter?.status == null ||
+                    task.state.status === filter.status) &&
+                (filter?.conditionType == null ||
+                    task.condition.type === filter.conditionType)
+        )
+    }
+
+    async listRuns(actor: TriggerActor, id: number, limit = 20) {
+        await this._getOwned(actor, id)
+        return await this._store.listRuns(id, Math.min(Math.max(limit, 1), 100))
+    }
+
+    async setEnabled(actor: TriggerActor, id: number, enabled: boolean) {
+        const current = await this._getOwned(actor, id)
+        if (current.enabled === enabled) return current
+
+        const now = new Date()
+        const task = await this._store.update(id, {
+            enabled,
+            state: enabled
+                ? {
+                      ...this._planner.initialState(
+                          { ...current, enabled, updatedAt: now },
+                          now
+                      ),
+                      runCount: current.state.runCount,
+                      lastRunAt: current.state.lastRunAt,
+                      lastDecision: current.state.lastDecision,
+                      lastError: current.state.lastError
+                  }
+                : {
+                      ...current.state,
+                      status: 'paused',
+                      nextRunAt: null,
+                      suppressedUntil: null
+                  }
+        })
+        await this._afterChange()
+        return task
+    }
+
+    async resume(actor: TriggerActor, id: number) {
+        const current = await this._getOwned(actor, id)
+        const now = new Date()
+        const task = await this._store.update(id, {
+            enabled: true,
+            state: {
+                ...this._planner.initialState(
+                    { ...current, enabled: true, updatedAt: now },
+                    now
+                ),
+                runCount: current.state.runCount,
+                lastRunAt: current.state.lastRunAt,
+                lastDecision: current.state.lastDecision,
+                lastError: current.state.lastError
             }
-            return await this.wakeup(routing, rest)
-        }
-        if (bindingKey == null) {
-            return await this._executor.wakeup({
-                ...rest,
-                source: { kind: 'adhoc' }
-            })
-        }
-        return await this.wakeup({ bindingKey }, rest)
-    }
-
-    // ---- Task CRUD --------------------------------------------------------
-
-    /**
-     * Create a trigger task. The first argument is either a routing source
-     * (most commonly a session) or a fully-specified `TriggerCreateTaskInput`
-     * for transports that don't have a session (e.g. webui).
-     */
-    async createTask(
-        sourceOrInput: Session | WakeupRouting | TriggerCreateTaskInput,
-        opts?: CreateTaskFromSessionOptions
-    ) {
-        const input = await this._prepareTaskInput(
-            this._deriveCreateInput(sourceOrInput, opts)
-        )
-        const task = await this._registry.create(input)
-        await this._providers.get(task.providerKind)?.onTaskCreate?.({ task })
-        this._scheduler.sync(task)
-        await this._afterMutate()
+        })
+        await this._afterChange()
         return task
     }
 
-    async removeTask(id: number) {
-        const task = await this._registry.get(id)
-        this._deleteDeferred(id)
-        this._scheduler.remove(id)
-        await this._registry.remove(id)
-        if (task != null) {
-            await this._providers
-                .get(task.providerKind)
-                ?.onTaskRemove?.({ task })
-        }
-        await this._afterMutate()
-    }
-
-    async getTask(id: number) {
-        return await this._registry.get(id)
-    }
-
-    async listTasks() {
-        return await this._registry.list()
-    }
-
-    async fire(id: number, session?: Session) {
-        const result = await this._fireTask(
-            id,
-            session ? { target: session } : undefined,
-            false
-        )
-        await this._afterMutate()
-        return result
-    }
-
-    async updateTask(id: number, patch: Partial<TriggerTask>) {
-        const current = await this._registry.get(id)
-        if (!current) {
-            throw new Error(`Trigger task not found: ${id}`)
+    async pauseUntil(actor: TriggerActor, id: number, at: string) {
+        const current = await this._getOwned(actor, id)
+        finishTriggerRunSchema.parse({
+            decision: 'pause_until',
+            at
+        })
+        const date = new Date(at)
+        if (date.valueOf() <= Date.now()) {
+            throw new Error('pause_until requires a valid future ISO timestamp')
         }
 
-        const task = await this._registry.update(
-            id,
-            await this._prepareTaskPatch(current, patch)
-        )
-        this._deleteDeferred(id)
-        this._scheduler.sync(task)
-        await this._afterMutate()
+        const task = await this._store.update(id, {
+            enabled: true,
+            state: {
+                ...current.state,
+                status: 'paused',
+                nextRunAt: date.toISOString(),
+                suppressedUntil: date.toISOString()
+            }
+        })
+        await this._afterChange()
         return task
     }
 
-    async setEnabled(id: number, enabled: boolean) {
-        return await this.updateTask(id, { enabled })
+    async fire(actor: TriggerActor, id: number): Promise<TriggerRun> {
+        await this._getOwned(actor, id)
+        return await this._runner.run(id, 'manual')
     }
 
-    getRunningTaskId(requestId: string | undefined) {
-        if (requestId == null) return undefined
-        return this._runningTasks.get(requestId)?.taskId
+    async wakeup(actor: TriggerActor, input: TriggerWakeupInput) {
+        const parsed = triggerWakeupInputSchema.parse(input)
+        this._checkTarget(actor, parsed.target)
+        const target = parsed.target
+        const destination = target.destination
+        return await this.ctx.chatluna.invoke({
+            routing: {
+                platform: target.bot.platform,
+                selfId: target.bot.selfId,
+                userId: target.principalId,
+                guildId:
+                    destination.type === 'channel'
+                        ? destination.guildId
+                        : undefined,
+                channelId:
+                    destination.type === 'channel'
+                        ? destination.channelId
+                        : destination.userId,
+                isDirect: destination.type === 'direct'
+            },
+            message: parsed.execution.prompt,
+            model:
+                parsed.execution.model.type === 'fixed'
+                    ? parsed.execution.model.model
+                    : undefined,
+            preset: parsed.execution.preset ?? undefined,
+            conversation:
+                parsed.execution.conversation.type === 'existing'
+                    ? {
+                          type: 'existing',
+                          id: parsed.execution.conversation.conversationId
+                      }
+                    : parsed.execution.conversation.type === 'task'
+                      ? { type: 'task', key: `trigger:wakeup:${actor.key}` }
+                      : parsed.execution.conversation,
+            tools:
+                parsed.execution.tools.type === 'allow'
+                    ? {
+                          mode: 'allow',
+                          allow: parsed.execution.tools.names,
+                          deny: []
+                      }
+                    : { mode: 'allow', allow: [], deny: [] },
+            timeout: parsed.execution.timeoutSeconds * 1000,
+            delivery: target.delivery,
+            source: { kind: 'trigger-wakeup' }
+        })
     }
 
-    canMutateRunningTask(requestId: string | undefined) {
-        if (requestId == null) return false
-        return this._runningTasks.get(requestId)?.mutateSchedule === true
-    }
-
-    async snoozeTask(id: number, after: Date) {
-        const task = await this._registry.get(id)
-        if (task == null) {
-            throw new Error(`Trigger task not found: ${id}`)
-        }
-
-        const next = (await this._providers
-            .get(task.providerKind)
-            ?.reschedule?.({
-                task,
-                after
-            })) ?? { enabled: true, nextFireAt: after }
-        const updated = await this._registry.update(id, next)
-        this._deleteDeferred(id)
-        this._scheduler.sync(updated)
-        await this._afterMutate()
-        return updated
+    async previewCondition(condition: TriggerCondition, count = 5) {
+        return this._planner.preview(
+            this._planner.validate(condition),
+            Math.min(Math.max(count, 1), 20),
+            new Date()
+        )
     }
 
     getStatus(): TriggerStatus {
         return this._status
     }
 
-    registerProvider(provider: TriggerProvider) {
-        const dispose = this._providers.register(provider)
-        this._syncPrompt()
-        return () => {
-            dispose()
-            this._syncPrompt()
-        }
-    }
-
-    listProviders() {
-        return this._providers.listDescriptors().map((desc) => ({
-            ...desc,
-            enabled: this.isProviderEnabled(desc.kind)
-        }))
-    }
-
-    getProviders() {
-        return this._providers.list()
-    }
-
-    getEnabledProviders() {
-        return this._providers
-            .list()
-            .filter((p) => this.isProviderEnabled(p.kind))
-    }
-
-    isProviderEnabled(kind: string) {
-        return this.config.providers[kind]?.enabled !== false
-    }
-
-    async setProviderEnabled(kind: string, enabled: boolean) {
-        if (this._providers.get(kind) == null) {
-            throw new Error(`Unknown trigger provider: ${kind}`)
-        }
-
-        this.config.providers = {
-            ...this.config.providers,
-            [kind]: { enabled }
-        }
-
-        const tasks = await this._registry.list({ providerKind: kind })
-        for (const task of tasks) {
-            if (!enabled) {
-                this._scheduler.remove(task.id)
-            } else {
-                this._scheduler.sync(task)
-            }
-        }
-
-        this._syncPrompt()
-    }
-
-    listRoutingChoices(): TriggerRoutingChoice[] {
+    listRoutingChoices() {
         const seen = new Set<string>()
         return Object.values(this.ctx.bots)
             .filter((bot) => {
@@ -434,500 +427,144 @@ export class ChatLunaAgentTriggerService {
             .sort((a, b) => a.label.localeCompare(b.label))
     }
 
-    // ---- Private helpers --------------------------------------------------
-
-    private _deriveCreateInput(
-        sourceOrInput: Session | WakeupRouting | TriggerCreateTaskInput,
-        opts?: CreateTaskFromSessionOptions
-    ): TriggerCreateTaskInput {
-        if (
-            opts == null &&
-            'bindingKey' in sourceOrInput &&
-            'platform' in sourceOrInput &&
-            'selfId' in sourceOrInput &&
-            'userId' in sourceOrInput &&
-            'wakeupTemplate' in sourceOrInput &&
-            'createdBy' in sourceOrInput
-        ) {
-            return sourceOrInput as TriggerCreateTaskInput
-        }
-
-        const o = opts ?? ({} as CreateTaskFromSessionOptions)
-        const isSession = typeof (sourceOrInput as Session).bot === 'object'
-        const routing = isSession
-            ? routingFromSession(sourceOrInput as Session)
-            : (sourceOrInput as WakeupRouting)
-
-        return {
-            ...o,
-            ...routing,
-            bindingKey:
-                o.bindingKey ??
-                bindingKeyFromRouting(routing, o.scope ?? 'personal'),
-            createdBy:
-                o.createdBy ??
-                (isSession
-                    ? (sourceOrInput as Session).userId
-                    : routing.userId),
-            wakeupTemplate: o.wakeupTemplate ?? {}
-        } as TriggerCreateTaskInput
-    }
-
-    private _stripReplayFields(action: Partial<WakeupAction>) {
-        const copy = { ...action }
-        delete copy.signal
-        delete copy.onReply
-
-        const target = copy.target
-        if (target == null) return copy
-        if (
-            typeof target === 'object' &&
-            'bot' in target &&
-            'platform' in target
-        ) {
-            return {
-                ...copy,
-                target: routingFromSession(target as Session)
+    private async _reconcileStale() {
+        await this._store.failRunningRuns('Interrupted by service restart')
+        const running = await this._store.listRunning()
+        for (const task of running) {
+            const now = new Date()
+            const cursor =
+                task.state.cursor != null &&
+                typeof task.state.cursor === 'object' &&
+                'gate' in task.state.cursor
+                    ? { gate: task.state.cursor.gate }
+                    : null
+            if (
+                task.condition.type === 'keyword' ||
+                task.condition.type === 'participation' ||
+                task.condition.type === 'semantic'
+            ) {
+                await this._store.update(task.id, {
+                    state: {
+                        ...task.state,
+                        status: 'waiting',
+                        nextRunAt: null,
+                        cursor,
+                        lastError: 'Interrupted by service restart'
+                    }
+                })
+                continue
+            }
+            if (task.condition.type === 'inactivity') {
+                await this._store.update(task.id, {
+                    state: {
+                        ...task.state,
+                        status: 'waiting',
+                        nextRunAt: null,
+                        cursor,
+                        lastError: 'Interrupted by service restart'
+                    }
+                })
+                continue
+            }
+            // scheduled recurring/once — advance via planner misfire semantics
+            try {
+                const plan = this._planner.next(task, now, { misfire: true })
+                await this._store.update(task.id, {
+                    state: {
+                        ...task.state,
+                        status: plan.status,
+                        nextRunAt: plan.nextRunAt?.toISOString() ?? null,
+                        suppressedUntil:
+                            plan.suppressedUntil?.toISOString() ?? null,
+                        periodKey: plan.periodKey ?? null,
+                        occurrenceKey: plan.occurrenceKey ?? null,
+                        cursor,
+                        lastError: 'Interrupted by service restart'
+                    }
+                })
+            } catch (err) {
+                await this._store.update(task.id, {
+                    state: {
+                        ...task.state,
+                        status: 'error',
+                        nextRunAt: null,
+                        cursor,
+                        lastError:
+                            err instanceof Error
+                                ? err.message
+                                : 'Interrupted by service restart'
+                    }
+                })
             }
         }
-        return copy
     }
 
-    private async _afterMutate() {
+    private async _getOwned(actor: TriggerActor, id: number) {
+        const task = await this._store.get(id)
+        if (!task) throw new Error(`Trigger task not found: ${id}`)
+        if (actor.authority < 3 && task.ownerKey !== actor.key) {
+            throw new Error('You do not have permission to manage this trigger')
+        }
+        return task
+    }
+
+    private _checkTarget(actor: TriggerActor, target: TriggerTask['target']) {
+        if (actor.authority >= 3) return
+        if (target.principalId !== actor.userId) {
+            throw new Error('Trigger principalId must match the current user')
+        }
+
+        const session = actor.session
+        if (!session) {
+            throw new Error('A session is required to create this trigger')
+        }
+        if (
+            target.bot.platform !== session.platform ||
+            target.bot.selfId !== session.selfId
+        ) {
+            throw new Error('Trigger bot must match the current route')
+        }
+
+        if (session.isDirect) {
+            if (
+                target.destination.type !== 'direct' ||
+                target.destination.userId !== session.userId
+            ) {
+                throw new Error(
+                    'Trigger destination must match the current route'
+                )
+            }
+            return
+        }
+
+        if (
+            target.destination.type !== 'channel' ||
+            target.destination.channelId !== session.channelId ||
+            (target.destination.guildId != null &&
+                target.destination.guildId !== session.guildId)
+        ) {
+            throw new Error('Trigger destination must match the current route')
+        }
+    }
+
+    private async _afterChange() {
+        await this._scheduler.refresh()
         await this._refreshStatus()
         await this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
-    private async _fireTask(
-        id: number,
-        override?: Partial<WakeupAction>,
-        mutateSchedule = true
-    ) {
-        const task = await this._registry.get(id)
-        if (!task) {
-            throw new Error(`Trigger task not found: ${id}`)
-        }
-
-        const overdue =
-            mutateSchedule &&
-            task.providerKind === 'cron' &&
-            task.nextFireAt != null &&
-            task.nextFireAt.valueOf() < Date.now()
-        if (overdue && task.params?.missedRunPolicy !== 'fire_once') {
-            const requestId = randomUUID()
-            const provider = this._providers.get(task.providerKind)
-            const result: WakeupResult = {
-                ok: true,
-                skipped: true,
-                requestId,
-                stats: { durationMs: 0 }
-            }
-            const next = await provider?.afterFire?.({
-                task,
-                currentDate: new Date()
-            })
-            const updated = await this._registry.update(id, {
-                ...(next ?? {}),
-                lastError: null
-            })
-            this._scheduler.sync(updated)
-            await provider?.onTaskFire?.({ task: updated, result })
-            return result
-        }
-
-        const taskRouting: WakeupRouting | undefined =
-            task.platform && task.selfId && task.userId
-                ? {
-                      platform: task.platform,
-                      selfId: task.selfId,
-                      userId: task.userId,
-                      username: task.username ?? undefined,
-                      guildId: task.guildId ?? undefined,
-                      channelId: task.channelId ?? undefined,
-                      isDirect: task.isDirect
-                  }
-                : undefined
-        const target =
-            override?.target ??
-            taskRouting ??
-            (task.bindingKey != null
-                ? { bindingKey: task.bindingKey }
-                : undefined)
-        const requestId = override?.requestId ?? randomUUID()
-        const merged: WakeupAction = {
-            ...task.wakeupTemplate,
-            ...override,
-            target,
-            bindingKey: override?.bindingKey ?? task.bindingKey,
-            requestId,
-            conversationId: override?.conversationId ?? task.conversationId,
-            presetLane: override?.presetLane ?? task.presetLane,
-            source: override?.source ?? {
-                kind: 'task',
-                taskId: task.id,
-                providerKind: task.providerKind ?? undefined
-            }
-        }
-
-        if (merged.source.kind === 'task' && merged.source.taskId != null) {
-            this._runningTasks.set(requestId, {
-                taskId: merged.source.taskId,
-                mutateSchedule
-            })
-        }
-
-        const result = await this._executor.wakeup(merged).finally(() => {
-            this._runningTasks.delete(requestId)
-        })
-
-        if (result.deferred != null) {
-            this._queueDeferred(`task:${task.id}`, result.deferred.pendingKey, {
-                action:
-                    override == null
-                        ? undefined
-                        : this._stripReplayFields(override),
-                mutateSchedule,
-                taskId: task.id
-            })
-            await this._providers
-                .get(task.providerKind)
-                ?.onTaskFire?.({ task, result })
-            return result
-        }
-
-        const provider = this._providers.get(task.providerKind)
-        const firedAt = new Date()
-        const latest = await this._registry.get(id)
-        if (latest == null) return result
-
-        const keepEnabled = RETRYABLE_FIRE_CODES.has(result.error?.code ?? '')
-        const err = result.error?.message ?? 'Unknown error'
-
-        if (latest.updatedAt.valueOf() > task.updatedAt.valueOf()) {
-            const latestProvider = this._providers.get(latest.providerKind)
-            const next =
-                latestProvider?.afterFire != null
-                    ? await latestProvider.afterFire({
-                          task: latest,
-                          firedAt,
-                          currentDate: overdue ? firedAt : undefined
-                      })
-                    : keepEnabled
-                      ? {
-                            enabled: true,
-                            nextFireAt:
-                                latest.nextFireAt != null &&
-                                latest.nextFireAt.valueOf() <= firedAt.valueOf()
-                                    ? null
-                                    : latest.nextFireAt
-                        }
-                      : result.ok && latestProvider?.passive === true
-                        ? {
-                              enabled: true,
-                              nextFireAt: latest.nextFireAt
-                          }
-                        : { enabled: false, nextFireAt: null }
-            const schedule = mutateSchedule && next != null ? next : {}
-            const updated = await this._registry.update(id, {
-                lastFiredAt: firedAt,
-                fireCount: latest.fireCount + 1,
-                ...(latest.wakeupTemplate.newConversation === true &&
-                latest.conversationId == null &&
-                result.ok &&
-                result.conversation != null
-                    ? { conversationId: result.conversation.id }
-                    : {}),
-                ...schedule,
-                lastError: result.ok ? null : err
-            })
-            await latestProvider?.onTaskFire?.({ task: updated, result })
-            if (mutateSchedule) {
-                this._scheduler.sync(updated)
-            }
-            return result
-        }
-
-        const next =
-            provider?.afterFire != null
-                ? await provider.afterFire({
-                      task,
-                      firedAt,
-                      currentDate: overdue ? firedAt : undefined
-                  })
-                : keepEnabled
-                  ? {
-                        enabled: true,
-                        nextFireAt:
-                            task.nextFireAt != null &&
-                            task.nextFireAt.valueOf() <= firedAt.valueOf()
-                                ? null
-                                : task.nextFireAt
-                    }
-                  : result.ok && provider?.passive === true
-                    ? {
-                          enabled: true,
-                          nextFireAt: task.nextFireAt
-                      }
-                    : { enabled: false, nextFireAt: null }
-        const schedule = mutateSchedule && next != null ? next : {}
-        const updated = await this._registry.update(id, {
-            lastFiredAt: firedAt,
-            fireCount: task.fireCount + 1,
-            ...(task.wakeupTemplate.newConversation === true &&
-            task.conversationId == null &&
-            result.ok &&
-            result.conversation != null
-                ? { conversationId: result.conversation.id }
-                : {}),
-            ...schedule,
-            lastError: result.ok ? null : err
-        })
-        await provider?.onTaskFire?.({ task: updated, result })
-        if (mutateSchedule) {
-            this._scheduler.sync(updated)
-        }
-
-        return result
-    }
-
-    private _queueDeferred(
-        key: string,
-        pendingKey: string,
-        item: DeferredWakeup
-    ) {
-        const map = this._deferred.get(pendingKey) ?? new Map()
-        map.set(key, item)
-        this._deferred.set(pendingKey, map)
-    }
-
-    private async _replayDeferred(platform: string, selfId: string) {
-        const key = `${platform}:${selfId}`
-        const items = this._deferred.get(key)
-        if (items == null || items.size < 1) return
-
-        let changed = false
-        this._deferred.delete(key)
-        for (const item of items.values()) {
-            try {
-                if (item.taskId == null) {
-                    if (
-                        item.action?.message == null ||
-                        item.action.source == null ||
-                        item.action.target == null
-                    ) {
-                        logger.warn(
-                            'Skip deferred wakeup replay because required action fields are missing.'
-                        )
-                        continue
-                    }
-
-                    const result = await this._executor.wakeup({
-                        ...item.action,
-                        target: item.action.target,
-                        message: item.action.message,
-                        source: item.action.source
-                    })
-                    if (result.deferred == null) {
-                        changed = true
-                    } else {
-                        this._queueDeferred(
-                            `wakeup:${result.requestId ?? Date.now()}`,
-                            result.deferred.pendingKey,
-                            item
-                        )
-                    }
-                    continue
-                }
-
-                const task = await this._registry.get(item.taskId)
-                if (task == null || !task.enabled) continue
-
-                const result = await this._fireTask(
-                    item.taskId,
-                    item.action,
-                    item.mutateSchedule
-                )
-                if (result.deferred == null) changed = true
-            } catch (err) {
-                logger.warn(err)
-            }
-        }
-
-        if (changed) await this._afterMutate()
-    }
-
-    private _deleteDeferred(id: number) {
-        for (const [key, items] of this._deferred) {
-            items.delete(`task:${id}`)
-            if (items.size < 1) this._deferred.delete(key)
-        }
-    }
-
-    private _syncPrompt() {
-        this._promptDispose?.()
-        this._promptDispose = undefined
-
-        if (this._providers.list().length < 1) return
-
-        this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
-            'after_system_prompts',
-            async (runtime: PromptContextRuntime, next) => {
-                if (!runtime.configurable?.conversationId) return next()
-                if (runtime.configurable?.subagentContext) return next()
-
-                const mask = (runtime.configurable as { toolMask?: ToolMask })
-                    ?.toolMask
-                if (
-                    mask != null &&
-                    !this.ctx.chatluna.platform
-                        .getFilteredTools(mask)
-                        .includes('trigger')
-                ) {
-                    return next()
-                }
-
-                const providers = this.getEnabledProviders()
-                if (providers.length < 1) return next()
-
-                const msg = renderTriggerProviders(providers)
-                runtime.result.push(msg)
-                runtime.usedTokens += await countMessageTokens(
-                    msg,
-                    runtime.tokenCounter
-                )
-
-                const taskId = this.getRunningTaskId(
-                    (
-                        runtime.configurable as {
-                            agentContext?: { requestId?: string }
-                        }
-                    ).agentContext?.requestId
-                )
-                const task =
-                    taskId == null ? undefined : await this.getTask(taskId)
-                if (task != null) {
-                    const self = renderTriggerSelfControl(task, new Date())
-                    runtime.result.push(self)
-                    runtime.usedTokens += await countMessageTokens(
-                        self,
-                        runtime.tokenCounter
-                    )
-                }
-
-                return next()
-            },
-            10
-        )
-    }
-
     private async _refreshStatus() {
-        const tasks = await this._registry.list()
-        let enabled = 0
-        let scheduled = 0
-        let passive = 0
-        for (const task of tasks) {
-            if (!task.enabled) continue
-            if (
-                task.providerKind != null &&
-                !this.isProviderEnabled(task.providerKind)
-            ) {
-                continue
-            }
-            enabled++
-            if (task.nextFireAt != null) scheduled++
-            if (this._providers.get(task.providerKind)?.passive === true) {
-                passive++
-            }
+        const tasks = await this._store.list()
+        this._status = {
+            total: tasks.length,
+            enabled: tasks.filter((task) => task.enabled).length,
+            waiting: tasks.filter((task) => task.state.status === 'waiting')
+                .length,
+            running: tasks.filter((task) => task.state.status === 'running')
+                .length,
+            paused: tasks.filter((task) => task.state.status === 'paused')
+                .length,
+            error: tasks.filter((task) => task.state.status === 'error').length
         }
-        this._status = { total: tasks.length, enabled, scheduled, passive }
     }
-
-    private async _prepareTaskInput(input: TriggerCreateTaskInput) {
-        if (
-            input.providerKind != null &&
-            !this.isProviderEnabled(input.providerKind)
-        ) {
-            throw new Error(
-                `Trigger provider is disabled: ${input.providerKind}`
-            )
-        }
-
-        const provider = this._providers.get(input.providerKind)
-        if (provider == null && input.providerKind != null) {
-            throw new Error(`Unknown trigger provider: ${input.providerKind}`)
-        }
-
-        if (provider?.needsMessage === true && !hasMessage(input)) {
-            throw new Error('Trigger task message is required')
-        }
-
-        const patch = await provider?.prepare?.({ input })
-        const merged: TriggerCreateTaskInput = {
-            ...input,
-            ...patch,
-            wakeupTemplate: {
-                newConversation: true,
-                ...input.wakeupTemplate,
-                ...(patch?.wakeupTemplate ?? {})
-            },
-            params: { ...(input.params ?? {}), ...(patch?.params ?? {}) }
-        }
-
-        if (provider == null) {
-            if (!hasMessage(merged)) {
-                throw new Error('Bare trigger task message is required')
-            }
-            if (merged.nextFireAt == null) {
-                throw new Error('nextFireAt is required for bare trigger tasks')
-            }
-            if (Number.isNaN(new Date(merged.nextFireAt).valueOf())) {
-                throw new Error('Invalid nextFireAt value')
-            }
-        }
-
-        return merged
-    }
-
-    private async _prepareTaskPatch(
-        task: TriggerTask,
-        patch: Partial<TriggerTask>
-    ) {
-        const provider = this._providers.get(
-            patch.providerKind ?? task.providerKind
-        )
-        if (provider == null) return patch
-
-        const merged = {
-            ...task,
-            ...patch,
-            params: { ...(task.params ?? {}), ...(patch.params ?? {}) },
-            wakeupTemplate: {
-                ...task.wakeupTemplate,
-                ...(patch.wakeupTemplate ?? {})
-            }
-        }
-        const next = await provider.prepare?.({ input: merged, task })
-
-        const result: Partial<TriggerTask> = {
-            ...patch,
-            ...next,
-            params: { ...(patch.params ?? {}), ...(next?.params ?? {}) }
-        }
-
-        if (patch.bindingKey != null && patch.bindingKey !== task.bindingKey) {
-            result.conversationId = null
-        } else if (patch.conversationId !== undefined) {
-            result.conversationId = patch.conversationId
-        }
-
-        return result
-    }
-}
-
-function hasMessage(input: {
-    wakeupTemplate?: { message?: string | MessageContentComplex[] }
-}) {
-    const msg = input.wakeupTemplate?.message
-    if (msg == null) return false
-    return typeof msg !== 'string' || msg.trim().length > 0
 }

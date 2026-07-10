@@ -11,8 +11,7 @@ import {
     ToolCharacterScope,
     ToolConfig,
     ToolItemConfig,
-    ToolMetaOverride,
-    TriggerConfig
+    ToolMetaOverride
 } from '../types'
 import { DEFAULT_SKILL_DIRS } from './path'
 
@@ -22,8 +21,7 @@ const HIGH_AUTHORITY_TOOLS = new Set([
     'file_read',
     'file_write',
     'glob',
-    'grep',
-    'trigger'
+    'grep'
 ])
 
 export function getDefaultToolAuthority(name?: string) {
@@ -350,16 +348,6 @@ export function createDefaultComputerConfig(): ComputerConfig {
     }
 }
 
-export function createDefaultTriggerConfig(): TriggerConfig {
-    return {
-        providers: {
-            cron: { enabled: true },
-            activity: { enabled: true },
-            keyword: { enabled: true }
-        }
-    }
-}
-
 export function getDefaultConfig(): AgentConfig {
     return {
         version: 4,
@@ -375,6 +363,6 @@ export function getDefaultConfig(): AgentConfig {
         computer: createDefaultComputerConfig(),
         subAgent: createDefaultSubAgentConfig(),
         tool: createDefaultToolConfig(),
-        trigger: createDefaultTriggerConfig()
+        trigger: {}
     }
 }

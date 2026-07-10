@@ -1,4 +1,5 @@
 /* eslint-disable operator-linebreak */
+import { randomUUID } from 'crypto'
 import { Context, h } from 'koishi'
 import { Config } from '../../config'
 import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
@@ -7,9 +8,7 @@ import { parsePresetLaneInput } from '../../utils/message_content'
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('allow_reply', async (session, context) => {
-            // Trigger-driven wakeups bypass all permission checks: the trigger
-            // service has already authenticated the caller / cron / passive match.
-            if (context.options.triggerWakeup != null) {
+            if (context.options.invocation != null) {
                 context.options.reply_status = true
                 return ChainMiddlewareRunStatus.CONTINUE
             }
@@ -25,6 +24,31 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
+            if (session.isDirect && !config.allowPrivate) {
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            const notReply = await ctx.serial(
+                'chatluna/before-check-sender',
+                session
+            )
+            if (notReply) return ChainMiddlewareRunStatus.STOP
+
+            ctx.emit('chatluna/message-observed', {
+                id: session.messageId ?? randomUUID(),
+                at: new Date(session.timestamp),
+                session,
+                platform: session.platform,
+                selfId: session.selfId,
+                userId: session.userId,
+                username: session.username,
+                guildId: session.guildId,
+                channelId: session.channelId,
+                isDirect: session.isDirect,
+                content: session.content,
+                elements: session.elements
+            })
+
             const content = h
                 .select(session.elements, 'text')
                 .join('')
@@ -35,7 +59,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 config.allowPrivate &&
                 (context.command != null || config.privateChatWithoutCommand)
             ) {
-                return await checkReplyPermission()
+                return checkReplyPermission()
             }
 
             const botId = session.bot.userId
@@ -47,7 +71,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 let appel = session.stripped.atSelf
 
                 if (appel) {
-                    return await checkReplyPermission()
+                    return checkReplyPermission()
                 }
 
                 // 从消息元素中检测是否有被艾特当前用户
@@ -60,7 +84,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     ) ?? false
 
                 if (appel) {
-                    return await checkReplyPermission()
+                    return checkReplyPermission()
                 }
             }
 
@@ -68,7 +92,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             // 检测回复的消息是否为 bot 本身
 
             if (config.allowQuoteReply && session.quote?.user?.id === botId) {
-                return await checkReplyPermission()
+                return checkReplyPermission()
             }
 
             // bot名字检查
@@ -78,7 +102,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 (config.isNickNameWithContent &&
                     config.botNames.some((name) => content.includes(name)))
             ) {
-                return await checkReplyPermission()
+                return checkReplyPermission()
             }
 
             // 随机回复检查
@@ -86,7 +110,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 Math.random() <
                 (await session.resolve(config.randomReplyFrequency))
             ) {
-                return await checkReplyPermission()
+                return checkReplyPermission()
             }
 
             // 命令检查
@@ -108,30 +132,11 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            if (
-                await ctx.serial(
-                    'chatluna/check-passive-trigger',
-                    session,
-                    content
-                )
-            ) {
-                return ChainMiddlewareRunStatus.STOP
-            }
-
             return ChainMiddlewareRunStatus.STOP
 
-            // 辅助函数：检查回复权限
-            async function checkReplyPermission() {
-                const notReply = await ctx.serial(
-                    'chatluna/before-check-sender',
-                    session
-                )
-                const status = notReply
-                    ? ChainMiddlewareRunStatus.STOP
-                    : ChainMiddlewareRunStatus.CONTINUE
-                context.options.reply_status =
-                    status === ChainMiddlewareRunStatus.CONTINUE
-                return status
+            function checkReplyPermission() {
+                context.options.reply_status = true
+                return ChainMiddlewareRunStatus.CONTINUE
             }
         })
         .before('lifecycle-check')
