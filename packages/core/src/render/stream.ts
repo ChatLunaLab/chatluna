@@ -103,7 +103,7 @@ export class ReplyStream {
             if (frame?.type === 'done') {
                 if (this.mode === 'edit') {
                     await this.sendMessage(frame.message, 'edit')
-                } else if (this.firstChunk) {
+                } else if (this.mode === 'buffer' || this.firstChunk) {
                     await this.sendMessage(frame.message, 'split')
                 }
             }

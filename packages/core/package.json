@@ -267,6 +267,7 @@
         "@vue/reactivity": "^3.6.0-alpha.2",
         "decimal.js": "^10.6.0",
         "he": "^1.2.0",
+        "htmlparser2": "^10.1.0",
         "https-proxy-agent": "^7.0.6",
         "js-tiktoken": "npm:@dingyi222666/js-tiktoken@^1.0.21",
         "js-yaml": "^4.1.0",

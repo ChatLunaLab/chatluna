@@ -1,6 +1,7 @@
 import { Command, ForkScope, h, Session, User } from 'koishi'
 import { PromiseLikeDisposable } from 'koishi-plugin-chatluna/utils/types'
 import { Marked, Token } from 'marked'
+import { Parser } from 'htmlparser2'
 import type { MessageContent } from '@langchain/core/messages'
 import {
     isMessageContentAudio,
@@ -26,6 +27,87 @@ const marked = new Marked({
         }
     }
 })
+
+const htmlVoidElements = new Set(
+    'area base br col embed hr img input link meta source track wbr'.split(' ')
+)
+
+export function parseElements(source: string): h[]
+export function parseElements(
+    source: string,
+    partial: true
+): { elements: h[]; rest: string }
+export function parseElements(source: string, partial = false) {
+    const elements: h[] = []
+    const stack: [h[], h[]?, number?, number?][] = [[elements]]
+    let depth = 0
+    let cut = -1
+    let count = 0
+
+    const append = (element: h) => {
+        const current = stack[stack.length - 1][0]
+        const last = current[current.length - 1]
+        if (last?.type === 'text' && element.type === 'text') {
+            last.attrs['content'] += element.attrs['content']
+        } else {
+            current.push(element)
+        }
+    }
+
+    const parser = new Parser(
+        {
+            onopentag(name, sourceAttrs) {
+                const attrs: Record<string, string | boolean> = {}
+                for (const [key, value] of Object.entries(sourceAttrs)) {
+                    if (key.startsWith('no-')) attrs[key.slice(3)] = false
+                    else attrs[key] = value || true
+                }
+
+                const element = h(name, attrs)
+                append(element)
+                if (name === 'message') depth++
+                if (!htmlVoidElements.has(name)) {
+                    const parent = stack[stack.length - 1][0]
+                    stack.push([
+                        element.children,
+                        parent,
+                        parent.length - 1,
+                        parser.startIndex
+                    ])
+                }
+            },
+            ontext(text) {
+                append(h.text(text))
+            },
+            onclosetag(name, implied) {
+                if (htmlVoidElements.has(name)) return
+                const entry = stack.pop()
+                if (entry?.[1] == null) return
+                const empty = source
+                    .slice(parser.startIndex, parser.endIndex + 1)
+                    .trimEnd()
+                    .endsWith('/>')
+                if (implied && !empty) {
+                    entry[1][entry[2]!] = h.text(
+                        source.slice(entry[3], parser.startIndex)
+                    )
+                }
+                if (name !== 'message' || depth < 1) return
+                depth--
+                if (depth === 0 && (!implied || empty)) {
+                    cut = parser.endIndex + 1
+                    count = elements.length
+                }
+            }
+        },
+        { decodeEntities: true, recognizeSelfClosing: true }
+    )
+    parser.end(source)
+
+    if (!partial) return elements
+    if (cut < 0) return { elements: [], rest: source }
+    return { elements: elements.slice(0, count), rest: source.slice(cut) }
+}
 
 export function forkScopeToDisposable(scope: ForkScope): PromiseLikeDisposable {
     return () => {
