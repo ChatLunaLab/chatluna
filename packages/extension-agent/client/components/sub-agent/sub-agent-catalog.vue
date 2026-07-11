@@ -21,7 +21,11 @@
                 >
                     <template #reference>
                         <el-button class="filter-trigger" plain>
-                            {{ filters.length > 0 ? `筛选 ${filters.length}` : '筛选' }}
+                            {{
+                                filters.length > 0
+                                    ? `筛选 ${filters.length}`
+                                    : '筛选'
+                            }}
                         </el-button>
                     </template>
 
@@ -154,7 +158,11 @@
                     </div>
 
                     <div class="agent-actions" @click.stop>
-                        <el-button size="small" plain @click="$emit('preview', item)">
+                        <el-button
+                            size="small"
+                            plain
+                            @click="$emit('preview', item)"
+                        >
                             查看/修改内容
                         </el-button>
                         <el-button
@@ -246,7 +254,8 @@ const filteredAgents = computed(() => {
                 if (value === 'state:not-ready') return item.state !== 'ready'
                 if (value === 'hidden:yes') return item.hidden
                 if (value === 'source:builtin') return item.source === 'builtin'
-                if (value === 'source:markdown') return item.source === 'markdown'
+                if (value === 'source:markdown')
+                    return item.source === 'markdown'
                 if (value === 'source:preset') return item.source === 'preset'
                 if (value === 'source:manual') return item.source === 'manual'
                 return true
@@ -435,14 +444,11 @@ function canExport(item: SubAgentInfo) {
     cursor: pointer;
     overflow: hidden;
     box-sizing: border-box;
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
+    transition: border-color 0.2s ease;
 }
 
 .agent-card:hover {
     border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
-    transform: translateY(-1px);
 }
 
 .agent-card.muted {

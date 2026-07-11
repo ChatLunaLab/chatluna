@@ -10,6 +10,10 @@ import type {
 } from '../types/trigger'
 import type { TriggerProviderRegistry } from './providers/registry'
 import { createTriggerConditionSchema, isEventCondition } from './schema'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export class TriggerPlanner {
     constructor(private readonly registry?: TriggerProviderRegistry) {}
@@ -239,8 +243,11 @@ export class TriggerPlanner {
         if (resolved.type === 'pause_until' || resolved.type === 'reschedule') {
             const at = new Date(resolved.at)
             if (Number.isNaN(at.valueOf()) || at.valueOf() <= now.valueOf()) {
-                throw new Error(
-                    `${resolved.type} requires a future ISO timestamp`
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.TRIGGER_INVALID_INPUT,
+                    new Error(
+                        `${resolved.type} requires a future ISO timestamp`
+                    )
                 )
             }
             return {
@@ -311,7 +318,10 @@ export class TriggerPlanner {
         if (parsed.type === 'extension') {
             const item = this.registry?.get(parsed.provider)
             if (item == null) {
-                throw new Error(`Unknown trigger provider: ${parsed.provider}`)
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                    new Error(`Unknown trigger provider: ${parsed.provider}`)
+                )
             }
             if (item.preview != null) {
                 return item.preview(parsed.config, count, now)
@@ -359,13 +369,17 @@ export class TriggerPlanner {
         if (condition.type === 'extension') {
             const item = this.registry?.get(condition.provider)
             if (item == null) {
-                throw new Error(
-                    `Unknown trigger provider: ${condition.provider}`
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                    new Error(`Unknown trigger provider: ${condition.provider}`)
                 )
             }
             if (item.kind !== 'scheduled' || item.next == null) {
-                throw new Error(
-                    `Trigger provider ${condition.provider} cannot schedule occurrences`
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.TRIGGER_UNAVAILABLE,
+                    new Error(
+                        `Trigger provider ${condition.provider} cannot schedule occurrences`
+                    )
                 )
             }
             const occurrence = item.next({
@@ -438,11 +452,17 @@ export class TriggerPlanner {
                     return { at: at.toJSDate(), occurrenceKey: key }
                 }
             }
-            throw new Error('Unable to find a calendar occurrence')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_FAILED,
+                new Error('Unable to find a calendar occurrence')
+            )
         }
         if (condition.type !== 'window') {
-            throw new Error(
-                `Unable to schedule condition type: ${condition.type}`
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_INVALID_INPUT,
+                new Error(
+                    `Unable to schedule condition type: ${condition.type}`
+                )
             )
         }
         const base = DateTime.fromJSDate(after, {
@@ -522,7 +542,10 @@ export class TriggerPlanner {
                 }
             }
         }
-        throw new Error('Unable to find a window occurrence')
+        throw new ChatLunaError(
+            ChatLunaErrorCode.TRIGGER_FAILED,
+            new Error('Unable to find a window occurrence')
+        )
     }
 }
 

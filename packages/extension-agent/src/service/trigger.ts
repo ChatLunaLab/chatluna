@@ -5,6 +5,10 @@ import {
     countMessageTokens,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { logger } from '..'
 import type {
     TriggerActor,
@@ -33,9 +37,9 @@ import {
     isEventCondition,
     triggerWakeupInputSchema
 } from '../trigger/schema'
+import { gateCursor, toInvokeConversation } from '../trigger/shared'
 import { TriggerStore } from '../trigger/store'
 import { FinishTriggerRunTool, TriggerTool } from '../trigger/tool'
-import { keepGateCursor, toInvokeConversation } from '../trigger/utils'
 
 export class ChatLunaAgentTriggerService {
     private readonly _store: TriggerStore
@@ -92,8 +96,11 @@ export class ChatLunaAgentTriggerService {
 
     registerProvider(def: TriggerProviderDef) {
         if (builtinProviderDefs.some((item) => item.id === def.id)) {
-            throw new Error(
-                `Cannot override built-in trigger provider: ${def.id}`
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_CONFLICT,
+                new Error(
+                    `Cannot override built-in trigger provider: ${def.id}`
+                )
             )
         }
         return this._registry.register(def, (event) => {
@@ -124,79 +131,83 @@ export class ChatLunaAgentTriggerService {
         if (this._started) return
         this._started = true
 
-        this._toolDispose = this.ctx.chatluna.platform.registerTool('trigger', {
-            description: new TriggerTool(this).description,
-            selector: () => true,
-            authorization: () => true,
-            createTool: () => new TriggerTool(this),
-            meta: {
-                source: 'extension',
-                group: 'agent',
-                tags: ['trigger'],
-                defaultAvailability: {
-                    enabled: true,
-                    main: true,
-                    chatluna: true,
-                    characterScope: 'none'
-                }
-            }
-        })
-        this._finishDispose = this.ctx.chatluna.platform.registerTool(
-            'finish_trigger_run',
-            {
-                description: new FinishTriggerRunTool(this._control)
-                    .description,
-                selector: () => true,
-                authorization: () => true,
-                createTool: () => new FinishTriggerRunTool(this._control),
-                meta: {
-                    source: 'extension',
-                    group: 'agent',
-                    tags: ['trigger', 'control'],
-                    defaultAvailability: {
-                        enabled: false,
-                        main: false,
-                        chatluna: false,
-                        characterScope: 'none'
+        try {
+            this._toolDispose = this.ctx.chatluna.platform.registerTool(
+                'trigger',
+                {
+                    description: new TriggerTool(this).description,
+                    selector: () => true,
+                    authorization: () => true,
+                    createTool: () => new TriggerTool(this),
+                    meta: {
+                        source: 'extension',
+                        group: 'agent',
+                        tags: ['trigger'],
+                        defaultAvailability: {
+                            enabled: true,
+                            main: true,
+                            chatluna: true,
+                            characterScope: 'none'
+                        }
                     }
                 }
-            }
-        )
-        this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
-            'after_system_prompts',
-            async (runtime: PromptContextRuntime, next) => {
-                if (!runtime.configurable?.conversationId) return next()
-                if (runtime.configurable?.subagentContext) return next()
-
-                const mask = (runtime.configurable as { toolMask?: ToolMask })
-                    .toolMask
-                if (
-                    mask != null &&
-                    !this.ctx.chatluna.platform
-                        .getFilteredTools(mask)
-                        .includes('trigger')
-                ) {
-                    return next()
+            )
+            this._finishDispose = this.ctx.chatluna.platform.registerTool(
+                'finish_trigger_run',
+                {
+                    description: new FinishTriggerRunTool(this._control)
+                        .description,
+                    selector: () => true,
+                    authorization: () => true,
+                    createTool: () => new FinishTriggerRunTool(this._control),
+                    meta: {
+                        source: 'extension',
+                        group: 'agent',
+                        tags: ['trigger', 'control'],
+                        defaultAvailability: {
+                            enabled: false,
+                            main: false,
+                            chatluna: false,
+                            characterScope: 'none'
+                        }
+                    }
                 }
+            )
+            this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
+                'after_system_prompts',
+                async (runtime: PromptContextRuntime, next) => {
+                    if (!runtime.configurable?.conversationId) return next()
+                    if (runtime.configurable?.subagentContext) return next()
 
-                const msg = new SystemMessage(
-                    '<trigger_tool>Use the trigger tool for persistent ' +
-                        'scheduled or message-driven tasks. Use structured ' +
-                        'actions and inspect a task before changing it. ' +
-                        'Immediate work that should not persist does not need ' +
-                        'a trigger task.</trigger_tool>'
-                )
-                runtime.result.push(msg)
-                runtime.usedTokens += await countMessageTokens(
-                    msg,
-                    runtime.tokenCounter
-                )
-                return next()
-            },
-            10
-        )
+                    const mask = (
+                        runtime.configurable as { toolMask?: ToolMask }
+                    ).toolMask
+                    if (
+                        mask != null &&
+                        !this.ctx.chatluna.platform
+                            .getFilteredTools(mask)
+                            .includes('trigger')
+                    ) {
+                        return next()
+                    }
 
-        try {
+                    const msg = new SystemMessage(
+                        '<trigger_tool>Use the trigger tool for persistent ' +
+                            'scheduled or message-driven tasks. Use structured ' +
+                            'actions and inspect a task before changing it. ' +
+                            'Immediate work that should not persist does not need ' +
+                            'a trigger task.</trigger_tool>'
+                    )
+                    runtime.result.push(msg)
+                    runtime.usedTokens += await countMessageTokens(
+                        msg,
+                        runtime.tokenCounter
+                    )
+                    return next()
+                },
+                10
+            )
+
             this._runner.start()
             if (this.ctx.database == null) {
                 this._status = {
@@ -384,7 +395,10 @@ export class ChatLunaAgentTriggerService {
         })
         const date = new Date(at)
         if (date.valueOf() <= Date.now()) {
-            throw new Error('pause_until requires a valid future ISO timestamp')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_INVALID_INPUT,
+                new Error('pause_until requires a valid future ISO timestamp')
+            )
         }
 
         const task = await this._store.update(id, {
@@ -509,7 +523,7 @@ export class ChatLunaAgentTriggerService {
         const running = await this._store.listRunning()
         for (const task of running) {
             const now = new Date()
-            const cursor = keepGateCursor(task.state.cursor)
+            const cursor = gateCursor(task.state.cursor)
             if (isEventCondition(task.condition, this._registry)) {
                 await this._store.update(task.id, {
                     state: {
@@ -556,9 +570,17 @@ export class ChatLunaAgentTriggerService {
 
     private async _getOwned(actor: TriggerActor, id: number) {
         const task = await this._store.get(id)
-        if (!task) throw new Error(`Trigger task not found: ${id}`)
+        if (!task) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                new Error(`Trigger task not found: ${id}`)
+            )
+        }
         if (actor.authority < 3 && task.ownerKey !== actor.key) {
-            throw new Error('You do not have permission to manage this trigger')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_FORBIDDEN,
+                new Error('You do not have permission to manage this trigger')
+            )
         }
         return task
     }
@@ -566,18 +588,27 @@ export class ChatLunaAgentTriggerService {
     private _checkTarget(actor: TriggerActor, target: TriggerTask['target']) {
         if (actor.authority >= 3) return
         if (target.principalId !== actor.userId) {
-            throw new Error('Trigger principalId must match the current user')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_FORBIDDEN,
+                new Error('Trigger principalId must match the current user')
+            )
         }
 
         const session = actor.session
         if (!session) {
-            throw new Error('A session is required to create this trigger')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_FORBIDDEN,
+                new Error('A session is required to create this trigger')
+            )
         }
         if (
             target.bot.platform !== session.platform ||
             target.bot.selfId !== session.selfId
         ) {
-            throw new Error('Trigger bot must match the current route')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_FORBIDDEN,
+                new Error('Trigger bot must match the current route')
+            )
         }
 
         if (session.isDirect) {
@@ -585,8 +616,11 @@ export class ChatLunaAgentTriggerService {
                 target.destination.type !== 'direct' ||
                 target.destination.userId !== session.userId
             ) {
-                throw new Error(
-                    'Trigger destination must match the current route'
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.TRIGGER_FORBIDDEN,
+                    new Error(
+                        'Trigger destination must match the current route'
+                    )
                 )
             }
             return
@@ -597,7 +631,10 @@ export class ChatLunaAgentTriggerService {
             target.destination.channelId !== session.channelId ||
             target.destination.guildId !== session.guildId
         ) {
-            throw new Error('Trigger destination must match the current route')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_FORBIDDEN,
+                new Error('Trigger destination must match the current route')
+            )
         }
     }
 

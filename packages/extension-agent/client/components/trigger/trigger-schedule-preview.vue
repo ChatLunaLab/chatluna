@@ -3,12 +3,14 @@
         <div class="preview-head">
             <span>未来运行时间</span>
             <el-button
+                size="small"
+                plain
                 :icon="RefreshRight"
-                circle
-                text
                 :loading="loading"
                 @click="load"
-            />
+            >
+                刷新
+            </el-button>
         </div>
         <div v-if="error" class="preview-error">{{ error }}</div>
         <ol v-else-if="items.length" class="preview-list">

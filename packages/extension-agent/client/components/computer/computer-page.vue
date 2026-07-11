@@ -25,7 +25,11 @@
                     >
                         保存
                     </el-button>
-                    <el-button :loading="reloading" @click="reloadComputer">
+                    <el-button
+                        size="small"
+                        :loading="reloading"
+                        @click="reloadComputer"
+                    >
                         重新加载
                     </el-button>
                     <el-button
@@ -56,7 +60,8 @@
                     <div class="provider-copy">
                         <div class="row-title">默认能力后端</div>
                         <div v-if="!hideDesc" class="row-description">
-                            Agent 会优先使用这里选择的执行环境。推荐先用隔离后端。
+                            Agent
+                            会优先使用这里选择的执行环境。推荐先用隔离后端。
                         </div>
                     </div>
                     <div class="provider-value">
@@ -66,8 +71,14 @@
                             @update:model-value="updateProvider"
                         >
                             <el-option label="E2B（云端沙箱）" value="e2b" />
-                            <el-option label="Open Terminal（远程/容器）" value="open-terminal" />
-                            <el-option label="Local（本机环境）" value="local" />
+                            <el-option
+                                label="Open Terminal（远程/容器）"
+                                value="open-terminal"
+                            />
+                            <el-option
+                                label="Local（本机环境）"
+                                value="local"
+                            />
                         </el-select>
                     </div>
                 </div>
@@ -80,7 +91,9 @@
                     </div>
                     <div class="provider-value">
                         <el-input-number
-                            :model-value="Math.round(draft.idleTimeoutMs / 60000)"
+                            :model-value="
+                                Math.round(draft.idleTimeoutMs / 60000)
+                            "
                             class="provider-select"
                             :min="1"
                             :max="60"
@@ -459,7 +472,7 @@ function cloneConfig(value: ComputerConfig): ComputerConfig {
 }
 
 .computer-page.compact {
-    width: min(100%, 1440px);
+    width: min(100%, 1200px);
 }
 
 .hidden-mobile {

@@ -22,7 +22,15 @@ export async function expectRejected(
         await promise
     } catch (err) {
         if (pattern != null) {
-            assert.match(String(err), pattern)
+            const text =
+                err instanceof Error
+                    ? [
+                          err.message,
+                          (err as { originError?: Error }).originError
+                              ?.message ?? ''
+                      ].join('\n')
+                    : String(err)
+            assert.match(text, pattern)
         }
         return
     }
@@ -347,6 +355,16 @@ export async function createService(
                                   }
                               ]
                             : []
+                })
+            },
+            preset: {
+                getPreset: (name: string, _throwOnMissing = true) => ({
+                    value: {
+                        triggerKeyword: [name],
+                        rawText: '',
+                        messages: [],
+                        config: {}
+                    }
                 })
             },
             conversation: {

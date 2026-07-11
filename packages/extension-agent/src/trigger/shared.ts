@@ -1,6 +1,9 @@
-import type { TriggerTask, TriggerTaskState } from '../types/trigger'
+import type {
+    TriggerConversationPolicy,
+    TriggerTaskState
+} from '../types/trigger'
 
-export function keepGateCursor(
+export function gateCursor(
     cursor: TriggerTaskState['cursor']
 ): Record<string, unknown> | null {
     if (cursor == null || typeof cursor !== 'object') return null
@@ -9,7 +12,7 @@ export function keepGateCursor(
 }
 
 export function toInvokeConversation(
-    policy: TriggerTask['execution']['conversation'],
+    policy: TriggerConversationPolicy,
     taskKey: string
 ) {
     if (policy.type === 'existing') {

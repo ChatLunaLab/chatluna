@@ -1,3 +1,7 @@
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import type {
     TriggerProviderDef,
@@ -12,7 +16,10 @@ export class TriggerProviderRegistry {
         onChange?: (event?: 'add' | 'remove') => void
     ) {
         if (this._items.has(def.id)) {
-            throw new Error(`Trigger provider already registered: ${def.id}`)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_CONFLICT,
+                new Error(`Trigger provider already registered: ${def.id}`)
+            )
         }
         def.schema.parse(def.defaultConfig)
         this._items.set(def.id, def)
@@ -37,7 +44,10 @@ export class TriggerProviderRegistry {
     require(id: string) {
         const item = this._items.get(id)
         if (item == null) {
-            throw new Error(`Unknown trigger provider: ${id}`)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                new Error(`Unknown trigger provider: ${id}`)
+            )
         }
         return item
     }

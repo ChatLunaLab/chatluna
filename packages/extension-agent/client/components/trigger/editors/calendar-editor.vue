@@ -45,9 +45,11 @@
                     />
                     <el-tooltip content="删除时间" placement="top">
                         <el-button
+                            size="small"
+                            plain
                             :icon="Minus"
-                            circle
                             :disabled="model.times.length === 1"
+                            aria-label="删除时间"
                             @click="model.times.splice(index, 1)"
                         />
                     </el-tooltip>

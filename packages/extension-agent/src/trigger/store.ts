@@ -19,6 +19,10 @@ import {
     triggerTaskStateSchema
 } from './schema'
 import type { TriggerProviderRegistry } from './providers/registry'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export class TriggerStore {
     constructor(
@@ -124,7 +128,10 @@ export class TriggerStore {
         this._checkDatabase()
         const current = await this.get(id)
         if (current == null) {
-            throw new Error(`Trigger task not found: ${id}`)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                new Error(`Trigger task not found: ${id}`)
+            )
         }
         const next: TriggerStoreUpdate & { updatedAt: Date } = {
             updatedAt: new Date()
@@ -157,7 +164,10 @@ export class TriggerStore {
         await this.ctx.database.set('chatluna_trigger', { id }, next)
         const task = await this.get(id)
         if (task == null) {
-            throw new Error(`Trigger task removed concurrently: ${id}`)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_CONFLICT,
+                new Error(`Trigger task removed concurrently: ${id}`)
+            )
         }
         return task
     }
@@ -225,7 +235,12 @@ export class TriggerStore {
         const run = (
             await this.ctx.database.get('chatluna_trigger_run', { id })
         )[0]
-        if (run == null) throw new Error(`Trigger run not found: ${id}`)
+        if (run == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                new Error(`Trigger run not found: ${id}`)
+            )
+        }
         return run
     }
 
@@ -251,8 +266,18 @@ export class TriggerStore {
                 id: runId
             })
         )[0]
-        if (task == null) throw new Error(`Trigger task not found: ${taskId}`)
-        if (run == null) throw new Error(`Trigger run not found: ${runId}`)
+        if (task == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                new Error(`Trigger task not found: ${taskId}`)
+            )
+        }
+        if (run == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                new Error(`Trigger run not found: ${runId}`)
+            )
+        }
         return { task, run }
     }
 
@@ -271,7 +296,10 @@ export class TriggerStore {
 
     private _checkDatabase() {
         if (this.ctx.database == null) {
-            throw new Error('Trigger V2 requires the Koishi database service')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_UNAVAILABLE,
+                new Error('Trigger V2 requires the Koishi database service')
+            )
         }
     }
 }

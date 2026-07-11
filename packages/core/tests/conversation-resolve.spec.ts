@@ -11,7 +11,7 @@ import { apply as applyRequest } from '../src/middlewares/conversation/request_c
 import { apply as applyManage } from '../src/middlewares/system/conversation_manage'
 import { apply as applyLifecycle } from '../src/middlewares/system/lifecycle'
 import { apply as applyCommands } from '../src/commands/conversation'
-import { ConversationResolutionError } from '../src/types'
+import { ChatLunaError, ChatLunaErrorCode } from '../src/utils/error'
 import {
     createConfig,
     createConversation,
@@ -290,7 +290,10 @@ it('resolve_conversation restores target-specific ambiguous errors', async () =>
 
         session.text = (key) => key
         ctx.chatluna.conversation.resolveConversation = async () => {
-            throw new ConversationResolutionError('ambiguous_target')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS,
+                new Error('Conversation target is ambiguous.')
+            )
         }
 
         applyResolve(
@@ -420,7 +423,10 @@ it('resolve_conversation maps outside-route errors by code', async () => {
 
         session.text = (key) => key
         ctx.chatluna.conversation.resolveConversation = async () => {
-            throw new ConversationResolutionError('target_outside_route')
+            throw new ChatLunaError(
+                ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE,
+                new Error('Conversation does not belong to current route.')
+            )
         }
 
         applyResolve(

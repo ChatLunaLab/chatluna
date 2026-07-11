@@ -1,38 +1,42 @@
 <template>
-    <div class="trigger-page" v-loading="busy">
+    <div
+        class="trigger-page"
+        :class="{ compact: compactMode }"
+        v-loading="busy"
+    >
         <template v-if="view === 'list'">
-            <header class="page-head">
-                <div class="page-copy">
-                    <h1>触发器</h1>
-                    <div v-if="status" class="status-summary">
-                        <span>共 {{ status.total }}</span>
-                        <span>启用 {{ status.enabled }}</span>
-                        <span>等待 {{ status.waiting }}</span>
-                        <span>运行 {{ status.running }}</span>
-                        <span>暂停 {{ status.paused }}</span>
-                        <span v-if="status.error" class="status-error">
-                            异常 {{ status.error }}
-                        </span>
+            <div class="toolbar-container">
+                <div class="toolbar-main">
+                    <div class="headline">
+                        <div class="page-title">触发器</div>
+                    </div>
+                    <div class="actions-section">
+                        <el-button
+                            class="hidden-mobile"
+                            :type="compactMode ? 'primary' : 'default'"
+                            plain
+                            @click="compactMode = !compactMode"
+                        >
+                            {{ compactMode ? '紧凑模式' : '宽屏模式' }}
+                        </el-button>
+                        <el-button
+                            :icon="RefreshRight"
+                            :disabled="busy"
+                            @click="load"
+                        >
+                            刷新
+                        </el-button>
+                        <el-button
+                            :icon="Plus"
+                            type="primary"
+                            :disabled="busy"
+                            @click="openCreate"
+                        >
+                            新建触发器
+                        </el-button>
                     </div>
                 </div>
-                <div class="page-actions">
-                    <el-button
-                        :icon="RefreshRight"
-                        :disabled="busy"
-                        @click="load"
-                    >
-                        刷新
-                    </el-button>
-                    <el-button
-                        :icon="Plus"
-                        type="primary"
-                        :disabled="busy"
-                        @click="openCreate"
-                    >
-                        新建触发器
-                    </el-button>
-                </div>
-            </header>
+            </div>
 
             <el-alert
                 v-if="backendError"
@@ -47,6 +51,7 @@
                 :tasks="tasks"
                 :scenarios="scenarios"
                 :providers="providers"
+                :compact-mode="compactMode"
                 :busy="busy"
                 @select="openEditor"
                 @toggle="toggle"
@@ -88,6 +93,7 @@ import type {
     TriggerTask,
     TriggerUpdateInput
 } from '../../../src/types'
+import { useCompactMode } from '../shared/use-hide-desc'
 import TriggerCatalog from './trigger-catalog.vue'
 import TriggerEditor from './trigger-editor.vue'
 import { toScenarios, type TriggerRouteChoice } from './types'
@@ -107,6 +113,7 @@ const models = ref<string[]>([])
 const presets = ref<string[]>([])
 const providers = ref<TriggerProviderMeta[]>([])
 const backendError = ref('')
+const compactMode = useCompactMode('trigger')
 let seq = 0
 
 const busy = computed(() => props.loading === true || pending.value)
@@ -305,7 +312,7 @@ async function removeSelected() {
 
 <style scoped>
 .trigger-page {
-    width: min(100%, 1440px);
+    width: min(100%, 1800px);
     min-width: 0;
     min-height: 480px;
     margin: 0 auto;
@@ -313,45 +320,37 @@ async function removeSelected() {
     box-sizing: border-box;
 }
 
-.page-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 18px;
+.trigger-page.compact {
+    width: min(100%, 1200px);
 }
 
-.page-copy {
+.toolbar-container {
+    margin-bottom: 16px;
+}
+
+.toolbar-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.headline {
     min-width: 0;
 }
 
-.page-copy h1 {
-    margin: 0;
-    color: var(--k-text-dark);
+.page-title {
     font-size: 24px;
+    font-weight: 600;
+    color: var(--k-text-dark);
     line-height: 1.35;
-    letter-spacing: 0;
 }
 
-.status-summary,
-.page-actions {
+.actions-section {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
-}
-
-.status-summary {
-    margin-top: 7px;
-    color: var(--k-text-light);
-    font-size: 12px;
-}
-
-.status-error {
-    color: var(--el-color-danger);
-}
-
-.page-actions {
     justify-content: flex-end;
 }
 
@@ -364,17 +363,22 @@ async function removeSelected() {
 }
 
 @media (max-width: 680px) {
-    .page-head {
-        flex-direction: column;
+    .hidden-mobile {
+        display: none;
     }
 
-    .page-actions {
+    .toolbar-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .actions-section {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         width: 100%;
     }
 
-    .page-actions :deep(.el-button) {
+    .actions-section :deep(.el-button) {
         width: 100%;
         min-width: 0;
         margin: 0;

@@ -5,7 +5,10 @@ import {
     ChatChain
 } from '../../chains/chain'
 import { Config } from '../../config'
-import { ConversationResolutionError } from '../../types'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -80,13 +83,25 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options.conversation = resolved
                 return ChainMiddlewareRunStatus.CONTINUE
             } catch (error) {
-                if (error instanceof ConversationResolutionError) {
-                    context.message = session.text(
-                        error.code === 'ambiguous_target'
-                            ? 'chatluna.conversation.messages.target_ambiguous'
-                            : 'chatluna.conversation.messages.target_outside_route'
-                    )
-                    return ChainMiddlewareRunStatus.STOP
+                if (error instanceof ChatLunaError) {
+                    if (
+                        error.errorCode ===
+                        ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS
+                    ) {
+                        context.message = session.text(
+                            'chatluna.conversation.messages.target_ambiguous'
+                        )
+                        return ChainMiddlewareRunStatus.STOP
+                    }
+                    if (
+                        error.errorCode ===
+                        ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE
+                    ) {
+                        context.message = session.text(
+                            'chatluna.conversation.messages.target_outside_route'
+                        )
+                        return ChainMiddlewareRunStatus.STOP
+                    }
                 }
                 throw error
             }

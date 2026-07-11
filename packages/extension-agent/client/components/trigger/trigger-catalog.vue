@@ -28,23 +28,28 @@
             </el-select>
         </div>
 
-        <div v-if="filtered.length" class="task-list">
+        <div
+            v-if="filtered.length"
+            class="card-list"
+            :class="{ compact: props.compactMode }"
+        >
             <article
                 v-for="task in filtered"
                 :key="task.id"
-                class="task-row"
+                class="task-card"
                 :class="{ disabled: !task.enabled }"
             >
-                <div class="task-primary">
-                    <div class="task-title-row">
+                <div class="task-top">
+                    <div class="task-brand">
                         <div class="condition-icon">
-                            <el-icon>
+                            <el-icon :size="16">
                                 <component :is="conditionIcon(task)" />
                             </el-icon>
                         </div>
-                        <div class="task-title">
+                        <div class="task-copy">
                             <button
                                 type="button"
+                                class="task-title"
                                 :disabled="busy"
                                 @click="emit('select', task.id)"
                             >
@@ -54,6 +59,9 @@
                                 {{ summarize(task) }}
                             </div>
                         </div>
+                    </div>
+
+                    <div class="task-status">
                         <el-tag
                             effect="plain"
                             size="small"
@@ -67,7 +75,9 @@
                             @change="emit('toggle', task.id, $event as boolean)"
                         />
                     </div>
+                </div>
 
+                <div class="task-body">
                     <div class="task-meta">
                         <div>
                             <span>模型</span>
@@ -100,49 +110,48 @@
                     </div>
                 </div>
 
-                <div class="task-actions">
-                    <el-tooltip content="编辑" placement="top">
+                <div class="task-footer">
+                    <div class="task-actions">
                         <el-button
+                            size="small"
+                            plain
                             :icon="Edit"
-                            circle
-                            aria-label="编辑"
                             :disabled="busy"
                             @click="emit('select', task.id)"
-                        />
-                    </el-tooltip>
-                    <el-tooltip content="立即执行" placement="top">
+                        >
+                            编辑
+                        </el-button>
                         <el-button
+                            size="small"
+                            plain
                             :icon="VideoPlay"
-                            circle
-                            aria-label="立即执行"
                             :disabled="busy"
                             @click="emit('fire', task.id)"
-                        />
-                    </el-tooltip>
-                    <el-tooltip
-                        v-if="canResume(task)"
-                        content="恢复任务"
-                        placement="top"
-                    >
+                        >
+                            立即执行
+                        </el-button>
                         <el-button
+                            v-if="canResume(task)"
+                            size="small"
+                            plain
                             :icon="RefreshRight"
-                            circle
-                            aria-label="恢复任务"
                             :disabled="busy"
                             @click="emit('resume', task.id)"
-                        />
-                    </el-tooltip>
-                    <el-tooltip content="删除" placement="top">
+                        >
+                            恢复
+                        </el-button>
                         <el-button
-                            :icon="Delete"
-                            circle
-                            type="danger"
+                            class="danger-soft"
+                            size="small"
                             plain
-                            aria-label="删除"
+                            type="danger"
+                            :icon="Delete"
                             :disabled="busy"
                             @click="emit('remove', task.id)"
-                        />
-                    </el-tooltip>
+                        >
+                            删除
+                        </el-button>
+                    </div>
                 </div>
             </article>
         </div>
@@ -183,6 +192,7 @@ const props = defineProps<{
     tasks: TriggerTask[]
     scenarios: ScenarioChoice[]
     providers: TriggerProviderMeta[]
+    compactMode?: boolean
     busy?: boolean
 }>()
 const emit = defineEmits<{
@@ -314,15 +324,13 @@ function canResume(task: TriggerTask) {
 <style scoped>
 .trigger-catalog {
     min-width: 0;
-    border-top: 1px solid var(--k-color-divider);
 }
 
 .catalog-tools {
     display: grid;
     grid-template-columns: minmax(220px, 1fr) 180px 220px;
     gap: 10px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--k-color-divider);
+    margin-bottom: 16px;
 }
 
 .catalog-tools :deep(.el-select),
@@ -331,48 +339,74 @@ function canResume(task: TriggerTask) {
     min-width: 0;
 }
 
-.task-list {
+.card-list {
+    --card-cols: 4;
     display: grid;
+    grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
+    gap: 16px;
+    box-sizing: border-box;
 }
 
-.task-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 18px;
-    padding: 18px 0;
-    border-bottom: 1px solid var(--k-color-divider);
+.card-list.compact {
+    --card-cols: 3;
+}
+
+.task-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     min-width: 0;
+    padding: 14px;
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
 }
 
-.task-row.disabled {
+.task-card:hover {
+    border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
+}
+
+.task-card.disabled {
     opacity: 0.65;
 }
 
-.task-primary,
-.task-title {
+.task-top {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: flex-start;
     min-width: 0;
 }
 
-.task-title-row {
-    display: grid;
-    grid-template-columns: 34px minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 10px;
+.task-brand {
+    display: flex;
+    gap: 12px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .condition-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--k-color-primary), transparent 92%);
-    color: var(--k-color-primary);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-color-primary) 8%);
+    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 36%);
+    flex: 0 0 auto;
 }
 
-.task-title button {
+.task-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.task-title {
     display: block;
     max-width: 100%;
     padding: 0;
@@ -386,7 +420,13 @@ function canResume(task: TriggerTask) {
     letter-spacing: 0;
     text-align: left;
     cursor: pointer;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-title:disabled {
+    cursor: not-allowed;
 }
 
 .condition-summary {
@@ -394,14 +434,33 @@ function canResume(task: TriggerTask) {
     color: var(--k-text-light);
     font-size: 12px;
     line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     overflow-wrap: anywhere;
+}
+
+.task-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.task-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .task-meta {
     display: grid;
-    grid-template-columns: repeat(5, minmax(100px, 1fr));
-    gap: 12px;
-    margin: 14px 0 0 44px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
 }
 
 .task-meta > div {
@@ -427,29 +486,68 @@ function canResume(task: TriggerTask) {
 }
 
 .task-error {
-    margin: 12px 0 0 44px;
     padding: 8px 10px;
+    border-radius: 8px;
     border-left: 3px solid var(--el-color-danger);
     background: color-mix(in srgb, var(--el-color-danger), transparent 94%);
     color: var(--el-color-danger);
     font-size: 12px;
     line-height: 1.45;
     overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.task-footer {
+    margin-top: auto;
 }
 
 .task-actions {
-    display: flex;
-    align-items: flex-start;
-    gap: 7px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 8px;
 }
 
 .task-actions :deep(.el-button) {
+    width: 100%;
+    min-width: 0;
     margin: 0;
 }
 
-@media (max-width: 1080px) {
-    .task-meta {
-        grid-template-columns: repeat(3, minmax(100px, 1fr));
+.task-actions :deep(.danger-soft.el-button) {
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 92%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 68%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--k-text-dark) 22%
+    );
+}
+
+@media (max-width: 1680px) {
+    .card-list {
+        --card-cols: 3;
+    }
+
+    .card-list.compact {
+        --card-cols: 3;
+    }
+}
+
+@media (max-width: 1320px) {
+    .card-list,
+    .card-list.compact {
+        --card-cols: 2;
     }
 }
 
@@ -458,72 +556,32 @@ function canResume(task: TriggerTask) {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .task-row {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 12px;
+    .card-list {
+        --card-cols: 1;
+        grid-template-columns: 1fr;
     }
 
-    .task-title-row {
-        grid-template-columns: 34px minmax(0, 1fr);
-        grid-template-rows: auto auto;
-    }
-
-    .task-title-row :deep(.el-tag) {
-        grid-column: 2;
-        grid-row: 2;
-        justify-self: start;
-    }
-
-    .task-title-row :deep(.el-switch) {
-        grid-column: 2;
-        grid-row: 2;
-        justify-self: end;
-    }
-
-    .task-meta {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        margin-left: 0;
-    }
-
-    .task-error {
-        margin-left: 0;
-    }
-
-    .task-actions {
-        justify-content: flex-end;
-        flex-wrap: wrap;
+    .task-card {
+        width: 100%;
+        min-width: 0;
     }
 }
 
-@media (max-width: 390px) {
-    .task-title-row {
-        grid-template-columns: 32px minmax(0, 1fr) auto;
-        grid-template-rows: auto auto;
+@media (max-width: 420px) {
+    .task-top {
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .task-title {
-        grid-column: 2 / -1;
-    }
-
-    .task-title-row :deep(.el-tag) {
-        grid-column: 2;
-        grid-row: 2;
-        justify-self: start;
-    }
-
-    .task-title-row :deep(.el-switch) {
-        grid-column: 3;
-        grid-row: 2;
-        justify-self: end;
+    .task-status {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
     }
 
     .task-meta {
         grid-template-columns: minmax(0, 1fr);
-    }
-
-    .task-actions {
-        width: 100%;
-        justify-content: flex-start;
     }
 }
 </style>

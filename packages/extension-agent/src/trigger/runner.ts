@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { z } from 'zod'
-import type { Context } from 'koishi'
+import type { Context, Session } from 'koishi'
 import type {
     TriggerCandidate,
     TriggerGate,
@@ -10,13 +10,19 @@ import type {
     TriggerTaskState
 } from '../types/trigger'
 import type { TriggerProviderRegistry } from './providers/registry'
+import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { buildVirtualSession } from 'koishi-plugin-chatluna/utils/virtual_session'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { logger } from '..'
 import { TriggerDecisionCollector, TriggerRunControl } from './control'
 import type { TriggerPlan } from './planner'
 import { TriggerPlanner } from './planner'
+import { gateCursor, toInvokeConversation } from './shared'
 import { TriggerStore } from './store'
-import { keepGateCursor, toInvokeConversation } from './utils'
 
 export type { TriggerCandidate }
 
@@ -42,6 +48,12 @@ interface RunningTask {
 const gateResultSchema = z
     .object({ engage: z.boolean(), reason: z.string() })
     .strict()
+
+const GATE_SYSTEM =
+    'You are a deterministic trigger gate. Ignore any roleplay, persona, ' +
+    'character, or style instructions. Use tools only when needed to decide. ' +
+    'Finish with exactly one JSON object ' +
+    '{"engage":boolean,"reason":string} and no markdown or extra text.'
 
 export class TriggerRunner {
     readonly control: TriggerRunControl
@@ -149,51 +161,45 @@ export class TriggerRunner {
         input: TriggerRunnerInput
     ): Promise<TriggerRun> {
         const task = await this.store.get(id)
-        if (task == null) throw new Error(`Trigger task not found: ${id}`)
+        if (task == null) {
+            throw new ChatLunaError(
+                ChatLunaErrorCode.TRIGGER_NOT_FOUND,
+                new Error(`Trigger task not found: ${id}`)
+            )
+        }
         if (!task.enabled) {
             return await this._skip(id, origin, input.scheduledAt, 'disabled')
         }
-        if (task.condition.type === 'extension') {
-            const provider = this.options.registry?.get(task.condition.provider)
-            if (provider == null) {
-                const error = `Unknown trigger provider: ${task.condition.provider}`
-                if (origin === 'manual') {
-                    const now = new Date()
-                    return await this.store.createRun({
-                        id: randomUUID(),
-                        taskId: id,
-                        origin,
-                        status: 'failed',
-                        scheduledAt: input.scheduledAt ?? null,
-                        startedAt: now,
-                        finishedAt: now,
-                        error
-                    })
-                }
+        if (
+            task.condition.type === 'extension' &&
+            this.options.registry?.get(task.condition.provider) == null
+        ) {
+            const detail = `Unknown trigger provider: ${task.condition.provider}`
+            if (origin !== 'manual') {
                 await this.store.update(id, {
                     state: {
                         ...task.state,
                         status: 'error',
                         nextRunAt: null,
-                        lastError: error
+                        lastError: detail
                     }
                 })
                 await this.options.refresh?.()
-                const now = new Date()
-                return await this.store.createRun({
-                    id: randomUUID(),
-                    taskId: id,
-                    origin,
-                    status: 'failed',
-                    scheduledAt: input.scheduledAt ?? null,
-                    startedAt: now,
-                    finishedAt: now,
-                    error
-                })
             }
+            const now = new Date()
+            return await this.store.createRun({
+                id: randomUUID(),
+                taskId: id,
+                origin,
+                status: 'failed',
+                scheduledAt: input.scheduledAt ?? null,
+                startedAt: now,
+                finishedAt: now,
+                error: detail
+            })
         }
         const now = new Date()
-        const gateCursor = keepGateCursor(task.state.cursor)
+        const keptGate = gateCursor(task.state.cursor)
         if (origin !== 'manual' && task.state.status === 'completed') {
             return await this._skip(id, origin, input.scheduledAt, 'completed')
         }
@@ -201,7 +207,7 @@ export class TriggerRunner {
             const plan = this.planner.next(task, now)
             await this.store.update(id, {
                 state: applyPlan(task.state, plan, {
-                    cursor: gateCursor
+                    cursor: keptGate
                 })
             })
             await this.options.refresh?.()
@@ -236,7 +242,7 @@ export class TriggerRunner {
                     ...task.state,
                     status: 'waiting',
                     nextRunAt: null,
-                    cursor: gateCursor
+                    cursor: keptGate
                 }
             })
             await this.options.refresh?.()
@@ -244,7 +250,7 @@ export class TriggerRunner {
         }
 
         const startedAt = new Date()
-        let run = await this.store.createRun({
+        const run = await this.store.createRun({
             id: randomUUID(),
             taskId: id,
             origin,
@@ -252,6 +258,7 @@ export class TriggerRunner {
             scheduledAt: input.scheduledAt ?? null,
             startedAt
         })
+
         let attempted = false
         let collector: TriggerDecisionCollector | undefined
         try {
@@ -269,9 +276,7 @@ export class TriggerRunner {
                         ...task.state,
                         status: 'running',
                         cooldownUntil,
-                        cursor: clearOverride
-                            ? keepGateCursor(task.state.cursor)
-                            : task.state.cursor
+                        cursor: clearOverride ? keptGate : task.state.cursor
                     }
                 })
             }
@@ -281,47 +286,42 @@ export class TriggerRunner {
                     ? task.execution.model.model
                     : undefined
             const gate = input.candidate?.gate
-            let outcome: { engage: boolean; model?: string }
-            if (gate?.type === 'model') {
-                outcome = await this._gate(
-                    task,
-                    gate,
-                    input.candidate,
-                    input.signal,
-                    resolvedModel
-                )
-            } else {
-                outcome = { engage: true, model: undefined }
-            }
+            const outcome =
+                gate?.type === 'model'
+                    ? await this._gate(
+                          task,
+                          gate,
+                          input.candidate,
+                          input.signal,
+                          resolvedModel
+                      )
+                    : { engage: true, model: undefined }
             if (!outcome.engage) {
                 const patch = {
                     status: 'skipped' as const,
                     finishedAt: new Date(),
                     error: 'gate-closed'
                 }
-                if (origin !== 'manual') {
-                    const latest = await this.store.get(id)
-                    if (latest != null) {
-                        run = (
-                            await this.store.finishTaskRun(
-                                id,
-                                {
-                                    ...latest.state,
-                                    status: 'waiting',
-                                    nextRunAt: null,
-                                    cursor: keepGateCursor(latest.state.cursor)
-                                },
-                                run.id,
-                                patch
-                            )
-                        ).run
-                    } else {
-                        run = await this.store.finishRun(run.id, patch)
-                    }
-                } else {
-                    run = await this.store.finishRun(run.id, patch)
+                if (origin === 'manual') {
+                    return await this.store.finishRun(run.id, patch)
                 }
-                return run
+                const latest = await this.store.get(id)
+                if (latest == null) {
+                    return await this.store.finishRun(run.id, patch)
+                }
+                return (
+                    await this.store.finishTaskRun(
+                        id,
+                        {
+                            ...latest.state,
+                            status: 'waiting',
+                            nextRunAt: null,
+                            cursor: gateCursor(latest.state.cursor)
+                        },
+                        run.id,
+                        patch
+                    )
+                ).run
             }
 
             collector = this.control.create(run.id)
@@ -340,28 +340,29 @@ export class TriggerRunner {
             const submitted = collector.decision
             const decision = this.planner.decide(task, submitted)
             const finishedAt = new Date()
+            const failMsg = result.ok
+                ? null
+                : (result.error?.message ?? 'Chat invocation failed')
             const patch = {
                 status: result.ok
                     ? ('completed' as const)
                     : ('failed' as const),
                 finishedAt,
                 decision,
-                error: result.ok
-                    ? null
-                    : (result.error?.message ?? 'Chat invocation failed'),
+                error: failMsg,
                 usage: result.usage ?? null
             }
             if (origin === 'manual') {
                 return await this.store.finishRun(run.id, patch)
             }
-
             const latest = await this.store.get(id)
-            if (latest == null) return await this.store.finishRun(run.id, patch)
+            if (latest == null) {
+                return await this.store.finishRun(run.id, patch)
+            }
             const pending = { ...run, ...patch }
             const plan = latest.enabled
                 ? this.planner.afterRun(latest, pending, decision, finishedAt)
                 : this.planner.next(latest, finishedAt)
-            const cursor = nextCursor(latest.state.cursor, decision)
             return (
                 await this.store.finishTaskRun(
                     id,
@@ -369,18 +370,15 @@ export class TriggerRunner {
                         lastRunAt: finishedAt.toISOString(),
                         lastDecision: decision,
                         runCount: latest.state.runCount + 1,
-                        lastError: result.ok
-                            ? null
-                            : (result.error?.message ??
-                              'Chat invocation failed'),
-                        cursor
+                        lastError: failMsg,
+                        cursor: nextCursor(latest.state.cursor, decision)
                     }),
                     run.id,
                     patch
                 )
             ).run
         } catch (err) {
-            const error = err instanceof Error ? err.message : String(err)
+            const error = errorMessage(err)
             const finishedAt = new Date()
             const patch = {
                 status: 'failed' as const,
@@ -388,73 +386,64 @@ export class TriggerRunner {
                 decision: collector?.decision ?? null,
                 error
             }
-            if (origin !== 'manual') {
-                const latest = await this.store.get(id)
-                if (latest != null) {
-                    try {
-                        const decision = this.planner.decide(
-                            latest,
-                            collector?.decision ?? null
-                        )
-                        const pending = {
-                            ...run,
-                            ...patch
-                        }
-                        const plan = latest.enabled
-                            ? this.planner.afterRun(
-                                  latest,
-                                  pending,
-                                  decision,
-                                  finishedAt
-                              )
-                            : this.planner.next(latest, finishedAt)
-                        return (
-                            await this.store.finishTaskRun(
-                                id,
-                                applyPlan(latest.state, plan, {
-                                    lastRunAt: attempted
-                                        ? finishedAt.toISOString()
-                                        : latest.state.lastRunAt,
-                                    lastDecision: decision,
-                                    runCount:
-                                        latest.state.runCount +
-                                        (attempted ? 1 : 0),
-                                    lastError: error,
-                                    cursor: keepGateCursor(latest.state.cursor)
-                                }),
-                                run.id,
-                                patch
-                            )
-                        ).run
-                    } catch (planErr) {
-                        const msg =
-                            planErr instanceof Error
-                                ? planErr.message
-                                : String(planErr)
-                        return (
-                            await this.store.finishTaskRun(
-                                id,
-                                {
-                                    ...latest.state,
-                                    status: 'error',
-                                    nextRunAt: null,
-                                    lastRunAt: attempted
-                                        ? finishedAt.toISOString()
-                                        : latest.state.lastRunAt,
-                                    runCount:
-                                        latest.state.runCount +
-                                        (attempted ? 1 : 0),
-                                    lastError: `${error}; ${msg}`,
-                                    cursor: keepGateCursor(latest.state.cursor)
-                                },
-                                run.id,
-                                patch
-                            )
-                        ).run
-                    }
-                }
+            if (origin === 'manual') {
+                return await this.store.finishRun(run.id, patch)
             }
-            return await this.store.finishRun(run.id, patch)
+            const latest = await this.store.get(id)
+            if (latest == null) {
+                return await this.store.finishRun(run.id, patch)
+            }
+            const kept = gateCursor(latest.state.cursor)
+            const lastRunAt = attempted
+                ? finishedAt.toISOString()
+                : latest.state.lastRunAt
+            const runCount = latest.state.runCount + (attempted ? 1 : 0)
+            try {
+                const decision = this.planner.decide(
+                    latest,
+                    collector?.decision ?? null
+                )
+                const pending = { ...run, ...patch }
+                const plan = latest.enabled
+                    ? this.planner.afterRun(
+                          latest,
+                          pending,
+                          decision,
+                          finishedAt
+                      )
+                    : this.planner.next(latest, finishedAt)
+                return (
+                    await this.store.finishTaskRun(
+                        id,
+                        applyPlan(latest.state, plan, {
+                            lastRunAt,
+                            lastDecision: decision,
+                            runCount,
+                            lastError: error,
+                            cursor: kept
+                        }),
+                        run.id,
+                        patch
+                    )
+                ).run
+            } catch (planErr) {
+                return (
+                    await this.store.finishTaskRun(
+                        id,
+                        {
+                            ...latest.state,
+                            status: 'error',
+                            nextRunAt: null,
+                            lastRunAt,
+                            runCount,
+                            lastError: `${error}; ${errorMessage(planErr)}`,
+                            cursor: kept
+                        },
+                        run.id,
+                        patch
+                    )
+                ).run
+            }
         } finally {
             if (collector != null) this.control.removeCollector(collector)
             await this.options.refresh?.()
@@ -466,7 +455,7 @@ export class TriggerRunner {
         gate: Extract<TriggerGate, { type: 'model' }>,
         candidate: TriggerCandidate | undefined,
         signal: AbortSignal | undefined,
-        model?: string
+        fixedModel?: string
     ): Promise<{ engage: boolean; model?: string }> {
         const day = new Date().toISOString().slice(0, 10)
         const cursor = task.state.cursor
@@ -483,66 +472,128 @@ export class TriggerRunner {
         }
         if (tokens >= gate.dailyTokenLimit) return { engage: false }
 
-        const result = await this.ctx.chatluna.invoke({
-            routing: buildRouting(task),
-            message:
-                `${gate.prompt ?? 'Decide whether this trigger should engage.'}\n` +
-                'Return only JSON with {"engage":boolean,"reason":string}.\n' +
-                JSON.stringify({
-                    topic:
-                        task.condition.type === 'semantic'
-                            ? task.condition.topic
-                            : undefined,
-                    reason: candidate?.reason,
-                    stats: candidate?.stats,
-                    excerpts: candidate?.excerpts
-                }),
-            messageName: 'trigger-gate',
-            model: gate.model.type === 'fixed' ? gate.model.model : model,
-            conversation: { type: 'ephemeral' },
-            tools: { mode: 'allow', allow: [], deny: [] },
-            signal,
-            timeout: gate.timeoutSeconds * 1000,
-            delivery: 'capture',
-            persist: false,
-            source: { kind: 'trigger-gate', id: String(task.id) }
-        })
-        const total = result.usage?.total_tokens ?? 0
-        const next = {
-            ...(cursor != null && typeof cursor === 'object' ? cursor : {}),
-            gate: { day, tokens: tokens + total }
-        }
-        const latest = await this.store.get(task.id)
-        if (latest != null) {
-            await this.store.update(task.id, {
-                state: {
-                    ...latest.state,
-                    cursor: next
-                }
-            })
-        }
-        if (!result.ok || result.reply == null) {
+        const routing = buildRouting(task)
+        const bot = this.ctx.bots[`${routing.platform}:${routing.selfId}`]
+        if (bot == null) {
             logger.debug(
-                'Trigger gate closed for task %s: %s',
+                'Trigger gate closed for task %s: bot %s:%s not found',
                 task.id,
-                result.error?.message ?? 'empty response'
+                routing.platform,
+                routing.selfId
             )
-            return { engage: false, model: result.model }
+            return { engage: false }
         }
+
+        const session = buildVirtualSession(bot, routing, {
+            message: 'trigger-gate',
+            messageName: 'trigger-gate'
+        })
+
+        const modelName = await resolveGateModel(
+            this.ctx,
+            session,
+            gate,
+            fixedModel
+        )
+        if (modelName == null) {
+            logger.debug(
+                'Trigger gate closed for task %s: no model available',
+                task.id
+            )
+            return { engage: false }
+        }
+
+        const allow =
+            task.execution.tools.type === 'allow'
+                ? task.execution.tools.names
+                : []
+        const toolMask: ToolMask = {
+            mode: 'allow',
+            allow,
+            deny: []
+        }
+
+        const controller = new AbortController()
+        const removeAbort = forwardAbort(signal, controller)
+        const timer = this.ctx.setTimeout(
+            () => controller.abort(),
+            gate.timeoutSeconds * 1000
+        )
+
+        let used = 0
         try {
-            return {
-                engage: gateResultSchema.parse(
-                    JSON.parse(getMessageContent(result.reply.content))
-                ).engage,
-                model: result.model
+            const agent = await this.ctx.chatluna.createAgent({
+                name: 'trigger-gate',
+                model: modelName,
+                tools: allow,
+                system: GATE_SYSTEM,
+                mode: 'tool-calling',
+                toolMask
+            })
+            const result = await agent.generate({
+                prompt:
+                    `${gate.prompt ?? 'Decide whether this trigger should engage.'}\n` +
+                    JSON.stringify({
+                        topic:
+                            task.condition.type === 'semantic'
+                                ? task.condition.topic
+                                : undefined,
+                        reason: candidate?.reason,
+                        stats: candidate?.stats,
+                        excerpts: candidate?.excerpts
+                    }),
+                session,
+                signal: controller.signal,
+                toolMask
+            })
+            used = result.message?.usage_metadata?.total_tokens ?? 0
+            const text = getMessageContent(
+                result.message?.content ?? result.output
+            )
+            try {
+                return {
+                    engage: parseGateResult(text),
+                    model: modelName
+                }
+            } catch (err) {
+                logger.debug(
+                    'Trigger gate returned invalid JSON for task %s: %s',
+                    task.id,
+                    err instanceof Error ? err.message : String(err)
+                )
+                return { engage: false, model: modelName }
             }
         } catch (err) {
-            logger.debug(
-                'Trigger gate returned invalid JSON for task %s: %s',
-                task.id,
-                err instanceof Error ? err.message : String(err)
-            )
-            return { engage: false, model: result.model }
+            if (controller.signal.aborted) {
+                logger.debug(
+                    'Trigger gate closed for task %s: %s',
+                    task.id,
+                    signal?.aborted ? 'aborted' : 'timeout'
+                )
+            } else {
+                logger.debug(
+                    'Trigger gate closed for task %s: %s',
+                    task.id,
+                    err instanceof Error ? err.message : String(err)
+                )
+            }
+            return { engage: false, model: modelName }
+        } finally {
+            timer()
+            removeAbort()
+            const next = {
+                ...(cursor != null && typeof cursor === 'object' ? cursor : {}),
+                gate: { day, tokens: tokens + used }
+            }
+            const latest = await this.store.get(task.id)
+            if (latest != null) {
+                await this.store.update(task.id, {
+                    state: {
+                        ...latest.state,
+                        cursor: next
+                    }
+                })
+            }
         }
     }
 
@@ -680,7 +731,7 @@ function nextCursor(
     cursor: TriggerTaskState['cursor'],
     decision: TriggerTaskState['lastDecision']
 ): Record<string, unknown> | null {
-    const gate = keepGateCursor(cursor)
+    const gate = gateCursor(cursor)
     if (decision?.type === 'reschedule') {
         return {
             ...(gate ?? {}),
@@ -700,4 +751,34 @@ function forwardAbort(
     if (signal.aborted) abort()
     else signal.addEventListener('abort', abort, { once: true })
     return () => signal.removeEventListener('abort', abort)
+}
+
+async function resolveGateModel(
+    ctx: Context,
+    session: Session,
+    gate: Extract<TriggerGate, { type: 'model' }>,
+    fixedModel?: string
+): Promise<string | null> {
+    if (gate.model.type === 'fixed') return gate.model.model
+    if (fixedModel != null) return fixedModel
+    const resolved = await ctx.chatluna.conversation.resolveConversation(
+        session,
+        { mode: 'context' }
+    )
+    return ctx.chatluna.conversation.pickModel(resolved.constraint, null)
+}
+
+function parseGateResult(text: string): boolean {
+    let raw = text.trim()
+    const fenced = raw.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+    if (fenced != null) raw = fenced[1].trim()
+    return gateResultSchema.parse(JSON.parse(raw)).engage
+}
+
+function errorMessage(err: unknown) {
+    if (err instanceof ChatLunaError) {
+        return err.originError?.message ?? err.message
+    }
+    if (err instanceof Error) return err.message
+    return String(err)
 }

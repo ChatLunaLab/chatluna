@@ -144,11 +144,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     onResponse: async ({ response, resolution }) => {
                         context.options.conversation = resolution
                         context.options.finalResponseMessage = response
-                        if (!captureOnly && replyStream != null) {
-                            await replyStream.end({
-                                type: 'done',
-                                message: response
-                            })
+                        if (replyStream != null) {
+                            await replyStream.end(
+                                captureOnly
+                                    ? undefined
+                                    : {
+                                          type: 'done',
+                                          message: response
+                                      }
+                            )
                         }
                         context.options.responseMessage = null
                         context.message = null

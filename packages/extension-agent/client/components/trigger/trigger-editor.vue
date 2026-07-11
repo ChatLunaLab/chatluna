@@ -457,12 +457,14 @@
             <div class="run-head">
                 <h3>最近运行</h3>
                 <el-button
+                    size="small"
+                    plain
                     :icon="RefreshRight"
-                    circle
-                    text
                     :loading="runsLoading"
                     @click="loadRuns"
-                />
+                >
+                    刷新
+                </el-button>
             </div>
             <div v-if="runsError" class="run-error">{{ runsError }}</div>
             <div v-else-if="runs.length" class="run-list">
@@ -1165,11 +1167,13 @@ interface TargetItem {
         minmax(0, 1fr) minmax(32px, 0.35fr)
         minmax(0, 1fr);
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     padding: 14px 20px;
-    border-top: 1px solid var(--k-color-divider);
-    border-bottom: 1px solid var(--k-color-divider);
-    background: color-mix(in srgb, var(--k-side-bg), transparent 35%);
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
 }
 
 .step-item {
@@ -1194,7 +1198,7 @@ interface TargetItem {
     height: 26px;
     flex: 0 0 26px;
     border: 1px solid var(--k-color-border);
-    border-radius: 50%;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
 }
@@ -1230,22 +1234,17 @@ interface TargetItem {
 .editor-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-top: 1px solid var(--k-color-divider);
-    border-bottom: 1px solid var(--k-color-divider);
+    gap: 16px;
 }
 
 .editor-section {
     min-width: 0;
-    padding: 20px;
-    border-bottom: 1px solid var(--k-color-divider);
-}
-
-.editor-section:nth-child(odd) {
-    border-right: 1px solid var(--k-color-divider);
-}
-
-.editor-section:nth-last-child(-n + 2) {
-    border-bottom: 0;
+    padding: 16px;
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
 }
 
 .section-head {
@@ -1270,7 +1269,7 @@ interface TargetItem {
     justify-content: center;
     width: 22px;
     height: 22px;
-    border-radius: 50%;
+    border-radius: 8px;
     background: var(--k-color-primary);
     color: white;
     font-size: 12px;
@@ -1289,7 +1288,7 @@ interface TargetItem {
     min-height: 38px;
     padding: 8px 10px;
     border: 1px solid var(--k-color-border);
-    border-radius: 6px;
+    border-radius: 8px;
     background: transparent;
     color: var(--k-text-dark);
     font: inherit;
@@ -1316,7 +1315,8 @@ interface TargetItem {
     justify-content: space-between;
     margin-top: 14px;
     padding-top: 14px;
-    border-top: 1px solid var(--k-color-divider);
+    border-top: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 20%);
 }
 
 .form-grid {
@@ -1369,20 +1369,24 @@ interface TargetItem {
 
 .run-head {
     justify-content: space-between;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--k-color-divider);
+    margin-bottom: 12px;
 }
 
 .run-list {
     display: grid;
+    gap: 10px;
 }
 
 .run-row {
     display: grid;
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
     gap: 16px;
-    padding: 11px 0;
-    border-bottom: 1px solid var(--k-color-divider);
+    padding: 12px 14px;
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
     font-size: 12px;
     color: var(--k-text-light);
 }
@@ -1400,17 +1404,6 @@ interface TargetItem {
 @media (max-width: 900px) {
     .editor-grid {
         grid-template-columns: minmax(0, 1fr);
-    }
-
-    .editor-section,
-    .editor-section:nth-child(odd),
-    .editor-section:nth-last-child(-n + 2) {
-        border-right: 0;
-        border-bottom: 1px solid var(--k-color-divider);
-    }
-
-    .editor-section:last-child {
-        border-bottom: 0;
     }
 }
 
@@ -1435,7 +1428,7 @@ interface TargetItem {
     .wizard-steps {
         grid-template-columns: minmax(0, 1fr);
         gap: 12px;
-        padding: 14px 0;
+        padding: 14px 16px;
     }
 
     .step-line {
@@ -1443,7 +1436,7 @@ interface TargetItem {
     }
 
     .editor-section {
-        padding: 18px 0;
+        padding: 16px;
     }
 
     .scenario-grid,

@@ -73,6 +73,12 @@ export interface ResolveInvocationInput {
 
 export type ActiveConversationResolution = ConversationResolution & {
     conversation: ConversationRecord
+    /**
+     * True only when ConversationService created a temporary/transient record
+     * for this invocation (ephemeral path). Existing/route/task/fresh records
+     * are never marked transient, even when message persist is false.
+     */
+    transient: boolean
 }
 
 export interface ChatLunaObservedMessage {
@@ -306,42 +312,6 @@ export interface ResolvedConversationContext {
 
 export type ConversationResolveMode = 'context' | 'active' | 'target'
 
-export type ConversationResolutionErrorCode =
-    'ambiguous_target' | 'target_outside_route'
-
-export class ConversationResolutionError extends Error {
-    constructor(public readonly code: ConversationResolutionErrorCode) {
-        super(
-            code === 'ambiguous_target'
-                ? 'Conversation target is ambiguous.'
-                : 'Conversation does not belong to current route.'
-        )
-    }
-}
-
-export class ConversationNotFoundError extends Error {
-    constructor() {
-        super('Conversation not found.')
-        this.name = 'ConversationNotFoundError'
-    }
-}
-
-export type ConversationInvocationErrorCode =
-    | 'model_not_found'
-    | 'preset_not_found'
-    | 'allow_new_disabled'
-    | 'conversation_not_found'
-
-export class ConversationInvocationError extends Error {
-    constructor(
-        public readonly code: ConversationInvocationErrorCode,
-        message: string
-    ) {
-        super(message)
-        this.name = 'ConversationInvocationError'
-    }
-}
-
 export type ConstraintAction =
     | 'create'
     | 'switch'
@@ -353,51 +323,7 @@ export type ConstraintAction =
     | 'update'
     | 'compress'
 
-export class ConstraintLockedError extends Error {
-    constructor(public readonly action: ConstraintAction) {
-        super(`Conversation ${action} is locked by constraint.`)
-        this.name = 'ConstraintLockedError'
-    }
-}
-
-export class ConstraintDisabledError extends Error {
-    constructor(public readonly action: ConstraintAction) {
-        super(`Conversation ${action} is disabled by constraint.`)
-        this.name = 'ConstraintDisabledError'
-    }
-}
-
 export type ConstraintFixedField = 'model' | 'preset' | 'chatMode'
-
-const FIXED_FIELD_LABEL: Record<ConstraintFixedField, string> = {
-    model: 'Model',
-    preset: 'Preset',
-    chatMode: 'Chat mode'
-}
-
-export class ConstraintFixedError extends Error {
-    constructor(
-        public readonly field: ConstraintFixedField,
-        public readonly value: string
-    ) {
-        super(`${FIXED_FIELD_LABEL[field]} is fixed to ${value}.`)
-        this.name = 'ConstraintFixedError'
-    }
-}
-
-export class InvalidChatModeError extends Error {
-    constructor(public readonly mode: string) {
-        super(`Chat mode ${mode} not found.`)
-        this.name = 'InvalidChatModeError'
-    }
-}
-
-export class AdminRequiredError extends Error {
-    constructor() {
-        super('Conversation management requires administrator permission.')
-        this.name = 'AdminRequiredError'
-    }
-}
 
 export interface ResolveConversationOptions {
     mode?: ConversationResolveMode

@@ -61,16 +61,28 @@
                             </div>
 
                             <div class="catalog-actions">
-                                <el-button v-if="mobile" @click="showImportDialog = true">
+                                <el-button
+                                    v-if="mobile"
+                                    @click="showImportDialog = true"
+                                >
                                     导入
                                 </el-button>
-                                <el-button v-else @click="showMarkdownDialog = true">
+                                <el-button
+                                    v-else
+                                    @click="showMarkdownDialog = true"
+                                >
                                     从 Markdown 导入
                                 </el-button>
-                                <el-button v-if="!mobile" @click="showGithubDialog = true">
+                                <el-button
+                                    v-if="!mobile"
+                                    @click="showGithubDialog = true"
+                                >
                                     从 Github 导入
                                 </el-button>
-                                <el-button v-if="!mobile" @click="showFolderDialog = true">
+                                <el-button
+                                    v-if="!mobile"
+                                    @click="showFolderDialog = true"
+                                >
                                     从本地文件导入
                                 </el-button>
                                 <el-button @click="showSettingsDialog = true">
@@ -87,7 +99,11 @@
                             >
                                 <template #reference>
                                     <el-button class="filter-trigger" plain>
-                                        {{ filters.length > 0 ? `筛选 ${filters.length}` : '筛选' }}
+                                        {{
+                                            filters.length > 0
+                                                ? `筛选 ${filters.length}`
+                                                : '筛选'
+                                        }}
                                     </el-button>
                                 </template>
 
@@ -130,12 +146,21 @@
                         </div>
                     </div>
 
-                    <div v-if="filteredSkills.length > 0" class="card-list" :class="{ compact: compactMode }">
+                    <div
+                        v-if="filteredSkills.length > 0"
+                        class="card-list"
+                        :class="{ compact: compactMode }"
+                    >
                         <div
                             v-for="item in filteredSkills"
                             :key="item.id"
                             class="skill-card"
-                            :class="{ centered: hideDesc, muted: !item.enabled, invalid: item.state !== 'ready', readonly: isReadonly(item) }"
+                            :class="{
+                                centered: hideDesc,
+                                muted: !item.enabled,
+                                invalid: item.state !== 'ready',
+                                readonly: isReadonly(item)
+                            }"
                             :tabindex="isReadonly(item) ? -1 : 0"
                             :role="isReadonly(item) ? undefined : 'button'"
                             :aria-disabled="isReadonly(item)"
@@ -145,14 +170,23 @@
                             <div class="skill-top">
                                 <div class="skill-brand">
                                     <div class="skill-icon">
-                                        <el-icon :size="16"><MagicStick /></el-icon>
+                                        <el-icon :size="16">
+                                            <MagicStick />
+                                        </el-icon>
                                     </div>
 
                                     <div class="skill-copy">
                                         <div class="skill-title">
-                                            {{ item.emoji ? `${item.emoji} ${item.name}` : item.name }}
+                                            {{
+                                                item.emoji
+                                                    ? `${item.emoji} ${item.name}`
+                                                    : item.name
+                                            }}
                                         </div>
-                                        <div v-if="!hideDesc" class="skill-name">
+                                        <div
+                                            v-if="!hideDesc"
+                                            class="skill-name"
+                                        >
                                             {{ item.source }} / {{ item.scope }}
                                         </div>
                                     </div>
@@ -161,52 +195,138 @@
                                 <el-switch
                                     :model-value="item.enabled"
                                     :disabled="isReadonly(item)"
-                                    @change="setEnabled(item.id, $event as boolean)"
+                                    @change="
+                                        setEnabled(item.id, $event as boolean)
+                                    "
                                     @click.stop
                                 />
                             </div>
 
                             <div v-if="!hideDesc" class="skill-description">
-                                {{ item.description || '这个技能暂时没有说明。' }}
+                                {{
+                                    item.description || '这个技能暂时没有说明。'
+                                }}
                             </div>
 
                             <div class="skill-footer">
                                 <div class="skill-chips">
-                                    <el-tag size="small" effect="plain" :type="item.available ? 'success' : 'warning'">
-                                        {{ item.available ? '环境就绪' : '缺少依赖' }}
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="
+                                            item.available
+                                                ? 'success'
+                                                : 'warning'
+                                        "
+                                    >
+                                        {{
+                                            item.available
+                                                ? '环境就绪'
+                                                : '缺少依赖'
+                                        }}
                                     </el-tag>
-                                    <el-tag size="small" effect="plain" :type="item.mode === 'full' ? 'primary' : 'success'">
-                                        {{ item.mode === 'full' ? '全文注入' : '描述注入' }}
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="
+                                            item.mode === 'full'
+                                                ? 'primary'
+                                                : 'success'
+                                        "
+                                    >
+                                        {{
+                                            item.mode === 'full'
+                                                ? '全文注入'
+                                                : '描述注入'
+                                        }}
                                     </el-tag>
-                                    <el-tag size="small" effect="plain" :type="item.main ? 'success' : 'info'">
-                                        {{ item.main ? '主 Agent 启用' : '主 Agent 禁用' }}
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="item.main ? 'success' : 'info'"
+                                    >
+                                        {{
+                                            item.main
+                                                ? '主 Agent 启用'
+                                                : '主 Agent 禁用'
+                                        }}
                                     </el-tag>
-                                    <el-tag size="small" effect="plain" :type="item.chatlunaEnabled ? 'success' : 'info'">
-                                        {{ item.chatlunaEnabled ? 'ChatLuna 启用' : 'ChatLuna 禁用' }}
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="
+                                            item.chatlunaEnabled
+                                                ? 'success'
+                                                : 'info'
+                                        "
+                                    >
+                                        {{
+                                            item.chatlunaEnabled
+                                                ? 'ChatLuna 启用'
+                                                : 'ChatLuna 禁用'
+                                        }}
                                     </el-tag>
-                                    <el-tag size="small" effect="plain" :type="item.characterEnabled ? 'success' : 'info'">
-                                        {{ item.characterEnabled ? 'Character 启用' : 'Character 禁用' }}
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="
+                                            item.characterEnabled
+                                                ? 'success'
+                                                : 'info'
+                                        "
+                                    >
+                                        {{
+                                            item.characterEnabled
+                                                ? 'Character 启用'
+                                                : 'Character 禁用'
+                                        }}
                                     </el-tag>
-                                    <el-tag size="small" effect="plain" :type="subAgentModeType(item.subAgents.mode)">
-                                        {{ subAgentModeLabel(item.subAgents.mode) }}
+                                    <el-tag
+                                        size="small"
+                                        effect="plain"
+                                        :type="
+                                            subAgentModeType(
+                                                item.subAgents.mode
+                                            )
+                                        "
+                                    >
+                                        {{
+                                            subAgentModeLabel(
+                                                item.subAgents.mode
+                                            )
+                                        }}
                                     </el-tag>
                                 </div>
 
-                                <div v-if="!hideDesc" class="skill-meta">{{ item.path || '当前没有可用路径' }}</div>
+                                <div v-if="!hideDesc" class="skill-meta">
+                                    {{ item.path || '当前没有可用路径' }}
+                                </div>
 
-                                <div v-if="!hideDesc && item.homepage" class="skill-meta">
+                                <div
+                                    v-if="!hideDesc && item.homepage"
+                                    class="skill-meta"
+                                >
                                     主页：{{ item.homepage }}
                                 </div>
 
-                                <div v-if="!hideDesc && item.compatibility" class="skill-meta">
+                                <div
+                                    v-if="!hideDesc && item.compatibility"
+                                    class="skill-meta"
+                                >
                                     兼容性：{{ item.compatibility }}
                                 </div>
 
-                                <div v-if="!hideDesc && formatRequires(item)" class="skill-meta">
+                                <div
+                                    v-if="!hideDesc && formatRequires(item)"
+                                    class="skill-meta"
+                                >
                                     依赖要求：{{ formatRequires(item) }}
                                 </div>
 
-                                <div v-if="!hideDesc && formatInstall(item)" class="skill-meta">
+                                <div
+                                    v-if="!hideDesc && formatInstall(item)"
+                                    class="skill-meta"
+                                >
                                     安装方式：{{ formatInstall(item) }}
                                 </div>
 
@@ -215,12 +335,19 @@
                                         <el-button
                                             size="small"
                                             plain
-                                            :disabled="!item.path || isReadonly(item)"
+                                            :disabled="
+                                                !item.path || isReadonly(item)
+                                            "
                                             @click.stop="previewSkill(item)"
                                         >
                                             查看/编辑内容
                                         </el-button>
-                                        <el-button size="small" plain :disabled="!canExport(item)" @click.stop="exportSkill(item)">
+                                        <el-button
+                                            size="small"
+                                            plain
+                                            :disabled="!canExport(item)"
+                                            @click.stop="exportSkill(item)"
+                                        >
                                             导出 ZIP
                                         </el-button>
                                         <el-button
@@ -228,7 +355,9 @@
                                             size="small"
                                             plain
                                             type="danger"
-                                            :loading="skillBusy[item.id] === true"
+                                            :loading="
+                                                skillBusy[item.id] === true
+                                            "
                                             :disabled="!canRemove(item)"
                                             @click.stop="removeSkill(item)"
                                         >
@@ -243,7 +372,14 @@
                                         >
                                             错误信息
                                         </el-button>
-                                        <el-button v-if="item.homepage" size="small" plain @click.stop="openLink(item.homepage)">
+                                        <el-button
+                                            v-if="item.homepage"
+                                            size="small"
+                                            plain
+                                            @click.stop="
+                                                openLink(item.homepage)
+                                            "
+                                        >
                                             打开主页
                                         </el-button>
                                     </div>
@@ -296,13 +432,24 @@
             destroy-on-close
         >
             <div class="import-dialog-actions">
-                <el-button @click="openImport('markdown')">从 Markdown 导入</el-button>
-                <el-button @click="openImport('github')">从 Github 导入</el-button>
-                <el-button @click="openImport('folder')">从本地文件导入</el-button>
+                <el-button @click="openImport('markdown')">
+                    从 Markdown 导入
+                </el-button>
+                <el-button @click="openImport('github')">
+                    从 Github 导入
+                </el-button>
+                <el-button @click="openImport('folder')">
+                    从本地文件导入
+                </el-button>
             </div>
         </el-dialog>
 
-        <el-dialog v-model="showPreview" title="查看/编辑技能内容" width="720px" destroy-on-close>
+        <el-dialog
+            v-model="showPreview"
+            title="查看/编辑技能内容"
+            width="720px"
+            destroy-on-close
+        >
             <div class="preview-meta">{{ previewTitle }}</div>
             <code-editor
                 v-model="previewContent"
@@ -315,7 +462,11 @@
                 <el-button
                     type="primary"
                     :loading="savingContent"
-                    :disabled="isReadonly(previewItem) || previewItem?.remote || previewContent === originalContent"
+                    :disabled="
+                        isReadonly(previewItem) ||
+                        previewItem?.remote ||
+                        previewContent === originalContent
+                    "
                     @click="saveContent"
                 >
                     保存
@@ -482,21 +633,32 @@ const skills = computed(() => {
             return {
                 ...item,
                 enabled: saved?.enabled ?? item.enabled,
-                mode: saved?.enabled === false ? 'off' : (saved?.mode ?? item.mode),
+                mode:
+                    saved?.enabled === false
+                        ? 'off'
+                        : (saved?.mode ?? item.mode),
                 authority: saved?.authority ?? item.authority,
                 main: saved?.main ?? item.main,
                 chatlunaEnabled: saved?.chatluna ?? item.chatlunaEnabled,
                 characterEnabled: saved?.character ?? item.characterEnabled,
-                characterGroupEnabled: saved?.characterGroup ?? item.characterGroupEnabled,
-                characterPrivateEnabled: saved?.characterPrivate ?? item.characterPrivateEnabled,
-                characterGroupMode: saved?.characterGroupMode ?? item.characterGroupMode,
-                characterPrivateMode: saved?.characterPrivateMode ?? item.characterPrivateMode,
-                characterGroupIds: saved?.characterGroupIds ?? item.characterGroupIds,
-                characterPrivateIds: saved?.characterPrivateIds ?? item.characterPrivateIds,
+                characterGroupEnabled:
+                    saved?.characterGroup ?? item.characterGroupEnabled,
+                characterPrivateEnabled:
+                    saved?.characterPrivate ?? item.characterPrivateEnabled,
+                characterGroupMode:
+                    saved?.characterGroupMode ?? item.characterGroupMode,
+                characterPrivateMode:
+                    saved?.characterPrivateMode ?? item.characterPrivateMode,
+                characterGroupIds:
+                    saved?.characterGroupIds ?? item.characterGroupIds,
+                characterPrivateIds:
+                    saved?.characterPrivateIds ?? item.characterPrivateIds,
                 subAgents: cloneRule(saved?.subAgents ?? item.subAgents)
             }
         })
-        .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+        .sort(
+            (a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+        )
 })
 
 const filteredSkills = computed(() => {
@@ -508,13 +670,15 @@ const filteredSkills = computed(() => {
             !filters.value.every((value) => {
                 if (value === 'enabled:yes') return item.enabled
                 if (value === 'enabled:no') return !item.enabled
-                if (value === 'mode:description') return item.mode === 'description'
+                if (value === 'mode:description')
+                    return item.mode === 'description'
                 if (value === 'mode:full') return item.mode === 'full'
                 if (value === 'main:yes') return item.main
                 if (value === 'main:no') return !item.main
                 if (value === 'available:yes') return item.available
                 if (value === 'available:no') return !item.available
-                if (value === 'diagnostics:yes') return item.diagnostics.length > 0
+                if (value === 'diagnostics:yes')
+                    return item.diagnostics.length > 0
                 return true
             })
         ) {
@@ -628,7 +792,10 @@ function normalizeConfig(value: SkillsConfig): SkillsConfig {
         dirs: [...(value.dirs ?? [])],
         githubToken: value.githubToken ?? '',
         items: Object.fromEntries(
-            Object.entries(value.items ?? {}).map(([id, item]) => [id, createItem(item)])
+            Object.entries(value.items ?? {}).map(([id, item]) => [
+                id,
+                createItem(item)
+            ])
         )
     }
 }
@@ -637,26 +804,55 @@ function createItem(item?: Partial<SkillConfig> | SkillInfo): SkillConfig {
     return {
         enabled: item?.enabled !== false,
         mode: item?.mode === 'full' ? 'full' : 'description',
-        authority: (item as SkillConfig | undefined)?.authority ?? (item as SkillInfo | undefined)?.authority ?? 0,
+        authority:
+            (item as SkillConfig | undefined)?.authority ??
+            (item as SkillInfo | undefined)?.authority ??
+            0,
         remote: (item as SkillConfig | undefined)?.remote === true,
         main: (item as SkillConfig | undefined)?.main !== false,
-        chatluna: (item as SkillConfig | undefined)?.chatluna ?? (item as SkillInfo | undefined)?.chatlunaEnabled ?? true,
-        character: (item as SkillConfig | undefined)?.character ?? (item as SkillInfo | undefined)?.characterEnabled ?? true,
-        characterGroup: (item as SkillConfig | undefined)?.characterGroup ?? (item as SkillInfo | undefined)?.characterGroupEnabled ?? true,
-        characterPrivate: (item as SkillConfig | undefined)?.characterPrivate ?? (item as SkillInfo | undefined)?.characterPrivateEnabled ?? true,
+        chatluna:
+            (item as SkillConfig | undefined)?.chatluna ??
+            (item as SkillInfo | undefined)?.chatlunaEnabled ??
+            true,
+        character:
+            (item as SkillConfig | undefined)?.character ??
+            (item as SkillInfo | undefined)?.characterEnabled ??
+            true,
+        characterGroup:
+            (item as SkillConfig | undefined)?.characterGroup ??
+            (item as SkillInfo | undefined)?.characterGroupEnabled ??
+            true,
+        characterPrivate:
+            (item as SkillConfig | undefined)?.characterPrivate ??
+            (item as SkillInfo | undefined)?.characterPrivateEnabled ??
+            true,
         characterGroupMode:
             (item as SkillConfig | undefined)?.characterGroupMode === 'allow' ||
             (item as SkillConfig | undefined)?.characterGroupMode === 'deny'
                 ? (item as SkillConfig).characterGroupMode
-                : ((item as SkillInfo | undefined)?.characterGroupMode ?? 'all'),
+                : ((item as SkillInfo | undefined)?.characterGroupMode ??
+                  'all'),
         characterPrivateMode:
-            (item as SkillConfig | undefined)?.characterPrivateMode === 'allow' ||
+            (item as SkillConfig | undefined)?.characterPrivateMode ===
+                'allow' ||
             (item as SkillConfig | undefined)?.characterPrivateMode === 'deny'
                 ? (item as SkillConfig).characterPrivateMode
-                : ((item as SkillInfo | undefined)?.characterPrivateMode ?? 'all'),
-        characterGroupIds: [...(((item as SkillConfig | undefined)?.characterGroupIds ?? (item as SkillInfo | undefined)?.characterGroupIds) ?? [])],
-        characterPrivateIds: [...(((item as SkillConfig | undefined)?.characterPrivateIds ?? (item as SkillInfo | undefined)?.characterPrivateIds) ?? [])],
-        subAgents: cloneRule((item as SkillConfig | undefined)?.subAgents ?? (item as SkillInfo | undefined)?.subAgents)
+                : ((item as SkillInfo | undefined)?.characterPrivateMode ??
+                  'all'),
+        characterGroupIds: [
+            ...((item as SkillConfig | undefined)?.characterGroupIds ??
+                (item as SkillInfo | undefined)?.characterGroupIds ??
+                [])
+        ],
+        characterPrivateIds: [
+            ...((item as SkillConfig | undefined)?.characterPrivateIds ??
+                (item as SkillInfo | undefined)?.characterPrivateIds ??
+                [])
+        ],
+        subAgents: cloneRule(
+            (item as SkillConfig | undefined)?.subAgents ??
+                (item as SkillInfo | undefined)?.subAgents
+        )
     }
 }
 
@@ -691,18 +887,26 @@ async function saveContent() {
     if (!previewItem.value) return
 
     try {
-        await ElMessageBox.confirm('确定要保存对该 Skill 内容的修改吗？', '确认保存', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'warning'
-        })
+        await ElMessageBox.confirm(
+            '确定要保存对该 Skill 内容的修改吗？',
+            '确认保存',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }
+        )
     } catch {
         return
     }
 
     try {
         savingContent.value = true
-        await send('chatluna-agent/saveSkillContent', previewItem.value.id, previewContent.value)
+        await send(
+            'chatluna-agent/saveSkillContent',
+            previewItem.value.id,
+            previewContent.value
+        )
         originalContent.value = previewContent.value
         ElMessage.success('保存成功。')
         showPreview.value = false
@@ -778,7 +982,11 @@ async function removeSkill(item: SkillInfo) {
         skillBusy.value[item.id] = true
         await send('chatluna-agent/removeSkill', item.id)
         emit('refresh')
-        ElMessage.success(item.state === 'missing' ? '已移除残留的 skill 配置。' : '已删除该 skill。')
+        ElMessage.success(
+            item.state === 'missing'
+                ? '已移除残留的 skill 配置。'
+                : '已删除该 skill。'
+        )
     } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
             ElMessage.error('删除失败，请稍后重试。')
@@ -826,9 +1034,15 @@ function formatRequires(item: SkillInfo) {
 
     return [
         bins.length ? `bins: ${bins.join(', ')}` : '',
-        item.requires?.anyBins?.length ? `anyBins: ${item.requires.anyBins.join(', ')}` : '',
-        item.requires?.env?.length ? `env: ${item.requires.env.join(', ')}` : '',
-        item.requires?.config?.length ? `config: ${item.requires.config.join(', ')}` : ''
+        item.requires?.anyBins?.length
+            ? `anyBins: ${item.requires.anyBins.join(', ')}`
+            : '',
+        item.requires?.env?.length
+            ? `env: ${item.requires.env.join(', ')}`
+            : '',
+        item.requires?.config?.length
+            ? `config: ${item.requires.config.join(', ')}`
+            : ''
     ]
         .filter(Boolean)
         .join(' | ')
@@ -898,7 +1112,7 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .skills-page.compact {
-    width: min(100%, 1440px);
+    width: min(100%, 1200px);
 }
 
 .toolbar-container {
@@ -947,7 +1161,8 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .panel {
-    border: 1px solid color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 14px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
     overflow: hidden;
@@ -965,7 +1180,8 @@ function base64ToBlob(data: string, type: string) {
     align-items: center;
     gap: 16px;
     padding: 16px 18px;
-    border-bottom: 1px solid color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 20%);
     box-sizing: border-box;
 }
 
@@ -1062,7 +1278,8 @@ function base64ToBlob(data: string, type: string) {
     display: flex;
     justify-content: flex-end;
     padding-top: 4px;
-    border-top: 1px solid color-mix(in srgb, var(--k-color-divider), transparent 28%);
+    border-top: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 28%);
 }
 
 .import-dialog-actions {
@@ -1095,7 +1312,8 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .skill-card {
-    border: 1px solid color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
     background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
     padding: 14px;
@@ -1105,12 +1323,11 @@ function base64ToBlob(data: string, type: string) {
     min-width: 0;
     box-sizing: border-box;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease;
 }
 
 .skill-card:hover {
     border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
-    transform: translateY(-1px);
 }
 
 .skill-card.muted {
@@ -1226,15 +1443,39 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .skill-actions-main :deep(.danger-soft.el-button) {
-    --el-button-bg-color: color-mix(in srgb, var(--el-color-danger), transparent 92%);
-    --el-button-border-color: color-mix(in srgb, var(--el-color-danger), transparent 68%);
-    --el-button-text-color: color-mix(in srgb, var(--el-color-danger), var(--k-text-dark) 22%);
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 92%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        transparent 68%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--k-text-dark) 22%
+    );
 }
 
 .skill-actions-main :deep(.warning-soft.el-button) {
-    --el-button-bg-color: color-mix(in srgb, var(--el-color-warning), transparent 90%);
-    --el-button-border-color: color-mix(in srgb, var(--el-color-warning), transparent 58%);
-    --el-button-text-color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 24%);
+    --el-button-bg-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 90%
+    );
+    --el-button-border-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        transparent 58%
+    );
+    --el-button-text-color: color-mix(
+        in srgb,
+        var(--el-color-warning),
+        var(--k-text-dark) 24%
+    );
 }
 
 .empty-state {

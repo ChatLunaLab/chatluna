@@ -2,7 +2,10 @@ import { randomUUID } from 'crypto'
 import { h, Session, Universal } from 'koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
+import {
+    ChatLunaError,
+    ChatLunaErrorCode
+} from 'koishi-plugin-chatluna/utils/error'
 import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
 import { buildVirtualSession } from 'koishi-plugin-chatluna/utils/virtual_session'
 import {
@@ -10,10 +13,8 @@ import {
     ChatInvocationContext,
     ChatInvocationInput,
     ChatInvocationResult,
-    ConversationInvocationError,
     ConversationRecord,
     ConversationResolution,
-    ConversationResolutionError,
     Message
 } from '../../types'
 import type { ChatLunaService } from '../../services/chat'
@@ -51,20 +52,24 @@ export class ChatRuntime {
             const session = this.resolveSession(input)
             if (session == null) {
                 if (input.routing == null) {
-                    throw new RuntimeFailure(
-                        'routing_required',
-                        'A session or routing target is required.'
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.INVOCATION_ROUTING_REQUIRED,
+                        new Error('A session or routing target is required.')
                     )
                 }
-                throw new RuntimeFailure(
-                    'bot_not_found',
-                    `Bot ${input.routing.platform}:${input.routing.selfId} was not found.`
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.BOT_NOT_FOUND,
+                    new Error(
+                        `Bot ${input.routing.platform}:${input.routing.selfId} was not found.`
+                    )
                 )
             }
             if (session.bot.status !== Universal.Status.ONLINE) {
-                throw new RuntimeFailure(
-                    'bot_offline',
-                    `Bot ${session.platform}:${session.selfId} is offline.`
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.BOT_OFFLINE,
+                    new Error(
+                        `Bot ${session.platform}:${session.selfId} is offline.`
+                    )
                 )
             }
 
@@ -72,7 +77,7 @@ export class ChatRuntime {
             if (input.preset != null) this.checkPreset(input.preset)
 
             const persist = input.persist !== false
-            const resolved = await this.service.conversation.resolveInvocation(
+            const resolved = await this.service.conversation.prepareInvocation(
                 session,
                 {
                     target: input.conversation,
@@ -113,9 +118,9 @@ export class ChatRuntime {
                 signal: controller.signal,
                 persist: persist && input.conversation.type !== 'ephemeral'
             }
-            if (invocation.persist === false) cleanup = conversation
+            if (resolved.transient) cleanup = conversation
             if (controller.signal.aborted) {
-                throw abortErr(state.timedOut, conversation)
+                throw abortErr(state.timedOut)
             }
 
             const run = await this.service.chatChain.runCommand(
@@ -136,24 +141,18 @@ export class ChatRuntime {
             usage = invocation.usage
             const reply = run.context.options.finalResponseMessage
             const error = run.context.options.error
-            if (!run.ok || (controller.signal.aborted && reply == null)) {
-                if (state.timedOut) throw abortErr(true, conversation)
-                if (controller.signal.aborted) {
-                    throw abortErr(false, conversation)
-                }
-                if (error instanceof ChatLunaError) {
-                    throw new RuntimeFailure(
-                        `chatluna_${error.errorCode}`,
-                        error.message,
-                        conversation
-                    )
-                }
-                throw new RuntimeFailure(
-                    'chain_stopped',
-                    error instanceof Error && error.message
-                        ? error.message
-                        : 'Chat invocation stopped before completion.',
-                    conversation
+            if (controller.signal.aborted) {
+                throw abortErr(state.timedOut)
+            }
+            if (!run.ok) {
+                if (error instanceof ChatLunaError) throw error
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.CHAIN_STOPPED,
+                    error instanceof Error
+                        ? error
+                        : new Error(
+                              'Chat invocation stopped before completion.'
+                          )
                 )
             }
 
@@ -197,7 +196,8 @@ export class ChatRuntime {
         const conversation = resolved.conversation
         const resolution: ActiveConversationResolution = {
             ...resolved,
-            conversation
+            conversation,
+            transient: false
         }
         const prepared = await options.prepare({ conversation, resolution })
         const response = await this.chat(
@@ -259,18 +259,18 @@ export class ChatRuntime {
                 ? null
                 : this.service.platform.findModel(platform, name).value
         if (info == null || info.type !== ModelType.llm) {
-            throw new RuntimeFailure(
-                'model_not_found',
-                `Model ${model} is not available.`
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_NOT_FOUND,
+                new Error(`Model ${model} is not available.`)
             )
         }
     }
 
     private checkPreset(preset: string) {
         if (this.service.preset.getPreset(preset, false).value == null) {
-            throw new RuntimeFailure(
-                'preset_not_found',
-                `Preset ${preset} was not found.`
+            throw new ChatLunaError(
+                ChatLunaErrorCode.PRESET_NOT_FOUND,
+                new Error(`Preset ${preset} was not found.`)
             )
         }
     }
@@ -278,15 +278,37 @@ export class ChatRuntime {
     private async cleanupTransient(conversation?: ConversationRecord) {
         if (conversation == null) return
         const id = conversation.id
-        await this.service.ctx.database
-            .remove('chatluna_message', { conversationId: id })
-            .catch(() => {})
-        await this.service.ctx.database
-            .remove('chatluna_conversation', { id })
-            .catch(() => {})
-        await this.service.conversationRuntime
-            .clearConversationCache(id)
-            .catch(() => {})
+        try {
+            await this.service.ctx.database.remove('chatluna_message', {
+                conversationId: id
+            })
+        } catch (err) {
+            this.service.ctx.logger.warn(
+                'Failed to remove transient messages for conversation %s',
+                id,
+                err
+            )
+        }
+        try {
+            await this.service.ctx.database.remove('chatluna_conversation', {
+                id
+            })
+        } catch (err) {
+            this.service.ctx.logger.warn(
+                'Failed to remove transient conversation %s',
+                id,
+                err
+            )
+        }
+        try {
+            await this.service.conversationRuntime.clearConversationCache(id)
+        } catch (err) {
+            this.service.ctx.logger.warn(
+                'Failed to clear cache for transient conversation %s',
+                id,
+                err
+            )
+        }
     }
 }
 
@@ -303,24 +325,17 @@ interface RequestOptions {
     }) => Promise<void>
 }
 
-class RuntimeFailure extends Error {
-    constructor(
-        public readonly code: string,
-        message: string,
-        public readonly conversation?: ConversationRecord
-    ) {
-        super(message)
-        this.name = 'RuntimeFailure'
-    }
-}
-
-function abortErr(timedOut: boolean, conversation?: ConversationRecord) {
-    return new RuntimeFailure(
-        timedOut ? 'timeout' : 'aborted',
+function abortErr(timedOut: boolean) {
+    return new ChatLunaError(
         timedOut
-            ? 'Chat invocation timed out.'
-            : 'Chat invocation was aborted.',
-        conversation
+            ? ChatLunaErrorCode.API_REQUEST_TIMEOUT
+            : ChatLunaErrorCode.ABORTED,
+        new Error(
+            timedOut
+                ? 'Chat invocation timed out.'
+                : 'Chat invocation was aborted.'
+        ),
+        timedOut
     )
 }
 
@@ -337,37 +352,62 @@ function mapFail(
     const error = err instanceof Error ? err : new Error(String(err))
     let code = 'invoke_failed'
     let message = error.message
-    let conversation = extras.conversation
 
-    if (err instanceof RuntimeFailure) {
-        code = err.code
-        message = err.message
-        conversation = err.conversation ?? conversation
-    } else if (
-        timedOut ||
-        controller.signal.aborted ||
-        error.name === 'AbortError'
-    ) {
+    if (timedOut || controller.signal.aborted || error.name === 'AbortError') {
         code = timedOut ? 'timeout' : 'aborted'
         message = timedOut
             ? 'Chat invocation timed out.'
             : 'Chat invocation was aborted.'
-    } else if (err instanceof ConversationInvocationError) {
-        code = err.code
-        message = err.message
-    } else if (err instanceof ConversationResolutionError) {
-        code = err.code
-        message = err.message
     } else if (err instanceof ChatLunaError) {
-        code = `chatluna_${err.errorCode}`
-        message = err.message
+        const mapped = INVOKE_ERROR_CODES[err.errorCode]
+        if (mapped != null) {
+            code = mapped.code
+            message = err.originError?.message ?? mapped.fallback ?? err.message
+        } else {
+            code = `chatluna_${err.errorCode}`
+            message = err.originError?.message ?? err.message
+        }
     }
 
     return {
         ok: false,
         requestId,
-        conversation,
+        conversation: extras.conversation,
         usage: extras.usage,
         error: { code, message }
+    }
+}
+
+const INVOKE_ERROR_CODES: Partial<
+    Record<ChatLunaErrorCode, { code: string; fallback?: string }>
+> = {
+    [ChatLunaErrorCode.ABORTED]: {
+        code: 'aborted',
+        fallback: 'Chat invocation was aborted.'
+    },
+    [ChatLunaErrorCode.API_REQUEST_TIMEOUT]: {
+        code: 'timeout',
+        fallback: 'Chat invocation timed out.'
+    },
+    [ChatLunaErrorCode.INVOCATION_ROUTING_REQUIRED]: {
+        code: 'routing_required',
+        fallback: 'A session or routing target is required.'
+    },
+    [ChatLunaErrorCode.BOT_NOT_FOUND]: { code: 'bot_not_found' },
+    [ChatLunaErrorCode.BOT_OFFLINE]: { code: 'bot_offline' },
+    [ChatLunaErrorCode.MODEL_NOT_FOUND]: { code: 'model_not_found' },
+    [ChatLunaErrorCode.PRESET_NOT_FOUND]: { code: 'preset_not_found' },
+    [ChatLunaErrorCode.CHAIN_STOPPED]: { code: 'chain_stopped' },
+    [ChatLunaErrorCode.CONVERSATION_CREATE_DISABLED]: {
+        code: 'allow_new_disabled'
+    },
+    [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]: {
+        code: 'conversation_not_found'
+    },
+    [ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS]: {
+        code: 'ambiguous_target'
+    },
+    [ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE]: {
+        code: 'target_outside_route'
     }
 }

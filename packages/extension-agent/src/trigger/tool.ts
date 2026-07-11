@@ -2,6 +2,7 @@ import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { type Session, type User } from 'koishi'
 import { z } from 'zod'
+import { ChatLunaError } from 'koishi-plugin-chatluna/utils/error'
 import type { ChatLunaAgentTriggerService } from '../service/trigger'
 import type {
     TriggerActor,
@@ -225,6 +226,14 @@ export class TriggerTool extends StructuredTool {
             await this.service.remove(actor, id)
             return JSON.stringify({ removed: id })
         } catch (err) {
+            if (err instanceof ChatLunaError) {
+                return JSON.stringify({
+                    ok: false,
+                    code: `chatluna_${err.errorCode}`,
+                    message: err.originError?.message ?? err.message,
+                    data: err.data ?? null
+                })
+            }
             return err instanceof Error ? err.message : String(err)
         }
     }

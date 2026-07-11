@@ -6,8 +6,8 @@ import type { TriggerProviderRegistry } from './providers/registry'
 import type { TriggerRunner } from './runner'
 import type { TriggerEventDeadlineOptions, TriggerScheduler } from './scheduler'
 import { isEventCondition } from './schema'
+import { gateCursor } from './shared'
 import type { TriggerStore } from './store'
-import { keepGateCursor } from './utils'
 
 export class TriggerObserver {
     private _active = false
@@ -117,8 +117,7 @@ export class TriggerObserver {
                                 status: 'waiting',
                                 nextRunAt: deadline,
                                 cursor: {
-                                    ...(keepGateCursor(task.state.cursor) ??
-                                        {}),
+                                    ...(gateCursor(task.state.cursor) ?? {}),
                                     kind: 'inactivity',
                                     scopeKey: key,
                                     deadline
@@ -132,7 +131,7 @@ export class TriggerObserver {
                                 ...task.state,
                                 status: 'waiting',
                                 nextRunAt: null,
-                                cursor: keepGateCursor(task.state.cursor)
+                                cursor: gateCursor(task.state.cursor)
                             }
                         })
                         refresh = true
@@ -276,7 +275,7 @@ export class TriggerObserver {
         }
         const key = latest.state.cursor.scopeKey
         const deadline = latest.state.cursor.deadline
-        const gateCursor = keepGateCursor(latest.state.cursor)
+        const keptGate = gateCursor(latest.state.cursor)
         if (typeof key !== 'string' || typeof deadline !== 'string') return
         if (
             latest.state.nextRunAt !== deadline ||
@@ -291,7 +290,7 @@ export class TriggerObserver {
                     ...latest.state,
                     status: 'waiting',
                     nextRunAt: null,
-                    cursor: gateCursor
+                    cursor: keptGate
                 }
             })
             await this.scheduler.refresh()
@@ -312,11 +311,11 @@ export class TriggerObserver {
             messages.length < condition.minMessages
         ) {
             let nextRunAt: string | null = null
-            let cursor: Record<string, unknown> | null = gateCursor
+            let cursor: Record<string, unknown> | null = keptGate
             if (expected > Date.now()) {
                 nextRunAt = new Date(expected).toISOString()
                 cursor = {
-                    ...(gateCursor ?? {}),
+                    ...(keptGate ?? {}),
                     kind: 'inactivity',
                     scopeKey: key,
                     deadline: nextRunAt

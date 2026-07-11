@@ -1,8 +1,5 @@
 <template>
-    <div
-        class="tool-page"
-        :class="{ compact: compactMode }"
-    >
+    <div class="tool-page" :class="{ compact: compactMode }">
         <div class="toolbar-container">
             <div class="toolbar-main" v-if="currentView === 'list'">
                 <div class="headline">
@@ -53,68 +50,59 @@
                     @save="saveSelected"
                 />
 
-                <div v-else key="list" class="panel catalog-panel">
-                    <div class="panel-header catalog-header">
-                        <div class="catalog-header-info">
-                            <div class="panel-title">工具列表</div>
-                            <div class="panel-description">
-                                ChatLuna 目前可用的全部工具。
-                            </div>
-                        </div>
+                <div v-else key="list" class="catalog">
+                    <div class="catalog-controls">
+                        <el-popover
+                            placement="bottom-start"
+                            trigger="click"
+                            popper-class="tools-filter-popper"
+                        >
+                            <template #reference>
+                                <el-button class="filter-trigger" plain>
+                                    {{
+                                        filters.length > 0
+                                            ? `筛选 ${filters.length}`
+                                            : '筛选'
+                                    }}
+                                </el-button>
+                            </template>
 
-                        <div class="search-row">
-                            <el-popover
-                                placement="bottom-start"
-                                trigger="click"
-                                popper-class="tools-filter-popper"
-                            >
-                                <template #reference>
-                                    <el-button class="filter-trigger" plain>
-                                        {{
-                                            filters.length > 0
-                                                ? `筛选 ${filters.length}`
-                                                : '筛选'
-                                        }}
-                                    </el-button>
-                                </template>
-
-                                <div class="filter-panel">
-                                    <el-checkbox-group v-model="filters">
-                                        <div class="filter-list">
-                                            <el-checkbox
-                                                v-for="item in filterOptions"
-                                                :key="item.value"
-                                                :label="item.value"
-                                            >
-                                                {{ item.label }}
-                                            </el-checkbox>
-                                        </div>
-                                    </el-checkbox-group>
-
-                                    <div class="filter-panel-actions">
-                                        <el-button
-                                            size="small"
-                                            text
-                                            :disabled="filters.length === 0"
-                                            @click="filters = []"
+                            <div class="filter-panel">
+                                <el-checkbox-group v-model="filters">
+                                    <div class="filter-list">
+                                        <el-checkbox
+                                            v-for="item in filterOptions"
+                                            :key="item.value"
+                                            :label="item.value"
                                         >
-                                            清空
-                                        </el-button>
+                                            {{ item.label }}
+                                        </el-checkbox>
                                     </div>
-                                </div>
-                            </el-popover>
+                                </el-checkbox-group>
 
-                            <el-input
-                                v-model="keyword"
-                                class="search-input"
-                                placeholder="搜索工具名、说明、来源、分组、MCP server"
-                                clearable
-                            >
-                                <template #prefix>
-                                    <el-icon><Search /></el-icon>
-                                </template>
-                            </el-input>
-                        </div>
+                                <div class="filter-panel-actions">
+                                    <el-button
+                                        size="small"
+                                        text
+                                        :disabled="filters.length === 0"
+                                        @click="filters = []"
+                                    >
+                                        清空
+                                    </el-button>
+                                </div>
+                            </div>
+                        </el-popover>
+
+                        <el-input
+                            v-model="keyword"
+                            class="search-input"
+                            placeholder="搜索工具名、说明、来源、分组、MCP server"
+                            clearable
+                        >
+                            <template #prefix>
+                                <el-icon><Search /></el-icon>
+                            </template>
+                        </el-input>
                     </div>
 
                     <div
@@ -126,7 +114,10 @@
                             v-for="item in filteredTools"
                             :key="item.name"
                             class="tool-card"
-                            :class="{ centered: hideDesc, muted: !item.enabled }"
+                            :class="{
+                                centered: hideDesc,
+                                muted: !item.enabled
+                            }"
                             @click="openEditor(item.name)"
                         >
                             <div class="tool-top">
@@ -141,126 +132,28 @@
                                         </div>
                                         <div v-if="!hideDesc" class="tool-name">
                                             {{ item.source || 'unknown' }}
-                                            {{ item.group ? ` / ${item.group}` : '' }}
+                                            {{
+                                                item.group
+                                                    ? ` / ${item.group}`
+                                                    : ''
+                                            }}
                                         </div>
                                     </div>
                                 </div>
 
                                 <el-switch
                                     :model-value="item.enabled"
-                                    @change="setEnabled(item.name, $event as boolean)"
+                                    @change="
+                                        setEnabled(item.name, $event as boolean)
+                                    "
                                     @click.stop
                                 />
                             </div>
 
                             <div v-if="!hideDesc" class="tool-description">
-                                {{ item.description || '这个工具暂时没有说明。' }}
-                            </div>
-
-                            <div class="tool-footer">
-                                <div class="tool-tags">
-                                    <el-tag
-                                        v-if="item.name === 'handoff'"
-                                        size="small"
-                                        effect="plain"
-                                    >
-                                        {{ item.name }}
-                                    </el-tag>
-                                    <el-tag size="small" effect="plain">
-                                        {{ item.enabled ? '启用' : '禁用' }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="item.main ? 'success' : 'info'"
-                                    >
-                                        {{
-                                            item.main
-                                                ? '主 Agent 启用'
-                                                : '主 Agent 禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="item.chatlunaEnabled ? 'success' : 'info'"
-                                    >
-                                        {{
-                                            item.chatlunaEnabled
-                                                ? 'ChatLuna 启用'
-                                                : 'ChatLuna 禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="item.characterEnabled ? 'success' : 'info'"
-                                    >
-                                        {{
-                                            item.characterEnabled
-                                                ? 'Character 启用'
-                                                : 'Character 禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="item.characterGroupEnabled ? 'success' : 'info'"
-                                    >
-                                        {{
-                                            item.characterGroupEnabled
-                                                ? 'Character 群聊启用'
-                                                : 'Character 群聊禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="item.characterPrivateEnabled ? 'success' : 'info'"
-                                    >
-                                        {{
-                                            item.characterPrivateEnabled
-                                                ? 'Character 私聊启用'
-                                                : 'Character 私聊禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="subAgentModeType(item.subAgents.mode)"
-                                    >
-                                        {{ subAgentModeLabel(item.subAgents.mode) }}
-                                    </el-tag>
-                                    <el-tag size="small" effect="plain">
-                                        {{
-                                            item.authority > 0
-                                                ? `权限 >= ${item.authority}`
-                                                : '无权限限制'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        v-if="item.isMcp"
-                                        size="small"
-                                        effect="plain"
-                                    >
-                                        MCP
-                                    </el-tag>
-                                    <el-tag
-                                        v-if="item.serverName"
-                                        size="small"
-                                        effect="plain"
-                                    >
-                                        {{ item.serverName }}
-                                    </el-tag>
-                                    <el-tag
-                                        v-for="tag in item.tags ?? []"
-                                        :key="tag"
-                                        size="small"
-                                        effect="plain"
-                                    >
-                                        {{ tag }}
-                                    </el-tag>
-                                </div>
+                                {{
+                                    item.description || '这个工具暂时没有说明。'
+                                }}
                             </div>
                         </div>
                     </div>
@@ -370,28 +263,27 @@ const tools = computed(() => {
     return Object.values(props.status.catalog)
         .map((item) => {
             const saved = draft.value.items[item.name]
-                return {
-                    ...item,
-                    enabled: saved?.enabled ?? item.enabled,
-                    main: saved?.main ?? item.main,
-                    chatlunaEnabled: saved?.chatluna ?? item.chatlunaEnabled,
-                    characterEnabled:
-                        saved?.character ?? item.characterEnabled,
-                    characterGroupEnabled:
-                        saved?.characterGroup ?? item.characterGroupEnabled,
-                    characterPrivateEnabled:
-                        saved?.characterPrivate ?? item.characterPrivateEnabled,
-                    characterGroupMode:
-                        saved?.characterGroupMode ?? item.characterGroupMode,
-                    characterPrivateMode:
-                        saved?.characterPrivateMode ?? item.characterPrivateMode,
-                    characterGroupIds:
-                        saved?.characterGroupIds ?? item.characterGroupIds,
-                    characterPrivateIds:
-                        saved?.characterPrivateIds ?? item.characterPrivateIds,
-                    subAgents: cloneRule(saved?.subAgents ?? item.subAgents),
-                    authority: saved?.authority ?? item.authority
-                }
+            return {
+                ...item,
+                enabled: saved?.enabled ?? item.enabled,
+                main: saved?.main ?? item.main,
+                chatlunaEnabled: saved?.chatluna ?? item.chatlunaEnabled,
+                characterEnabled: saved?.character ?? item.characterEnabled,
+                characterGroupEnabled:
+                    saved?.characterGroup ?? item.characterGroupEnabled,
+                characterPrivateEnabled:
+                    saved?.characterPrivate ?? item.characterPrivateEnabled,
+                characterGroupMode:
+                    saved?.characterGroupMode ?? item.characterGroupMode,
+                characterPrivateMode:
+                    saved?.characterPrivateMode ?? item.characterPrivateMode,
+                characterGroupIds:
+                    saved?.characterGroupIds ?? item.characterGroupIds,
+                characterPrivateIds:
+                    saved?.characterPrivateIds ?? item.characterPrivateIds,
+                subAgents: cloneRule(saved?.subAgents ?? item.subAgents),
+                authority: saved?.authority ?? item.authority
+            }
         })
         .sort((a, b) => a.name.localeCompare(b.name))
 })
@@ -486,18 +378,6 @@ function scheduleToolSave() {
     saveDraft()
 }
 
-function subAgentModeLabel(mode: PermissionRule['mode']) {
-    if (mode === 'allow') return '仅指定 sub-agent'
-    if (mode === 'deny') return '排除指定 sub-agent'
-    return '全部 sub-agent'
-}
-
-function subAgentModeType(mode: PermissionRule['mode']) {
-    if (mode === 'allow') return 'success'
-    if (mode === 'deny') return 'warning'
-    return 'info'
-}
-
 function cloneConfig(value: ToolConfig): ToolConfig {
     return normalizeConfig(value)
 }
@@ -522,11 +402,11 @@ function createItem(
         enabled: item?.enabled !== false,
         main: item?.main !== false,
         chatluna:
-            ((item as any)?.chatluna ??
-                (item as any)?.chatlunaEnabled) !== false,
+            ((item as any)?.chatluna ?? (item as any)?.chatlunaEnabled) !==
+            false,
         character:
-            ((item as any)?.character ??
-                (item as any)?.characterEnabled) !== false,
+            ((item as any)?.character ?? (item as any)?.characterEnabled) !==
+            false,
         characterGroup:
             ((item as any)?.characterGroup ??
                 (item as any)?.characterGroupEnabled) !== false,
@@ -586,7 +466,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 .tool-page.compact {
-    width: min(100%, 1440px);
+    width: min(100%, 1200px);
 }
 
 .toolbar-container {
@@ -665,95 +545,17 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     flex-wrap: wrap;
 }
 
-.panel {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
-    overflow: hidden;
-    box-sizing: border-box;
-}
-
-.catalog-panel {
-    margin-top: 18px;
-}
-
-.panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 18px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
-    box-sizing: border-box;
-}
-
-@media (max-width: 768px) {
-    .catalog-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .catalog-header-info {
-        width: 100%;
-        flex: none;
-    }
-
-    .search-row {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        align-items: stretch;
-        width: 100%;
-        min-width: 0;
-        flex: none;
-    }
-
-    .filter-trigger {
-        min-width: 0;
-        width: 100%;
-        flex: none;
-    }
-
-    .search-input {
-        width: 100% !important;
-        min-width: 0;
-        flex: none;
-    }
-
-    .search-input :deep(.el-input__wrapper) {
-        min-height: 32px;
-    }
-}
-
-.panel-title {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--k-text-dark);
-}
-
-.panel-description {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-}
-
-.catalog-header-info {
-    flex: 1 1 auto;
+.catalog {
     min-width: 0;
 }
 
-.search-row {
+.catalog-controls {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-    width: auto;
-    flex-wrap: nowrap;
-    flex: 0 1 440px;
-    min-width: 220px;
+    margin-bottom: 16px;
+    min-width: 0;
 }
 
 .filter-trigger {
@@ -764,9 +566,9 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 .search-input {
-    width: auto;
+    width: min(100%, 360px);
     min-width: 0;
-    flex: 1 1 260px;
+    flex: 0 1 360px;
 }
 
 .filter-panel {
@@ -812,7 +614,6 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     display: grid;
     grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
-    padding: 16px;
     box-sizing: border-box;
 }
 
@@ -821,6 +622,7 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 }
 
 .tool-card {
+    min-height: 160px;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
@@ -832,14 +634,11 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     cursor: pointer;
     overflow: hidden;
     box-sizing: border-box;
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
+    transition: border-color 0.2s ease;
 }
 
 .tool-card:hover {
     border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
-    transform: translateY(-1px);
 }
 
 .tool-card.muted {
@@ -925,16 +724,6 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
     -webkit-line-clamp: 2;
 }
 
-.tool-footer {
-    margin-top: auto;
-}
-
-.tool-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
 @media (max-width: 1680px) {
     .card-list {
         --card-cols: 4;
@@ -971,25 +760,12 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
         --card-cols: 1;
     }
 
-    .catalog-header {
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: flex-start;
-    }
-
-    .catalog-header-info {
-        width: 100%;
-        flex: none;
-    }
-
-    .search-row {
+    .catalog-controls {
         display: grid;
         grid-template-columns: 1fr;
         gap: 10px;
         align-items: stretch;
         width: 100%;
-        min-width: 0;
-        flex: none;
     }
 
     .filter-trigger {
