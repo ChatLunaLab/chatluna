@@ -7,6 +7,7 @@ import type { TriggerRunner } from './runner'
 import type { TriggerEventDeadlineOptions, TriggerScheduler } from './scheduler'
 import { isEventCondition } from './schema'
 import type { TriggerStore } from './store'
+import { keepGateCursor } from './utils'
 
 export class TriggerObserver {
     private _active = false
@@ -362,14 +363,6 @@ interface ObservedMessage {
 interface ObservedScopeState {
     messages: ObservedMessage[]
     lastMessageAt: number
-}
-
-function keepGateCursor(
-    cursor: TriggerTask['state']['cursor']
-): Record<string, unknown> | null {
-    if (cursor == null || typeof cursor !== 'object') return null
-    if (!('gate' in cursor)) return null
-    return { gate: cursor.gate }
 }
 
 function getScopeKey(

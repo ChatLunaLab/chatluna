@@ -375,7 +375,8 @@ export async function createService(
         ctx,
         createConfig(options.config),
         ctx.chatluna.conversationRuntime,
-        ctx.chatluna.platform
+        ctx.chatluna.platform,
+        ctx.chatluna.preset
     )
 
     return {

@@ -17,6 +17,13 @@ export interface ChatInvocationRouting {
     isDirect: boolean
 }
 
+export type ChatInvocationTarget =
+    | { type: 'route' }
+    | { type: 'task'; key: string }
+    | { type: 'fresh' }
+    | { type: 'existing'; id: string }
+    | { type: 'ephemeral' }
+
 export interface ChatInvocationInput {
     session?: Session
     routing?: ChatInvocationRouting
@@ -24,12 +31,7 @@ export interface ChatInvocationInput {
     messageName?: string
     model?: string
     preset?: string
-    conversation:
-        | { type: 'route' }
-        | { type: 'task'; key: string }
-        | { type: 'fresh' }
-        | { type: 'existing'; id: string }
-        | { type: 'ephemeral' }
+    conversation: ChatInvocationTarget
     tools?: ToolMask
     variables?: Record<string, unknown>
     signal?: AbortSignal
@@ -59,6 +61,18 @@ export interface ChatInvocationContext {
     signal?: AbortSignal
     usage?: UsageMetadata
     persist?: boolean
+}
+
+export interface ResolveInvocationInput {
+    target: ChatInvocationTarget
+    requestId: string
+    model?: string
+    preset?: string
+    persist: boolean
+}
+
+export type ActiveConversationResolution = ConversationResolution & {
+    conversation: ConversationRecord
 }
 
 export interface ChatLunaObservedMessage {
@@ -309,6 +323,22 @@ export class ConversationNotFoundError extends Error {
     constructor() {
         super('Conversation not found.')
         this.name = 'ConversationNotFoundError'
+    }
+}
+
+export type ConversationInvocationErrorCode =
+    | 'model_not_found'
+    | 'preset_not_found'
+    | 'allow_new_disabled'
+    | 'conversation_not_found'
+
+export class ConversationInvocationError extends Error {
+    constructor(
+        public readonly code: ConversationInvocationErrorCode,
+        message: string
+    ) {
+        super(message)
+        this.name = 'ConversationInvocationError'
     }
 }
 

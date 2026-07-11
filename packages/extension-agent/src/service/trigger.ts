@@ -35,6 +35,7 @@ import {
 } from '../trigger/schema'
 import { TriggerStore } from '../trigger/store'
 import { FinishTriggerRunTool, TriggerTool } from '../trigger/tool'
+import { keepGateCursor, toInvokeConversation } from '../trigger/utils'
 
 export class ChatLunaAgentTriggerService {
     private readonly _store: TriggerStore
@@ -624,25 +625,4 @@ export class ChatLunaAgentTriggerService {
             error: tasks.filter((task) => task.state.status === 'error').length
         }
     }
-}
-
-function keepGateCursor(
-    cursor: TriggerTask['state']['cursor']
-): Record<string, unknown> | null {
-    if (cursor == null || typeof cursor !== 'object') return null
-    if (!('gate' in cursor)) return null
-    return { gate: cursor.gate }
-}
-
-function toInvokeConversation(
-    policy: TriggerTask['execution']['conversation'],
-    taskKey: string
-) {
-    if (policy.type === 'existing') {
-        return { type: 'existing' as const, id: policy.conversationId }
-    }
-    if (policy.type === 'task') {
-        return { type: 'task' as const, key: taskKey }
-    }
-    return policy
 }

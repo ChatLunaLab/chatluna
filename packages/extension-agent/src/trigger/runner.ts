@@ -16,6 +16,7 @@ import { TriggerDecisionCollector, TriggerRunControl } from './control'
 import type { TriggerPlan } from './planner'
 import { TriggerPlanner } from './planner'
 import { TriggerStore } from './store'
+import { keepGateCursor, toInvokeConversation } from './utils'
 
 export type { TriggerCandidate }
 
@@ -667,14 +668,6 @@ function applyPlan(
     }
 }
 
-function keepGateCursor(
-    cursor: TriggerTaskState['cursor']
-): Record<string, unknown> | null {
-    if (cursor == null || typeof cursor !== 'object') return null
-    if (!('gate' in cursor)) return null
-    return { gate: cursor.gate }
-}
-
 function isRescheduleCursor(cursor: TriggerTaskState['cursor']) {
     return (
         cursor != null &&
@@ -696,19 +689,6 @@ function nextCursor(
         }
     }
     return gate
-}
-
-function toInvokeConversation(
-    policy: TriggerTask['execution']['conversation'],
-    taskKey: string
-) {
-    if (policy.type === 'existing') {
-        return { type: 'existing' as const, id: policy.conversationId }
-    }
-    if (policy.type === 'task') {
-        return { type: 'task' as const, key: taskKey }
-    }
-    return policy
 }
 
 function forwardAbort(

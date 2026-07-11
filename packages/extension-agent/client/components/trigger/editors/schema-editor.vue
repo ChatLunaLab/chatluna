@@ -164,38 +164,22 @@ const fields = computed(() => {
 })
 
 watch(
-    fields,
-    (list) => {
-        const next = { ...model.value }
+    [fields, () => model.value] as const,
+    ([list, current], previous) => {
+        const replaced = previous != null && current !== previous[1]
+        if (replaced) {
+            for (const key of Object.keys(jsonDraft)) delete jsonDraft[key]
+        }
+
+        const next = { ...current }
         let changed = false
         for (const field of list) {
-            if (next[field.key] === undefined) {
-                if (field.defaultValue !== undefined) {
-                    next[field.key] = structuredClone(field.defaultValue)
-                    changed = true
-                } else if (
-                    field.kind === 'array' ||
-                    field.kind === 'array-enum'
-                ) {
-                    next[field.key] = []
-                    changed = true
-                } else if (field.kind === 'boolean') {
-                    next[field.key] = false
-                    changed = true
-                } else if (
-                    field.kind === 'number' ||
-                    field.kind === 'integer'
-                ) {
-                    next[field.key] = field.min ?? 0
-                    changed = true
-                } else if (
-                    field.kind === 'string' ||
-                    field.kind === 'multiline' ||
-                    field.kind === 'enum'
-                ) {
-                    next[field.key] = ''
-                    changed = true
-                }
+            if (
+                next[field.key] === undefined &&
+                field.defaultValue !== undefined
+            ) {
+                next[field.key] = structuredClone(field.defaultValue)
+                changed = true
             }
             if (field.kind !== 'json' || jsonDraft[field.key] != null) continue
             const value = next[field.key]
@@ -247,7 +231,7 @@ function unwrap(schema: Record<string, unknown>) {
     }
     if (!Array.isArray(schema.allOf)) return schema
 
-    let result: Record<string, unknown> = {}
+    let result: Record<string, unknown> = schema
     for (const item of schema.allOf) {
         const part = unwrap(item as Record<string, unknown>)
         const properties = {

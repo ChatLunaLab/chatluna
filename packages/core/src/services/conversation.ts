@@ -34,6 +34,7 @@ import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import {
     ACLRecord,
+    ActiveConversationResolution,
     AdminRequiredError,
     applyPresetLane,
     ArchiveRecord,
@@ -47,6 +48,7 @@ import {
     ConstraintPermission,
     ConstraintRecord,
     ConversationCompressionRecord,
+    ConversationInvocationError,
     ConversationListEntry,
     ConversationNotFoundError,
     ConversationRecord,
@@ -59,8 +61,10 @@ import {
     ResolveConversationOptions,
     ResolvedConstraint,
     ResolvedConversationContext,
+    ResolveInvocationInput,
     RouteMode
 } from '../types'
+
 import {
     ArchiveManifest,
     ConversationArchivePayload,
@@ -71,6 +75,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import type { PresetService } from 'koishi-plugin-chatluna/preset'
 
 const EMPTY_MODEL_NAMES = new Set(['', '无', 'empty'])
 
@@ -95,40 +100,28 @@ export class ConversationService {
         private readonly ctx: Context,
         private readonly config: Config,
         private readonly runtime: ConversationRuntime,
-        private readonly platform: PlatformService
+        private readonly platform: PlatformService,
+        private readonly preset: PresetService
     ) {}
 
     async getConversation(id: string) {
-        return this.firstRow('chatluna_conversation', { id }) as Promise<
-            ConversationRecord | undefined
-        >
+        return this.firstRow('chatluna_conversation', { id })
     }
 
     async getBinding(bindingKey: string) {
-        return this.firstRow('chatluna_binding', { bindingKey }) as Promise<
-            BindingRecord | undefined
-        >
+        return this.firstRow('chatluna_binding', { bindingKey })
     }
 
     async getArchive(id: string) {
-        return this.firstRow('chatluna_archive', { id }) as Promise<
-            ArchiveRecord | undefined
-        >
+        return this.firstRow('chatluna_archive', { id })
     }
 
     async getArchiveByConversationId(conversationId: string) {
-        return this.firstRow('chatluna_archive', { conversationId }) as Promise<
-            ArchiveRecord | undefined
-        >
+        return this.firstRow('chatluna_archive', { conversationId })
     }
 
     async listConstraints() {
-        return (
-            (await this.ctx.database.get(
-                'chatluna_constraint',
-                {}
-            )) as ConstraintRecord[]
-        )
+        return (await this.ctx.database.get('chatluna_constraint', {}))
             .filter((c) => c.enabled !== false)
             .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
     }
@@ -543,14 +536,244 @@ export class ConversationService {
     async ensureActiveConversation(
         session: Session,
         options: ResolveConversationOptions = {}
-    ): Promise<ConversationResolution & { conversation: ConversationRecord }> {
+    ): Promise<ActiveConversationResolution> {
         const resolved = await this.resolveConversation(session, {
             ...options,
             mode: 'active'
         })
-        return resolved as ConversationResolution & {
-            conversation: ConversationRecord
+        if (resolved.conversation == null) {
+            throw new ConversationNotFoundError()
         }
+        return {
+            ...resolved,
+            conversation: resolved.conversation
+        }
+    }
+
+    async resolveInvocation(
+        session: Session,
+        input: ResolveInvocationInput
+    ): Promise<ActiveConversationResolution> {
+        const ephemeral = input.target.type === 'ephemeral' || !input.persist
+
+        if (ephemeral) {
+            return this.resolveEphemeralInvocation(session, input)
+        }
+        if (input.target.type === 'route') {
+            return this.applyInvocationOverlay(
+                await this.ensureActiveConversation(session),
+                input
+            )
+        }
+        if (input.target.type === 'existing') {
+            return this.applyInvocationOverlay(
+                await this.requireActiveTarget(
+                    session,
+                    input.target.id,
+                    undefined
+                ),
+                input
+            )
+        }
+
+        const taskKey =
+            input.target.type === 'task' ? input.target.key : undefined
+        const bindingKey =
+            taskKey != null
+                ? `task:${session.platform}:${session.selfId}:${session.userId}:${taskKey}`
+                : `fresh:${input.requestId}`
+
+        if (taskKey != null) {
+            const [current] = await this.ctx.database.get(
+                'chatluna_conversation',
+                { bindingKey, status: 'active' }
+            )
+            if (current != null) {
+                return this.applyInvocationOverlay(
+                    await this.requireActiveTarget(
+                        session,
+                        current.id,
+                        bindingKey
+                    ),
+                    input
+                )
+            }
+        }
+
+        return this.createInvocationConversation(
+            session,
+            input,
+            bindingKey,
+            taskKey
+        )
+    }
+
+    private async resolveEphemeralInvocation(
+        session: Session,
+        input: ResolveInvocationInput
+    ): Promise<ActiveConversationResolution> {
+        const base = await this.resolveConversation(session, {
+            mode: 'context'
+        })
+        const model = this.requireInvocationModel(
+            input.model ?? base.effectiveModel
+        )
+        const preset = this.requireInvocationPreset(
+            input.preset ?? base.effectivePreset
+        )
+        const now = new Date()
+        const conversation: ConversationRecord = {
+            id: randomUUID(),
+            bindingKey: `ephemeral:${input.requestId}`,
+            title: 'Ephemeral Conversation',
+            model,
+            preset,
+            chatMode: base.effectiveChatMode ?? 'chat',
+            createdBy: session.userId,
+            createdAt: now,
+            updatedAt: now,
+            lastChatAt: now,
+            status: 'active',
+            latestMessageId: null,
+            additional_kwargs: null,
+            compression: null,
+            archivedAt: null,
+            archiveId: null,
+            legacyRoomId: null,
+            legacyMeta: null,
+            autoTitle: false
+        }
+        return this.applyInvocationOverlay(
+            {
+                ...base,
+                mode: 'active',
+                conversationId: conversation.id,
+                conversation,
+                effectiveModel: model,
+                effectivePreset: preset
+            },
+            input
+        )
+    }
+
+    private async createInvocationConversation(
+        session: Session,
+        input: ResolveInvocationInput,
+        bindingKey: string,
+        taskKey: string | undefined
+    ): Promise<ActiveConversationResolution> {
+        const base = await this.resolveConversation(session, {
+            mode: 'context'
+        })
+        if (!base.constraint.allowNew) {
+            throw new ConversationInvocationError(
+                'allow_new_disabled',
+                'Creating a new conversation is disabled for this route.'
+            )
+        }
+        const model = this.requireInvocationModel(
+            input.model ?? this.pickModel(base.constraint, null)
+        )
+        const preset = this.requireInvocationPreset(
+            input.preset ?? base.effectivePreset
+        )
+        const conversation = await this.createConversation(session, {
+            bindingKey,
+            title: taskKey != null ? 'Task Conversation' : 'Fresh Conversation',
+            model,
+            preset,
+            chatMode: base.effectiveChatMode ?? 'chat',
+            setActive: false,
+            reuseBindingKey: taskKey != null ? bindingKey : undefined
+        })
+        return this.applyInvocationOverlay(
+            {
+                ...base,
+                mode: 'active',
+                conversationId: conversation.id,
+                conversation,
+                effectiveModel: conversation.model,
+                effectivePreset: conversation.preset
+            },
+            input
+        )
+    }
+
+    private async requireActiveTarget(
+        session: Session,
+        conversationId: string,
+        bindingKey?: string
+    ): Promise<ActiveConversationResolution> {
+        const resolved = await this.resolveConversation(session, {
+            mode: 'target',
+            conversationId,
+            bindingKey
+        })
+        if (
+            resolved.conversation == null ||
+            resolved.conversation.status !== 'active'
+        ) {
+            throw new ConversationInvocationError(
+                'conversation_not_found',
+                `Conversation ${conversationId} was not found.`
+            )
+        }
+        return {
+            ...resolved,
+            conversation: resolved.conversation
+        }
+    }
+
+    private applyInvocationOverlay(
+        resolved: ActiveConversationResolution,
+        input: ResolveInvocationInput
+    ): ActiveConversationResolution {
+        const defaultModel = this.pickModel(resolved.constraint, null)
+        const conversation: ConversationRecord = {
+            ...resolved.conversation,
+            model: input.model ?? defaultModel ?? resolved.conversation.model,
+            preset:
+                input.preset ??
+                resolved.conversation.preset ??
+                resolved.effectivePreset
+        }
+        return {
+            ...resolved,
+            mode: 'active',
+            conversationId: conversation.id,
+            conversation,
+            effectiveModel: conversation.model,
+            effectivePreset: conversation.preset,
+            constraint: {
+                ...resolved.constraint,
+                fixedModel: input.model ?? resolved.constraint.fixedModel,
+                fixedPreset: input.preset ?? resolved.constraint.fixedPreset
+            }
+        }
+    }
+
+    private requireInvocationModel(model: string | null | undefined): string {
+        if (model == null || model.trim().length === 0) {
+            throw new ConversationInvocationError(
+                'model_not_found',
+                'No model is available for this route.'
+            )
+        }
+        return model
+    }
+
+    private requireInvocationPreset(preset: string | null | undefined): string {
+        if (
+            preset == null ||
+            preset.trim().length === 0 ||
+            this.preset.getPreset(preset, false).value == null
+        ) {
+            throw new ConversationInvocationError(
+                'preset_not_found',
+                `Preset ${preset} was not found.`
+            )
+        }
+        return preset
     }
 
     async createConversation(
@@ -573,12 +796,13 @@ export class ConversationService {
 
         return runLock(this._bindingLocks, options.bindingKey, async () => {
             if (options.reuseBindingKey != null) {
-                const existing = (
-                    (await this.ctx.database.get('chatluna_conversation', {
+                const [existing] = await this.ctx.database.get(
+                    'chatluna_conversation',
+                    {
                         bindingKey: options.reuseBindingKey,
                         status: 'active'
-                    })) as ConversationRecord[]
-                )[0]
+                    }
+                )
                 if (existing != null) return existing
             }
 
@@ -699,12 +923,12 @@ export class ConversationService {
             resolved.constraint.bindingKey,
             options.allPresetLanes
         )
-        const all = (await this.ctx.database.get(
+        const all = await this.ctx.database.get(
             'chatluna_conversation',
             options.allPresetLanes
                 ? {}
                 : { bindingKey: keys.length === 1 ? keys[0] : { $in: keys } }
-        )) as ConversationRecord[]
+        )
 
         const conversations = options.allPresetLanes
             ? all.filter((c) =>
@@ -891,7 +1115,7 @@ export class ConversationService {
             this.getConversation(conversationId),
             this.ctx.database.get('chatluna_message', { conversationId })
         ])
-        const records = messages as MessageRecord[]
+        const records: MessageRecord[] = messages
 
         if (records.length < 2) {
             return records
@@ -925,9 +1149,9 @@ export class ConversationService {
     }
 
     async listAcl(conversationId: string) {
-        return (await this.ctx.database.get('chatluna_acl', {
+        return await this.ctx.database.get('chatluna_acl', {
             conversationId
-        })) as ACLRecord[]
+        })
     }
 
     async upsertAcl(
@@ -1476,13 +1700,11 @@ export class ConversationService {
         const current = JSON.parse(
             conversation.compression ?? 'null'
         ) as ConversationCompressionRecord
-        const summaryMessage = (
-            (await this.ctx.database.get(
-                'chatluna_message',
-                { conversationId, name: 'infinite_context' },
-                { limit: 1, sort: { createdAt: 'desc' } }
-            )) as MessageRecord[]
-        )[0]
+        const [summaryMessage] = await this.ctx.database.get(
+            'chatluna_message',
+            { conversationId, name: 'infinite_context' },
+            { limit: 1, sort: { createdAt: 'desc' } }
+        )
         const summary =
             summaryMessage == null ? undefined : await readText(summaryMessage)
 
@@ -1514,9 +1736,7 @@ export class ConversationService {
 
     async getManagedConstraint(session: Session) {
         const name = buildManagedConstraintName(session)
-        return this.firstRow('chatluna_constraint', { name }) as Promise<
-            ConstraintRecord | undefined
-        >
+        return this.firstRow('chatluna_constraint', { name })
     }
 
     async getManagedConstraintByBindingKey(bindingKey: string) {
@@ -1525,9 +1745,7 @@ export class ConversationService {
             return undefined
         }
 
-        return this.firstRow('chatluna_constraint', { name }) as Promise<
-            ConstraintRecord | undefined
-        >
+        return this.firstRow('chatluna_constraint', { name })
     }
 
     async updateManagedConstraint(
@@ -1695,11 +1913,11 @@ export class ConversationService {
     }
 
     private async allocateConversationSeq(bindingKey: string) {
-        const [latest] = (await this.ctx.database.get(
+        const [latest] = await this.ctx.database.get(
             'chatluna_conversation',
             { bindingKey },
             { sort: { seq: 'desc' }, limit: 1 }
-        )) as ConversationRecord[]
+        )
         return (latest?.seq ?? 0) + 1
     }
 
@@ -1740,10 +1958,10 @@ export class ConversationService {
             }
 
             const filter = options.seq != null ? { seq: options.seq } : {}
-            const conversations = (await this.ctx.database.get(
+            const conversations = await this.ctx.database.get(
                 'chatluna_conversation',
                 filter
-            )) as ConversationRecord[]
+            )
             return conversations.filter(matched)
         }
 
@@ -1755,10 +1973,10 @@ export class ConversationService {
         const matches: ConversationRecord[] = []
         for (let i = 0; i < ids.length; i += 200) {
             const slice = ids.slice(i, i + 200)
-            const conversations = (await this.ctx.database.get(
+            const conversations = await this.ctx.database.get(
                 'chatluna_conversation',
                 { id: { $in: slice } }
-            )) as ConversationRecord[]
+            )
             matches.push(...conversations.filter(matched))
         }
 
@@ -1776,11 +1994,11 @@ export class ConversationService {
             permission: ConstraintPermission
         ) => {
             acl.push(
-                ...((await this.ctx.database.get('chatluna_acl', {
+                ...(await this.ctx.database.get('chatluna_acl', {
                     principalType,
                     principalId,
                     permission
-                })) as ACLRecord[])
+                }))
             )
         }
 
@@ -1927,9 +2145,9 @@ async function hasConversationPermission(
         return true
     }
 
-    const acl = (await ctx.database.get('chatluna_acl', {
+    const acl = await ctx.database.get('chatluna_acl', {
         conversationId: conversation.id
-    })) as ACLRecord[]
+    })
     if (acl.length === 0) {
         return false
     }
