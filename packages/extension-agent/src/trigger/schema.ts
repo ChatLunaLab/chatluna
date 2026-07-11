@@ -384,36 +384,29 @@ function checkScope(
     }
     const scope = value.target.observeScope
     const dest = value.target.destination
-    if (scope === 'channel' || scope === 'guild') {
-        if (dest.type !== 'channel') {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['target', 'destination'],
-                message: `${scope} observation requires a channel destination`
-            })
-        }
+    if ((scope === 'channel' || scope === 'guild') && dest.type !== 'channel') {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['target', 'destination'],
+            message: `${scope} observation requires a channel destination`
+        })
     }
-    if (scope === 'guild') {
-        if (
-            dest.type !== 'channel' ||
-            dest.guildId == null ||
-            dest.guildId === ''
-        ) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['target', 'destination', 'guildId'],
-                message: 'guild observation requires guildId'
-            })
-        }
+    if (
+        scope === 'guild' &&
+        (dest.type !== 'channel' || dest.guildId == null || dest.guildId === '')
+    ) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['target', 'destination', 'guildId'],
+            message: 'guild observation requires guildId'
+        })
     }
-    if (scope === 'direct') {
-        if (dest.type !== 'direct') {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['target', 'destination'],
-                message: 'direct observation requires a direct destination'
-            })
-        }
+    if (scope === 'direct' && dest.type !== 'direct') {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['target', 'destination'],
+            message: 'direct observation requires a direct destination'
+        })
     }
 }
 

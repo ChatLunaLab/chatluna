@@ -8,25 +8,6 @@ import type {
     TriggerUpdateInput
 } from '../../../src/types'
 
-export type ConditionOf<T extends TriggerCondition['type']> = Extract<
-    TriggerCondition,
-    { type: T }
->
-
-export type ScenarioChoice = {
-    id: string
-    label: string
-    kind: 'scheduled' | 'event'
-    builtin: boolean
-    provider?: TriggerProviderMeta
-}
-
-export interface TriggerRouteChoice {
-    label: string
-    platform: string
-    selfId: string
-}
-
 export const builtinScenarioLabels: Record<string, string> = {
     once: '指定时间执行一次',
     calendar: '每天或每周固定时间',
@@ -37,18 +18,6 @@ export const builtinScenarioLabels: Record<string, string> = {
     participation: '群聊达到参与门槛',
     inactivity: '活跃后沉默',
     semantic: '语义主题'
-}
-
-export function toScenarios(
-    providers: TriggerProviderMeta[]
-): ScenarioChoice[] {
-    return providers.map((item) => ({
-        id: item.id,
-        label: item.label || builtinScenarioLabels[item.id] || item.id,
-        kind: item.kind,
-        builtin: item.builtin,
-        provider: item
-    }))
 }
 
 export const statusLabels: Record<TriggerTaskStatus, string> = {
@@ -98,6 +67,18 @@ export const timezones = Array.from(
     ])
 )
 
+export function toScenarios(
+    providers: TriggerProviderMeta[]
+): ScenarioChoice[] {
+    return providers.map((item) => ({
+        id: item.id,
+        label: item.label || builtinScenarioLabels[item.id] || item.id,
+        kind: item.kind,
+        builtin: item.builtin,
+        provider: item
+    }))
+}
+
 export function createGate(): Extract<TriggerGate, { type: 'model' }> {
     return {
         type: 'model',
@@ -112,18 +93,13 @@ export function createCondition(
     type: string,
     provider?: TriggerProviderMeta
 ): TriggerCondition {
+    // Non-builtin providers always use the extension envelope.
     if (provider != null && !provider.builtin) {
         return {
             type: 'extension',
             provider: provider.id,
             config: structuredClone(provider.defaultConfig)
         }
-    }
-    if (provider?.builtin && provider.defaultConfig != null) {
-        return {
-            type: provider.id as TriggerCondition['type'],
-            ...(structuredClone(provider.defaultConfig) as object)
-        } as TriggerCondition
     }
     if (type === 'once') {
         return { type, at: new Date(Date.now() + 3600000).toISOString() }
@@ -226,39 +202,25 @@ export function createInput(): TriggerCreateInput & TriggerUpdateInput {
     }
 }
 
+export function conditionKey(condition: TriggerCondition) {
+    return condition.type === 'extension' ? condition.provider : condition.type
+}
+
 export function isMessageCondition(
     condition: TriggerCondition | string,
     providers?: TriggerProviderMeta[]
 ) {
-    if (typeof condition === 'string') {
-        if (
-            condition === 'keyword' ||
-            condition === 'participation' ||
-            condition === 'inactivity' ||
-            condition === 'semantic'
-        ) {
-            return true
-        }
-        return (
-            providers?.find((item) => item.id === condition)?.kind === 'event'
-        )
+    const key =
+        typeof condition === 'string' ? condition : conditionKey(condition)
+    if (
+        key === 'keyword' ||
+        key === 'participation' ||
+        key === 'inactivity' ||
+        key === 'semantic'
+    ) {
+        return true
     }
-    if (condition.type === 'extension') {
-        return (
-            providers?.find((item) => item.id === condition.provider)?.kind ===
-            'event'
-        )
-    }
-    return (
-        condition.type === 'keyword' ||
-        condition.type === 'participation' ||
-        condition.type === 'inactivity' ||
-        condition.type === 'semantic'
-    )
-}
-
-export function conditionKey(condition: TriggerCondition) {
-    return condition.type === 'extension' ? condition.provider : condition.type
+    return providers?.find((item) => item.id === key)?.kind === 'event'
 }
 
 export function statusType(status: TriggerTaskStatus) {
@@ -277,4 +239,23 @@ export function formatDecision(decision: TriggerRunDecision) {
     return decision.reason
         ? `${decisionLabels[decision.type]}：${decision.reason}`
         : decisionLabels[decision.type]
+}
+
+export type ConditionOf<T extends TriggerCondition['type']> = Extract<
+    TriggerCondition,
+    { type: T }
+>
+
+export type ScenarioChoice = {
+    id: string
+    label: string
+    kind: 'scheduled' | 'event'
+    builtin: boolean
+    provider?: TriggerProviderMeta
+}
+
+export interface TriggerRouteChoice {
+    label: string
+    platform: string
+    selfId: string
 }

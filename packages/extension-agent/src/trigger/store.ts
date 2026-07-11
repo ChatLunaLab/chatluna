@@ -1,12 +1,17 @@
-import type { Context } from 'koishi'
+import type { Context, Query } from 'koishi'
 import type {
+    TriggerCondition,
+    TriggerExecution,
     TriggerListFilter,
     TriggerRun,
     TriggerRunCreateInput,
+    TriggerRunDecision,
     TriggerRunFinishInput,
     TriggerStoreCreateInput,
     TriggerStoreUpdate,
-    TriggerTask
+    TriggerTarget,
+    TriggerTask,
+    TriggerTaskState
 } from '../types/trigger'
 import {
     createTriggerCreateInputSchema,
@@ -34,12 +39,12 @@ export class TriggerStore {
                 ownerKey: 'string',
                 createdAt: 'timestamp',
                 updatedAt: 'timestamp'
-            } as never,
+            },
             {
                 autoInc: true,
                 primary: 'id',
                 indexes: ['enabled', 'ownerKey', 'createdAt']
-            } as never
+            }
         )
         ctx.model.extend(
             'chatluna_trigger_run',
@@ -55,11 +60,11 @@ export class TriggerStore {
                 error: { type: 'text', nullable: true },
                 usage: { type: 'json', nullable: true },
                 createdAt: 'timestamp'
-            } as never,
+            },
             {
                 primary: 'id',
                 indexes: ['taskId', 'status', 'createdAt']
-            } as never
+            }
         )
     }
 
@@ -79,9 +84,7 @@ export class TriggerStore {
             condition: parsed.condition,
             execution: parsed.execution,
             target: parsed.target,
-            state: triggerTaskStateSchema.parse(
-                input.state
-            ) as TriggerStoreCreateInput['state'],
+            state: triggerTaskStateSchema.parse(input.state),
             ownerKey: input.ownerKey,
             createdAt: now,
             updatedAt: now
@@ -90,21 +93,17 @@ export class TriggerStore {
 
     async get(id: number): Promise<TriggerTask | undefined> {
         this._checkDatabase()
-        return (
-            await this.ctx.database.get('chatluna_trigger', { id } as never)
-        )[0]
+        return (await this.ctx.database.get('chatluna_trigger', { id }))[0]
     }
 
     async list(filter?: TriggerListFilter): Promise<TriggerTask[]> {
         this._checkDatabase()
-        const query: Record<string, unknown> = {}
+        const query: Query<TriggerTask> = {}
         if (filter?.ownerKey != null) query.ownerKey = filter.ownerKey
         if (filter?.enabled != null) query.enabled = filter.enabled
-        const tasks = (await this.ctx.database.get(
-            'chatluna_trigger',
-            query as never,
-            { sort: { createdAt: 'desc' } } as never
-        )) as TriggerTask[]
+        const tasks = await this.ctx.database.get('chatluna_trigger', query, {
+            sort: { createdAt: 'desc' }
+        })
         if (filter?.status == null && filter?.conditionType == null) {
             return tasks
         }
@@ -153,15 +152,9 @@ export class TriggerStore {
             next.target = merged.target
         }
         if (patch.state !== undefined) {
-            next.state = triggerTaskStateSchema.parse(
-                patch.state
-            ) as TriggerTask['state']
+            next.state = triggerTaskStateSchema.parse(patch.state)
         }
-        await this.ctx.database.set(
-            'chatluna_trigger',
-            { id } as never,
-            next as never
-        )
+        await this.ctx.database.set('chatluna_trigger', { id }, next)
         const task = await this.get(id)
         if (task == null) {
             throw new Error(`Trigger task removed concurrently: ${id}`)
@@ -172,8 +165,8 @@ export class TriggerStore {
     async remove(id: number): Promise<void> {
         this._checkDatabase()
         await this.ctx.database.transact(async (db) => {
-            await db.remove('chatluna_trigger_run', { taskId: id } as never)
-            await db.remove('chatluna_trigger', { id } as never)
+            await db.remove('chatluna_trigger_run', { taskId: id })
+            await db.remove('chatluna_trigger', { id })
         })
     }
 
@@ -185,17 +178,17 @@ export class TriggerStore {
         this._checkDatabase()
         const runs = await this.ctx.database.get('chatluna_trigger_run', {
             status: 'running'
-        } as never)
+        })
         const now = new Date()
         for (const run of runs) {
             await this.ctx.database.set(
                 'chatluna_trigger_run',
-                { id: run.id } as never,
+                { id: run.id },
                 {
                     status: 'failed',
                     finishedAt: now,
                     error
-                } as never
+                }
             )
         }
     }
@@ -228,13 +221,9 @@ export class TriggerStore {
         if (patch.decision !== undefined) next.decision = patch.decision
         if (patch.error !== undefined) next.error = patch.error
         if (patch.usage !== undefined) next.usage = patch.usage
-        await this.ctx.database.set(
-            'chatluna_trigger_run',
-            { id } as never,
-            next as never
-        )
+        await this.ctx.database.set('chatluna_trigger_run', { id }, next)
         const run = (
-            await this.ctx.database.get('chatluna_trigger_run', { id } as never)
+            await this.ctx.database.get('chatluna_trigger_run', { id })
         )[0]
         if (run == null) throw new Error(`Trigger run not found: ${id}`)
         return run
@@ -251,20 +240,16 @@ export class TriggerStore {
         await this.ctx.database.transact(async (db) => {
             await db.set(
                 'chatluna_trigger',
-                { id: taskId } as never,
-                { state: parsed, updatedAt: new Date() } as never
+                { id: taskId },
+                { state: parsed, updatedAt: new Date() }
             )
-            await db.set(
-                'chatluna_trigger_run',
-                { id: runId } as never,
-                patch as never
-            )
+            await db.set('chatluna_trigger_run', { id: runId }, patch)
         })
         const task = await this.get(taskId)
         const run = (
             await this.ctx.database.get('chatluna_trigger_run', {
                 id: runId
-            } as never)
+            })
         )[0]
         if (task == null) throw new Error(`Trigger task not found: ${taskId}`)
         if (run == null) throw new Error(`Trigger run not found: ${runId}`)
@@ -274,14 +259,14 @@ export class TriggerStore {
     async listRuns(taskId: number, limit = 20): Promise<TriggerRun[]> {
         this._checkDatabase()
         const size = Math.max(1, Math.min(limit, 100))
-        return (await this.ctx.database.get(
+        return await this.ctx.database.get(
             'chatluna_trigger_run',
-            { taskId } as never,
+            { taskId },
             {
                 sort: { createdAt: 'desc' },
                 limit: size
-            } as never
-        )) as TriggerRun[]
+            }
+        )
     }
 
     private _checkDatabase() {
@@ -295,5 +280,16 @@ declare module 'koishi' {
     interface Tables {
         chatluna_trigger: TriggerTask
         chatluna_trigger_run: TriggerRun
+    }
+}
+
+declare module 'minato' {
+    interface AtomicTypes {
+        ChatLunaTriggerCondition: TriggerCondition
+        ChatLunaTriggerExecution: TriggerExecution
+        ChatLunaTriggerTarget: TriggerTarget
+        ChatLunaTriggerTaskState: TriggerTaskState
+        ChatLunaTriggerRunDecision: TriggerRunDecision
+        ChatLunaTriggerUsage: TriggerRun['usage']
     }
 }

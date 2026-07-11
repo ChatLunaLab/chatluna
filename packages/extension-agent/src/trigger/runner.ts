@@ -192,12 +192,7 @@ export class TriggerRunner {
             }
         }
         const now = new Date()
-        const gateCursor =
-            task.state.cursor != null &&
-            typeof task.state.cursor === 'object' &&
-            'gate' in task.state.cursor
-                ? { gate: task.state.cursor.gate }
-                : null
+        const gateCursor = keepGateCursor(task.state.cursor)
         if (origin !== 'manual' && task.state.status === 'completed') {
             return await this._skip(id, origin, input.scheduledAt, 'completed')
         }
@@ -233,11 +228,7 @@ export class TriggerRunner {
             origin === 'event' &&
             task.state.cooldownUntil != null &&
             new Date(task.state.cooldownUntil).valueOf() > now.valueOf() &&
-            !(
-                task.state.cursor != null &&
-                typeof task.state.cursor === 'object' &&
-                task.state.cursor['kind'] === 'reschedule'
-            )
+            !isRescheduleCursor(task.state.cursor)
         ) {
             await this.store.update(id, {
                 state: {
@@ -265,26 +256,20 @@ export class TriggerRunner {
         try {
             if (origin !== 'manual') {
                 const cooldown = getCooldown(task, this.options.registry)
-                const clearOverride =
-                    task.state.cursor != null &&
-                    typeof task.state.cursor === 'object' &&
-                    task.state.cursor['kind'] === 'reschedule'
+                const clearOverride = isRescheduleCursor(task.state.cursor)
+                let cooldownUntil = task.state.cooldownUntil
+                if (origin === 'event' && cooldown != null) {
+                    cooldownUntil = new Date(
+                        startedAt.valueOf() + cooldown * 60_000
+                    ).toISOString()
+                }
                 await this.store.update(id, {
                     state: {
                         ...task.state,
                         status: 'running',
-                        cooldownUntil:
-                            origin === 'event' && cooldown != null
-                                ? new Date(
-                                      startedAt.valueOf() + cooldown * 60_000
-                                  ).toISOString()
-                                : task.state.cooldownUntil,
+                        cooldownUntil,
                         cursor: clearOverride
-                            ? task.state.cursor != null &&
-                              typeof task.state.cursor === 'object' &&
-                              'gate' in task.state.cursor
-                                ? { gate: task.state.cursor.gate }
-                                : null
+                            ? keepGateCursor(task.state.cursor)
                             : task.state.cursor
                     }
                 })
@@ -295,16 +280,18 @@ export class TriggerRunner {
                     ? task.execution.model.model
                     : undefined
             const gate = input.candidate?.gate
-            const outcome =
-                gate?.type === 'model'
-                    ? await this._gate(
-                          task,
-                          gate,
-                          input.candidate,
-                          input.signal,
-                          resolvedModel
-                      )
-                    : { engage: true, model: undefined }
+            let outcome: { engage: boolean; model?: string }
+            if (gate?.type === 'model') {
+                outcome = await this._gate(
+                    task,
+                    gate,
+                    input.candidate,
+                    input.signal,
+                    resolvedModel
+                )
+            } else {
+                outcome = { engage: true, model: undefined }
+            }
             if (!outcome.engage) {
                 const patch = {
                     status: 'skipped' as const,
@@ -321,15 +308,7 @@ export class TriggerRunner {
                                     ...latest.state,
                                     status: 'waiting',
                                     nextRunAt: null,
-                                    cursor:
-                                        latest.state.cursor != null &&
-                                        typeof latest.state.cursor ===
-                                            'object' &&
-                                        'gate' in latest.state.cursor
-                                            ? {
-                                                  gate: latest.state.cursor.gate
-                                              }
-                                            : null
+                                    cursor: keepGateCursor(latest.state.cursor)
                                 },
                                 run.id,
                                 patch
@@ -346,11 +325,14 @@ export class TriggerRunner {
 
             collector = this.control.create(run.id)
             attempted = true
-            const model =
-                resolvedModel ??
-                (gate?.type === 'model' && gate.model.type === 'default'
-                    ? outcome.model
-                    : undefined)
+            let model = resolvedModel
+            if (
+                model == null &&
+                gate?.type === 'model' &&
+                gate.model.type === 'default'
+            ) {
+                model = outcome.model
+            }
             const result = await this.ctx.chatluna.invoke(
                 buildInvocation(task, run, input, collector, model)
             )
@@ -378,22 +360,7 @@ export class TriggerRunner {
             const plan = latest.enabled
                 ? this.planner.afterRun(latest, pending, decision, finishedAt)
                 : this.planner.next(latest, finishedAt)
-            const gateCursor =
-                latest.state.cursor != null &&
-                typeof latest.state.cursor === 'object' &&
-                'gate' in latest.state.cursor
-                    ? { gate: latest.state.cursor.gate }
-                    : {}
-            const cursor =
-                decision?.type === 'reschedule'
-                    ? {
-                          ...gateCursor,
-                          kind: 'reschedule',
-                          at: decision.at
-                      }
-                    : Object.keys(gateCursor).length > 0
-                      ? gateCursor
-                      : null
+            const cursor = nextCursor(latest.state.cursor, decision)
             return (
                 await this.store.finishTaskRun(
                     id,
@@ -452,15 +419,7 @@ export class TriggerRunner {
                                         latest.state.runCount +
                                         (attempted ? 1 : 0),
                                     lastError: error,
-                                    cursor:
-                                        latest.state.cursor != null &&
-                                        typeof latest.state.cursor ===
-                                            'object' &&
-                                        'gate' in latest.state.cursor
-                                            ? {
-                                                  gate: latest.state.cursor.gate
-                                              }
-                                            : null
+                                    cursor: keepGateCursor(latest.state.cursor)
                                 }),
                                 run.id,
                                 patch
@@ -485,15 +444,7 @@ export class TriggerRunner {
                                         latest.state.runCount +
                                         (attempted ? 1 : 0),
                                     lastError: `${error}; ${msg}`,
-                                    cursor:
-                                        latest.state.cursor != null &&
-                                        typeof latest.state.cursor ===
-                                            'object' &&
-                                        'gate' in latest.state.cursor
-                                            ? {
-                                                  gate: latest.state.cursor.gate
-                                              }
-                                            : null
+                                    cursor: keepGateCursor(latest.state.cursor)
                                 },
                                 run.id,
                                 patch
@@ -518,16 +469,17 @@ export class TriggerRunner {
     ): Promise<{ engage: boolean; model?: string }> {
         const day = new Date().toISOString().slice(0, 10)
         const cursor = task.state.cursor
-        const gateUsage =
+        let tokens = 0
+        if (
             cursor != null &&
             typeof cursor === 'object' &&
             'gate' in cursor &&
             cursor.gate != null &&
             typeof cursor.gate === 'object'
-                ? (cursor.gate as { day?: string; tokens?: number })
-                : null
-        const tokens =
-            gateUsage?.day === day ? Number(gateUsage.tokens ?? 0) : 0
+        ) {
+            const usage = cursor.gate as { day?: string; tokens?: number }
+            if (usage.day === day) tokens = Number(usage.tokens ?? 0)
+        }
         if (tokens >= gate.dailyTokenLimit) return { engage: false }
 
         const result = await this.ctx.chatluna.invoke({
@@ -555,7 +507,7 @@ export class TriggerRunner {
             source: { kind: 'trigger-gate', id: String(task.id) }
         })
         const total = result.usage?.total_tokens ?? 0
-        const nextCursor = {
+        const next = {
             ...(cursor != null && typeof cursor === 'object' ? cursor : {}),
             gate: { day, tokens: tokens + total }
         }
@@ -564,7 +516,7 @@ export class TriggerRunner {
             await this.store.update(task.id, {
                 state: {
                     ...latest.state,
-                    cursor: nextCursor
+                    cursor: next
                 }
             })
         }
@@ -632,19 +584,18 @@ function getCooldown(
 }
 
 function buildRouting(task: TriggerTask) {
+    const destination = task.target.destination
     return {
         platform: task.target.bot.platform,
         selfId: task.target.bot.selfId,
         userId: task.target.principalId,
         guildId:
-            task.target.destination.type === 'channel'
-                ? task.target.destination.guildId
-                : undefined,
+            destination.type === 'channel' ? destination.guildId : undefined,
         channelId:
-            task.target.destination.type === 'channel'
-                ? task.target.destination.channelId
-                : task.target.destination.userId,
-        isDirect: task.target.destination.type === 'direct'
+            destination.type === 'channel'
+                ? destination.channelId
+                : destination.userId,
+        isDirect: destination.type === 'direct'
     }
 }
 
@@ -667,15 +618,10 @@ function buildInvocation(
         messageName: task.name,
         model,
         preset: task.execution.preset ?? undefined,
-        conversation:
-            task.execution.conversation.type === 'existing'
-                ? {
-                      type: 'existing' as const,
-                      id: task.execution.conversation.conversationId
-                  }
-                : task.execution.conversation.type === 'task'
-                  ? { type: 'task' as const, key: `trigger:${task.id}` }
-                  : task.execution.conversation,
+        conversation: toInvokeConversation(
+            task.execution.conversation,
+            `trigger:${task.id}`
+        ),
         tools: {
             mode: 'allow' as const,
             allow: [...new Set(names)],
@@ -719,6 +665,50 @@ function applyPlan(
         occurrenceKey: plan.occurrenceKey ?? null,
         ...patch
     }
+}
+
+function keepGateCursor(
+    cursor: TriggerTaskState['cursor']
+): Record<string, unknown> | null {
+    if (cursor == null || typeof cursor !== 'object') return null
+    if (!('gate' in cursor)) return null
+    return { gate: cursor.gate }
+}
+
+function isRescheduleCursor(cursor: TriggerTaskState['cursor']) {
+    return (
+        cursor != null &&
+        typeof cursor === 'object' &&
+        cursor['kind'] === 'reschedule'
+    )
+}
+
+function nextCursor(
+    cursor: TriggerTaskState['cursor'],
+    decision: TriggerTaskState['lastDecision']
+): Record<string, unknown> | null {
+    const gate = keepGateCursor(cursor)
+    if (decision?.type === 'reschedule') {
+        return {
+            ...(gate ?? {}),
+            kind: 'reschedule',
+            at: decision.at
+        }
+    }
+    return gate
+}
+
+function toInvokeConversation(
+    policy: TriggerTask['execution']['conversation'],
+    taskKey: string
+) {
+    if (policy.type === 'existing') {
+        return { type: 'existing' as const, id: policy.conversationId }
+    }
+    if (policy.type === 'task') {
+        return { type: 'task' as const, key: taskKey }
+    }
+    return policy
 }
 
 function forwardAbort(

@@ -87,31 +87,8 @@
 </template>
 
 <script setup lang="ts">
+import { ElMessage } from 'element-plus'
 import { computed, reactive, watch } from 'vue'
-
-type FieldKind =
-    | 'string'
-    | 'multiline'
-    | 'number'
-    | 'integer'
-    | 'boolean'
-    | 'enum'
-    | 'array'
-    | 'array-enum'
-    | 'json'
-
-interface Field {
-    key: string
-    title: string
-    description?: string
-    required: boolean
-    full: boolean
-    kind: FieldKind
-    min?: number
-    max?: number
-    enumValues?: Array<string | number | boolean>
-    defaultValue?: unknown
-}
 
 const model = defineModel<Record<string, unknown>>({ required: true })
 const props = defineProps<{
@@ -143,21 +120,28 @@ const fields = computed(() => {
         const itemEnums =
             items != null && Array.isArray(items.enum) ? items.enum : undefined
         let kind: FieldKind = 'json'
-        if (enums != null && enums.length > 0) kind = 'enum'
-        else if (type === 'boolean') kind = 'boolean'
-        else if (type === 'integer') kind = 'integer'
-        else if (type === 'number') kind = 'number'
-        else if (type === 'array') {
+        if (enums != null && enums.length > 0) {
+            kind = 'enum'
+        } else if (type === 'boolean') {
+            kind = 'boolean'
+        } else if (type === 'integer') {
+            kind = 'integer'
+        } else if (type === 'number') {
+            kind = 'number'
+        } else if (type === 'array') {
             kind =
                 itemEnums != null && itemEnums.length > 0
                     ? 'array-enum'
                     : 'array'
         } else if (type === 'string') {
-            kind =
+            if (
                 prop.format === 'textarea' ||
                 (typeof prop.maxLength === 'number' && prop.maxLength > 120)
-                    ? 'multiline'
-                    : 'string'
+            ) {
+                kind = 'multiline'
+            } else {
+                kind = 'string'
+            }
         }
         return {
             key,
@@ -185,45 +169,72 @@ watch(
         const next = { ...model.value }
         let changed = false
         for (const field of list) {
-            if (next[field.key] !== undefined) continue
-            if (field.defaultValue !== undefined) {
-                next[field.key] = structuredClone(field.defaultValue)
-                changed = true
-                continue
+            if (next[field.key] === undefined) {
+                if (field.defaultValue !== undefined) {
+                    next[field.key] = structuredClone(field.defaultValue)
+                    changed = true
+                } else if (
+                    field.kind === 'array' ||
+                    field.kind === 'array-enum'
+                ) {
+                    next[field.key] = []
+                    changed = true
+                } else if (field.kind === 'boolean') {
+                    next[field.key] = false
+                    changed = true
+                } else if (
+                    field.kind === 'number' ||
+                    field.kind === 'integer'
+                ) {
+                    next[field.key] = field.min ?? 0
+                    changed = true
+                } else if (
+                    field.kind === 'string' ||
+                    field.kind === 'multiline' ||
+                    field.kind === 'enum'
+                ) {
+                    next[field.key] = ''
+                    changed = true
+                }
             }
-            if (field.kind === 'array' || field.kind === 'array-enum') {
-                next[field.key] = []
-                changed = true
-            } else if (field.kind === 'boolean') {
-                next[field.key] = false
-                changed = true
-            } else if (field.kind === 'number' || field.kind === 'integer') {
-                next[field.key] = field.min ?? 0
-                changed = true
-            } else if (
-                field.kind === 'string' ||
-                field.kind === 'multiline' ||
-                field.kind === 'enum'
-            ) {
-                next[field.key] = ''
-                changed = true
+            if (field.kind !== 'json' || jsonDraft[field.key] != null) continue
+            const value = next[field.key]
+            if (value == null) {
+                jsonDraft[field.key] = ''
+            } else if (typeof value === 'string') {
+                jsonDraft[field.key] = value
+            } else {
+                jsonDraft[field.key] = JSON.stringify(value, null, 2)
             }
         }
         if (changed) model.value = next
-        for (const field of list) {
-            if (field.kind !== 'json') continue
-            if (jsonDraft[field.key] != null) continue
-            const value = next[field.key]
-            jsonDraft[field.key] =
-                value == null
-                    ? ''
-                    : typeof value === 'string'
-                      ? value
-                      : JSON.stringify(value, null, 2)
-        }
     },
     { immediate: true }
 )
+
+type FieldKind =
+    | 'string'
+    | 'multiline'
+    | 'number'
+    | 'integer'
+    | 'boolean'
+    | 'enum'
+    | 'array'
+    | 'array-enum'
+    | 'json'
+
+interface Field {
+    key: string
+    title: string
+    description?: string
+    required: boolean
+    full: boolean
+    kind: FieldKind
+    min?: number
+    max?: number
+    enumValues?: Array<string | number | boolean>
+    defaultValue?: unknown
+}
 
 function unwrap(schema: Record<string, unknown>) {
     if (schema == null) return {}
@@ -234,35 +245,33 @@ function unwrap(schema: Record<string, unknown>) {
     if (Array.isArray(schema.oneOf) && schema.oneOf[0]) {
         return unwrap(schema.oneOf[0] as Record<string, unknown>)
     }
-    if (Array.isArray(schema.allOf)) {
-        return schema.allOf.reduce(
-            (acc, item) => {
-                const part = unwrap(item as Record<string, unknown>)
-                const properties = {
-                    ...((acc.properties as Record<string, unknown>) ?? {}),
-                    ...((part.properties as Record<string, unknown>) ?? {})
-                }
-                const required = [
-                    ...new Set([
-                        ...(Array.isArray(acc.required)
-                            ? acc.required.map((item) => String(item))
-                            : []),
-                        ...(Array.isArray(part.required)
-                            ? part.required.map((item) => String(item))
-                            : [])
-                    ])
-                ]
-                return {
-                    ...acc,
-                    ...part,
-                    properties,
-                    ...(required.length > 0 ? { required } : {})
-                }
-            },
-            {} as Record<string, unknown>
-        )
+    if (!Array.isArray(schema.allOf)) return schema
+
+    let result: Record<string, unknown> = {}
+    for (const item of schema.allOf) {
+        const part = unwrap(item as Record<string, unknown>)
+        const properties = {
+            ...((result.properties as Record<string, unknown>) ?? {}),
+            ...((part.properties as Record<string, unknown>) ?? {})
+        }
+        const required = [
+            ...new Set([
+                ...(Array.isArray(result.required)
+                    ? result.required.map((key) => String(key))
+                    : []),
+                ...(Array.isArray(part.required)
+                    ? part.required.map((key) => String(key))
+                    : [])
+            ])
+        ]
+        result = {
+            ...result,
+            ...part,
+            properties
+        }
+        if (required.length > 0) result.required = required
     }
-    return schema
+    return result
 }
 
 function setJsonDraft(key: string, raw: string) {
@@ -278,7 +287,8 @@ function commitJson(key: string) {
     try {
         model.value[key] = JSON.parse(raw)
     } catch {
-        model.value[key] = raw
+        // Keep the last valid model value; only surface a warning.
+        ElMessage.warning(`字段“${key}”不是合法的 JSON。`)
     }
 }
 </script>

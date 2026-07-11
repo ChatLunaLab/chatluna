@@ -8,19 +8,6 @@ import type { TriggerEventDeadlineOptions, TriggerScheduler } from './scheduler'
 import { isEventCondition } from './schema'
 import type { TriggerStore } from './store'
 
-interface ObservedMessage {
-    id: string
-    at: number
-    userId: string
-    username?: string
-    content: string
-}
-
-interface ObservedScopeState {
-    messages: ObservedMessage[]
-    lastMessageAt: number
-}
-
 export class TriggerObserver {
     private _active = false
     private _dispose?: () => void
@@ -129,11 +116,8 @@ export class TriggerObserver {
                                 status: 'waiting',
                                 nextRunAt: deadline,
                                 cursor: {
-                                    ...(task.state.cursor != null &&
-                                    typeof task.state.cursor === 'object' &&
-                                    'gate' in task.state.cursor
-                                        ? { gate: task.state.cursor.gate }
-                                        : {}),
+                                    ...(keepGateCursor(task.state.cursor) ??
+                                        {}),
                                     kind: 'inactivity',
                                     scopeKey: key,
                                     deadline
@@ -147,12 +131,7 @@ export class TriggerObserver {
                                 ...task.state,
                                 status: 'waiting',
                                 nextRunAt: null,
-                                cursor:
-                                    task.state.cursor != null &&
-                                    typeof task.state.cursor === 'object' &&
-                                    'gate' in task.state.cursor
-                                        ? { gate: task.state.cursor.gate }
-                                        : null
+                                cursor: keepGateCursor(task.state.cursor)
                             }
                         })
                         refresh = true
@@ -231,11 +210,22 @@ export class TriggerObserver {
             return
         }
         const excerpts = formatExcerpts(messages)
+        if (condition.type === 'participation') {
+            return {
+                reason: `participation:${messages.length} messages/${users} users/${condition.withinMinutes} minutes`,
+                scopeKey: key,
+                excerpts,
+                stats: {
+                    messages: messages.length,
+                    users,
+                    windowMinutes: condition.withinMinutes
+                },
+                variables: { triggerExcerpts: excerpts },
+                gate: condition.gate
+            }
+        }
         return {
-            reason:
-                condition.type === 'participation'
-                    ? `participation:${messages.length} messages/${users} users/${condition.withinMinutes} minutes`
-                    : `semantic:${condition.topic}`,
+            reason: `semantic:${condition.topic}`,
             scopeKey: key,
             excerpts,
             stats: {
@@ -285,10 +275,7 @@ export class TriggerObserver {
         }
         const key = latest.state.cursor.scopeKey
         const deadline = latest.state.cursor.deadline
-        const gateCursor =
-            'gate' in latest.state.cursor
-                ? { gate: latest.state.cursor.gate }
-                : null
+        const gateCursor = keepGateCursor(latest.state.cursor)
         if (typeof key !== 'string' || typeof deadline !== 'string') return
         if (
             latest.state.nextRunAt !== deadline ||
@@ -323,22 +310,22 @@ export class TriggerObserver {
             expected !== new Date(deadline).valueOf() ||
             messages.length < condition.minMessages
         ) {
+            let nextRunAt: string | null = null
+            let cursor: Record<string, unknown> | null = gateCursor
+            if (expected > Date.now()) {
+                nextRunAt = new Date(expected).toISOString()
+                cursor = {
+                    ...(gateCursor ?? {}),
+                    kind: 'inactivity',
+                    scopeKey: key,
+                    deadline: nextRunAt
+                }
+            }
             await this.store.update(latest.id, {
                 state: {
                     ...latest.state,
-                    nextRunAt:
-                        expected > Date.now()
-                            ? new Date(expected).toISOString()
-                            : null,
-                    cursor:
-                        expected > Date.now()
-                            ? {
-                                  ...(gateCursor ?? {}),
-                                  kind: 'inactivity',
-                                  scopeKey: key,
-                                  deadline: new Date(expected).toISOString()
-                              }
-                            : gateCursor
+                    nextRunAt,
+                    cursor
                 }
             })
             await this.scheduler.refresh()
@@ -362,6 +349,27 @@ export class TriggerObserver {
             }
         })
     }
+}
+
+interface ObservedMessage {
+    id: string
+    at: number
+    userId: string
+    username?: string
+    content: string
+}
+
+interface ObservedScopeState {
+    messages: ObservedMessage[]
+    lastMessageAt: number
+}
+
+function keepGateCursor(
+    cursor: TriggerTask['state']['cursor']
+): Record<string, unknown> | null {
+    if (cursor == null || typeof cursor !== 'object') return null
+    if (!('gate' in cursor)) return null
+    return { gate: cursor.gate }
 }
 
 function getScopeKey(

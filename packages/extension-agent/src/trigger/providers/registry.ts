@@ -73,10 +73,15 @@ export class TriggerProviderRegistry {
 }
 
 function toJsonSchema(schema: TriggerProviderDef['schema'], name: string) {
-    const json = zodToJsonSchema(schema as never, {
-        name,
-        $refStrategy: 'none'
-    }) as Record<string, unknown>
+    // zod-to-json-schema types against zod/v3 ZodSchema; package ZodTypeAny
+    // is structurally compatible but not assignable across the dual entry.
+    const json = zodToJsonSchema(
+        schema as Parameters<typeof zodToJsonSchema>[0],
+        {
+            name,
+            $refStrategy: 'none'
+        }
+    ) as Record<string, unknown>
     const defs = json.definitions as
         Record<string, Record<string, unknown>> | undefined
     return defs?.[name] ?? json

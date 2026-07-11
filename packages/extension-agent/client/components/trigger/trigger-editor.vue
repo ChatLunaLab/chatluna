@@ -510,7 +510,6 @@ import { ElMessage } from 'element-plus'
 import { computed, reactive, ref, toRaw, watch } from 'vue'
 import type {
     ToolAvailabilityInfo,
-    TriggerCondition,
     TriggerProviderMeta,
     TriggerRun,
     TriggerRunStatus,
@@ -543,11 +542,6 @@ import {
     type TriggerRouteChoice
 } from './types'
 
-interface TargetItem {
-    id: string
-    name?: string
-}
-
 const props = defineProps<{
     task: TriggerTask | null
     routes: TriggerRouteChoice[]
@@ -578,6 +572,9 @@ const runsLoading = ref(false)
 const runsError = ref('')
 const presetMode = ref<'default' | 'fixed'>('default')
 const step = ref<1 | 2>(1)
+let targetsSeq = 0
+let channelsSeq = 0
+let runsSeq = 0
 
 const editors = {
     once: OnceEditor,
@@ -602,13 +599,6 @@ const conditionEditor = computed(() => {
 const extensionConfig = computed({
     get() {
         if (draft.condition.type !== 'extension') return null
-        if (
-            draft.condition.config == null ||
-            typeof draft.condition.config !== 'object' ||
-            Array.isArray(draft.condition.config)
-        ) {
-            draft.condition.config = {}
-        }
         return draft.condition.config as Record<string, unknown>
     },
     set(value: Record<string, unknown> | null) {
@@ -616,6 +606,7 @@ const extensionConfig = computed({
         draft.condition.config = value
     }
 })
+
 const messageCondition = computed(() =>
     isMessageCondition(draft.condition, props.providers)
 )
@@ -656,6 +647,7 @@ watch(
               }
             : createInput()
         Object.assign(draft, input)
+        ensureExtensionConfig()
         presetMode.value = input.execution.preset ? 'fixed' : 'default'
         step.value = 1
         loadTargets()
@@ -663,6 +655,11 @@ watch(
         loadRuns()
     },
     { immediate: true }
+)
+
+watch(
+    () => draft.condition,
+    () => ensureExtensionConfig()
 )
 
 watch(messageCondition, (value) => {
@@ -678,6 +675,7 @@ watch(messageCondition, (value) => {
 function selectScenario(item: ScenarioChoice) {
     if (selectedScenarioId.value === item.id) return
     draft.condition = createCondition(item.id, item.provider)
+    ensureExtensionConfig()
 }
 
 function setModel(value: string | number | boolean) {
@@ -739,6 +737,7 @@ function changeGuild() {
 
 async function loadTargets() {
     if (!draft.target.bot.platform || !draft.target.bot.selfId) return
+    const current = ++targetsSeq
     targetsLoading.value = true
     try {
         const result = await send(
@@ -746,12 +745,14 @@ async function loadTargets() {
             draft.target.bot.platform,
             draft.target.bot.selfId
         )
+        if (current !== targetsSeq) return
         guilds.value = result.guilds
         friends.value = result.friends
     } catch (err) {
+        if (current !== targetsSeq) return
         ElMessage.error(err instanceof Error ? err.message : String(err))
     } finally {
-        targetsLoading.value = false
+        if (current === targetsSeq) targetsLoading.value = false
     }
 }
 
@@ -759,18 +760,22 @@ async function loadChannels() {
     if (draft.target.destination.type !== 'channel') return
     if (!draft.target.destination.guildId) return
     if (!draft.target.bot.platform || !draft.target.bot.selfId) return
+    const current = ++channelsSeq
     channelsLoading.value = true
     try {
-        channels.value = await send(
+        const result = await send(
             'chatluna-agent/getTriggerChannels',
             draft.target.bot.platform,
             draft.target.bot.selfId,
             draft.target.destination.guildId
         )
+        if (current !== channelsSeq) return
+        channels.value = result
     } catch (err) {
+        if (current !== channelsSeq) return
         ElMessage.error(err instanceof Error ? err.message : String(err))
     } finally {
-        channelsLoading.value = false
+        if (current === channelsSeq) channelsLoading.value = false
     }
 }
 
@@ -779,24 +784,27 @@ async function loadRuns() {
         runs.value = []
         return
     }
+    const current = ++runsSeq
     runsLoading.value = true
     runsError.value = ''
     try {
-        runs.value = await send(
+        const result = await send(
             'chatluna-agent/listTriggerRuns',
             props.task.id,
             20
         )
+        if (current !== runsSeq) return
+        runs.value = result
     } catch (err) {
+        if (current !== runsSeq) return
         runsError.value = err instanceof Error ? err.message : String(err)
     } finally {
-        runsLoading.value = false
+        if (current === runsSeq) runsLoading.value = false
     }
 }
 
 function validateStep1() {
     draft.name = draft.name.trim()
-
     if (!draft.name) {
         ElMessage.warning('请输入任务名称。')
         return false
@@ -809,6 +817,16 @@ function validateStep1() {
         if (!selectedProvider.value) {
             ElMessage.warning(`触发提供方未注册：${draft.condition.provider}`)
             return false
+        }
+        const required = selectedProvider.value.schema.required
+        const cfg = extensionConfig.value
+        if (Array.isArray(required) && cfg != null) {
+            for (const raw of required) {
+                const key = String(raw)
+                if (!isMissingConfigValue(cfg[key])) continue
+                ElMessage.warning(`请填写扩展配置必填项：${key}`)
+                return false
+            }
         }
     }
     if (draft.condition.type === 'keyword') {
@@ -890,12 +908,14 @@ function validateStep1() {
             return false
         }
     }
-    const gate =
+    let gate
+    if (
         draft.condition.type === 'participation' ||
         draft.condition.type === 'inactivity' ||
         draft.condition.type === 'semantic'
-            ? draft.condition.gate
-            : undefined
+    ) {
+        gate = draft.condition.gate
+    }
     if (
         gate?.type === 'model' &&
         gate.model.type === 'fixed' &&
@@ -904,14 +924,12 @@ function validateStep1() {
         ElMessage.warning('请选择模型判断使用的指定模型。')
         return false
     }
-
     return true
 }
 
 function validateStep2() {
     draft.execution.prompt = draft.execution.prompt.trim()
     draft.target.principalId = draft.target.principalId.trim()
-
     if (!draft.execution.prompt) {
         ElMessage.warning('请输入 Prompt。')
         return false
@@ -971,7 +989,6 @@ function validateStep2() {
         ElMessage.warning('请选择观察范围。')
         return false
     }
-
     return true
 }
 
@@ -1026,6 +1043,30 @@ function originLabel(origin: TriggerRun['origin']) {
     if (origin === 'schedule') return '计划执行'
     if (origin === 'event') return '事件触发'
     return '手动执行'
+}
+
+function ensureExtensionConfig() {
+    if (draft.condition.type !== 'extension') return
+    if (
+        draft.condition.config != null &&
+        typeof draft.condition.config === 'object' &&
+        !Array.isArray(draft.condition.config)
+    ) {
+        return
+    }
+    draft.condition.config = {}
+}
+
+function isMissingConfigValue(value: unknown) {
+    if (value == null) return true
+    if (typeof value === 'string' && !value.trim()) return true
+    if (Array.isArray(value) && value.length === 0) return true
+    return false
+}
+
+interface TargetItem {
+    id: string
+    name?: string
 }
 </script>
 

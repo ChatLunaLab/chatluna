@@ -41,19 +41,26 @@ const emit = defineEmits<{
 const unit = ref(
     props.modelValue >= 60 && props.modelValue % 60 === 0 ? 'large' : 'base'
 )
+
+// Auto-pick display unit from stored value only; never rewrite modelValue
+// merely because the user changed the unit selector.
 watch(
     () => props.modelValue,
     (value) => {
-        if (unit.value === 'large') {
-            if (value < 60 || value % 60 !== 0) unit.value = 'base'
+        if (unit.value === 'large' && (value < 60 || value % 60 !== 0)) {
+            unit.value = 'base'
             return
         }
-        if (value >= 60 && value % 60 === 0) unit.value = 'large'
+        if (unit.value === 'base' && value >= 60 && value % 60 === 0) {
+            unit.value = 'large'
+        }
     }
 )
+
 const inputMax = computed(() =>
     unit.value === 'large' ? Math.floor(props.max / 60) : props.max
 )
+
 const amount = computed({
     get: () =>
         unit.value === 'large' ? props.modelValue / 60 : props.modelValue,

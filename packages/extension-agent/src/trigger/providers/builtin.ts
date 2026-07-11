@@ -88,7 +88,7 @@ export const builtinProviderDefs: TriggerProviderDef[] = [
             cooldownMinutes: 10
         },
         cooldownMinutes: (config) =>
-            (config as { cooldownMinutes: number }).cooldownMinutes
+            keywordConfigSchema.parse(config).cooldownMinutes
     },
     {
         id: 'participation',
@@ -104,7 +104,7 @@ export const builtinProviderDefs: TriggerProviderDef[] = [
             gate: { type: 'none' }
         },
         cooldownMinutes: (config) =>
-            (config as { cooldownMinutes: number }).cooldownMinutes
+            participationConfigSchema.parse(config).cooldownMinutes
     },
     {
         id: 'inactivity',
@@ -120,7 +120,7 @@ export const builtinProviderDefs: TriggerProviderDef[] = [
             gate: { type: 'none' }
         },
         cooldownMinutes: (config) =>
-            (config as { cooldownMinutes: number }).cooldownMinutes
+            inactivityConfigSchema.parse(config).cooldownMinutes
     },
     {
         id: 'semantic',
@@ -141,7 +141,7 @@ export const builtinProviderDefs: TriggerProviderDef[] = [
             }
         },
         cooldownMinutes: (config) =>
-            (config as { cooldownMinutes: number }).cooldownMinutes
+            semanticConfigSchema.parse(config).cooldownMinutes
     }
 ]
 

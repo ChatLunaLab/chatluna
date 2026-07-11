@@ -11,33 +11,11 @@ import type {
 import type { TriggerProviderRegistry } from './providers/registry'
 import { createTriggerConditionSchema, isEventCondition } from './schema'
 
-export interface TriggerPlan {
-    status: TriggerTaskStatus
-    nextRunAt: Date | null
-    suppressedUntil?: Date | null
-    periodKey?: string | null
-    occurrenceKey?: string | null
-}
-
-export interface TriggerPlanInput {
-    misfire?: boolean
-    resume?: boolean
-    skipPeriod?: string
-}
-
-interface Occurrence {
-    at: Date
-    periodKey?: string
-    occurrenceKey: string
-}
-
 export class TriggerPlanner {
     constructor(private readonly registry?: TriggerProviderRegistry) {}
 
     validate(condition: TriggerCondition): TriggerCondition {
-        return createTriggerConditionSchema(this.registry).parse(
-            condition
-        ) as TriggerCondition
+        return createTriggerConditionSchema(this.registry).parse(condition)
     }
 
     initialState(
@@ -213,9 +191,8 @@ export class TriggerPlanner {
             ) {
                 return decision
             }
-            return decision?.type === 'complete'
-                ? decision
-                : { type: 'complete', reason: decision?.reason }
+            if (decision?.type === 'complete') return decision
+            return { type: 'complete', reason: decision?.reason }
         }
         if (condition.type === 'window') {
             if (
@@ -547,4 +524,24 @@ export class TriggerPlanner {
         }
         throw new Error('Unable to find a window occurrence')
     }
+}
+
+export interface TriggerPlan {
+    status: TriggerTaskStatus
+    nextRunAt: Date | null
+    suppressedUntil?: Date | null
+    periodKey?: string | null
+    occurrenceKey?: string | null
+}
+
+export interface TriggerPlanInput {
+    misfire?: boolean
+    resume?: boolean
+    skipPeriod?: string
+}
+
+interface Occurrence {
+    at: Date
+    periodKey?: string
+    occurrenceKey: string
 }

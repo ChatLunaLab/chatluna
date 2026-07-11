@@ -10,12 +10,12 @@ import type {
     TriggerActor,
     TriggerCondition,
     TriggerCreateInput,
+    TriggerListFilter,
     TriggerProviderDef,
     TriggerProviderMeta,
     TriggerRun,
     TriggerStatus,
     TriggerTask,
-    TriggerTaskStatus,
     TriggerUpdateInput,
     TriggerWakeupInput
 } from '../types'
@@ -35,12 +35,6 @@ import {
 } from '../trigger/schema'
 import { TriggerStore } from '../trigger/store'
 import { FinishTriggerRunTool, TriggerTool } from '../trigger/tool'
-
-export interface TriggerListFilter {
-    status?: TriggerTaskStatus
-    conditionType?: TriggerCondition['type'] | string
-    enabled?: boolean
-}
 
 export class ChatLunaAgentTriggerService {
     private readonly _store: TriggerStore
@@ -283,23 +277,25 @@ export class ChatLunaAgentTriggerService {
             condition,
             updatedAt: now
         }
+        let state: TriggerTask['state'] = {
+            ...current.state,
+            status: 'paused',
+            nextRunAt: null,
+            suppressedUntil: null
+        }
+        if (parsed.enabled) {
+            state = {
+                ...this._planner.initialState(draft, now),
+                runCount: current.state.runCount,
+                lastRunAt: current.state.lastRunAt,
+                lastDecision: current.state.lastDecision,
+                lastError: current.state.lastError
+            }
+        }
         const task = await this._store.update(id, {
             ...parsed,
             condition,
-            state: parsed.enabled
-                ? {
-                      ...this._planner.initialState(draft, now),
-                      runCount: current.state.runCount,
-                      lastRunAt: current.state.lastRunAt,
-                      lastDecision: current.state.lastDecision,
-                      lastError: current.state.lastError
-                  }
-                : {
-                      ...current.state,
-                      status: 'paused',
-                      nextRunAt: null,
-                      suppressedUntil: null
-                  }
+            state
         })
         await this._afterChange()
         return task
@@ -317,17 +313,10 @@ export class ChatLunaAgentTriggerService {
     }
 
     async list(actor: TriggerActor, filter?: TriggerListFilter) {
-        return (await this._store.list()).filter(
-            (task) =>
-                (actor.authority >= 3 || task.ownerKey === actor.key) &&
-                (filter?.enabled == null || task.enabled === filter.enabled) &&
-                (filter?.status == null ||
-                    task.state.status === filter.status) &&
-                (filter?.conditionType == null ||
-                    task.condition.type === filter.conditionType ||
-                    (task.condition.type === 'extension' &&
-                        task.condition.provider === filter.conditionType))
-        )
+        return await this._store.list({
+            ...filter,
+            ownerKey: actor.authority >= 3 ? undefined : actor.key
+        })
     }
 
     async listRuns(actor: TriggerActor, id: number, limit = 20) {
@@ -340,25 +329,27 @@ export class ChatLunaAgentTriggerService {
         if (current.enabled === enabled) return current
 
         const now = new Date()
+        let state: TriggerTask['state'] = {
+            ...current.state,
+            status: 'paused',
+            nextRunAt: null,
+            suppressedUntil: null
+        }
+        if (enabled) {
+            state = {
+                ...this._planner.initialState(
+                    { ...current, enabled, updatedAt: now },
+                    now
+                ),
+                runCount: current.state.runCount,
+                lastRunAt: current.state.lastRunAt,
+                lastDecision: current.state.lastDecision,
+                lastError: current.state.lastError
+            }
+        }
         const task = await this._store.update(id, {
             enabled,
-            state: enabled
-                ? {
-                      ...this._planner.initialState(
-                          { ...current, enabled, updatedAt: now },
-                          now
-                      ),
-                      runCount: current.state.runCount,
-                      lastRunAt: current.state.lastRunAt,
-                      lastDecision: current.state.lastDecision,
-                      lastError: current.state.lastError
-                  }
-                : {
-                      ...current.state,
-                      status: 'paused',
-                      nextRunAt: null,
-                      suppressedUntil: null
-                  }
+            state
         })
         await this._afterChange()
         return task
@@ -439,15 +430,10 @@ export class ChatLunaAgentTriggerService {
                     ? parsed.execution.model.model
                     : undefined,
             preset: parsed.execution.preset ?? undefined,
-            conversation:
-                parsed.execution.conversation.type === 'existing'
-                    ? {
-                          type: 'existing',
-                          id: parsed.execution.conversation.conversationId
-                      }
-                    : parsed.execution.conversation.type === 'task'
-                      ? { type: 'task', key: `trigger:wakeup:${actor.key}` }
-                      : parsed.execution.conversation,
+            conversation: toInvokeConversation(
+                parsed.execution.conversation,
+                `trigger:wakeup:${actor.key}`
+            ),
             tools:
                 parsed.execution.tools.type === 'allow'
                     ? {
@@ -522,12 +508,7 @@ export class ChatLunaAgentTriggerService {
         const running = await this._store.listRunning()
         for (const task of running) {
             const now = new Date()
-            const cursor =
-                task.state.cursor != null &&
-                typeof task.state.cursor === 'object' &&
-                'gate' in task.state.cursor
-                    ? { gate: task.state.cursor.gate }
-                    : null
+            const cursor = keepGateCursor(task.state.cursor)
             if (isEventCondition(task.condition, this._registry)) {
                 await this._store.update(task.id, {
                     state: {
@@ -643,4 +624,25 @@ export class ChatLunaAgentTriggerService {
             error: tasks.filter((task) => task.state.status === 'error').length
         }
     }
+}
+
+function keepGateCursor(
+    cursor: TriggerTask['state']['cursor']
+): Record<string, unknown> | null {
+    if (cursor == null || typeof cursor !== 'object') return null
+    if (!('gate' in cursor)) return null
+    return { gate: cursor.gate }
+}
+
+function toInvokeConversation(
+    policy: TriggerTask['execution']['conversation'],
+    taskKey: string
+) {
+    if (policy.type === 'existing') {
+        return { type: 'existing' as const, id: policy.conversationId }
+    }
+    if (policy.type === 'task') {
+        return { type: 'task' as const, key: taskKey }
+    }
+    return policy
 }

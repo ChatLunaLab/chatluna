@@ -9,16 +9,6 @@ import type { TriggerStore } from './store'
 const MAX_DELAY = 2_147_483_647
 const DRAIN_CONCURRENCY = 3
 
-export interface TriggerEventDeadlineOptions {
-    signal: AbortSignal
-    scheduledAt: Date
-}
-
-export type TriggerEventDeadlineHandler = (
-    task: TriggerTask,
-    options: TriggerEventDeadlineOptions
-) => Promise<void>
-
 export class TriggerScheduler {
     private _active = false
     private _cancel?: () => void
@@ -135,40 +125,7 @@ export class TriggerScheduler {
                     while (this._active) {
                         const task = tasks[cursor++]
                         if (task == null) return
-                        const controller = new AbortController()
-                        this._controllers.add(controller)
-                        const scheduledAt = new Date(
-                            task.state.nextRunAt as string
-                        )
-                        try {
-                            if (
-                                task.condition.type === 'inactivity' &&
-                                task.state.status !== 'paused' &&
-                                task.state.cursor?.kind === 'inactivity' &&
-                                this._event != null
-                            ) {
-                                await this._event(task, {
-                                    signal: controller.signal,
-                                    scheduledAt
-                                })
-                                continue
-                            }
-                            const origin: TriggerRunOrigin = isEventCondition(
-                                task.condition,
-                                this.registry
-                            )
-                                ? 'event'
-                                : 'schedule'
-                            await this.runner.run(task.id, origin, {
-                                signal: controller.signal,
-                                scheduledAt,
-                                misfire: startup
-                            })
-                        } catch (err) {
-                            logger.error(err)
-                        } finally {
-                            this._controllers.delete(controller)
-                        }
+                        await this._runDue(task, startup)
                     }
                 }
             )
@@ -181,4 +138,48 @@ export class TriggerScheduler {
             await this.refresh()
         }
     }
+
+    private async _runDue(task: TriggerTask, startup: boolean) {
+        const controller = new AbortController()
+        this._controllers.add(controller)
+        const scheduledAt = new Date(task.state.nextRunAt as string)
+        try {
+            const handler = this._event
+            if (
+                handler != null &&
+                task.condition.type === 'inactivity' &&
+                task.state.status !== 'paused' &&
+                task.state.cursor?.kind === 'inactivity'
+            ) {
+                await handler(task, {
+                    signal: controller.signal,
+                    scheduledAt
+                })
+                return
+            }
+            let origin: TriggerRunOrigin = 'schedule'
+            if (isEventCondition(task.condition, this.registry)) {
+                origin = 'event'
+            }
+            await this.runner.run(task.id, origin, {
+                signal: controller.signal,
+                scheduledAt,
+                misfire: startup
+            })
+        } catch (err) {
+            logger.error(err)
+        } finally {
+            this._controllers.delete(controller)
+        }
+    }
 }
+
+export interface TriggerEventDeadlineOptions {
+    signal: AbortSignal
+    scheduledAt: Date
+}
+
+export type TriggerEventDeadlineHandler = (
+    task: TriggerTask,
+    options: TriggerEventDeadlineOptions
+) => Promise<void>
