@@ -24,16 +24,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            if (session.isDirect && !config.allowPrivate) {
-                return ChainMiddlewareRunStatus.STOP
-            }
-
-            const notReply = await ctx.serial(
-                'chatluna/before-check-sender',
-                session
-            )
-            if (notReply) return ChainMiddlewareRunStatus.STOP
-
+            // Observation is independent of private-reply and sender-reply gates.
             ctx.emit('chatluna/message-observed', {
                 id: session.messageId ?? randomUUID(),
                 at: new Date(session.timestamp),
@@ -48,6 +39,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 content: session.content,
                 elements: session.elements
             })
+
+            if (session.isDirect && !config.allowPrivate) {
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            const notReply = await ctx.serial(
+                'chatluna/before-check-sender',
+                session
+            )
+            if (notReply) return ChainMiddlewareRunStatus.STOP
 
             const content = h
                 .select(session.elements, 'text')

@@ -1,6 +1,11 @@
 <template>
     <div class="trigger-editor">
-        <button type="button" class="back" @click="emit('back')">
+        <button
+            type="button"
+            class="back"
+            :disabled="busy"
+            @click="emit('back')"
+        >
             <el-icon><ArrowLeft /></el-icon>
             <span>返回列表</span>
         </button>
@@ -54,6 +59,7 @@
             <button
                 type="button"
                 :class="['step-item', { active: step === 1 }]"
+                :disabled="busy"
                 @click="step = 1"
             >
                 <span class="step-num">1</span>
@@ -66,6 +72,7 @@
             <button
                 type="button"
                 :class="['step-item', { active: step === 2 }]"
+                :disabled="busy"
                 @click="goNext"
             >
                 <span class="step-num">2</span>
@@ -93,13 +100,14 @@
                 <div class="scenario-grid">
                     <button
                         v-for="item in scenarios"
-                        :key="item.type"
+                        :key="item.id"
                         type="button"
                         :class="[
                             'scenario-option',
-                            { active: draft.condition.type === item.type }
+                            { active: selectedScenarioId === item.id }
                         ]"
-                        @click="selectCondition(item.type)"
+                        :disabled="busy"
+                        @click="selectScenario(item)"
                     >
                         {{ item.label }}
                     </button>
@@ -116,12 +124,21 @@
                     <h3>条件配置</h3>
                 </div>
                 <component
+                    v-if="conditionEditor"
                     :is="conditionEditor"
                     v-model="draft.condition"
                     :models="models"
                     :timezones="timezones"
                 />
-                <trigger-schedule-preview :condition="draft.condition" />
+                <schema-editor
+                    v-else-if="extensionConfig != null && selectedProvider"
+                    v-model="extensionConfig"
+                    :schema="selectedProvider.schema"
+                />
+                <trigger-schedule-preview
+                    v-if="showPreview"
+                    :condition="draft.condition"
+                />
             </section>
         </div>
 
@@ -403,14 +420,25 @@
             <el-button
                 v-if="step === 1"
                 :icon="ArrowLeft"
+                :disabled="busy"
                 @click="emit('back')"
             >
                 返回列表
             </el-button>
-            <el-button v-else :icon="ArrowLeft" @click="step = 1">
+            <el-button
+                v-else
+                :icon="ArrowLeft"
+                :disabled="busy"
+                @click="step = 1"
+            >
                 上一步
             </el-button>
-            <el-button v-if="step === 1" type="primary" @click="goNext">
+            <el-button
+                v-if="step === 1"
+                type="primary"
+                :disabled="busy"
+                @click="goNext"
+            >
                 下一步
                 <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
@@ -483,8 +511,8 @@ import { computed, reactive, ref, toRaw, watch } from 'vue'
 import type {
     ToolAvailabilityInfo,
     TriggerCondition,
+    TriggerProviderMeta,
     TriggerRun,
-    TriggerRunDecision,
     TriggerRunStatus,
     TriggerTask,
     TriggerUpdateInput
@@ -499,14 +527,19 @@ import OnceEditor from './editors/once-editor.vue'
 import ParticipationEditor from './editors/participation-editor.vue'
 import SemanticEditor from './editors/semantic-editor.vue'
 import WindowEditor from './editors/window-editor.vue'
+import SchemaEditor from './editors/schema-editor.vue'
 import TriggerSchedulePreview from './trigger-schedule-preview.vue'
 import {
+    conditionKey,
     createCondition,
     createInput,
+    formatDate,
+    formatDecision,
     isMessageCondition,
-    scenarios,
     statusLabels,
+    statusType,
     timezones,
+    type ScenarioChoice,
     type TriggerRouteChoice
 } from './types'
 
@@ -521,6 +554,8 @@ const props = defineProps<{
     tools: ToolAvailabilityInfo[]
     models: string[]
     presets: string[]
+    providers: TriggerProviderMeta[]
+    scenarios: ScenarioChoice[]
     busy: boolean
     error: string
 }>()
@@ -556,10 +591,42 @@ const editors = {
     semantic: SemanticEditor
 }
 
-const conditionEditor = computed(() => editors[draft.condition.type])
-const messageCondition = computed(() =>
-    isMessageCondition(draft.condition.type)
+const selectedScenarioId = computed(() => conditionKey(draft.condition))
+const selectedProvider = computed(() =>
+    props.providers.find((item) => item.id === selectedScenarioId.value)
 )
+const conditionEditor = computed(() => {
+    if (draft.condition.type === 'extension') return null
+    return editors[draft.condition.type as keyof typeof editors]
+})
+const extensionConfig = computed({
+    get() {
+        if (draft.condition.type !== 'extension') return null
+        if (
+            draft.condition.config == null ||
+            typeof draft.condition.config !== 'object' ||
+            Array.isArray(draft.condition.config)
+        ) {
+            draft.condition.config = {}
+        }
+        return draft.condition.config as Record<string, unknown>
+    },
+    set(value: Record<string, unknown> | null) {
+        if (draft.condition.type !== 'extension' || value == null) return
+        draft.condition.config = value
+    }
+})
+const messageCondition = computed(() =>
+    isMessageCondition(draft.condition, props.providers)
+)
+const showPreview = computed(() => {
+    if (draft.condition.type === 'extension') {
+        return selectedProvider.value?.kind === 'scheduled'
+    }
+    return ['once', 'calendar', 'interval', 'cron', 'window'].includes(
+        draft.condition.type
+    )
+})
 const routeKey = computed(
     () => `${draft.target.bot.platform}:${draft.target.bot.selfId}`
 )
@@ -608,9 +675,9 @@ watch(messageCondition, (value) => {
         draft.target.destination.type === 'direct' ? 'direct' : 'channel'
 })
 
-function selectCondition(type: TriggerCondition['type']) {
-    if (type === draft.condition.type) return
-    draft.condition = createCondition(type)
+function selectScenario(item: ScenarioChoice) {
+    if (selectedScenarioId.value === item.id) return
+    draft.condition = createCondition(item.id, item.provider)
 }
 
 function setModel(value: string | number | boolean) {
@@ -734,6 +801,16 @@ function validateStep1() {
         ElMessage.warning('请输入任务名称。')
         return false
     }
+    if (draft.condition.type === 'extension') {
+        if (!draft.condition.provider) {
+            ElMessage.warning('请选择扩展触发提供方。')
+            return false
+        }
+        if (!selectedProvider.value) {
+            ElMessage.warning(`触发提供方未注册：${draft.condition.provider}`)
+            return false
+        }
+    }
     if (draft.condition.type === 'keyword') {
         draft.condition.keywords = Array.from(
             new Set(
@@ -796,6 +873,22 @@ function validateStep1() {
     ) {
         ElMessage.warning('请至少选择一天。')
         return false
+    }
+    if (draft.condition.type === 'window') {
+        if (
+            draft.condition.start == null ||
+            String(draft.condition.start).trim() === ''
+        ) {
+            ElMessage.warning('请填写开始时间。')
+            return false
+        }
+        if (
+            draft.condition.end == null ||
+            String(draft.condition.end).trim() === ''
+        ) {
+            ElMessage.warning('请填写结束时间。')
+            return false
+        }
     }
     const gate =
         draft.condition.type === 'participation' ||
@@ -915,13 +1008,6 @@ function save() {
     emit('save', payload)
 }
 
-function statusType(status: TriggerTask['state']['status']) {
-    if (status === 'waiting') return 'success'
-    if (status === 'running') return 'warning'
-    if (status === 'error') return 'danger'
-    return 'info'
-}
-
 function runType(status: TriggerRunStatus) {
     if (status === 'completed') return 'success'
     if (status === 'running') return 'warning'
@@ -940,24 +1026,6 @@ function originLabel(origin: TriggerRun['origin']) {
     if (origin === 'schedule') return '计划执行'
     if (origin === 'event') return '事件触发'
     return '手动执行'
-}
-
-function formatDecision(decision: TriggerRunDecision) {
-    const labels: Record<TriggerRunDecision['type'], string> = {
-        continue: '继续',
-        stop_period: '停止本周期',
-        complete: '完成任务',
-        pause_until: '暂停',
-        reschedule: '重新安排'
-    }
-    return decision.reason
-        ? `${labels[decision.type]}：${decision.reason}`
-        : labels[decision.type]
-}
-
-function formatDate(value?: Date | string | null) {
-    if (!value) return '未安排'
-    return new Date(value).toLocaleString()
 }
 </script>
 
@@ -984,6 +1052,21 @@ function formatDate(value?: Date | string | null) {
 
 .back:hover {
     color: var(--k-text-dark);
+}
+
+.back:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.scenario-option:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.step-item:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .editor-head {

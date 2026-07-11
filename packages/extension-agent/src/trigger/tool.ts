@@ -10,7 +10,7 @@ import type {
 } from '../types'
 import type { TriggerRunControl } from './control'
 import {
-    triggerConditionSchema,
+    triggerConditionShapeSchema,
     triggerExecutionSchema,
     triggerTargetSchema
 } from './schema'
@@ -18,7 +18,7 @@ import {
 const taskSchema = z.object({
     name: z.string().min(1),
     enabled: z.boolean().optional(),
-    condition: triggerConditionSchema,
+    condition: triggerConditionShapeSchema,
     execution: triggerExecutionSchema,
     target: triggerTargetSchema
 })
@@ -27,13 +27,15 @@ export class TriggerTool extends StructuredTool {
     name = 'trigger'
     description =
         'Create and manage Trigger V2 tasks with structured fields. Actions: ' +
-        'list, get, create, update, enable, disable, fire, pause_until, resume, remove. ' +
-        'Conditions and minimal examples: once runs at one timestamp ' +
-        '{type:"once",at:"2026-07-11T09:00:00+08:00"}; calendar runs at ' +
+        'list, list_providers, get, create, update, enable, disable, fire, pause_until, resume, remove. ' +
+        'Use list_providers to discover built-in and dynamic providers with ids, kind, ' +
+        'descriptions, JSON schemas, and default configs before create/update. ' +
+        'Built-in conditions and minimal examples: once runs at one timestamp ' +
+        '{type:"once",at:"2099-01-01T09:00:00+08:00"}; calendar runs at ' +
         'selected weekday times {type:"calendar",timezone:"Asia/Shanghai",' +
         'days:[1,2,3,4,5],times:["09:00"],misfire:"skip"}; interval uses ' +
         'an anchored cadence {type:"interval",everyMinutes:30,anchorAt:' +
-        '"2026-07-11T09:00:00+08:00",misfire:"fire_once"}; cron uses an ' +
+        '"2099-01-01T09:00:00+08:00",misfire:"fire_once"}; cron uses an ' +
         'advanced schedule {type:"cron",expression:"0 9 * * 1-5",timezone:' +
         '"Asia/Shanghai",misfire:"skip"}; window repeats inside a period ' +
         '{type:"window",timezone:"Asia/Shanghai",days:[1,2,3,4,5],start:' +
@@ -48,14 +50,18 @@ export class TriggerTool extends StructuredTool {
         '"none"}}; semantic uses a model topic gate {type:"semantic",topic:' +
         '"release incident",withinMinutes:10,minMessages:3,cooldownMinutes:' +
         '10,gate:{type:"model",model:{type:"default"},timeoutSeconds:30,' +
-        'dailyTokenLimit:1000}}. ' +
-        'Days are 0=Sunday through 6=Saturday. Use exact IANA timezones, ISO timestamps, ' +
+        'dailyTokenLimit:1000}}. Custom providers use ' +
+        '{type:"extension",provider:"provider-id",config:{...}} where ' +
+        'provider is a registered extension id and config matches that ' +
+        'provider schema. Unknown providers are rejected. ' +
+        'Days are 0=Sunday through 6=Saturday. Use exact IANA timezones, ISO timestamps with an explicit offset or Z, ' +
         'an explicit model policy, conversation policy, tool allowlist, bot, destination, principal, and delivery.'
 
     schema = z
         .object({
             action: z.enum([
                 'list',
+                'list_providers',
                 'get',
                 'create',
                 'update',
@@ -99,18 +105,11 @@ export class TriggerTool extends StructuredTool {
                         ])
                         .optional(),
                     conditionType: z
-                        .enum([
-                            'once',
-                            'calendar',
-                            'interval',
-                            'cron',
-                            'window',
-                            'keyword',
-                            'participation',
-                            'inactivity',
-                            'semantic'
-                        ])
+                        .string()
                         .optional()
+                        .describe(
+                            'Built-in condition type or extension provider id'
+                        )
                 })
                 .optional()
         })
@@ -134,6 +133,7 @@ export class TriggerTool extends StructuredTool {
 
             if (
                 input.action !== 'list' &&
+                input.action !== 'list_providers' &&
                 input.action !== 'create' &&
                 input.id == null
             ) {
@@ -172,6 +172,10 @@ export class TriggerTool extends StructuredTool {
                 return JSON.stringify(
                     input.limit ? tasks.slice(0, input.limit) : tasks
                 )
+            }
+
+            if (input.action === 'list_providers') {
+                return JSON.stringify(this.service.listProviders())
             }
 
             if (input.action === 'create') {

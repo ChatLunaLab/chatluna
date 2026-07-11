@@ -2,6 +2,8 @@ import type {
     TriggerCondition,
     TriggerCreateInput,
     TriggerGate,
+    TriggerProviderMeta,
+    TriggerRunDecision,
     TriggerTaskStatus,
     TriggerUpdateInput
 } from '../../../src/types'
@@ -11,26 +13,43 @@ export type ConditionOf<T extends TriggerCondition['type']> = Extract<
     { type: T }
 >
 
+export type ScenarioChoice = {
+    id: string
+    label: string
+    kind: 'scheduled' | 'event'
+    builtin: boolean
+    provider?: TriggerProviderMeta
+}
+
 export interface TriggerRouteChoice {
     label: string
     platform: string
     selfId: string
 }
 
-export const scenarios: {
-    type: TriggerCondition['type']
-    label: string
-}[] = [
-    { type: 'once', label: '指定时间执行一次' },
-    { type: 'calendar', label: '每天或每周固定时间' },
-    { type: 'interval', label: '固定间隔' },
-    { type: 'cron', label: '高级 Cron' },
-    { type: 'window', label: '时间段内循环检查' },
-    { type: 'keyword', label: '消息包含关键词' },
-    { type: 'participation', label: '群聊达到参与门槛' },
-    { type: 'inactivity', label: '活跃后沉默' },
-    { type: 'semantic', label: '语义主题' }
-]
+export const builtinScenarioLabels: Record<string, string> = {
+    once: '指定时间执行一次',
+    calendar: '每天或每周固定时间',
+    interval: '固定间隔',
+    cron: '高级 Cron',
+    window: '时间段内循环检查',
+    keyword: '消息包含关键词',
+    participation: '群聊达到参与门槛',
+    inactivity: '活跃后沉默',
+    semantic: '语义主题'
+}
+
+export function toScenarios(
+    providers: TriggerProviderMeta[]
+): ScenarioChoice[] {
+    return providers.map((item) => ({
+        id: item.id,
+        label: item.label || builtinScenarioLabels[item.id] || item.id,
+        kind: item.kind,
+        builtin: item.builtin,
+        provider: item
+    }))
+}
 
 export const statusLabels: Record<TriggerTaskStatus, string> = {
     waiting: '等待中',
@@ -38,6 +57,14 @@ export const statusLabels: Record<TriggerTaskStatus, string> = {
     paused: '已暂停',
     completed: '已完成',
     error: '异常'
+}
+
+export const decisionLabels: Record<TriggerRunDecision['type'], string> = {
+    continue: '继续',
+    stop_period: '停止本周期',
+    complete: '完成任务',
+    pause_until: '暂停',
+    reschedule: '重新安排'
 }
 
 export const dayOptions = [
@@ -82,8 +109,22 @@ export function createGate(): Extract<TriggerGate, { type: 'model' }> {
 }
 
 export function createCondition(
-    type: TriggerCondition['type']
+    type: string,
+    provider?: TriggerProviderMeta
 ): TriggerCondition {
+    if (provider != null && !provider.builtin) {
+        return {
+            type: 'extension',
+            provider: provider.id,
+            config: structuredClone(provider.defaultConfig)
+        }
+    }
+    if (provider?.builtin && provider.defaultConfig != null) {
+        return {
+            type: provider.id as TriggerCondition['type'],
+            ...(structuredClone(provider.defaultConfig) as object)
+        } as TriggerCondition
+    }
     if (type === 'once') {
         return { type, at: new Date(Date.now() + 3600000).toISOString() }
     }
@@ -128,7 +169,7 @@ export function createCondition(
     if (type === 'keyword') {
         return {
             type,
-            keywords: [],
+            keywords: ['keyword'],
             caseSensitive: false,
             cooldownMinutes: 10
         }
@@ -155,7 +196,7 @@ export function createCondition(
     }
     return {
         type: 'semantic',
-        topic: '',
+        topic: 'topic',
         withinMinutes: 10,
         minMessages: 5,
         cooldownMinutes: 30,
@@ -178,18 +219,62 @@ export function createInput(): TriggerCreateInput & TriggerUpdateInput {
         },
         target: {
             bot: { platform: '', selfId: '' },
-            destination: { type: 'channel', channelId: '' },
+            destination: { type: 'channel', guildId: '', channelId: '' },
             principalId: '',
             delivery: 'channel'
         }
     }
 }
 
-export function isMessageCondition(type: TriggerCondition['type']) {
+export function isMessageCondition(
+    condition: TriggerCondition | string,
+    providers?: TriggerProviderMeta[]
+) {
+    if (typeof condition === 'string') {
+        if (
+            condition === 'keyword' ||
+            condition === 'participation' ||
+            condition === 'inactivity' ||
+            condition === 'semantic'
+        ) {
+            return true
+        }
+        return (
+            providers?.find((item) => item.id === condition)?.kind === 'event'
+        )
+    }
+    if (condition.type === 'extension') {
+        return (
+            providers?.find((item) => item.id === condition.provider)?.kind ===
+            'event'
+        )
+    }
     return (
-        type === 'keyword' ||
-        type === 'participation' ||
-        type === 'inactivity' ||
-        type === 'semantic'
+        condition.type === 'keyword' ||
+        condition.type === 'participation' ||
+        condition.type === 'inactivity' ||
+        condition.type === 'semantic'
     )
+}
+
+export function conditionKey(condition: TriggerCondition) {
+    return condition.type === 'extension' ? condition.provider : condition.type
+}
+
+export function statusType(status: TriggerTaskStatus) {
+    if (status === 'waiting') return 'success'
+    if (status === 'running') return 'warning'
+    if (status === 'error') return 'danger'
+    return 'info'
+}
+
+export function formatDate(value?: Date | string | null) {
+    if (!value) return '未安排'
+    return new Date(value).toLocaleString()
+}
+
+export function formatDecision(decision: TriggerRunDecision) {
+    return decision.reason
+        ? `${decisionLabels[decision.type]}：${decision.reason}`
+        : decisionLabels[decision.type]
 }

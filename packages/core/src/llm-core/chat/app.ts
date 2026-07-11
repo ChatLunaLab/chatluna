@@ -147,9 +147,10 @@ export class ChatInterface {
         wrapper: ChatLunaLLMChainWrapper
     ): Promise<ChainValues> {
         let hasSavedUser = false
+        const persist = arg.persist !== false
 
         const saveUser = async () => {
-            if (hasSavedUser || arg.persist === false) {
+            if (hasSavedUser || !persist) {
                 return
             }
 
@@ -158,7 +159,11 @@ export class ChatInterface {
         }
 
         // Compress chat history before starting
-        if (this.chatluna.currentConfig.infiniteContext && this._chatHistory) {
+        if (
+            persist &&
+            this.chatluna.currentConfig.infiniteContext &&
+            this._chatHistory
+        ) {
             try {
                 const result = await compressIfNeeded({
                     chatHistory: this._chatHistory,
@@ -189,13 +194,17 @@ export class ChatInterface {
             messageQueue: arg.messageQueue,
             onAgentEvent: async (event) => {
                 if (event.type === 'tool-result') {
-                    await saveUser()
-                    await this._chatHistory.addAgentToolBatch(event.steps)
+                    if (persist) {
+                        await saveUser()
+                        await this._chatHistory.addAgentToolBatch(event.steps)
+                    }
                 }
 
                 if (event.type === 'human-update') {
-                    await saveUser()
-                    await this._chatHistory.addMessages(event.messages)
+                    if (persist) {
+                        await saveUser()
+                        await this._chatHistory.addMessages(event.messages)
+                    }
                 }
 
                 await arg.onAgentEvent?.(event)
@@ -217,15 +226,17 @@ export class ChatInterface {
                 displayResponse
             )
             displayResponse.content = handlerResult.displayContent
-            await this._chatHistory.overrideAdditionalArgs(
-                handlerResult.variables
-            )
+            if (persist) {
+                await this._chatHistory.overrideAdditionalArgs(
+                    handlerResult.variables
+                )
+            }
         }
 
         const messageContent = getMessageContent(displayResponse.content)
 
         // Update chat history
-        if (messageContent.trim().length > 0 && arg.persist !== false) {
+        if (messageContent.trim().length > 0 && persist) {
             await saveUser()
             let saveMessage = responseMessage
             if (!this.chatluna.currentConfig.rawOnCensor) {
@@ -235,30 +246,28 @@ export class ChatInterface {
             await this._chatHistory.addMessage(saveMessage)
         }
 
-        if (arg.persist !== false) {
-            try {
-                await this.ctx.parallel(
-                    'chatluna/after-chat',
-                    arg.conversationId,
-                    arg.message,
-                    displayResponse as AIMessage,
-                    { ...arg.variables, chatCount: this._chatCount },
-                    this,
-                    arg.session
-                )
-            } catch (error) {
-                await this.handleChatError(arg, wrapper, error, false)
-            }
+        try {
+            await this.ctx.parallel(
+                'chatluna/after-chat',
+                arg.conversationId,
+                arg.message,
+                displayResponse as AIMessage,
+                { ...arg.variables, chatCount: this._chatCount },
+                this,
+                arg.session
+            )
+        } catch (error) {
+            await this.handleChatError(arg, wrapper, error, false)
+        }
 
-            if (this._input.autoTitle !== false) {
-                autoSummarizeTitle(
-                    this.chatluna,
-                    arg.conversationId,
-                    wrapper,
-                    arg.message,
-                    displayResponse as AIMessage
-                ).catch((e) => logger.error('autoSummarizeTitle error:', e))
-            }
+        if (persist && this._input.autoTitle !== false) {
+            autoSummarizeTitle(
+                this.chatluna,
+                arg.conversationId,
+                wrapper,
+                arg.message,
+                displayResponse as AIMessage
+            ).catch((e) => logger.error('autoSummarizeTitle error:', e))
         }
 
         return { message: displayResponse }

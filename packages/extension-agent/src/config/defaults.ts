@@ -21,7 +21,8 @@ const HIGH_AUTHORITY_TOOLS = new Set([
     'file_read',
     'file_write',
     'glob',
-    'grep'
+    'grep',
+    'trigger'
 ])
 
 export function getDefaultToolAuthority(name?: string) {

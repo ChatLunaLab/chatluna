@@ -1,5 +1,6 @@
 import type { UsageMetadata } from '@langchain/core/messages'
 import type { Session } from 'koishi'
+import type { z } from 'zod'
 
 export interface TriggerConfig {}
 
@@ -33,6 +34,19 @@ export type TriggerGate =
           timeoutSeconds: number
           dailyTokenLimit: number
       }
+
+export type TriggerBuiltinConditionType =
+    | 'once'
+    | 'calendar'
+    | 'interval'
+    | 'cron'
+    | 'window'
+    | 'keyword'
+    | 'participation'
+    | 'inactivity'
+    | 'semantic'
+
+export type TriggerProviderKind = 'scheduled' | 'event'
 
 export type TriggerCondition =
     | {
@@ -99,6 +113,74 @@ export type TriggerCondition =
           cooldownMinutes: number
           gate: Extract<TriggerGate, { type: 'model' }>
       }
+    | {
+          type: 'extension'
+          provider: string
+          config: unknown
+      }
+
+export interface TriggerCandidate {
+    reason: string
+    scopeKey?: string
+    excerpts?: string[]
+    stats?: Record<string, number>
+    variables?: Record<string, unknown>
+    gate?: TriggerGate
+}
+
+export interface TriggerProviderOccurrence {
+    at: Date
+    periodKey?: string
+    occurrenceKey?: string
+}
+
+export interface TriggerProviderObserveMessage {
+    id: string
+    at: number
+    userId: string
+    username?: string
+    content: string
+}
+
+export interface TriggerProviderScheduleInput {
+    config: unknown
+    after: Date
+    skipPeriod?: string
+    occurrenceKey?: string
+}
+
+export interface TriggerProviderMatchInput {
+    config: unknown
+    content: string
+    message: TriggerProviderObserveMessage
+    history: TriggerProviderObserveMessage[]
+    task: TriggerTask
+}
+
+export interface TriggerProviderDef {
+    id: string
+    label: string
+    description?: string
+    kind: TriggerProviderKind
+    schema: z.ZodTypeAny
+    defaultConfig: unknown
+    next?: (
+        input: TriggerProviderScheduleInput
+    ) => TriggerProviderOccurrence | null
+    preview?: (config: unknown, count: number, now: Date) => Date[]
+    match?: (input: TriggerProviderMatchInput) => TriggerCandidate | undefined
+    cooldownMinutes?: (config: unknown) => number | undefined
+}
+
+export interface TriggerProviderMeta {
+    id: string
+    label: string
+    description?: string
+    kind: TriggerProviderKind
+    builtin: boolean
+    schema: Record<string, unknown>
+    defaultConfig: unknown
+}
 
 export interface TriggerExecution {
     model: TriggerModelPolicy
@@ -214,7 +296,7 @@ export interface TriggerRun {
 export interface TriggerListFilter {
     ownerKey?: string
     status?: TriggerTaskStatus
-    conditionType?: TriggerCondition['type']
+    conditionType?: TriggerCondition['type'] | string
     enabled?: boolean
 }
 

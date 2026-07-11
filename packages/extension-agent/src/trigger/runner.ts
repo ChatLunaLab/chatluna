@@ -2,12 +2,14 @@ import { randomUUID } from 'crypto'
 import { z } from 'zod'
 import type { Context } from 'koishi'
 import type {
+    TriggerCandidate,
     TriggerGate,
     TriggerRun,
     TriggerRunOrigin,
     TriggerTask,
     TriggerTaskState
 } from '../types/trigger'
+import type { TriggerProviderRegistry } from './providers/registry'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { logger } from '..'
 import { TriggerDecisionCollector, TriggerRunControl } from './control'
@@ -15,14 +17,7 @@ import type { TriggerPlan } from './planner'
 import { TriggerPlanner } from './planner'
 import { TriggerStore } from './store'
 
-export interface TriggerCandidate {
-    reason: string
-    scopeKey?: string
-    excerpts?: string[]
-    stats?: Record<string, number>
-    variables?: Record<string, unknown>
-    gate?: TriggerGate
-}
+export type { TriggerCandidate }
 
 export interface TriggerRunnerInput {
     signal?: AbortSignal
@@ -34,6 +29,7 @@ export interface TriggerRunnerInput {
 export interface TriggerRunnerOptions {
     control?: TriggerRunControl
     refresh?: () => Promise<void> | void
+    registry?: TriggerProviderRegistry
 }
 
 interface RunningTask {
@@ -156,6 +152,45 @@ export class TriggerRunner {
         if (!task.enabled) {
             return await this._skip(id, origin, input.scheduledAt, 'disabled')
         }
+        if (task.condition.type === 'extension') {
+            const provider = this.options.registry?.get(task.condition.provider)
+            if (provider == null) {
+                const error = `Unknown trigger provider: ${task.condition.provider}`
+                if (origin === 'manual') {
+                    const now = new Date()
+                    return await this.store.createRun({
+                        id: randomUUID(),
+                        taskId: id,
+                        origin,
+                        status: 'failed',
+                        scheduledAt: input.scheduledAt ?? null,
+                        startedAt: now,
+                        finishedAt: now,
+                        error
+                    })
+                }
+                await this.store.update(id, {
+                    state: {
+                        ...task.state,
+                        status: 'error',
+                        nextRunAt: null,
+                        lastError: error
+                    }
+                })
+                await this.options.refresh?.()
+                const now = new Date()
+                return await this.store.createRun({
+                    id: randomUUID(),
+                    taskId: id,
+                    origin,
+                    status: 'failed',
+                    scheduledAt: input.scheduledAt ?? null,
+                    startedAt: now,
+                    finishedAt: now,
+                    error
+                })
+            }
+        }
         const now = new Date()
         const gateCursor =
             task.state.cursor != null &&
@@ -229,7 +264,7 @@ export class TriggerRunner {
         let collector: TriggerDecisionCollector | undefined
         try {
             if (origin !== 'manual') {
-                const cooldown = getCooldown(task)
+                const cooldown = getCooldown(task, this.options.registry)
                 const clearOverride =
                     task.state.cursor != null &&
                     typeof task.state.cursor === 'object' &&
@@ -578,7 +613,14 @@ export class TriggerRunner {
     }
 }
 
-function getCooldown(task: TriggerTask): number | undefined {
+function getCooldown(
+    task: TriggerTask,
+    registry?: TriggerProviderRegistry
+): number | undefined {
+    if (task.condition.type === 'extension') {
+        const item = registry?.get(task.condition.provider)
+        return item?.cooldownMinutes?.(task.condition.config)
+    }
     if (
         task.condition.type === 'keyword' ||
         task.condition.type === 'participation' ||

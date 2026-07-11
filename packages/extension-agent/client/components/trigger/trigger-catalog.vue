@@ -21,9 +21,9 @@
             <el-select v-model="type" clearable placeholder="全部场景">
                 <el-option
                     v-for="item in scenarios"
-                    :key="item.type"
+                    :key="item.id"
                     :label="item.label"
-                    :value="item.type"
+                    :value="item.id"
                 />
             </el-select>
         </div>
@@ -45,6 +45,7 @@
                         <div class="task-title">
                             <button
                                 type="button"
+                                :disabled="busy"
                                 @click="emit('select', task.id)"
                             >
                                 {{ task.name }}
@@ -62,6 +63,7 @@
                         </el-tag>
                         <el-switch
                             :model-value="task.enabled"
+                            :disabled="busy"
                             @change="emit('toggle', task.id, $event as boolean)"
                         />
                     </div>
@@ -104,6 +106,7 @@
                             :icon="Edit"
                             circle
                             aria-label="编辑"
+                            :disabled="busy"
                             @click="emit('select', task.id)"
                         />
                     </el-tooltip>
@@ -112,6 +115,7 @@
                             :icon="VideoPlay"
                             circle
                             aria-label="立即执行"
+                            :disabled="busy"
                             @click="emit('fire', task.id)"
                         />
                     </el-tooltip>
@@ -124,6 +128,7 @@
                             :icon="RefreshRight"
                             circle
                             aria-label="恢复任务"
+                            :disabled="busy"
                             @click="emit('resume', task.id)"
                         />
                     </el-tooltip>
@@ -134,6 +139,7 @@
                             type="danger"
                             plain
                             aria-label="删除"
+                            :disabled="busy"
                             @click="emit('remove', task.id)"
                         />
                     </el-tooltip>
@@ -162,9 +168,23 @@ import {
 } from '@element-plus/icons-vue'
 import { computed, ref } from 'vue'
 import type { TriggerTask, TriggerTaskStatus } from '../../../src/types'
-import { dayOptions, scenarios, statusLabels } from './types'
+import type { TriggerProviderMeta } from '../../../src/types'
+import {
+    conditionKey,
+    dayOptions,
+    formatDate,
+    formatDecision,
+    statusLabels,
+    statusType,
+    type ScenarioChoice
+} from './types'
 
-const props = defineProps<{ tasks: TriggerTask[] }>()
+const props = defineProps<{
+    tasks: TriggerTask[]
+    scenarios: ScenarioChoice[]
+    providers: TriggerProviderMeta[]
+    busy?: boolean
+}>()
 const emit = defineEmits<{
     select: [id: number]
     toggle: [id: number, enabled: boolean]
@@ -175,13 +195,14 @@ const emit = defineEmits<{
 
 const search = ref('')
 const status = ref<TriggerTaskStatus | ''>('')
-const type = ref<TriggerTask['condition']['type'] | ''>('')
+const type = ref<string>('')
 
 const filtered = computed(() => {
     const text = search.value.trim().toLowerCase()
     return props.tasks.filter((task) => {
         if (status.value && task.state.status !== status.value) return false
-        if (type.value && task.condition.type !== type.value) return false
+        if (type.value && conditionKey(task.condition) !== type.value)
+            return false
         if (!text) return true
         return [
             task.name,
@@ -200,15 +221,16 @@ const emptyText = computed(() =>
 )
 
 function conditionIcon(task: TriggerTask) {
-    if (task.condition.type === 'once') return Clock
-    if (task.condition.type === 'calendar') return AlarmClock
-    if (task.condition.type === 'interval') return RefreshRight
-    if (task.condition.type === 'cron') return AlarmClock
-    if (task.condition.type === 'window') return TrendCharts
-    if (task.condition.type === 'keyword') return ChatDotRound
-    if (task.condition.type === 'participation') return UserFilled
-    if (task.condition.type === 'inactivity') return Bell
-    if (task.condition.type === 'semantic') return MagicStick
+    const key = conditionKey(task.condition)
+    if (key === 'once') return Clock
+    if (key === 'calendar') return AlarmClock
+    if (key === 'interval') return RefreshRight
+    if (key === 'cron') return AlarmClock
+    if (key === 'window') return TrendCharts
+    if (key === 'keyword') return ChatDotRound
+    if (key === 'participation') return UserFilled
+    if (key === 'inactivity') return Bell
+    if (key === 'semantic') return MagicStick
     return Bell
 }
 
@@ -256,7 +278,15 @@ function summarize(task: TriggerTask) {
     if (condition.type === 'inactivity') {
         return `活跃 ${condition.minMessages} 条后静默 ${condition.silentMinutes} 分钟`
     }
-    return `语义主题 · ${condition.topic}`
+    if (condition.type === 'semantic') {
+        return `语义主题 · ${condition.topic}`
+    }
+    const provider = props.providers.find(
+        (item) => item.id === condition.provider
+    )
+    return provider
+        ? `${provider.label} · ${condition.provider}`
+        : `扩展提供方 · ${condition.provider}`
 }
 
 function modelLabel(task: TriggerTask) {
@@ -268,16 +298,7 @@ function modelLabel(task: TriggerTask) {
 function decisionLabel(task: TriggerTask) {
     const decision = task.state.lastDecision
     if (!decision) return '无'
-    const labels = {
-        continue: '继续',
-        stop_period: '停止本周期',
-        complete: '完成',
-        pause_until: '暂停',
-        reschedule: '重新安排'
-    }
-    return decision.reason
-        ? `${labels[decision.type]}：${decision.reason}`
-        : labels[decision.type]
+    return formatDecision(decision)
 }
 
 function canResume(task: TriggerTask) {
@@ -287,18 +308,6 @@ function canResume(task: TriggerTask) {
             task.state.status === 'completed' ||
             task.state.status === 'error')
     )
-}
-
-function statusType(status: TriggerTaskStatus) {
-    if (status === 'waiting') return 'success'
-    if (status === 'running') return 'warning'
-    if (status === 'error') return 'danger'
-    return 'info'
-}
-
-function formatDate(value?: Date | string | null) {
-    if (!value) return '未安排'
-    return new Date(value).toLocaleString()
 }
 </script>
 

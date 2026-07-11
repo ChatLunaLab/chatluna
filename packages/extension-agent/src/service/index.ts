@@ -122,8 +122,6 @@ export class ChatLunaAgentService extends Service {
         await this.skills.reload()
         await this.mcp.reload()
         await this.subAgent.reload()
-        await this.trigger.stop()
-        await this.trigger.start()
         await this.refreshConsoleData()
     }
 

@@ -1,9 +1,11 @@
 import { type Context, h } from 'koishi'
 import type { ChatLunaObservedMessage } from 'koishi-plugin-chatluna'
 import { logger } from '..'
-import type { TriggerTask } from '../types/trigger'
-import type { TriggerCandidate, TriggerRunner } from './runner'
+import type { TriggerCandidate, TriggerTask } from '../types/trigger'
+import type { TriggerProviderRegistry } from './providers/registry'
+import type { TriggerRunner } from './runner'
 import type { TriggerEventDeadlineOptions, TriggerScheduler } from './scheduler'
+import { isEventCondition } from './schema'
 import type { TriggerStore } from './store'
 
 interface ObservedMessage {
@@ -19,13 +21,6 @@ interface ObservedScopeState {
     lastMessageAt: number
 }
 
-const eventTypes = new Set([
-    'keyword',
-    'participation',
-    'inactivity',
-    'semantic'
-])
-
 export class TriggerObserver {
     private _active = false
     private _dispose?: () => void
@@ -36,7 +31,8 @@ export class TriggerObserver {
         private readonly ctx: Context,
         private readonly store: TriggerStore,
         private readonly runner: TriggerRunner,
-        private readonly scheduler: TriggerScheduler
+        private readonly scheduler: TriggerScheduler,
+        private readonly registry?: TriggerProviderRegistry
     ) {}
 
     async start(): Promise<void> {
@@ -67,7 +63,7 @@ export class TriggerObserver {
     private async _observe(msg: ChatLunaObservedMessage): Promise<void> {
         const tasks = (await this.store.list({ enabled: true })).filter(
             (task) =>
-                eventTypes.has(task.condition.type) &&
+                isEventCondition(task.condition, this.registry) &&
                 (task.state.status === 'waiting' ||
                     task.state.status === 'running') &&
                 task.target.bot.platform === msg.platform &&
@@ -182,6 +178,24 @@ export class TriggerObserver {
         current: string
     ): TriggerCandidate | undefined {
         const condition = task.condition
+        if (condition.type === 'extension') {
+            const item = this.registry?.get(condition.provider)
+            if (item == null || item.match == null) return
+            const latest = state.messages[state.messages.length - 1]
+            if (latest == null) return
+            const candidate = item.match({
+                config: condition.config,
+                content: current,
+                message: latest,
+                history: state.messages,
+                task
+            })
+            if (candidate == null) return
+            return {
+                ...candidate,
+                scopeKey: candidate.scopeKey ?? key
+            }
+        }
         if (condition.type === 'keyword') {
             const content = condition.caseSensitive
                 ? current

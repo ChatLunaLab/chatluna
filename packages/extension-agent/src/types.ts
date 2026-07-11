@@ -44,6 +44,7 @@ import type {
     TriggerConfig,
     TriggerCreateInput,
     TriggerListFilter,
+    TriggerProviderMeta,
     TriggerRun,
     TriggerStatus,
     TriggerTask,
@@ -311,6 +312,9 @@ declare module '@koishijs/plugin-console' {
                 platform: string
                 selfId: string
             }[]
+        >
+        'chatluna-agent/listTriggerProviders': () => Promise<
+            TriggerProviderMeta[]
         >
         'chatluna-agent/getTriggerTargets': (
             platform: string,

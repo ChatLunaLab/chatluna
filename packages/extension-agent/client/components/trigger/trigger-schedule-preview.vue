@@ -34,11 +34,12 @@ const loading = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
 let seq = 0
 
-const scheduled = computed(() =>
-    ['once', 'calendar', 'interval', 'cron', 'window'].includes(
+const scheduled = computed(() => {
+    if (props.condition.type === 'extension') return true
+    return ['once', 'calendar', 'interval', 'cron', 'window'].includes(
         props.condition.type
     )
-)
+})
 
 watch(
     () => props.condition,

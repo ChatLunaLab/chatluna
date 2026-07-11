@@ -9,15 +9,18 @@ import type {
     TriggerTask
 } from '../types/trigger'
 import {
-    triggerConditionSchema,
-    triggerCreateInputSchema,
-    triggerExecutionSchema,
-    triggerTargetSchema,
+    createTriggerCreateInputSchema,
+    createTriggerUpdateInputSchema,
     triggerTaskStateSchema
 } from './schema'
+import type { TriggerProviderRegistry } from './providers/registry'
 
 export class TriggerStore {
-    constructor(private readonly ctx: Context) {
+    constructor(
+        private readonly ctx: Context,
+        private readonly registry?: () => TriggerProviderRegistry | undefined
+    ) {
+        if (ctx.database == null) return
         ctx.model.extend(
             'chatluna_trigger',
             {
@@ -32,7 +35,11 @@ export class TriggerStore {
                 createdAt: 'timestamp',
                 updatedAt: 'timestamp'
             } as never,
-            { autoInc: true, primary: 'id' } as never
+            {
+                autoInc: true,
+                primary: 'id',
+                indexes: ['enabled', 'ownerKey', 'createdAt']
+            } as never
         )
         ctx.model.extend(
             'chatluna_trigger_run',
@@ -49,13 +56,16 @@ export class TriggerStore {
                 usage: { type: 'json', nullable: true },
                 createdAt: 'timestamp'
             } as never,
-            { primary: 'id' } as never
+            {
+                primary: 'id',
+                indexes: ['taskId', 'status', 'createdAt']
+            } as never
         )
     }
 
     async create(input: TriggerStoreCreateInput): Promise<TriggerTask> {
         this._checkDatabase()
-        const parsed = triggerCreateInputSchema.parse({
+        const parsed = createTriggerCreateInputSchema(this.registry?.()).parse({
             name: input.name,
             enabled: input.enabled,
             condition: input.condition,
@@ -87,66 +97,60 @@ export class TriggerStore {
 
     async list(filter?: TriggerListFilter): Promise<TriggerTask[]> {
         this._checkDatabase()
-        const tasks = await this.ctx.database.get(
+        const query: Record<string, unknown> = {}
+        if (filter?.ownerKey != null) query.ownerKey = filter.ownerKey
+        if (filter?.enabled != null) query.enabled = filter.enabled
+        const tasks = (await this.ctx.database.get(
             'chatluna_trigger',
-            {} as never
-        )
-        return tasks
-            .filter((task) => {
-                if (
-                    filter?.ownerKey != null &&
-                    task.ownerKey !== filter.ownerKey
-                ) {
-                    return false
-                }
-                if (
-                    filter?.enabled != null &&
-                    task.enabled !== filter.enabled
-                ) {
-                    return false
-                }
-                if (
-                    filter?.status != null &&
-                    task.state.status !== filter.status
-                ) {
-                    return false
-                }
-                return (
-                    filter?.conditionType == null ||
-                    task.condition.type === filter.conditionType
-                )
-            })
-            .sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())
+            query as never,
+            { sort: { createdAt: 'desc' } } as never
+        )) as TriggerTask[]
+        if (filter?.status == null && filter?.conditionType == null) {
+            return tasks
+        }
+        return tasks.filter((task) => {
+            if (filter.status != null && task.state.status !== filter.status) {
+                return false
+            }
+            if (filter.conditionType == null) return true
+            if (task.condition.type === filter.conditionType) return true
+            return (
+                task.condition.type === 'extension' &&
+                task.condition.provider === filter.conditionType
+            )
+        })
     }
 
     async update(id: number, patch: TriggerStoreUpdate): Promise<TriggerTask> {
         this._checkDatabase()
-        if ((await this.get(id)) == null) {
+        const current = await this.get(id)
+        if (current == null) {
             throw new Error(`Trigger task not found: ${id}`)
         }
         const next: TriggerStoreUpdate & { updatedAt: Date } = {
             updatedAt: new Date()
         }
-        if (patch.name !== undefined) {
-            next.name = patch.name.trim()
-            if (next.name.length < 1)
-                throw new Error('Trigger name is required')
-        }
-        if (patch.enabled !== undefined) next.enabled = patch.enabled
-        if (patch.condition !== undefined) {
-            next.condition = triggerConditionSchema.parse(
-                patch.condition
-            ) as TriggerTask['condition']
-        }
-        if (patch.execution !== undefined) {
-            next.execution = triggerExecutionSchema.parse(
-                patch.execution
-            ) as TriggerTask['execution']
-        }
-        if (patch.target !== undefined) {
-            next.target = triggerTargetSchema.parse(
-                patch.target
-            ) as TriggerTask['target']
+        const definitionChanged =
+            patch.name !== undefined ||
+            patch.enabled !== undefined ||
+            patch.condition !== undefined ||
+            patch.execution !== undefined ||
+            patch.target !== undefined
+        if (definitionChanged) {
+            const merged = createTriggerUpdateInputSchema(
+                this.registry?.()
+            ).parse({
+                name: patch.name ?? current.name,
+                enabled: patch.enabled ?? current.enabled,
+                condition: patch.condition ?? current.condition,
+                execution: patch.execution ?? current.execution,
+                target: patch.target ?? current.target
+            })
+            next.name = merged.name
+            next.enabled = merged.enabled
+            next.condition = merged.condition
+            next.execution = merged.execution
+            next.target = merged.target
         }
         if (patch.state !== undefined) {
             next.state = triggerTaskStateSchema.parse(
@@ -269,13 +273,15 @@ export class TriggerStore {
 
     async listRuns(taskId: number, limit = 20): Promise<TriggerRun[]> {
         this._checkDatabase()
-        return (
-            await this.ctx.database.get('chatluna_trigger_run', {
-                taskId
-            } as never)
-        )
-            .sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())
-            .slice(0, Math.max(1, Math.min(limit, 100)))
+        const size = Math.max(1, Math.min(limit, 100))
+        return (await this.ctx.database.get(
+            'chatluna_trigger_run',
+            { taskId } as never,
+            {
+                sort: { createdAt: 'desc' },
+                limit: size
+            } as never
+        )) as TriggerRun[]
     }
 
     private _checkDatabase() {

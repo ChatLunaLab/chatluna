@@ -3,7 +3,7 @@
         <el-input-number
             v-model="amount"
             :min="min"
-            :max="max"
+            :max="inputMax"
             :step="1"
             controls-position="right"
         />
@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = withDefaults(
     defineProps<{
@@ -40,6 +40,19 @@ const emit = defineEmits<{
 
 const unit = ref(
     props.modelValue >= 60 && props.modelValue % 60 === 0 ? 'large' : 'base'
+)
+watch(
+    () => props.modelValue,
+    (value) => {
+        if (unit.value === 'large') {
+            if (value < 60 || value % 60 !== 0) unit.value = 'base'
+            return
+        }
+        if (value >= 60 && value % 60 === 0) unit.value = 'large'
+    }
+)
+const inputMax = computed(() =>
+    unit.value === 'large' ? Math.floor(props.max / 60) : props.max
 )
 const amount = computed({
     get: () =>

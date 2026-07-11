@@ -10,6 +10,7 @@ import type {
     TriggerUpdateInput,
     TriggerWakeupInput
 } from '../types/trigger'
+import type { TriggerProviderRegistry } from './providers/registry'
 
 const text = z.string().trim().min(1)
 const iso = z
@@ -17,8 +18,9 @@ const iso = z
     .refine(
         (value) =>
             value.includes('T') &&
+            /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) &&
             DateTime.fromISO(value, { setZone: true }).isValid,
-        'Expected a valid ISO timestamp'
+        'Expected a valid ISO timestamp with timezone offset'
     )
 const timezone = z
     .string()
@@ -76,117 +78,254 @@ export const triggerGateSchema = z.discriminatedUnion('type', [
     modelGate
 ])
 
-export const triggerConditionSchema = z
-    .discriminatedUnion('type', [
-        z.object({ type: z.literal('once'), at: iso }).strict(),
-        z
-            .object({
-                type: z.literal('calendar'),
-                timezone,
-                days,
-                times: z
-                    .array(time)
-                    .min(1)
-                    .transform((value) => [...new Set(value)].sort()),
-                misfire
-            })
-            .strict(),
-        z
-            .object({
-                type: z.literal('interval'),
-                everyMinutes: positive,
-                anchorAt: iso,
-                misfire
-            })
-            .strict(),
-        z
-            .object({
-                type: z.literal('cron'),
-                expression: text,
-                timezone,
-                misfire
-            })
-            .strict(),
-        z
-            .object({
-                type: z.literal('window'),
-                timezone,
-                days,
-                start: time,
-                end: time,
-                everyMinutes: positive,
-                misfire,
-                control: z.enum(['fixed', 'model']),
-                defaultDecision: z.enum(['continue', 'stop_period'])
-            })
-            .strict(),
-        z
-            .object({
-                type: z.literal('keyword'),
-                keywords: z
-                    .array(z.string())
-                    .transform((value) => [
-                        ...new Set(
-                            value.map((item) => item.trim()).filter(Boolean)
-                        )
-                    ])
-                    .refine(
-                        (value) => value.length > 0,
-                        'At least one keyword is required'
-                    ),
-                caseSensitive: z.boolean(),
-                cooldownMinutes: positive
-            })
-            .strict(),
-        z
-            .object({
-                type: z.literal('participation'),
-                withinMinutes: windowMinutes,
-                minMessages: threshold,
-                minUsers: threshold,
-                cooldownMinutes: positive,
-                gate: triggerGateSchema
-            })
-            .strict(),
-        z
-            .object({
-                type: z.literal('inactivity'),
-                activeWithinMinutes: windowMinutes,
-                minMessages: threshold,
-                silentMinutes: positive,
-                cooldownMinutes: positive,
-                gate: triggerGateSchema
-            })
-            .strict(),
-        z
-            .object({
-                type: z.literal('semantic'),
-                topic: text,
-                withinMinutes: windowMinutes,
-                minMessages: threshold,
-                cooldownMinutes: positive,
-                gate: modelGate
-            })
-            .strict()
-    ])
-    .superRefine((value, ctx) => {
-        if (value.type !== 'cron') return
-        try {
-            CronExpressionParser.parse(value.expression, {
-                currentDate: new Date(),
-                tz: value.timezone
-            })
-        } catch (err) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['expression'],
-                message:
-                    err instanceof Error
-                        ? err.message
-                        : 'Invalid cron expression'
-            })
-        }
-    }) as unknown as z.ZodType<TriggerCondition>
+export const onceConfigSchema = z.object({ at: iso }).strict()
+export const calendarConfigSchema = z
+    .object({
+        timezone,
+        days,
+        times: z
+            .array(time)
+            .min(1)
+            .transform((value) => [...new Set(value)].sort()),
+        misfire
+    })
+    .strict()
+export const intervalConfigSchema = z
+    .object({
+        everyMinutes: positive,
+        anchorAt: iso,
+        misfire
+    })
+    .strict()
+export const cronConfigSchema = z
+    .object({
+        expression: text,
+        timezone,
+        misfire
+    })
+    .strict()
+export const windowConfigSchema = z
+    .object({
+        timezone,
+        days,
+        start: time,
+        end: time,
+        everyMinutes: positive,
+        misfire,
+        control: z.enum(['fixed', 'model']),
+        defaultDecision: z.enum(['continue', 'stop_period'])
+    })
+    .strict()
+export const keywordConfigSchema = z
+    .object({
+        keywords: z
+            .array(z.string())
+            .transform((value) => [
+                ...new Set(value.map((item) => item.trim()).filter(Boolean))
+            ])
+            .refine(
+                (value) => value.length > 0,
+                'At least one keyword is required'
+            ),
+        caseSensitive: z.boolean(),
+        cooldownMinutes: positive
+    })
+    .strict()
+export const participationConfigSchema = z
+    .object({
+        withinMinutes: windowMinutes,
+        minMessages: threshold,
+        minUsers: threshold,
+        cooldownMinutes: positive,
+        gate: triggerGateSchema
+    })
+    .strict()
+export const inactivityConfigSchema = z
+    .object({
+        activeWithinMinutes: windowMinutes,
+        minMessages: threshold,
+        silentMinutes: positive,
+        cooldownMinutes: positive,
+        gate: triggerGateSchema
+    })
+    .strict()
+export const semanticConfigSchema = z
+    .object({
+        topic: text,
+        withinMinutes: windowMinutes,
+        minMessages: threshold,
+        cooldownMinutes: positive,
+        gate: modelGate
+    })
+    .strict()
+
+const builtinConditionSchema = z.discriminatedUnion('type', [
+    z.object({ type: z.literal('once'), at: iso }).strict(),
+    z
+        .object({
+            type: z.literal('calendar'),
+            timezone,
+            days,
+            times: z
+                .array(time)
+                .min(1)
+                .transform((value) => [...new Set(value)].sort()),
+            misfire
+        })
+        .strict(),
+    z
+        .object({
+            type: z.literal('interval'),
+            everyMinutes: positive,
+            anchorAt: iso,
+            misfire
+        })
+        .strict(),
+    z
+        .object({
+            type: z.literal('cron'),
+            expression: text,
+            timezone,
+            misfire
+        })
+        .strict(),
+    z
+        .object({
+            type: z.literal('window'),
+            timezone,
+            days,
+            start: time,
+            end: time,
+            everyMinutes: positive,
+            misfire,
+            control: z.enum(['fixed', 'model']),
+            defaultDecision: z.enum(['continue', 'stop_period'])
+        })
+        .strict(),
+    z
+        .object({
+            type: z.literal('keyword'),
+            keywords: z
+                .array(z.string())
+                .transform((value) => [
+                    ...new Set(value.map((item) => item.trim()).filter(Boolean))
+                ])
+                .refine(
+                    (value) => value.length > 0,
+                    'At least one keyword is required'
+                ),
+            caseSensitive: z.boolean(),
+            cooldownMinutes: positive
+        })
+        .strict(),
+    z
+        .object({
+            type: z.literal('participation'),
+            withinMinutes: windowMinutes,
+            minMessages: threshold,
+            minUsers: threshold,
+            cooldownMinutes: positive,
+            gate: triggerGateSchema
+        })
+        .strict(),
+    z
+        .object({
+            type: z.literal('inactivity'),
+            activeWithinMinutes: windowMinutes,
+            minMessages: threshold,
+            silentMinutes: positive,
+            cooldownMinutes: positive,
+            gate: triggerGateSchema
+        })
+        .strict(),
+    z
+        .object({
+            type: z.literal('semantic'),
+            topic: text,
+            withinMinutes: windowMinutes,
+            minMessages: threshold,
+            cooldownMinutes: positive,
+            gate: modelGate
+        })
+        .strict()
+])
+
+export const extensionConditionSchema = z
+    .object({
+        type: z.literal('extension'),
+        provider: text,
+        config: z.unknown()
+    })
+    .strict()
+
+export const triggerConditionShapeSchema = z.union([
+    builtinConditionSchema,
+    extensionConditionSchema
+])
+
+export function createTriggerConditionSchema(
+    registry?: TriggerProviderRegistry
+) {
+    return triggerConditionShapeSchema
+        .superRefine((value, ctx) => {
+            if (value.type === 'cron') {
+                try {
+                    CronExpressionParser.parse(value.expression, {
+                        currentDate: new Date(),
+                        tz: value.timezone
+                    })
+                } catch (err) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['expression'],
+                        message:
+                            err instanceof Error
+                                ? err.message
+                                : 'Invalid cron expression'
+                    })
+                }
+                return
+            }
+            if (value.type !== 'extension') return
+            if (registry == null) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['provider'],
+                    message: `Unknown trigger provider: ${value.provider}`
+                })
+                return
+            }
+            const item = registry.get(value.provider)
+            if (item == null) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['provider'],
+                    message: `Unknown trigger provider: ${value.provider}`
+                })
+                return
+            }
+            const parsed = item.schema.safeParse(value.config)
+            if (!parsed.success) {
+                for (const issue of parsed.error.issues) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['config', ...issue.path],
+                        message: issue.message
+                    })
+                }
+            }
+        })
+        .transform((value) => {
+            if (value.type !== 'extension' || registry == null) return value
+            return {
+                type: 'extension' as const,
+                provider: value.provider,
+                config: registry.parseConfig(value.provider, value.config)
+            }
+        }) as unknown as z.ZodType<TriggerCondition>
+}
+
+export const triggerConditionSchema = createTriggerConditionSchema()
 
 export const triggerExecutionSchema = z
     .object({
@@ -220,26 +359,15 @@ export const triggerTargetSchema = z
     })
     .strict() as unknown as z.ZodType<TriggerTarget>
 
-const definition = {
-    name: text,
-    condition: triggerConditionSchema,
-    execution: triggerExecutionSchema,
-    target: triggerTargetSchema
-}
-
 function checkScope(
     value: {
-        condition: z.infer<typeof triggerConditionSchema>
-        target: z.infer<typeof triggerTargetSchema>
+        condition: TriggerCondition
+        target: TriggerTarget
     },
-    ctx: z.RefinementCtx
+    ctx: z.RefinementCtx,
+    registry?: TriggerProviderRegistry
 ) {
-    const event = [
-        'keyword',
-        'participation',
-        'inactivity',
-        'semantic'
-    ].includes(value.condition.type)
+    const event = isEventCondition(value.condition, registry)
     if (event && value.target.observeScope == null) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -289,17 +417,89 @@ function checkScope(
     }
 }
 
-export const triggerCreateInputSchema = z
-    .object({ ...definition, enabled: z.boolean().optional().default(true) })
-    .strict()
-    .superRefine(checkScope) as unknown as z.ZodType<
-    TriggerCreateInput & { enabled: boolean }
->
+export function isEventCondition(
+    condition: TriggerCondition,
+    registry?: TriggerProviderRegistry
+) {
+    if (condition.type === 'extension') {
+        return registry?.get(condition.provider)?.kind === 'event'
+    }
+    return (
+        condition.type === 'keyword' ||
+        condition.type === 'participation' ||
+        condition.type === 'inactivity' ||
+        condition.type === 'semantic'
+    )
+}
 
-export const triggerUpdateInputSchema = z
-    .object({ ...definition, enabled: z.boolean() })
-    .strict()
-    .superRefine(checkScope) as unknown as z.ZodType<TriggerUpdateInput>
+export function isScheduledCondition(
+    condition: TriggerCondition,
+    registry?: TriggerProviderRegistry
+) {
+    if (condition.type === 'extension') {
+        return registry?.get(condition.provider)?.kind === 'scheduled'
+    }
+    return (
+        condition.type === 'once' ||
+        condition.type === 'calendar' ||
+        condition.type === 'interval' ||
+        condition.type === 'cron' ||
+        condition.type === 'window'
+    )
+}
+
+export function createTriggerCreateInputSchema(
+    registry?: TriggerProviderRegistry
+) {
+    const condition = createTriggerConditionSchema(registry)
+    return z
+        .object({
+            name: text,
+            enabled: z.boolean().optional().default(true),
+            condition,
+            execution: triggerExecutionSchema,
+            target: triggerTargetSchema
+        })
+        .strict()
+        .superRefine((value, ctx) =>
+            checkScope(
+                value as {
+                    condition: TriggerCondition
+                    target: TriggerTarget
+                },
+                ctx,
+                registry
+            )
+        ) as unknown as z.ZodType<TriggerCreateInput & { enabled: boolean }>
+}
+
+export function createTriggerUpdateInputSchema(
+    registry?: TriggerProviderRegistry
+) {
+    const condition = createTriggerConditionSchema(registry)
+    return z
+        .object({
+            name: text,
+            enabled: z.boolean(),
+            condition,
+            execution: triggerExecutionSchema,
+            target: triggerTargetSchema
+        })
+        .strict()
+        .superRefine((value, ctx) =>
+            checkScope(
+                value as {
+                    condition: TriggerCondition
+                    target: TriggerTarget
+                },
+                ctx,
+                registry
+            )
+        ) as unknown as z.ZodType<TriggerUpdateInput>
+}
+
+export const triggerCreateInputSchema = createTriggerCreateInputSchema()
+export const triggerUpdateInputSchema = createTriggerUpdateInputSchema()
 
 export const triggerWakeupInputSchema = z
     .object({

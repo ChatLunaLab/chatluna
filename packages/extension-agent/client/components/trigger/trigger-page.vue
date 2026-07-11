@@ -23,7 +23,12 @@
                     >
                         刷新
                     </el-button>
-                    <el-button :icon="Plus" type="primary" @click="openCreate">
+                    <el-button
+                        :icon="Plus"
+                        type="primary"
+                        :disabled="busy"
+                        @click="openCreate"
+                    >
                         新建触发器
                     </el-button>
                 </div>
@@ -40,6 +45,9 @@
 
             <trigger-catalog
                 :tasks="tasks"
+                :scenarios="scenarios"
+                :providers="providers"
+                :busy="busy"
                 @select="openEditor"
                 @toggle="toggle"
                 @fire="fire"
@@ -56,6 +64,8 @@
             :tools="tools"
             :models="models"
             :presets="presets"
+            :providers="providers"
+            :scenarios="scenarios"
             :busy="busy"
             :error="backendError"
             @back="closeEditor"
@@ -73,13 +83,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, ref, watch } from 'vue'
 import type {
     ToolAvailabilityInfo,
+    TriggerProviderMeta,
     TriggerStatus,
     TriggerTask,
     TriggerUpdateInput
 } from '../../../src/types'
 import TriggerCatalog from './trigger-catalog.vue'
 import TriggerEditor from './trigger-editor.vue'
-import type { TriggerRouteChoice } from './types'
+import { toScenarios, type TriggerRouteChoice } from './types'
 
 const props = defineProps<{
     status?: TriggerStatus
@@ -94,10 +105,12 @@ const routes = ref<TriggerRouteChoice[]>([])
 const tools = ref<ToolAvailabilityInfo[]>([])
 const models = ref<string[]>([])
 const presets = ref<string[]>([])
+const providers = ref<TriggerProviderMeta[]>([])
 const backendError = ref('')
 let seq = 0
 
 const busy = computed(() => props.loading === true || pending.value)
+const scenarios = computed(() => toScenarios(providers.value))
 
 watch(
     () => props.status,
@@ -115,7 +128,8 @@ async function load() {
             send('chatluna-agent/getTriggerRoutingChoices'),
             send('chatluna-agent/getToolAvailability'),
             send('chatluna-agent/getModelNames'),
-            send('chatluna-agent/getPresetNames')
+            send('chatluna-agent/getPresetNames'),
+            send('chatluna-agent/listTriggerProviders')
         ])
         if (current !== seq) return
         tasks.value = result[0]
@@ -123,6 +137,7 @@ async function load() {
         tools.value = result[2]
         models.value = result[3]
         presets.value = result[4]
+        providers.value = result[5]
     } catch (err) {
         if (current !== seq) return
         backendError.value = err instanceof Error ? err.message : String(err)
@@ -237,6 +252,7 @@ async function fire(id: number) {
 async function fireSelected() {
     if (!editing.value) return
     await fire(editing.value.id)
+    pending.value = true
     try {
         editing.value = await send(
             'chatluna-agent/getTrigger',
@@ -244,6 +260,8 @@ async function fireSelected() {
         )
     } catch (err) {
         backendError.value = err instanceof Error ? err.message : String(err)
+    } finally {
+        pending.value = false
     }
 }
 

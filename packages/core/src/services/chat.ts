@@ -248,6 +248,7 @@ export class ChatLunaService extends Service<Config> {
         const controller = new AbortController()
         const onAbort = () => controller.abort(input.signal?.reason)
         let timedOut = false
+        let cleanupConversation: ConversationRecord | undefined
 
         if (input.signal?.aborted) {
             controller.abort(input.signal.reason)
@@ -668,6 +669,9 @@ export class ChatLunaService extends Service<Config> {
                 signal: controller.signal,
                 persist: persist && !ephemeral
             }
+            if (invocation.persist === false) {
+                cleanupConversation = conversation
+            }
 
             if (controller.signal.aborted) {
                 return {
@@ -722,22 +726,6 @@ export class ChatLunaService extends Service<Config> {
                 }
             }
 
-            if (invocation.persist === false) {
-                await this.ctx.database
-                    .remove('chatluna_message', {
-                        conversationId: conversation.id
-                    })
-                    .catch(() => {})
-                await this.ctx.database
-                    .remove('chatluna_conversation', {
-                        id: conversation.id
-                    })
-                    .catch(() => {})
-                await this.conversationRuntime.clearConversationCache(
-                    conversation.id
-                )
-            }
-
             return {
                 ok: true,
                 requestId,
@@ -774,6 +762,22 @@ export class ChatLunaService extends Service<Config> {
         } finally {
             timer?.()
             input.signal?.removeEventListener('abort', onAbort)
+            if (cleanupConversation != null) {
+                const id = cleanupConversation.id
+                await this.ctx.database
+                    .remove('chatluna_message', {
+                        conversationId: id
+                    })
+                    .catch(() => {})
+                await this.ctx.database
+                    .remove('chatluna_conversation', {
+                        id
+                    })
+                    .catch(() => {})
+                await this.conversationRuntime
+                    .clearConversationCache(id)
+                    .catch(() => {})
+            }
         }
     }
 

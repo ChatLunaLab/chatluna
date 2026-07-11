@@ -5,10 +5,13 @@ import {
     countMessageTokens,
     PromptContextRuntime
 } from 'koishi-plugin-chatluna/llm-core/prompt'
+import { logger } from '..'
 import type {
     TriggerActor,
     TriggerCondition,
     TriggerCreateInput,
+    TriggerProviderDef,
+    TriggerProviderMeta,
     TriggerRun,
     TriggerStatus,
     TriggerTask,
@@ -19,12 +22,15 @@ import type {
 import { TriggerRunControl } from '../trigger/control'
 import { TriggerObserver } from '../trigger/observer'
 import { TriggerPlanner } from '../trigger/planner'
+import { builtinProviderDefs } from '../trigger/providers/builtin'
+import { TriggerProviderRegistry } from '../trigger/providers/registry'
 import { TriggerRunner } from '../trigger/runner'
 import { TriggerScheduler } from '../trigger/scheduler'
 import {
+    createTriggerCreateInputSchema,
+    createTriggerUpdateInputSchema,
     finishTriggerRunSchema,
-    triggerCreateInputSchema,
-    triggerUpdateInputSchema,
+    isEventCondition,
     triggerWakeupInputSchema
 } from '../trigger/schema'
 import { TriggerStore } from '../trigger/store'
@@ -32,12 +38,13 @@ import { FinishTriggerRunTool, TriggerTool } from '../trigger/tool'
 
 export interface TriggerListFilter {
     status?: TriggerTaskStatus
-    conditionType?: TriggerCondition['type']
+    conditionType?: TriggerCondition['type'] | string
     enabled?: boolean
 }
 
 export class ChatLunaAgentTriggerService {
     private readonly _store: TriggerStore
+    private readonly _registry = new TriggerProviderRegistry()
     private readonly _planner: TriggerPlanner
     private readonly _control: TriggerRunControl
     private readonly _runner: TriggerRunner
@@ -57,8 +64,11 @@ export class ChatLunaAgentTriggerService {
     }
 
     constructor(public readonly ctx: Context) {
-        this._store = new TriggerStore(ctx)
-        this._planner = new TriggerPlanner()
+        for (const item of builtinProviderDefs) {
+            this._registry.register(item)
+        }
+        this._store = new TriggerStore(ctx, () => this._registry)
+        this._planner = new TriggerPlanner(this._registry)
         this._control = new TriggerRunControl()
         this._runner = new TriggerRunner(
             ctx,
@@ -66,16 +76,53 @@ export class ChatLunaAgentTriggerService {
             this._planner,
             this._control,
             {
-                refresh: async () => await this._afterChange()
+                refresh: async () => await this._afterChange(),
+                registry: this._registry
             }
         )
-        this._scheduler = new TriggerScheduler(ctx, this._store, this._runner)
+        this._scheduler = new TriggerScheduler(
+            ctx,
+            this._store,
+            this._runner,
+            this._registry
+        )
         this._observer = new TriggerObserver(
             ctx,
             this._store,
             this._runner,
-            this._scheduler
+            this._scheduler,
+            this._registry
         )
+    }
+
+    registerProvider(def: TriggerProviderDef) {
+        if (builtinProviderDefs.some((item) => item.id === def.id)) {
+            throw new Error(
+                `Cannot override built-in trigger provider: ${def.id}`
+            )
+        }
+        return this._registry.register(def, (event) => {
+            if (!this._started) return
+            if (event === 'remove') {
+                this._onProviderRemoved(def.id).catch((err) =>
+                    logger.error(err)
+                )
+                return
+            }
+            this._afterChange().catch((err) => logger.error(err))
+        })
+    }
+
+    listProviders(): TriggerProviderMeta[] {
+        const builtinIds = new Set(builtinProviderDefs.map((item) => item.id))
+        const builtin = builtinProviderDefs.map((item) =>
+            this._registry.meta(item.id, true)
+        )
+        const custom = this._registry
+            .list()
+            .filter((item) => !builtinIds.has(item.id))
+            .map((item) => this._registry.meta(item.id, false))
+        return [...builtin, ...custom]
     }
 
     async start() {
@@ -156,6 +203,17 @@ export class ChatLunaAgentTriggerService {
 
         try {
             this._runner.start()
+            if (this.ctx.database == null) {
+                this._status = {
+                    total: 0,
+                    enabled: 0,
+                    waiting: 0,
+                    running: 0,
+                    paused: 0,
+                    error: 0
+                }
+                return
+            }
             await this._reconcileStale()
             await this._observer.start()
             await this._scheduler.start()
@@ -183,7 +241,9 @@ export class ChatLunaAgentTriggerService {
     }
 
     async create(actor: TriggerActor, input: TriggerCreateInput) {
-        const parsed = triggerCreateInputSchema.parse(input)
+        const parsed = createTriggerCreateInputSchema(this._registry).parse(
+            input
+        )
         this._checkTarget(actor, parsed.target)
         const now = new Date()
         const condition = this._planner.validate(parsed.condition)
@@ -211,7 +271,9 @@ export class ChatLunaAgentTriggerService {
 
     async update(actor: TriggerActor, id: number, input: TriggerUpdateInput) {
         const current = await this._getOwned(actor, id)
-        const parsed = triggerUpdateInputSchema.parse(input)
+        const parsed = createTriggerUpdateInputSchema(this._registry).parse(
+            input
+        )
         this._checkTarget(actor, parsed.target)
         const now = new Date()
         const condition = this._planner.validate(parsed.condition)
@@ -262,7 +324,9 @@ export class ChatLunaAgentTriggerService {
                 (filter?.status == null ||
                     task.state.status === filter.status) &&
                 (filter?.conditionType == null ||
-                    task.condition.type === filter.conditionType)
+                    task.condition.type === filter.conditionType ||
+                    (task.condition.type === 'extension' &&
+                        task.condition.provider === filter.conditionType))
         )
     }
 
@@ -427,6 +491,32 @@ export class ChatLunaAgentTriggerService {
             .sort((a, b) => a.label.localeCompare(b.label))
     }
 
+    private async _onProviderRemoved(id: string) {
+        if (this.ctx.database == null) {
+            await this._afterChange()
+            return
+        }
+        const tasks = await this._store.list()
+        for (const task of tasks) {
+            if (
+                task.condition.type !== 'extension' ||
+                task.condition.provider !== id
+            ) {
+                continue
+            }
+            await this._runner.abortTask(task.id)
+            await this._store.update(task.id, {
+                state: {
+                    ...task.state,
+                    status: 'error',
+                    nextRunAt: null,
+                    lastError: `Unknown trigger provider: ${id}`
+                }
+            })
+        }
+        await this._afterChange()
+    }
+
     private async _reconcileStale() {
         await this._store.failRunningRuns('Interrupted by service restart')
         const running = await this._store.listRunning()
@@ -438,11 +528,7 @@ export class ChatLunaAgentTriggerService {
                 'gate' in task.state.cursor
                     ? { gate: task.state.cursor.gate }
                     : null
-            if (
-                task.condition.type === 'keyword' ||
-                task.condition.type === 'participation' ||
-                task.condition.type === 'semantic'
-            ) {
+            if (isEventCondition(task.condition, this._registry)) {
                 await this._store.update(task.id, {
                     state: {
                         ...task.state,
@@ -454,19 +540,6 @@ export class ChatLunaAgentTriggerService {
                 })
                 continue
             }
-            if (task.condition.type === 'inactivity') {
-                await this._store.update(task.id, {
-                    state: {
-                        ...task.state,
-                        status: 'waiting',
-                        nextRunAt: null,
-                        cursor,
-                        lastError: 'Interrupted by service restart'
-                    }
-                })
-                continue
-            }
-            // scheduled recurring/once — advance via planner misfire semantics
             try {
                 const plan = this._planner.next(task, now, { misfire: true })
                 await this._store.update(task.id, {
@@ -540,8 +613,7 @@ export class ChatLunaAgentTriggerService {
         if (
             target.destination.type !== 'channel' ||
             target.destination.channelId !== session.channelId ||
-            (target.destination.guildId != null &&
-                target.destination.guildId !== session.guildId)
+            target.destination.guildId !== session.guildId
         ) {
             throw new Error('Trigger destination must match the current route')
         }
@@ -550,7 +622,11 @@ export class ChatLunaAgentTriggerService {
     private async _afterChange() {
         await this._scheduler.refresh()
         await this._refreshStatus()
-        await this.ctx.chatluna_agent?.refreshConsoleData()
+        try {
+            await this.ctx.chatluna_agent?.refreshConsoleData()
+        } catch (err) {
+            logger.error(err)
+        }
     }
 
     private async _refreshStatus() {

@@ -1,16 +1,13 @@
 import type { Context } from 'koishi'
 import { logger } from '..'
 import type { TriggerRunOrigin, TriggerTask } from '../types/trigger'
+import type { TriggerProviderRegistry } from './providers/registry'
 import type { TriggerRunner } from './runner'
+import { isEventCondition } from './schema'
 import type { TriggerStore } from './store'
 
 const MAX_DELAY = 2_147_483_647
-const eventTypes = new Set([
-    'keyword',
-    'participation',
-    'inactivity',
-    'semantic'
-])
+const DRAIN_CONCURRENCY = 3
 
 export interface TriggerEventDeadlineOptions {
     signal: AbortSignal
@@ -36,7 +33,8 @@ export class TriggerScheduler {
     constructor(
         private readonly ctx: Context,
         private readonly store: TriggerStore,
-        private readonly runner: TriggerRunner
+        private readonly runner: TriggerRunner,
+        private readonly registry?: TriggerProviderRegistry
     ) {}
 
     async start(): Promise<void> {
@@ -130,40 +128,51 @@ export class TriggerScheduler {
                         new Date(b.state.nextRunAt as string).valueOf()
                     return delta || a.id - b.id
                 })
-            for (const task of tasks) {
-                if (!this._active) break
-                const controller = new AbortController()
-                this._controllers.add(controller)
-                const scheduledAt = new Date(task.state.nextRunAt as string)
-                try {
-                    if (
-                        task.condition.type === 'inactivity' &&
-                        task.state.status !== 'paused' &&
-                        task.state.cursor?.kind === 'inactivity' &&
-                        this._event != null
-                    ) {
-                        await this._event(task, {
-                            signal: controller.signal,
-                            scheduledAt
-                        })
-                        continue
+            let cursor = 0
+            const workers = Array.from(
+                { length: Math.min(DRAIN_CONCURRENCY, tasks.length) },
+                async () => {
+                    while (this._active) {
+                        const task = tasks[cursor++]
+                        if (task == null) return
+                        const controller = new AbortController()
+                        this._controllers.add(controller)
+                        const scheduledAt = new Date(
+                            task.state.nextRunAt as string
+                        )
+                        try {
+                            if (
+                                task.condition.type === 'inactivity' &&
+                                task.state.status !== 'paused' &&
+                                task.state.cursor?.kind === 'inactivity' &&
+                                this._event != null
+                            ) {
+                                await this._event(task, {
+                                    signal: controller.signal,
+                                    scheduledAt
+                                })
+                                continue
+                            }
+                            const origin: TriggerRunOrigin = isEventCondition(
+                                task.condition,
+                                this.registry
+                            )
+                                ? 'event'
+                                : 'schedule'
+                            await this.runner.run(task.id, origin, {
+                                signal: controller.signal,
+                                scheduledAt,
+                                misfire: startup
+                            })
+                        } catch (err) {
+                            logger.error(err)
+                        } finally {
+                            this._controllers.delete(controller)
+                        }
                     }
-                    const origin: TriggerRunOrigin = eventTypes.has(
-                        task.condition.type
-                    )
-                        ? 'event'
-                        : 'schedule'
-                    await this.runner.run(task.id, origin, {
-                        signal: controller.signal,
-                        scheduledAt,
-                        misfire: startup
-                    })
-                } catch (err) {
-                    logger.error(err)
-                } finally {
-                    this._controllers.delete(controller)
                 }
-            }
+            )
+            await Promise.all(workers)
         } finally {
             this._draining = false
             if (this._pendingRefresh) {

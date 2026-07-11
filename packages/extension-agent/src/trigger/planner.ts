@@ -8,7 +8,8 @@ import type {
     TriggerTaskState,
     TriggerTaskStatus
 } from '../types/trigger'
-import { triggerConditionSchema } from './schema'
+import type { TriggerProviderRegistry } from './providers/registry'
+import { createTriggerConditionSchema, isEventCondition } from './schema'
 
 export interface TriggerPlan {
     status: TriggerTaskStatus
@@ -30,23 +31,13 @@ interface Occurrence {
     occurrenceKey: string
 }
 
-type EventCondition = Extract<
-    TriggerCondition,
-    {
-        type: 'keyword' | 'participation' | 'inactivity' | 'semantic'
-    }
->
-
-const eventTypes = new Set<TriggerCondition['type']>([
-    'keyword',
-    'participation',
-    'inactivity',
-    'semantic'
-])
-
 export class TriggerPlanner {
+    constructor(private readonly registry?: TriggerProviderRegistry) {}
+
     validate(condition: TriggerCondition): TriggerCondition {
-        return triggerConditionSchema.parse(condition) as TriggerCondition
+        return createTriggerConditionSchema(this.registry).parse(
+            condition
+        ) as TriggerCondition
     }
 
     initialState(
@@ -63,7 +54,7 @@ export class TriggerPlanner {
                 runCount: 0
             }
         }
-        if (isEventCondition(condition)) {
+        if (isEventCondition(condition, this.registry)) {
             return {
                 status: 'waiting',
                 nextRunAt: null,
@@ -83,7 +74,17 @@ export class TriggerPlanner {
                 occurrenceKey: at.toISOString()
             }
         }
-        const occurrence = findOccurrence(condition, now)
+        const occurrence = this._find(condition, now)
+        if (occurrence == null) {
+            return {
+                status: 'completed',
+                nextRunAt: null,
+                suppressedUntil: null,
+                runCount: 0,
+                periodKey: null,
+                occurrenceKey: null
+            }
+        }
         return {
             status: 'waiting',
             nextRunAt: occurrence.at.toISOString(),
@@ -132,7 +133,7 @@ export class TriggerPlanner {
                 }
             }
         }
-        if (isEventCondition(condition)) {
+        if (isEventCondition(condition, this.registry)) {
             return {
                 status: 'waiting',
                 nextRunAt: null,
@@ -163,6 +164,7 @@ export class TriggerPlanner {
         }
         if (
             input.misfire === true &&
+            'misfire' in condition &&
             condition.misfire === 'fire_once' &&
             task.state.nextRunAt != null &&
             new Date(task.state.nextRunAt).valueOf() <= now.valueOf()
@@ -175,12 +177,21 @@ export class TriggerPlanner {
                 occurrenceKey: task.state.occurrenceKey
             }
         }
-        const occurrence = findOccurrence(
+        const occurrence = this._find(
             condition,
             now,
             input.skipPeriod,
             task.state.occurrenceKey ?? undefined
         )
+        if (occurrence == null) {
+            return {
+                status: 'completed',
+                nextRunAt: null,
+                suppressedUntil: null,
+                periodKey: null,
+                occurrenceKey: null
+            }
+        }
         return {
             status: 'waiting',
             nextRunAt: occurrence.at,
@@ -223,7 +234,7 @@ export class TriggerPlanner {
             }
             return decision
         }
-        if (isEventCondition(condition)) {
+        if (isEventCondition(condition, this.registry)) {
             return decision ?? { type: 'continue' }
         }
         if (decision?.type === 'stop_period' || decision == null) {
@@ -273,7 +284,7 @@ export class TriggerPlanner {
                 occurrenceKey: null
             }
         }
-        if (isEventCondition(condition)) {
+        if (isEventCondition(condition, this.registry)) {
             return {
                 status: 'waiting',
                 nextRunAt: null,
@@ -282,7 +293,7 @@ export class TriggerPlanner {
                 occurrenceKey: null
             }
         }
-        const occurrence = findOccurrence(
+        const occurrence = this._find(
             condition,
             now,
             condition.type === 'window' && resolved.type === 'stop_period'
@@ -290,6 +301,15 @@ export class TriggerPlanner {
                 : undefined,
             task.state.occurrenceKey ?? undefined
         )
+        if (occurrence == null) {
+            return {
+                status: 'completed',
+                nextRunAt: null,
+                suppressedUntil: null,
+                periodKey: null,
+                occurrenceKey: null
+            }
+        }
         return {
             status: 'waiting',
             nextRunAt: occurrence.at,
@@ -305,17 +325,42 @@ export class TriggerPlanner {
         now = new Date()
     ): Date[] {
         const parsed = this.validate(condition)
-        if (isEventCondition(parsed)) return []
+        if (isEventCondition(parsed, this.registry)) return []
         if (parsed.type === 'once') {
             return [
                 new Date(Math.max(new Date(parsed.at).valueOf(), now.valueOf()))
             ].slice(0, count)
         }
+        if (parsed.type === 'extension') {
+            const item = this.registry?.get(parsed.provider)
+            if (item == null) {
+                throw new Error(`Unknown trigger provider: ${parsed.provider}`)
+            }
+            if (item.preview != null) {
+                return item.preview(parsed.config, count, now)
+            }
+            if (item.next == null) return []
+            const result: Date[] = []
+            let base = now
+            let occurrenceKey: string | undefined
+            for (let idx = 0; idx < count; idx++) {
+                const occurrence = item.next({
+                    config: parsed.config,
+                    after: base,
+                    occurrenceKey
+                })
+                if (occurrence == null) break
+                result.push(occurrence.at)
+                base = occurrence.at
+                occurrenceKey = occurrence.occurrenceKey
+            }
+            return result
+        }
         const result: Date[] = []
         let base = now
         let occurrenceKey: string | undefined
         for (let idx = 0; idx < count; idx++) {
-            const occurrence = findOccurrence(
+            const occurrence = this._find(
                 parsed,
                 base,
                 undefined,
@@ -327,156 +372,179 @@ export class TriggerPlanner {
         }
         return result
     }
-}
 
-function isEventCondition(
-    condition: TriggerCondition
-): condition is EventCondition {
-    return eventTypes.has(condition.type)
-}
-
-function findOccurrence(
-    condition: Exclude<
-        TriggerCondition,
-        {
-            type:
-                'once' | 'keyword' | 'participation' | 'inactivity' | 'semantic'
-        }
-    >,
-    after: Date,
-    skipPeriod?: string,
-    occurrenceKey?: string
-): Occurrence {
-    if (condition.type === 'interval') {
-        const anchor = new Date(condition.anchorAt).valueOf()
-        const every = condition.everyMinutes * 60_000
-        const index = Math.max(
-            0,
-            Math.floor((after.valueOf() - anchor) / every) + 1
-        )
-        const at = new Date(anchor + index * every)
-        return { at, occurrenceKey: at.toISOString() }
-    }
-    if (condition.type === 'cron') {
-        const at = new Date(
-            CronExpressionParser.parse(condition.expression, {
-                currentDate: after,
-                tz: condition.timezone
+    private _find(
+        condition: TriggerCondition,
+        after: Date,
+        skipPeriod?: string,
+        occurrenceKey?: string
+    ): Occurrence | null {
+        if (condition.type === 'extension') {
+            const item = this.registry?.get(condition.provider)
+            if (item == null) {
+                throw new Error(
+                    `Unknown trigger provider: ${condition.provider}`
+                )
+            }
+            if (item.kind !== 'scheduled' || item.next == null) {
+                throw new Error(
+                    `Trigger provider ${condition.provider} cannot schedule occurrences`
+                )
+            }
+            const occurrence = item.next({
+                config: condition.config,
+                after,
+                skipPeriod,
+                occurrenceKey
             })
-                .next()
-                .getTime()
-        )
-        return { at, occurrenceKey: at.toISOString() }
-    }
-    if (condition.type === 'calendar') {
-        const base = DateTime.fromJSDate(after, { zone: condition.timezone })
-        for (let offset = 0; offset < 370; offset++) {
-            const day = base.startOf('day').plus({ days: offset })
+            if (occurrence == null) return null
+            return {
+                at: occurrence.at,
+                periodKey: occurrence.periodKey,
+                occurrenceKey:
+                    occurrence.occurrenceKey ?? occurrence.at.toISOString()
+            }
+        }
+        if (condition.type === 'interval') {
+            const anchor = new Date(condition.anchorAt).valueOf()
+            const every = condition.everyMinutes * 60_000
+            const index = Math.max(
+                0,
+                Math.floor((after.valueOf() - anchor) / every) + 1
+            )
+            const at = new Date(anchor + index * every)
+            return { at, occurrenceKey: at.toISOString() }
+        }
+        if (condition.type === 'cron') {
+            const at = new Date(
+                CronExpressionParser.parse(condition.expression, {
+                    currentDate: after,
+                    tz: condition.timezone
+                })
+                    .next()
+                    .getTime()
+            )
+            return { at, occurrenceKey: at.toISOString() }
+        }
+        if (condition.type === 'calendar') {
+            const base = DateTime.fromJSDate(after, {
+                zone: condition.timezone
+            })
+            for (let offset = 0; offset < 370; offset++) {
+                const day = base.startOf('day').plus({ days: offset })
+                if (!condition.days.includes(day.weekday % 7)) continue
+                for (const value of condition.times) {
+                    const [hour, minute] = value.split(':').map(Number)
+                    const at = DateTime.fromObject(
+                        {
+                            year: day.year,
+                            month: day.month,
+                            day: day.day,
+                            hour,
+                            minute
+                        },
+                        { zone: condition.timezone }
+                    )
+                    if (
+                        !at.isValid ||
+                        at.year !== day.year ||
+                        at.month !== day.month ||
+                        at.day !== day.day ||
+                        at.hour !== hour ||
+                        at.minute !== minute ||
+                        at.toMillis() <= after.valueOf()
+                    ) {
+                        continue
+                    }
+                    const key = `${at.toFormat('yyyy-MM-dd')}T${value}`
+                    if (key === occurrenceKey) continue
+                    return { at: at.toJSDate(), occurrenceKey: key }
+                }
+            }
+            throw new Error('Unable to find a calendar occurrence')
+        }
+        if (condition.type !== 'window') {
+            throw new Error(
+                `Unable to schedule condition type: ${condition.type}`
+            )
+        }
+        const base = DateTime.fromJSDate(after, {
+            zone: condition.timezone
+        }).startOf('day')
+        for (let offset = -1; offset < 370; offset++) {
+            const day = base.plus({ days: offset })
             if (!condition.days.includes(day.weekday % 7)) continue
-            for (const value of condition.times) {
-                const [hour, minute] = value.split(':').map(Number)
+            const periodKey = day.toFormat('yyyy-MM-dd')
+            if (skipPeriod != null && periodKey <= skipPeriod) continue
+            const [startHour, startMinute] = condition.start
+                .split(':')
+                .map(Number)
+            const start = DateTime.fromObject(
+                {
+                    year: day.year,
+                    month: day.month,
+                    day: day.day,
+                    hour: startHour,
+                    minute: startMinute
+                },
+                { zone: condition.timezone }
+            )
+            if (
+                !start.isValid ||
+                start.year !== day.year ||
+                start.month !== day.month ||
+                start.day !== day.day ||
+                start.hour !== startHour ||
+                start.minute !== startMinute
+            ) {
+                continue
+            }
+            const startMinutes = startHour * 60 + startMinute
+            const [endHour, endMinute] = condition.end.split(':').map(Number)
+            const endMinutes = endHour * 60 + endMinute
+            const duration =
+                condition.start < condition.end
+                    ? endMinutes - startMinutes
+                    : 1440 - startMinutes + endMinutes
+            for (
+                let elapsed = 0;
+                elapsed < duration;
+                elapsed += condition.everyMinutes
+            ) {
+                const total = startMinutes + elapsed
+                const slotDay = day.plus({ days: Math.floor(total / 1440) })
+                const minute = total % 1440
+                const hour = Math.floor(minute / 60)
                 const at = DateTime.fromObject(
                     {
-                        year: day.year,
-                        month: day.month,
-                        day: day.day,
+                        year: slotDay.year,
+                        month: slotDay.month,
+                        day: slotDay.day,
                         hour,
-                        minute
+                        minute: minute % 60
                     },
                     { zone: condition.timezone }
                 )
                 if (
                     !at.isValid ||
-                    at.year !== day.year ||
-                    at.month !== day.month ||
-                    at.day !== day.day ||
+                    at.year !== slotDay.year ||
+                    at.month !== slotDay.month ||
+                    at.day !== slotDay.day ||
                     at.hour !== hour ||
-                    at.minute !== minute ||
-                    at.toMillis() <= after.valueOf()
+                    at.minute !== minute % 60
                 ) {
                     continue
                 }
-                const key = `${at.toFormat('yyyy-MM-dd')}T${value}`
+                if (at.toMillis() <= after.valueOf()) continue
+                const key = `${periodKey}T${at.toFormat('HH:mm')}`
                 if (key === occurrenceKey) continue
-                return { at: at.toJSDate(), occurrenceKey: key }
+                return {
+                    at: at.toJSDate(),
+                    periodKey,
+                    occurrenceKey: key
+                }
             }
         }
-        throw new Error('Unable to find a calendar occurrence')
+        throw new Error('Unable to find a window occurrence')
     }
-    const base = DateTime.fromJSDate(after, {
-        zone: condition.timezone
-    }).startOf('day')
-    for (let offset = -1; offset < 370; offset++) {
-        const day = base.plus({ days: offset })
-        if (!condition.days.includes(day.weekday % 7)) continue
-        const periodKey = day.toFormat('yyyy-MM-dd')
-        if (skipPeriod != null && periodKey <= skipPeriod) continue
-        const [startHour, startMinute] = condition.start.split(':').map(Number)
-        const start = DateTime.fromObject(
-            {
-                year: day.year,
-                month: day.month,
-                day: day.day,
-                hour: startHour,
-                minute: startMinute
-            },
-            { zone: condition.timezone }
-        )
-        if (
-            !start.isValid ||
-            start.year !== day.year ||
-            start.month !== day.month ||
-            start.day !== day.day ||
-            start.hour !== startHour ||
-            start.minute !== startMinute
-        ) {
-            continue
-        }
-        const startMinutes = startHour * 60 + startMinute
-        const [endHour, endMinute] = condition.end.split(':').map(Number)
-        const endMinutes = endHour * 60 + endMinute
-        const duration =
-            condition.start < condition.end
-                ? endMinutes - startMinutes
-                : 1440 - startMinutes + endMinutes
-        for (
-            let elapsed = 0;
-            elapsed < duration;
-            elapsed += condition.everyMinutes
-        ) {
-            const total = startMinutes + elapsed
-            const slotDay = day.plus({ days: Math.floor(total / 1440) })
-            const minute = total % 1440
-            const hour = Math.floor(minute / 60)
-            const at = DateTime.fromObject(
-                {
-                    year: slotDay.year,
-                    month: slotDay.month,
-                    day: slotDay.day,
-                    hour,
-                    minute: minute % 60
-                },
-                { zone: condition.timezone }
-            )
-            if (
-                !at.isValid ||
-                at.year !== slotDay.year ||
-                at.month !== slotDay.month ||
-                at.day !== slotDay.day ||
-                at.hour !== hour ||
-                at.minute !== minute % 60
-            ) {
-                continue
-            }
-            if (at.toMillis() <= after.valueOf()) continue
-            const key = `${periodKey}T${at.toFormat('HH:mm')}`
-            if (key === occurrenceKey) continue
-            return {
-                at: at.toJSDate(),
-                periodKey,
-                occurrenceKey: key
-            }
-        }
-    }
-    throw new Error('Unable to find a window occurrence')
 }

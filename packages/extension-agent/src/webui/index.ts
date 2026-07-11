@@ -423,6 +423,12 @@ function registerTriggerListeners(ctx: Context, agent: AgentRef) {
     )
 
     ctx.console.addListener(
+        'chatluna-agent/listTriggerProviders',
+        async () => agent().trigger.listProviders(),
+        auth
+    )
+
+    ctx.console.addListener(
         'chatluna-agent/listTriggers',
         async function (filter) {
             return await agent().trigger.list(consoleActor(this.id), filter)
