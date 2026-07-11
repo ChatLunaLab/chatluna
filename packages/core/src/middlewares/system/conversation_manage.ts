@@ -860,10 +860,14 @@ function actionLocked(session: Session, action: string) {
     ])
 }
 
-function actionDisabled(session: Session, action: string) {
+function actionDisabled(
+    session: Session,
+    action: string,
+    code = ChatLunaErrorCode.CONVERSATION_DISABLED
+) {
     return session.text('chatluna.conversation.messages.action_disabled', [
         session.text(`chatluna.conversation.action.${action}`),
-        ChatLunaErrorCode.CONVERSATION_DISABLED
+        code
     ])
 }
 
@@ -963,6 +967,13 @@ function formatConversationError(
     }
     if (code === ChatLunaErrorCode.CONVERSATION_DISABLED) {
         return actionDisabled(session, error.data?.action ?? action ?? 'update')
+    }
+    if (code === ChatLunaErrorCode.CONVERSATION_CREATE_DISABLED) {
+        return actionDisabled(
+            session,
+            error.data?.action ?? action ?? 'create',
+            ChatLunaErrorCode.CONVERSATION_CREATE_DISABLED
+        )
     }
     if (code === ChatLunaErrorCode.CONVERSATION_FIXED) {
         const field = error.data?.field ?? 'model'

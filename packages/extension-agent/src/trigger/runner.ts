@@ -581,16 +581,18 @@ export class TriggerRunner {
         } finally {
             timer()
             removeAbort()
-            const next = {
-                ...(cursor != null && typeof cursor === 'object' ? cursor : {}),
-                gate: { day, tokens: tokens + used }
-            }
             const latest = await this.store.get(task.id)
             if (latest != null) {
+                const cursor = latest.state.cursor
                 await this.store.update(task.id, {
                     state: {
                         ...latest.state,
-                        cursor: next
+                        cursor: {
+                            ...(cursor != null && typeof cursor === 'object'
+                                ? cursor
+                                : {}),
+                            gate: { day, tokens: tokens + used }
+                        }
                     }
                 })
             }

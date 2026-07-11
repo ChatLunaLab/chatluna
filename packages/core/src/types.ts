@@ -74,9 +74,8 @@ export interface ResolveInvocationInput {
 export type ActiveConversationResolution = ConversationResolution & {
     conversation: ConversationRecord
     /**
-     * True only when ConversationService created a temporary/transient record
-     * for this invocation (ephemeral path). Existing/route/task/fresh records
-     * are never marked transient, even when message persist is false.
+     * True when ConversationService creates a temporary record through
+     * createEphemeral().
      */
     transient: boolean
 }
