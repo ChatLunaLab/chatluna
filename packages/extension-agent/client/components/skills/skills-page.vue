@@ -50,48 +50,39 @@
                     @save="saveSelected"
                 />
 
-                <div v-else key="list" class="panel catalog-panel">
-                    <div class="panel-header catalog-header">
-                        <div class="catalog-header-content">
-                            <div class="catalog-header-info">
-                                <div class="panel-title">Skills 列表</div>
-                                <div class="panel-description">
-                                    ChatLuna 目前可用的全部 Skills。
-                                </div>
-                            </div>
-
-                            <div class="catalog-actions">
-                                <el-button
-                                    v-if="mobile"
-                                    @click="showImportDialog = true"
-                                >
-                                    导入
-                                </el-button>
-                                <el-button
-                                    v-else
-                                    @click="showMarkdownDialog = true"
-                                >
-                                    从 Markdown 导入
-                                </el-button>
-                                <el-button
-                                    v-if="!mobile"
-                                    @click="showGithubDialog = true"
-                                >
-                                    从 Github 导入
-                                </el-button>
-                                <el-button
-                                    v-if="!mobile"
-                                    @click="showFolderDialog = true"
-                                >
-                                    从本地文件导入
-                                </el-button>
-                                <el-button @click="showSettingsDialog = true">
-                                    管理设置
-                                </el-button>
-                            </div>
+                <div v-else key="list" class="catalog">
+                    <div class="catalog-controls">
+                        <div class="catalog-actions">
+                            <el-button
+                                v-if="mobile"
+                                @click="showImportDialog = true"
+                            >
+                                导入
+                            </el-button>
+                            <el-button
+                                v-else
+                                @click="showMarkdownDialog = true"
+                            >
+                                从 Markdown 导入
+                            </el-button>
+                            <el-button
+                                v-if="!mobile"
+                                @click="showGithubDialog = true"
+                            >
+                                从 Github 导入
+                            </el-button>
+                            <el-button
+                                v-if="!mobile"
+                                @click="showFolderDialog = true"
+                            >
+                                从本地文件导入
+                            </el-button>
+                            <el-button @click="showSettingsDialog = true">
+                                管理设置
+                            </el-button>
                         </div>
 
-                        <div class="search-row">
+                        <div class="catalog-search">
                             <el-popover
                                 placement="bottom-start"
                                 trigger="click"
@@ -208,96 +199,60 @@
                                 }}
                             </div>
 
-                            <div class="skill-footer">
-                                <div class="skill-chips">
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="
-                                            item.available
-                                                ? 'success'
-                                                : 'warning'
-                                        "
-                                    >
-                                        {{
-                                            item.available
-                                                ? '环境就绪'
-                                                : '缺少依赖'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="
-                                            item.mode === 'full'
-                                                ? 'primary'
-                                                : 'success'
-                                        "
-                                    >
-                                        {{
-                                            item.mode === 'full'
-                                                ? '全文注入'
-                                                : '描述注入'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="item.main ? 'success' : 'info'"
-                                    >
-                                        {{
-                                            item.main
-                                                ? '主 Agent 启用'
-                                                : '主 Agent 禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="
-                                            item.chatlunaEnabled
-                                                ? 'success'
-                                                : 'info'
-                                        "
-                                    >
-                                        {{
-                                            item.chatlunaEnabled
-                                                ? 'ChatLuna 启用'
-                                                : 'ChatLuna 禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="
-                                            item.characterEnabled
-                                                ? 'success'
-                                                : 'info'
-                                        "
-                                    >
-                                        {{
-                                            item.characterEnabled
-                                                ? 'Character 启用'
-                                                : 'Character 禁用'
-                                        }}
-                                    </el-tag>
-                                    <el-tag
-                                        size="small"
-                                        effect="plain"
-                                        :type="
-                                            subAgentModeType(
-                                                item.subAgents.mode
-                                            )
-                                        "
-                                    >
-                                        {{
-                                            subAgentModeLabel(
-                                                item.subAgents.mode
-                                            )
-                                        }}
-                                    </el-tag>
-                                </div>
+                            <div class="skill-chips">
+                                <el-tag
+                                    size="small"
+                                    effect="plain"
+                                    :type="item.main ? 'success' : 'info'"
+                                >
+                                    {{
+                                        item.main
+                                            ? '主 Agent 启用'
+                                            : '主 Agent 禁用'
+                                    }}
+                                </el-tag>
+                                <el-tag
+                                    size="small"
+                                    effect="plain"
+                                    :type="
+                                        item.chatlunaEnabled
+                                            ? 'success'
+                                            : 'info'
+                                    "
+                                >
+                                    {{
+                                        item.chatlunaEnabled
+                                            ? 'ChatLuna 启用'
+                                            : 'ChatLuna 禁用'
+                                    }}
+                                </el-tag>
+                                <el-tag
+                                    size="small"
+                                    effect="plain"
+                                    :type="
+                                        item.characterEnabled
+                                            ? 'success'
+                                            : 'info'
+                                    "
+                                >
+                                    {{
+                                        item.characterEnabled
+                                            ? 'Character 启用'
+                                            : 'Character 禁用'
+                                    }}
+                                </el-tag>
+                                <el-tag
+                                    size="small"
+                                    effect="plain"
+                                    :type="
+                                        subAgentModeType(item.subAgents.mode)
+                                    "
+                                >
+                                    {{ subAgentModeLabel(item.subAgents.mode) }}
+                                </el-tag>
+                            </div>
 
+                            <div class="skill-footer">
                                 <div v-if="!hideDesc" class="skill-meta">
                                     {{ item.path || '当前没有可用路径' }}
                                 </div>
@@ -1109,6 +1064,7 @@ function base64ToBlob(data: string, type: string) {
     min-width: 0;
     margin: 0 auto;
     padding-bottom: 56px;
+    box-sizing: border-box;
 }
 
 .skills-page.compact {
@@ -1160,62 +1116,18 @@ function base64ToBlob(data: string, type: string) {
     z-index: 10;
 }
 
-.panel {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
-    overflow: hidden;
-    box-sizing: border-box;
+.catalog {
+    min-width: 0;
 }
 
-.catalog-panel {
-    margin-top: 18px;
-    padding-bottom: 18px;
-}
-
-.panel-header {
+.catalog-controls {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 18px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
-    box-sizing: border-box;
-}
-
-.catalog-header-content {
-    display: flex;
-    align-items: center;
-    gap: 24px;
+    gap: 12px;
+    margin-bottom: 16px;
+    min-width: 0;
     flex-wrap: wrap;
-    justify-content: flex-start;
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
-.catalog-header-info {
-    flex: 0 0 auto;
-    min-width: 0;
-}
-
-.panel-title {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--k-text-dark);
-}
-
-.panel-description,
-.skill-name,
-.skill-description,
-.skill-meta,
-.preview-meta {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-    word-break: break-word;
 }
 
 .catalog-actions {
@@ -1223,18 +1135,16 @@ function base64ToBlob(data: string, type: string) {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    min-width: 0;
 }
 
-.search-row {
+.catalog-search {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-    width: auto;
-    flex-wrap: nowrap;
+    min-width: 0;
     flex: 0 1 420px;
-    min-width: 220px;
 }
 
 .filter-trigger {
@@ -1245,9 +1155,9 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .search-input {
-    width: auto;
+    width: min(100%, 360px);
     min-width: 0;
-    flex: 1 1 260px;
+    flex: 0 1 360px;
 }
 
 .filter-panel {
@@ -1303,7 +1213,6 @@ function base64ToBlob(data: string, type: string) {
     display: grid;
     grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
-    padding: 16px;
     box-sizing: border-box;
 }
 
@@ -1346,7 +1255,6 @@ function base64ToBlob(data: string, type: string) {
 
 .skill-card.readonly:hover {
     border-color: color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    transform: none;
 }
 
 .skill-top {
@@ -1400,6 +1308,17 @@ function base64ToBlob(data: string, type: string) {
     flex: 0 0 auto;
 }
 
+.skill-name,
+.skill-description,
+.skill-meta,
+.preview-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--k-text-light);
+    word-break: break-word;
+}
+
 .skill-description {
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -1411,17 +1330,17 @@ function base64ToBlob(data: string, type: string) {
     -webkit-line-clamp: 2;
 }
 
+.skill-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .skill-footer {
     margin-top: auto;
     display: flex;
     flex-direction: column;
     gap: 12px;
-}
-
-.skill-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
 }
 
 .skill-actions {
@@ -1527,19 +1446,9 @@ function base64ToBlob(data: string, type: string) {
 }
 
 @media (max-width: 768px) {
-    .toolbar-main,
-    .catalog-header,
-    .catalog-header-content {
+    .toolbar-main {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .catalog-header {
-        gap: 14px;
-    }
-
-    .catalog-header-content {
-        gap: 16px;
     }
 
     .headline {
@@ -1556,16 +1465,24 @@ function base64ToBlob(data: string, type: string) {
         display: none;
     }
 
-    .actions-section,
-    .catalog-actions {
+    .actions-section {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    .catalog-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        align-items: stretch;
+        width: 100%;
     }
 
     .catalog-actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+        width: 100%;
     }
 
     .catalog-actions :deep(.el-button) {
@@ -1577,7 +1494,7 @@ function base64ToBlob(data: string, type: string) {
         line-height: 1.3;
     }
 
-    .search-row {
+    .catalog-search {
         width: 100%;
         min-width: 0;
         flex: none;

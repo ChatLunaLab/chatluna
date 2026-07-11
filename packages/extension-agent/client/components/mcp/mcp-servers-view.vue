@@ -1,21 +1,17 @@
 <template>
     <div class="servers-view">
-        <div class="panel">
-            <div class="panel-header">
-                <div>
-                    <div class="panel-title">服务器</div>
-                    <div class="panel-description">
-                        管理 MCP 服务器的连接方式、运行状态和重连操作。
-                    </div>
-                </div>
-
-                <div class="panel-actions">
-                    <el-button :loading="reloading" @click="reloadMcp">
-                        <el-icon><RefreshRight /></el-icon>
+        <div class="catalog-section">
+            <div class="catalog-controls">
+                <div class="section-title">服务器</div>
+                <div class="catalog-actions">
+                    <el-button
+                        :loading="reloading"
+                        :icon="RefreshRight"
+                        @click="reloadMcp"
+                    >
                         重新加载
                     </el-button>
-                    <el-button type="primary" @click="openCreate">
-                        <el-icon><Plus /></el-icon>
+                    <el-button type="primary" :icon="Plus" @click="openCreate">
                         添加服务器
                     </el-button>
                 </div>
@@ -56,34 +52,29 @@
                                     {{ item.status.title }}
                                 </div>
                                 <div class="server-name">{{ item.name }}</div>
-                                <div v-if="!props.hideDesc" class="server-kind">
-                                    <span>{{ item.kind }}</span>
-                                    <span v-if="item.status?.version">
-                                        v{{ item.status.version }}
-                                    </span>
+                                <div
+                                    v-if="
+                                        !props.hideDesc && item.status?.version
+                                    "
+                                    class="server-sub"
+                                >
+                                    v{{ item.status.version }}
                                 </div>
                             </div>
                         </div>
 
-                        <el-tag
-                            :type="
-                                stateTag(
-                                    item.updating
-                                        ? 'reconnecting'
-                                        : item.status?.state
-                                )
-                            "
-                            round
-                            effect="plain"
-                        >
-                            {{
-                                stateLabel(
-                                    item.updating
-                                        ? 'reconnecting'
-                                        : item.status?.state
-                                )
-                            }}
-                        </el-tag>
+                        <div class="server-state" :class="stateClass(item)">
+                            <span class="state-dot" />
+                            <span>
+                                {{
+                                    stateLabel(
+                                        item.updating
+                                            ? 'reconnecting'
+                                            : item.status?.state
+                                    )
+                                }}
+                            </span>
+                        </div>
                     </div>
 
                     <div v-if="!props.hideDesc" class="server-summary">
@@ -95,30 +86,35 @@
                         }}
                     </div>
 
-                    <div class="server-chips">
-                        <el-tag size="small" effect="plain">
-                            {{ item.kind }}
-                        </el-tag>
-                        <el-tag size="small" effect="plain">
-                            {{ item.tools.length }} 工具
-                        </el-tag>
-                        <el-tag size="small" effect="plain">
-                            {{ item.server.timeout ?? 60 }}s
-                        </el-tag>
-                        <el-tag
-                            v-if="item.status?.attempts"
-                            size="small"
-                            type="warning"
-                            effect="plain"
-                        >
-                            重试 {{ item.status.attempts }}/{{
-                                item.status.maxAttempts ?? 5
-                            }}
-                        </el-tag>
-                    </div>
-
-                    <div v-if="!props.hideDesc" class="server-endpoint">
-                        {{ item.endpoint || '尚未填写入口' }}
+                    <div class="server-meta">
+                        <div>
+                            <span>传输</span>
+                            <strong>{{ item.kind }}</strong>
+                        </div>
+                        <div>
+                            <span>工具</span>
+                            <strong>{{ item.tools.length }}</strong>
+                        </div>
+                        <div>
+                            <span>超时</span>
+                            <strong>{{ item.server.timeout ?? 60 }}s</strong>
+                        </div>
+                        <div v-if="item.status?.attempts">
+                            <span>重试</span>
+                            <strong>
+                                {{ item.status.attempts }}/{{
+                                    item.status.maxAttempts ?? 5
+                                }}
+                            </strong>
+                        </div>
+                        <div class="meta-wide">
+                            <span>
+                                {{ item.kind === 'stdio' ? '命令' : '入口' }}
+                            </span>
+                            <strong>
+                                {{ endpointLabel(item) }}
+                            </strong>
+                        </div>
                     </div>
 
                     <div v-if="item.status?.error" class="error-box">
@@ -138,6 +134,7 @@
                             <span class="tooltip-trigger-wrapper">
                                 <el-button
                                     size="small"
+                                    plain
                                     :loading="serverToolsBusy[item.name]"
                                     :disabled="
                                         serverToolsBusy[item.name] ||
@@ -157,13 +154,13 @@
                         </el-tooltip>
                         <el-button
                             size="small"
+                            plain
                             :disabled="item.updating"
                             @click="openEdit(item.name)"
                         >
                             编辑
                         </el-button>
                         <el-button
-                            class="neutral-outline"
                             size="small"
                             plain
                             :loading="item.updating"
@@ -191,14 +188,9 @@
             </div>
         </div>
 
-        <div class="panel">
-            <div class="panel-header">
-                <div>
-                    <div class="panel-title">工具</div>
-                    <div class="panel-description">
-                        查看每个工具的状态、超时和启用情况。
-                    </div>
-                </div>
+        <div class="catalog-section">
+            <div class="catalog-controls tools-controls">
+                <div class="section-title">工具</div>
             </div>
 
             <div
@@ -249,37 +241,10 @@
                         {{ item.description || '这个工具暂时没有说明。' }}
                     </div>
 
-                    <div class="tool-chips">
-                        <el-tag size="small" effect="plain">
-                            {{ item.server }}
-                        </el-tag>
-                        <el-tag size="small" effect="plain">
-                            {{ item.timeout ? `${item.timeout}s` : '默认超时' }}
-                        </el-tag>
-                        <el-tag
-                            size="small"
-                            :type="
-                                item.updating
-                                    ? 'warning'
-                                    : item.enabled
-                                      ? 'success'
-                                      : 'info'
-                            "
-                            effect="plain"
-                        >
-                            {{
-                                item.updating
-                                    ? '更新中'
-                                    : item.enabled
-                                      ? '已启用'
-                                      : '已停用'
-                            }}
-                        </el-tag>
-                    </div>
-
                     <div class="tool-actions">
                         <el-button
                             size="small"
+                            plain
                             :disabled="item.updating"
                             @click="openTool(item)"
                         >
@@ -624,23 +589,6 @@ import CodeEditor from '../shared/code-editor.vue'
 function getServerType(config: McpServerConfig) {
     return config.type ?? (config.url ? 'http' : 'stdio')
 }
-
-function stateTag(state?: McpServerState) {
-    if (state === 'connected') {
-        return 'success'
-    }
-
-    if (state === 'connecting' || state === 'reconnecting') {
-        return 'warning'
-    }
-
-    if (state === 'error') {
-        return 'danger'
-    }
-
-    return 'info'
-}
-
 function stateLabel(state?: McpServerState) {
     if (state === 'connected') {
         return '已连接'
@@ -990,12 +938,29 @@ const tools = computed(() =>
         .sort((a, b) => a.name.localeCompare(b.name))
 )
 
-function envCount(server: McpServerConfig) {
-    return Object.keys(server.env || {}).length
+function endpointLabel(item: {
+    kind: string
+    endpoint: string
+    server: McpServerConfig
+}) {
+    if (item.kind === 'stdio') {
+        const cmd = item.server.command || item.endpoint
+        const args = (item.server.args ?? []).join(' ')
+        if (!cmd) return '尚未填写入口'
+        return args ? `${cmd} ${args}` : cmd
+    }
+    return item.endpoint || '尚未填写入口'
 }
 
-function headerCount(server: McpServerConfig) {
-    return Object.keys(server.headers || {}).length
+function stateClass(item: {
+    updating: boolean
+    status?: { state?: McpServerState }
+}) {
+    const state = item.updating ? 'reconnecting' : item.status?.state
+    if (state === 'connected') return 'is-connected'
+    if (state === 'connecting' || state === 'reconnecting') return 'is-pending'
+    if (state === 'error') return 'is-error'
+    return 'is-idle'
 }
 
 function getFormConfig() {
@@ -1230,7 +1195,9 @@ async function toggleServerTools(name: string) {
             tools: nextTools
         })
         ElMessage.success(
-            enabled ? '已启用该服务器的所有工具。' : '已停用该服务器的所有工具。'
+            enabled
+                ? '已启用该服务器的所有工具。'
+                : '已停用该服务器的所有工具。'
         )
     } catch {
         for (const p of prev) {
@@ -1314,46 +1281,47 @@ async function saveTool() {
 .servers-view {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 24px;
+    min-width: 0;
 }
 
-.panel {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 20%);
-    overflow: hidden;
-    box-sizing: border-box;
+.catalog-section {
+    min-width: 0;
 }
 
-.panel-header {
+.catalog-controls {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 16px 18px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
-    gap: 16px;
-    box-sizing: border-box;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    min-width: 0;
+    flex-wrap: wrap;
 }
 
-.panel-title {
-    font-size: 17px;
+.tools-controls {
+    justify-content: flex-start;
+}
+
+.section-title {
+    font-size: 20px;
     font-weight: 600;
+    line-height: 1.3;
     color: var(--k-text-dark);
+    min-width: 0;
 }
 
-.panel-description {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-}
-
-.panel-actions {
+.catalog-actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin-left: auto;
+}
+
+.catalog-actions :deep(.el-button) {
+    margin: 0;
 }
 
 .card-list {
@@ -1361,7 +1329,6 @@ async function saveTool() {
     display: grid;
     grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
-    padding: 16px;
     box-sizing: border-box;
 }
 
@@ -1374,15 +1341,20 @@ async function saveTool() {
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
-    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 18%);
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
     padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     box-sizing: border-box;
-    transition: all 0.2s;
+    transition: border-color 0.2s ease;
     min-width: 0;
     overflow: hidden;
+}
+
+.server-card:hover,
+.tool-card:hover {
+    border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
 }
 
 .server-card.busy,
@@ -1428,26 +1400,16 @@ async function saveTool() {
 
 .server-icon,
 .tool-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    background: color-mix(in srgb, var(--k-side-bg), transparent 8%);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-color-primary) 8%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 28%);
+    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 36%);
     flex-shrink: 0;
     overflow: hidden;
-}
-
-.server-icon :deep(.el-icon) {
-    font-size: 16px;
-}
-
-.tool-icon :deep(.el-icon) {
-    font-size: 14px;
 }
 
 .server-icon img,
@@ -1471,15 +1433,16 @@ async function saveTool() {
 }
 
 .server-title,
-.tool-name {
-    font-size: 14px;
+.tool-name,
+.server-sub {
+    font-size: 12px;
     color: var(--k-text-light);
+    line-height: 1.45;
 }
 
 .server-name,
 .tool-title {
-    margin-top: 2px;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--k-text-dark);
     line-height: 1.4;
@@ -1488,20 +1451,51 @@ async function saveTool() {
     white-space: nowrap;
 }
 
-.server-kind {
-    margin-top: 4px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+.server-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    font-size: 12px;
+    line-height: 1.4;
     color: var(--k-text-light);
+    white-space: nowrap;
+}
+
+.state-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--k-text-light), transparent 20%);
+    flex: 0 0 auto;
+}
+
+.server-state.is-connected {
+    color: var(--el-color-success);
+}
+
+.server-state.is-connected .state-dot {
+    background: var(--el-color-success);
+}
+
+.server-state.is-pending {
+    color: var(--el-color-warning);
+}
+
+.server-state.is-pending .state-dot {
+    background: var(--el-color-warning);
+}
+
+.server-state.is-error {
+    color: var(--el-color-danger);
+}
+
+.server-state.is-error .state-dot {
+    background: var(--el-color-danger);
 }
 
 .server-summary,
 .tool-description {
-    margin-top: 8px;
     font-size: 12px;
     line-height: 1.6;
     color: var(--k-text-light);
@@ -1518,37 +1512,36 @@ async function saveTool() {
     -webkit-line-clamp: 2;
 }
 
-.meta-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
+.server-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
 }
 
-.meta-card {
-    flex: 1 1 120px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--k-activity-bg), transparent 22%);
-    padding: 8px 10px;
+.server-meta > div {
+    min-width: 0;
 }
 
-.meta-wide {
-    flex-basis: 100%;
+.server-meta .meta-wide {
+    grid-column: 1 / -1;
 }
 
-.meta-card span {
+.server-meta span,
+.server-meta strong {
     display: block;
     font-size: 11px;
+    line-height: 1.45;
+}
+
+.server-meta span {
     color: var(--k-text-light);
 }
 
-.meta-card strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 13px;
+.server-meta strong {
+    margin-top: 2px;
     color: var(--k-text-dark);
-    line-height: 1.4;
-    word-break: break-word;
+    font-weight: 500;
+    overflow-wrap: anywhere;
 }
 
 @media (max-width: 1680px) {
@@ -1571,106 +1564,31 @@ async function saveTool() {
     }
 }
 
-.detail-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 10px;
-}
-
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 11px;
-    color: var(--k-text-light);
-}
-
-.detail-row span:last-child {
-    color: var(--k-text-dark);
-    text-align: right;
-    word-break: break-word;
-}
-
-.server-chips,
-.tool-chips {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-}
-
-.server-endpoint {
-    margin-top: 8px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-    word-break: break-word;
-    overflow-wrap: anywhere;
-}
-
 .error-box {
-    margin-top: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--el-color-danger), transparent 95%);
-    color: color-mix(in srgb, var(--el-color-danger), var(--k-text-dark) 36%);
-    font-size: 11px;
-    line-height: 1.5;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border-left: 3px solid var(--el-color-danger);
+    background: color-mix(in srgb, var(--el-color-danger), transparent 94%);
+    color: var(--el-color-danger);
+    font-size: 12px;
+    line-height: 1.45;
     word-break: break-word;
     overflow-wrap: anywhere;
 }
 
 .server-actions,
 .tool-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    gap: 8px;
     margin-top: auto;
-    padding-top: 10px;
 }
 
-.server-actions :deep(.neutral-outline.el-button) {
-    --el-button-bg-color: transparent;
-    --el-button-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 12%
-    );
-    --el-button-text-color: var(--k-text-dark);
-    --el-button-hover-bg-color: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        var(--k-page-bg) 18%
-    );
-    --el-button-hover-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 0%
-    );
-    --el-button-hover-text-color: var(--k-text-dark);
-    --el-button-active-bg-color: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        var(--k-page-bg) 26%
-    );
-    --el-button-active-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 0%
-    );
-    --el-button-active-text-color: var(--k-text-dark);
-    --el-button-disabled-bg-color: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        transparent 10%
-    );
-    --el-button-disabled-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 24%
-    );
-    --el-button-disabled-text-color: var(--k-text-light);
+.server-actions :deep(.el-button),
+.tool-actions :deep(.el-button) {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
 }
 
 .server-actions :deep(.danger-soft.el-button) {
@@ -1689,28 +1607,6 @@ async function saveTool() {
         var(--el-color-danger),
         var(--k-text-dark) 22%
     );
-    --el-button-hover-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 86%
-    );
-    --el-button-hover-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 52%
-    );
-    --el-button-hover-text-color: var(--el-color-danger);
-    --el-button-active-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 82%
-    );
-    --el-button-active-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 44%
-    );
-    --el-button-active-text-color: var(--el-color-danger);
 }
 
 .empty-state {
@@ -1853,15 +1749,6 @@ async function saveTool() {
     overflow-wrap: anywhere;
 }
 
-.dialog-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--k-color-divider);
-}
-
 .dialog-head {
     display: flex;
     justify-content: center;
@@ -1906,11 +1793,29 @@ async function saveTool() {
     .card-list,
     .card-list.compact {
         --card-cols: 1;
+        grid-template-columns: 1fr;
     }
 
-    .panel-header {
+    .catalog-controls {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .catalog-actions {
+        width: 100%;
+        margin-left: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .catalog-actions :deep(.el-button) {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        justify-content: center;
     }
 
     .dialog-grid > .form-group,
@@ -1919,34 +1824,38 @@ async function saveTool() {
         max-width: none;
     }
 
-    .card-list {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
     .server-card,
     .tool-card {
-        flex-basis: auto;
         width: 100%;
+        min-width: 0;
     }
 
     .json-layout {
         grid-template-columns: 1fr;
     }
 
-    .meta-wide {
-        flex-basis: 100%;
+    .server-meta {
+        grid-template-columns: minmax(0, 1fr);
     }
 
-    .server-actions,
-    .tool-actions {
+    .server-head {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .server-state {
+        width: 100%;
         justify-content: flex-start;
-        flex-wrap: wrap;
     }
 }
 
 .tooltip-trigger-wrapper {
     display: inline-flex;
+    width: 100%;
+}
+
+.tooltip-trigger-wrapper :deep(.el-button) {
+    width: 100%;
 }
 
 .tooltip-trigger-wrapper :deep(.el-button.is-disabled),

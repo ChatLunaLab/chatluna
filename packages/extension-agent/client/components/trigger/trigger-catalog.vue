@@ -1,31 +1,44 @@
 <template>
     <div class="trigger-catalog">
-        <div class="catalog-tools">
-            <el-input
-                v-model="search"
-                clearable
-                placeholder="搜索名称、条件或错误"
-            >
-                <template #prefix>
-                    <el-icon><Search /></el-icon>
-                </template>
-            </el-input>
-            <el-select v-model="status" clearable placeholder="全部状态">
-                <el-option
-                    v-for="(label, value) in statusLabels"
-                    :key="value"
-                    :label="label"
-                    :value="value"
-                />
-            </el-select>
-            <el-select v-model="type" clearable placeholder="全部场景">
-                <el-option
-                    v-for="item in scenarios"
-                    :key="item.id"
-                    :label="item.label"
-                    :value="item.id"
-                />
-            </el-select>
+        <div class="catalog-controls">
+            <div class="catalog-search">
+                <el-input
+                    v-model="search"
+                    clearable
+                    placeholder="搜索名称、条件或错误"
+                >
+                    <template #prefix>
+                        <el-icon><Search /></el-icon>
+                    </template>
+                </el-input>
+                <el-select v-model="status" clearable placeholder="全部状态">
+                    <el-option
+                        v-for="(label, value) in statusLabels"
+                        :key="value"
+                        :label="label"
+                        :value="value"
+                    />
+                </el-select>
+                <el-select v-model="type" clearable placeholder="全部场景">
+                    <el-option
+                        v-for="item in scenarios"
+                        :key="item.id"
+                        :label="item.label"
+                        :value="item.id"
+                    />
+                </el-select>
+            </div>
+
+            <div class="catalog-actions">
+                <el-button
+                    type="primary"
+                    :icon="Plus"
+                    :disabled="busy"
+                    @click="emit('create')"
+                >
+                    新建触发器
+                </el-button>
+            </div>
         </div>
 
         <div
@@ -169,6 +182,7 @@ import {
     Delete,
     Edit,
     MagicStick,
+    Plus,
     RefreshRight,
     Search,
     TrendCharts,
@@ -196,6 +210,7 @@ const props = defineProps<{
     busy?: boolean
 }>()
 const emit = defineEmits<{
+    create: []
     select: [id: number]
     toggle: [id: number, enabled: boolean]
     fire: [id: number]
@@ -326,15 +341,39 @@ function canResume(task: TriggerTask) {
     min-width: 0;
 }
 
-.catalog-tools {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr) 180px 220px;
-    gap: 10px;
+.catalog-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin-bottom: 16px;
+    min-width: 0;
+    flex-wrap: wrap;
 }
 
-.catalog-tools :deep(.el-select),
-.catalog-tools :deep(.el-input) {
+.catalog-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin-left: auto;
+}
+
+.catalog-actions :deep(.el-button) {
+    margin: 0;
+}
+
+.catalog-search {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 150px 180px;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 520px;
+}
+
+.catalog-search :deep(.el-select),
+.catalog-search :deep(.el-input) {
     width: 100%;
     min-width: 0;
 }
@@ -552,7 +591,30 @@ function canResume(task: TriggerTask) {
 }
 
 @media (max-width: 760px) {
-    .catalog-tools {
+    .catalog-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .catalog-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .catalog-actions :deep(.el-button) {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        justify-content: center;
+    }
+
+    .catalog-search {
+        width: 100%;
+        min-width: 0;
+        flex: none;
         grid-template-columns: minmax(0, 1fr);
     }
 

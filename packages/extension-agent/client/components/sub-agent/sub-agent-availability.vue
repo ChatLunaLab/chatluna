@@ -1,14 +1,5 @@
 <template>
-    <div class="panel grants-panel">
-        <div class="panel-header">
-            <div>
-                <div class="panel-title">工具可用性</div>
-                <div class="panel-description">
-                    反向查看每个工具当前会被哪些 Sub Agent 看到与允许。
-                </div>
-            </div>
-        </div>
-
+    <div class="grants-view">
         <div v-if="availability.length > 0" class="grants-list">
             <div
                 v-for="item in availability"
@@ -57,33 +48,17 @@ defineProps<{
 </script>
 
 <style scoped>
-.panel {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
-    overflow: hidden;
-    min-height: 420px;
+.grants-view {
+    min-width: 0;
+    min-height: 280px;
 }
 
-.panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 18px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
-}
-
-.panel-title,
 .grant-title {
     font-size: 14px;
     font-weight: 600;
     color: var(--k-text-dark);
 }
 
-.panel-description,
 .grant-meta,
 .grant-empty {
     margin-top: 4px;
@@ -97,15 +72,14 @@ defineProps<{
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 12px;
-    padding: 16px;
 }
 
 .grant-row {
     padding: 14px;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -113,6 +87,7 @@ defineProps<{
     min-height: 188px;
     max-height: 232px;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .grant-description {

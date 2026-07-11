@@ -12,6 +12,7 @@
                     </div>
                     <div class="actions-section">
                         <el-button
+                            size="small"
                             class="hidden-mobile"
                             :type="compactMode ? 'primary' : 'default'"
                             plain
@@ -20,19 +21,12 @@
                             {{ compactMode ? '紧凑模式' : '宽屏模式' }}
                         </el-button>
                         <el-button
+                            size="small"
                             :icon="RefreshRight"
                             :disabled="busy"
                             @click="load"
                         >
                             刷新
-                        </el-button>
-                        <el-button
-                            :icon="Plus"
-                            type="primary"
-                            :disabled="busy"
-                            @click="openCreate"
-                        >
-                            新建触发器
                         </el-button>
                     </div>
                 </div>
@@ -53,6 +47,7 @@
                 :providers="providers"
                 :compact-mode="compactMode"
                 :busy="busy"
+                @create="openCreate"
                 @select="openEditor"
                 @toggle="toggle"
                 @fire="fire"
@@ -83,7 +78,7 @@
 
 <script setup lang="ts">
 import { send } from '@koishijs/client'
-import { Plus, RefreshRight } from '@element-plus/icons-vue'
+import { RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, ref, watch } from 'vue'
 import type {
@@ -350,7 +345,7 @@ async function removeSelected() {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     justify-content: flex-end;
 }
 
@@ -373,8 +368,6 @@ async function removeSelected() {
     }
 
     .actions-section {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         width: 100%;
     }
 
