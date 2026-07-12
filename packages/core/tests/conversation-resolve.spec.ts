@@ -752,6 +752,7 @@ it('chatluna.delete removes range and list selectors', async () => {
     ]
     const actions = new Map<string, (...args: any[]) => Promise<void>>()
     const deleted: string[] = []
+    const failures = new Set<string>()
     const messages: string[] = []
     const resolveTargets: (string | undefined)[] = []
     let listCalls = 0
@@ -806,6 +807,9 @@ it('chatluna.delete removes range and list selectors', async () => {
                     return entries()
                 },
                 deleteConversation: async (_session, opts) => {
+                    if (failures.has(opts.conversationId)) {
+                        throw new Error('delete failed')
+                    }
                     deleted.push(opts.conversationId)
                     return conversations.find(
                         (item) => item.id === opts.conversationId
@@ -950,6 +954,20 @@ it('chatluna.delete removes range and list selectors', async () => {
         'chatluna.conversation.messages.delete_success:Claude Code 黑子,4,conversation-space-title',
         'chatluna.conversation.messages.delete_success:1..101,5,conversation-range-title'
     ])
+
+    failures.add('conversation-second')
+    await action({ options: {}, session }, '1,2')
+    assert.equal(
+        messages.at(-1),
+        'chatluna.conversation.messages.delete_partial:First Topic (1),Second Topic (2)'
+    )
+
+    failures.add('conversation-first')
+    await action({ options: {}, session }, '1,2')
+    assert.equal(
+        messages.at(-1),
+        'chatluna.conversation.messages.delete_failed:First Topic (1)\nSecond Topic (2)'
+    )
 })
 
 it('conversation_switch preserves explicit chain conversation through middleware order', async () => {

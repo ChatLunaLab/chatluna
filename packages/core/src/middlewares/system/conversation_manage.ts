@@ -307,18 +307,40 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 const deleted: string[] = []
+                const failed: string[] = []
                 for (const item of targets) {
-                    const conversation =
-                        await ctx.chatluna.conversation.deleteConversation(
-                            session,
-                            {
-                                ...opts,
-                                conversationId: item.conversation.id
-                            }
+                    try {
+                        const conversation =
+                            await ctx.chatluna.conversation.deleteConversation(
+                                session,
+                                {
+                                    ...opts,
+                                    conversationId: item.conversation.id
+                                }
+                            )
+                        deleted.push(
+                            `${conversation.title} (${conversation.seq ?? conversation.id})`
                         )
-                    deleted.push(
-                        `${conversation.title} (${conversation.seq ?? conversation.id})`
+                    } catch {
+                        failed.push(
+                            `${item.conversation.title} (${item.displaySeq})`
+                        )
+                    }
+                }
+
+                if (deleted.length === 0) {
+                    context.message = session.text(
+                        'chatluna.conversation.messages.delete_failed',
+                        [failed.join('\n')]
                     )
+                    return ChainMiddlewareRunStatus.STOP
+                }
+                if (failed.length > 0) {
+                    context.message = session.text(
+                        'chatluna.conversation.messages.delete_partial',
+                        [deleted.join('\n'), failed.join('\n')]
+                    )
+                    return ChainMiddlewareRunStatus.STOP
                 }
 
                 context.message = session.text(
