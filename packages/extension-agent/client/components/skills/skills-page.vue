@@ -199,92 +199,7 @@
                                 }}
                             </div>
 
-                            <div class="skill-chips">
-                                <el-tag
-                                    size="small"
-                                    effect="plain"
-                                    :type="item.main ? 'success' : 'info'"
-                                >
-                                    {{
-                                        item.main
-                                            ? '主 Agent 启用'
-                                            : '主 Agent 禁用'
-                                    }}
-                                </el-tag>
-                                <el-tag
-                                    size="small"
-                                    effect="plain"
-                                    :type="
-                                        item.chatlunaEnabled
-                                            ? 'success'
-                                            : 'info'
-                                    "
-                                >
-                                    {{
-                                        item.chatlunaEnabled
-                                            ? 'ChatLuna 启用'
-                                            : 'ChatLuna 禁用'
-                                    }}
-                                </el-tag>
-                                <el-tag
-                                    size="small"
-                                    effect="plain"
-                                    :type="
-                                        item.characterEnabled
-                                            ? 'success'
-                                            : 'info'
-                                    "
-                                >
-                                    {{
-                                        item.characterEnabled
-                                            ? 'Character 启用'
-                                            : 'Character 禁用'
-                                    }}
-                                </el-tag>
-                                <el-tag
-                                    size="small"
-                                    effect="plain"
-                                    :type="
-                                        subAgentModeType(item.subAgents.mode)
-                                    "
-                                >
-                                    {{ subAgentModeLabel(item.subAgents.mode) }}
-                                </el-tag>
-                            </div>
-
                             <div class="skill-footer">
-                                <div v-if="!hideDesc" class="skill-meta">
-                                    {{ item.path || '当前没有可用路径' }}
-                                </div>
-
-                                <div
-                                    v-if="!hideDesc && item.homepage"
-                                    class="skill-meta"
-                                >
-                                    主页：{{ item.homepage }}
-                                </div>
-
-                                <div
-                                    v-if="!hideDesc && item.compatibility"
-                                    class="skill-meta"
-                                >
-                                    兼容性：{{ item.compatibility }}
-                                </div>
-
-                                <div
-                                    v-if="!hideDesc && formatRequires(item)"
-                                    class="skill-meta"
-                                >
-                                    依赖要求：{{ formatRequires(item) }}
-                                </div>
-
-                                <div
-                                    v-if="!hideDesc && formatInstall(item)"
-                                    class="skill-meta"
-                                >
-                                    安装方式：{{ formatInstall(item) }}
-                                </div>
-
                                 <div class="skill-actions" @click.stop>
                                     <div class="skill-actions-main">
                                         <el-button
@@ -295,7 +210,7 @@
                                             "
                                             @click.stop="previewSkill(item)"
                                         >
-                                            查看/编辑内容
+                                            查看
                                         </el-button>
                                         <el-button
                                             size="small"
@@ -303,7 +218,7 @@
                                             :disabled="!canExport(item)"
                                             @click.stop="exportSkill(item)"
                                         >
-                                            导出 ZIP
+                                            导出
                                         </el-button>
                                         <el-button
                                             class="danger-soft"
@@ -317,25 +232,6 @@
                                             @click.stop="removeSkill(item)"
                                         >
                                             删除
-                                        </el-button>
-                                        <el-button
-                                            v-if="hasDiagnostics(item)"
-                                            class="warning-soft"
-                                            size="small"
-                                            plain
-                                            @click.stop="openDiagnostics(item)"
-                                        >
-                                            错误信息
-                                        </el-button>
-                                        <el-button
-                                            v-if="item.homepage"
-                                            size="small"
-                                            plain
-                                            @click.stop="
-                                                openLink(item.homepage)
-                                            "
-                                        >
-                                            打开主页
                                         </el-button>
                                     </div>
                                 </div>
@@ -724,18 +620,6 @@ function scheduleSave() {
     if (!dirty.value) return
     localDirty.value = true
     saveDraft()
-}
-
-function subAgentModeLabel(mode: PermissionRule['mode']) {
-    if (mode === 'allow') return '仅指定 sub-agent'
-    if (mode === 'deny') return '排除指定 sub-agent'
-    return '全部 sub-agent'
-}
-
-function subAgentModeType(mode: PermissionRule['mode']) {
-    if (mode === 'allow') return 'success'
-    if (mode === 'deny') return 'warning'
-    return 'info'
 }
 
 function cloneConfig(value: SkillsConfig): SkillsConfig {
@@ -1209,7 +1093,7 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .card-list {
-    --card-cols: 5;
+    --card-cols: 4;
     display: grid;
     grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
@@ -1310,7 +1194,6 @@ function base64ToBlob(data: string, type: string) {
 
 .skill-name,
 .skill-description,
-.skill-meta,
 .preview-meta {
     margin-top: 4px;
     font-size: 12px;
@@ -1321,26 +1204,24 @@ function base64ToBlob(data: string, type: string) {
 
 .skill-description {
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    min-height: calc(12px * 1.6 * 4);
+    height: calc(12px * 1.6 * 4);
 }
 
 .card-list.compact .skill-description {
-    -webkit-line-clamp: 2;
-}
-
-.skill-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    -webkit-line-clamp: 4;
+    min-height: calc(12px * 1.6 * 4);
+    height: calc(12px * 1.6 * 4);
 }
 
 .skill-footer {
-    margin-top: auto;
+    margin-top: 4px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .skill-actions {
@@ -1350,15 +1231,16 @@ function base64ToBlob(data: string, type: string) {
 }
 
 .skill-actions-main {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
+    min-width: 0;
 }
 
 .skill-actions-main :deep(.el-button) {
-    width: 100%;
-    min-width: 0;
     margin: 0;
+    padding-inline: 12px;
 }
 
 .skill-actions-main :deep(.danger-soft.el-button) {
@@ -1523,6 +1405,7 @@ function base64ToBlob(data: string, type: string) {
     .card-list,
     .card-list.compact {
         --card-cols: 1;
+        grid-template-columns: 1fr;
     }
 }
 </style>

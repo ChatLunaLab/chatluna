@@ -10,7 +10,41 @@
         <div class="page-header">
             <div class="headline">
                 <div class="page-title">{{ agent.name }} 配置</div>
-                <div class="page-description">调整当前 Sub Agent 的详细配置。</div>
+                <div class="page-tags">
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.chatluna ? 'success' : 'info'"
+                    >
+                        主插件 {{ draft.chatluna ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.character ? 'warning' : 'info'"
+                    >
+                        伪装 {{ draft.character ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        v-if="draft.hidden"
+                        size="small"
+                        effect="plain"
+                        type="danger"
+                    >
+                        已隐藏
+                    </el-tag>
+                    <el-tag
+                        v-if="hasDiagnostics"
+                        size="small"
+                        effect="plain"
+                        type="danger"
+                    >
+                        有错误
+                    </el-tag>
+                </div>
+                <div v-if="hasDiagnostics" class="page-alert">
+                    当前 Sub Agent 存在诊断问题，请检查配置后再启用。
+                </div>
             </div>
 
             <div class="editor-actions">
@@ -419,6 +453,13 @@ const tabs = [
     { value: 'feature', label: '功能权限' }
 ] as const
 
+const hasDiagnostics = computed(() => {
+    return (
+        props.agent.state !== 'ready' ||
+        (props.agent.diagnostics?.length ?? 0) > 0
+    )
+})
+
 const scopeOptions = [
     { label: '全局', value: 'all' },
     { label: '白名单', value: 'allow' },
@@ -571,10 +612,22 @@ function clearIds() {
     color: var(--k-text-dark);
 }
 
-.page-description {
+.page-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.page-tags :deep(.el-tag) {
+    border-radius: 6px;
+}
+
+.page-alert {
     margin-top: 8px;
-    font-size: 13px;
-    color: var(--k-text-light);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--el-color-danger);
 }
 
 .back-link {

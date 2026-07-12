@@ -715,13 +715,17 @@ function cloneRule(rule?: PermissionRule): PermissionRule {
 
 .tool-description {
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    min-height: calc(12px * 1.6 * 4);
+    height: calc(12px * 1.6 * 4);
 }
 
 .card-list.compact .tool-description {
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 4;
+    min-height: calc(12px * 1.6 * 4);
+    height: calc(12px * 1.6 * 4);
 }
 
 @media (max-width: 1680px) {

@@ -63,57 +63,63 @@
                             </div>
                         </div>
 
-                        <div class="server-state" :class="stateClass(item)">
-                            <span class="state-dot" />
-                            <span>
-                                {{
-                                    stateLabel(
-                                        item.updating
-                                            ? 'reconnecting'
-                                            : item.status?.state
-                                    )
-                                }}
-                            </span>
+                        <div class="server-controls">
+                            <div class="server-state" :class="stateClass(item)">
+                                <span class="state-dot" />
+                                <span>
+                                    {{
+                                        stateLabel(
+                                            item.updating
+                                                ? 'reconnecting'
+                                                : item.status?.state
+                                        )
+                                    }}
+                                </span>
+                            </div>
+                            <el-switch
+                                :model-value="item.tools.some((t) => t.enabled)"
+                                :loading="serverToolsBusy[item.name]"
+                                :disabled="
+                                    serverToolsBusy[item.name] ||
+                                    item.updating ||
+                                    item.tools.length === 0 ||
+                                    item.tools.some((t) => t.updating)
+                                "
+                                @click.stop
+                                @change="toggleServerTools(item.name)"
+                            />
                         </div>
-                    </div>
-
-                    <div v-if="!props.hideDesc" class="server-summary">
-                        {{
-                            (item.updating && !item.status?.updating
-                                ? '正在重新连接服务器。'
-                                : item.status?.stateText) ||
-                            '尚未连接，等待首次初始化。'
-                        }}
                     </div>
 
                     <div class="server-meta">
-                        <div>
-                            <span>传输</span>
-                            <strong>{{ item.kind }}</strong>
-                        </div>
-                        <div>
-                            <span>工具</span>
-                            <strong>{{ item.tools.length }}</strong>
-                        </div>
-                        <div>
-                            <span>超时</span>
-                            <strong>{{ item.server.timeout ?? 60 }}s</strong>
-                        </div>
-                        <div v-if="item.status?.attempts">
-                            <span>重试</span>
-                            <strong>
-                                {{ item.status.attempts }}/{{
+                        <div class="meta-chips">
+                            <el-tag size="small" effect="plain" type="info">
+                                传输 {{ item.kind }}
+                            </el-tag>
+                            <el-tag size="small" effect="plain" type="success">
+                                工具 {{ item.tools.length }}
+                            </el-tag>
+                            <el-tag size="small" effect="plain" type="warning">
+                                超时 {{ item.server.timeout ?? 60 }}s
+                            </el-tag>
+                            <el-tag
+                                v-if="item.status?.attempts"
+                                size="small"
+                                effect="plain"
+                                type="danger"
+                            >
+                                重试 {{ item.status.attempts }}/{{
                                     item.status.maxAttempts ?? 5
                                 }}
-                            </strong>
+                            </el-tag>
                         </div>
-                        <div class="meta-wide">
+                        <div class="meta-endpoint">
                             <span>
                                 {{ item.kind === 'stdio' ? '命令' : '入口' }}
                             </span>
-                            <strong>
+                            <code :title="endpointLabel(item)">
                                 {{ endpointLabel(item) }}
-                            </strong>
+                            </code>
                         </div>
                     </div>
 
@@ -121,64 +127,56 @@
                         {{ item.status.error }}
                     </div>
 
-                    <div class="server-actions">
-                        <el-tooltip
-                            effect="dark"
-                            :content="
-                                item.tools.some((t) => t.enabled)
-                                    ? '禁用该服务器的所有工具'
-                                    : '启用该服务器的所有工具'
-                            "
-                            placement="top"
+                    <div class="server-footer">
+                        <el-dropdown
+                            trigger="click"
+                            @command="(cmd) => onServerMenu(cmd, item)"
                         >
-                            <span class="tooltip-trigger-wrapper">
-                                <el-button
-                                    size="small"
-                                    plain
-                                    :loading="serverToolsBusy[item.name]"
-                                    :disabled="
-                                        serverToolsBusy[item.name] ||
-                                        item.updating ||
-                                        item.tools.length === 0 ||
-                                        item.tools.some((t) => t.updating)
-                                    "
-                                    @click="toggleServerTools(item.name)"
-                                >
-                                    {{
-                                        item.tools.some((t) => t.enabled)
-                                            ? '禁用全部'
-                                            : '启用全部'
-                                    }}
-                                </el-button>
-                            </span>
-                        </el-tooltip>
-                        <el-button
-                            size="small"
-                            plain
-                            :disabled="item.updating"
-                            @click="openEdit(item.name)"
-                        >
-                            编辑
-                        </el-button>
-                        <el-button
-                            size="small"
-                            plain
-                            :loading="item.updating"
-                            :disabled="item.updating"
-                            @click="reconnect(item.name)"
-                        >
-                            {{ item.updating ? '重连中' : '重连' }}
-                        </el-button>
-                        <el-button
-                            class="danger-soft"
-                            size="small"
-                            type="danger"
-                            plain
-                            :disabled="item.updating"
-                            @click="removeServer(item.name)"
-                        >
-                            删除
-                        </el-button>
+                            <el-button
+                                class="more-btn"
+                                text
+                                :icon="More"
+                                @click.stop
+                            />
+                            <template #dropdown>
+                                <el-dropdown-menu>
+                                    <el-dropdown-item
+                                        command="toggle-tools"
+                                        :disabled="
+                                            serverToolsBusy[item.name] ||
+                                            item.updating ||
+                                            item.tools.length === 0 ||
+                                            item.tools.some((t) => t.updating)
+                                        "
+                                    >
+                                        {{
+                                            item.tools.some((t) => t.enabled)
+                                                ? '禁用全部工具'
+                                                : '启用全部工具'
+                                        }}
+                                    </el-dropdown-item>
+                                    <el-dropdown-item
+                                        command="edit"
+                                        :disabled="item.updating"
+                                    >
+                                        编辑
+                                    </el-dropdown-item>
+                                    <el-dropdown-item
+                                        command="reconnect"
+                                        :disabled="item.updating"
+                                    >
+                                        {{ item.updating ? '重连中' : '重连' }}
+                                    </el-dropdown-item>
+                                    <el-dropdown-item
+                                        command="remove"
+                                        divided
+                                        :disabled="item.updating"
+                                    >
+                                        删除
+                                    </el-dropdown-item>
+                                </el-dropdown-menu>
+                            </template>
+                        </el-dropdown>
                     </div>
                 </div>
             </div>
@@ -203,6 +201,11 @@
                     :key="item.name"
                     class="tool-card"
                     :class="{ busy: item.updating, centered: props.hideDesc }"
+                    role="button"
+                    tabindex="0"
+                    @click="openTool(item)"
+                    @keydown.enter.prevent="openTool(item)"
+                    @keydown.space.prevent="openTool(item)"
                 >
                     <div class="tool-top">
                         <div class="tool-brand">
@@ -222,7 +225,7 @@
                                     {{ item.title || item.name }}
                                 </div>
                                 <div v-if="!props.hideDesc" class="tool-name">
-                                    {{ item.name }}
+                                    {{ item.server }}
                                 </div>
                             </div>
                         </div>
@@ -231,6 +234,7 @@
                             :model-value="item.enabled"
                             :loading="item.updating"
                             :disabled="item.updating"
+                            @click.stop
                             @change="
                                 (value) => toggleTool(item, value as boolean)
                             "
@@ -239,17 +243,6 @@
 
                     <div v-if="!props.hideDesc" class="tool-description">
                         {{ item.description || '这个工具暂时没有说明。' }}
-                    </div>
-
-                    <div class="tool-actions">
-                        <el-button
-                            size="small"
-                            plain
-                            :disabled="item.updating"
-                            @click="openTool(item)"
-                        >
-                            编辑
-                        </el-button>
                     </div>
                 </div>
             </div>
@@ -574,7 +567,8 @@ import {
     RefreshRight,
     Tools,
     Menu,
-    Document
+    Document,
+    More
 } from '@element-plus/icons-vue'
 import type {
     McpConfig,
@@ -1086,6 +1080,34 @@ function openEdit(name: string) {
     showServerDialog.value = true
 }
 
+function onServerMenu(
+    command: string,
+    item: {
+        name: string
+        updating: boolean
+        tools: { enabled: boolean; updating?: boolean }[]
+    }
+) {
+    if (command === 'toggle-tools') {
+        toggleServerTools(item.name)
+        return
+    }
+
+    if (command === 'edit') {
+        openEdit(item.name)
+        return
+    }
+
+    if (command === 'reconnect') {
+        reconnect(item.name)
+        return
+    }
+
+    if (command === 'remove') {
+        removeServer(item.name)
+    }
+}
+
 function openTool(item: McpToolInfo) {
     toolForm.name = item.name
     toolForm.server = item.server
@@ -1325,15 +1347,24 @@ async function saveTool() {
 }
 
 .card-list {
-    --card-cols: 4;
+    --card-cols: 3;
     display: grid;
     grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
     box-sizing: border-box;
 }
 
-.card-list.compact {
+.server-grid,
+.server-grid.compact {
     --card-cols: 3;
+}
+
+.tool-grid {
+    --card-cols: 5;
+}
+
+.tool-grid.compact {
+    --card-cols: 4;
 }
 
 .server-card,
@@ -1454,6 +1485,7 @@ async function saveTool() {
 .server-state {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 6px;
     flex: 0 0 auto;
     font-size: 12px;
@@ -1494,7 +1526,6 @@ async function saveTool() {
     background: var(--el-color-danger);
 }
 
-.server-summary,
 .tool-description {
     font-size: 12px;
     line-height: 1.6;
@@ -1502,65 +1533,119 @@ async function saveTool() {
     word-break: break-word;
     overflow-wrap: anywhere;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-.card-list.compact .server-summary,
-.card-list.compact .tool-description {
-    -webkit-line-clamp: 2;
+.tool-grid.compact .tool-description {
+    -webkit-line-clamp: 3;
 }
 
 .server-meta {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 12px;
-}
-
-.server-meta > div {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     min-width: 0;
 }
 
-.server-meta .meta-wide {
-    grid-column: 1 / -1;
+.meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
 }
 
-.server-meta span,
-.server-meta strong {
-    display: block;
+.meta-chips :deep(.el-tag) {
+    border-radius: 6px;
+}
+
+.meta-endpoint {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.meta-endpoint span {
     font-size: 11px;
-    line-height: 1.45;
-}
-
-.server-meta span {
+    line-height: 1.4;
     color: var(--k-text-light);
 }
 
-.server-meta strong {
-    margin-top: 2px;
+.meta-endpoint code {
+    display: block;
+    min-width: 0;
     color: var(--k-text-dark);
-    font-weight: 500;
-    overflow-wrap: anywhere;
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+        'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.server-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.server-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: auto;
+}
+
+.more-btn {
+    --el-button-text-color: var(--k-text-light);
+    --el-button-hover-text-color: var(--k-text-dark);
+    padding: 4px;
+    min-height: 28px;
+    min-width: 28px;
+}
+
+.more-btn :deep(.el-icon) {
+    transform: rotate(90deg);
+}
+
+.tool-card {
+    cursor: pointer;
 }
 
 @media (max-width: 1680px) {
-    .card-list {
+    .server-grid,
+    .server-grid.compact {
         --card-cols: 3;
     }
 
-    .card-list.compact {
-        --card-cols: 2;
+    .tool-grid {
+        --card-cols: 5;
+    }
+
+    .tool-grid.compact {
+        --card-cols: 4;
     }
 }
 
 @media (max-width: 1320px) {
-    .card-list {
+    .server-grid {
         --card-cols: 2;
     }
 
-    .card-list.compact {
-        --card-cols: 1;
+    .server-grid.compact {
+        --card-cols: 2;
+    }
+
+    .tool-grid {
+        --card-cols: 3;
+    }
+
+    .tool-grid.compact {
+        --card-cols: 2;
     }
 }
 
@@ -1574,39 +1659,6 @@ async function saveTool() {
     line-height: 1.45;
     word-break: break-word;
     overflow-wrap: anywhere;
-}
-
-.server-actions,
-.tool-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
-    gap: 8px;
-    margin-top: auto;
-}
-
-.server-actions :deep(.el-button),
-.tool-actions :deep(.el-button) {
-    width: 100%;
-    min-width: 0;
-    margin: 0;
-}
-
-.server-actions :deep(.danger-soft.el-button) {
-    --el-button-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 92%
-    );
-    --el-button-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 68%
-    );
-    --el-button-text-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        var(--k-text-dark) 22%
-    );
 }
 
 .empty-state {
@@ -1791,7 +1843,9 @@ async function saveTool() {
 
 @media (max-width: 768px) {
     .card-list,
-    .card-list.compact {
+    .card-list.compact,
+    .tool-grid,
+    .tool-grid.compact {
         --card-cols: 1;
         grid-template-columns: 1fr;
     }
@@ -1834,10 +1888,6 @@ async function saveTool() {
         grid-template-columns: 1fr;
     }
 
-    .server-meta {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
     .server-head {
         flex-direction: column;
         gap: 10px;
@@ -1849,14 +1899,6 @@ async function saveTool() {
     }
 }
 
-.tooltip-trigger-wrapper {
-    display: inline-flex;
-    width: 100%;
-}
-
-.tooltip-trigger-wrapper :deep(.el-button) {
-    width: 100%;
-}
 
 .tooltip-trigger-wrapper :deep(.el-button.is-disabled),
 .tooltip-trigger-wrapper :deep(.el-button.is-loading) {
