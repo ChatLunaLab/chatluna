@@ -13,6 +13,10 @@ import {
 import { Config, logger } from '.'
 import { ClaudeRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
+import {
+    getModelMaxContextSizeByName,
+    supportImageInput
+} from '@chatluna/v1-shared-adapter'
 
 import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
@@ -86,26 +90,11 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
             return additionalModels
         }
 
-        const fallbackModels = [
-            'claude-3-5-sonnet-20241022',
-            'claude-3-7-sonnet-20250219',
-            'claude-opus-4-20250514',
-            'claude-sonnet-4-20250514',
-            'claude-sonnet-4-5-20250929',
-            'claude-opus-4-5-20251101',
-            'claude-opus-4-6',
-            'claude-opus-4-7',
-            'claude-sonnet-4-6',
-            'claude-opus-4-1-20250805',
-            'claude-haiku-4-5-20251001',
-            'claude-3-5-haiku-20241022'
-        ]
-
         let fetchedModels: ModelInfo[] = []
 
         try {
             // Anthropic lists newer models first; we keep the API order.
-            const modelIds: string[] = []
+            const models = new Set<string>()
             let afterId: string | undefined
 
             // Page through /v1/models until has_more is false.
@@ -116,26 +105,15 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
                 })
 
                 for (const item of resp.data ?? []) {
-                    if (item?.id) modelIds.push(item.id)
+                    if (item?.id) models.add(item.id)
                 }
 
                 if (!resp.has_more || !resp.last_id) break
                 afterId = resp.last_id
             }
 
-            const uniqueModels = Array.from(new Set(modelIds))
-            if (uniqueModels.length > 0) {
-                fetchedModels = uniqueModels.map((model) => ({
-                    name: model,
-                    // Use a fixed max context length (200K) for Claude models.
-                    maxTokens: 200_000,
-                    capabilities: [
-                        ModelCapabilities.ToolCall,
-                        ModelCapabilities.ImageInput,
-                        ModelCapabilities.FileInput
-                    ],
-                    type: ModelType.llm
-                }))
+            if (models.size > 0) {
+                fetchedModels = Array.from(models).map(createModelInfo)
             }
         } catch (e) {
             logger.warn(
@@ -145,17 +123,7 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
         }
 
         if (fetchedModels.length === 0) {
-            fetchedModels = fallbackModels.map((model) => ({
-                name: model,
-                // Use a fixed max context length (200K) for Claude models.
-                maxTokens: 200_000,
-                capabilities: [
-                    ModelCapabilities.ToolCall,
-                    ModelCapabilities.ImageInput,
-                    ModelCapabilities.FileInput
-                ],
-                type: ModelType.llm
-            }))
+            fetchedModels = FALLBACK_MODELS.map(createModelInfo)
         }
 
         this._requester.setModels(
@@ -219,8 +187,58 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
 }
 
 const THINKING_MODELS = [
-    'claude-3-7-sonnet-',
-    'claude-opus-4',
-    'claude-sonnet-4',
+    'claude-opus-4-5',
+    'claude-opus-4-6',
+    'claude-sonnet-4-5',
     'claude-haiku-4-5'
 ]
+
+const CLAUDE_1M_MODELS = [
+    'claude-fable-5',
+    'claude-mythos-5',
+    'claude-mythos-preview',
+    'claude-opus-4-8',
+    'claude-opus-4-7',
+    'claude-opus-4-6',
+    'claude-sonnet-5',
+    'claude-sonnet-4-6'
+]
+
+const FALLBACK_MODELS = [
+    'claude-fable-5',
+    'claude-opus-4-8',
+    'claude-sonnet-5',
+    'claude-opus-4-7',
+    'claude-opus-4-6',
+    'claude-opus-4-5-20251101',
+    'claude-sonnet-4-5-20250929',
+    'claude-haiku-4-5-20251001'
+]
+
+function createModelInfo(name: string): ModelInfo {
+    if (!name.toLowerCase().includes('claude')) {
+        const capabilities = [ModelCapabilities.ToolCall]
+        if (supportImageInput(name)) {
+            capabilities.push(ModelCapabilities.ImageInput)
+        }
+        return {
+            name,
+            type: ModelType.llm,
+            maxTokens: getModelMaxContextSizeByName(name),
+            capabilities
+        }
+    }
+
+    return {
+        name,
+        type: ModelType.llm,
+        maxTokens: CLAUDE_1M_MODELS.some((item) => name.includes(item))
+            ? 1_000_000
+            : 200_000,
+        capabilities: [
+            ModelCapabilities.ToolCall,
+            ModelCapabilities.ImageInput,
+            ModelCapabilities.FileInput
+        ]
+    }
+}
