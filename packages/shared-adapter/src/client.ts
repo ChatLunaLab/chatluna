@@ -93,13 +93,12 @@ export function isRerankerModel(modelName: string): boolean {
 }
 
 export function getModelMaxContextSize(info: ModelInfo): number {
-    const maxTokens = info.maxTokens
+    if (info.maxTokens != null) return info.maxTokens
+    return getModelMaxContextSizeByName(info.name)
+}
 
-    if (maxTokens != null) {
-        return maxTokens
-    }
-
-    const modelName = normalizeOpenAIModelName(info.name)
+export function getModelMaxContextSizeByName(name: string): number {
+    const modelName = normalizeOpenAIModelName(name)
 
     if (
         modelName.startsWith('gpt') ||
@@ -112,7 +111,13 @@ export function getModelMaxContextSize(info: ModelInfo): number {
 
     // compatible with Anthropic, Google, ...
     const modelMaxContextSizeTable: { [key: string]: number } = {
-        claude: 2000000,
+        'claude-fable-5': 1_000_000,
+        'claude-opus-4-8': 1_000_000,
+        'claude-opus-4-7': 1_000_000,
+        'claude-opus-4-6': 1_000_000,
+        'claude-sonnet-5': 1_000_000,
+        'claude-sonnet-4-6': 1_000_000,
+        claude: 200_000,
         'gemini-1.5-pro': 1048576,
         'gemini-1.5-flash': 2097152,
         'gemini-1.0-pro': 30720,
@@ -126,6 +131,7 @@ export function getModelMaxContextSize(info: ModelInfo): number {
         'grok-4.5': 500_000,
         'grok-4.3': 1_000_000,
         'llama3.1': 128000,
+        'glm-5.2': 1_000_000,
         'command-r-plus': 128000,
         'moonshot-v1-8k': 8192,
         'moonshot-v1-32k': 32000,
