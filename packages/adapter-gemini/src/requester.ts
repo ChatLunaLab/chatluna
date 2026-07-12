@@ -738,7 +738,7 @@ export class GeminiRequester
         const sig = chunk['thoughtSignature']
         let thoughtData: Record<string, unknown> | undefined
         if (sig != null) {
-            const id = chunk['functionCall']?.id
+            const id = functionCall?.id ?? chunk['functionCall']?.id
             if (id != null) {
                 thoughtData = {
                     [id]: {
