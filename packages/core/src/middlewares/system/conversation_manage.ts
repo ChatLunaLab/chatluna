@@ -18,6 +18,7 @@ import {
 import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
 import { logger } from '../..'
+import { parseDeleteSeqs } from '../../utils/conversation'
 import fs from 'fs/promises'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -271,13 +272,33 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         try {
             const opts = getManageOptions(context)
             const conversationId = resolvedConversationId(context)
+            const seqs =
+                conversationId == null
+                    ? parseDeleteSeqs(
+                          context.options.conversation_manage
+                              ?.targetConversation
+                      )
+                    : undefined
 
-            if (conversationId == null) {
-                const seqs = parseDeleteSeqs(
-                    context.options.conversation_manage?.targetConversation
+            if (seqs === null) {
+                context.message = session.text(
+                    'chatluna.conversation.messages.target_not_found',
+                    [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
+                )
+                return ChainMiddlewareRunStatus.STOP
+            }
+
+            if (seqs != null) {
+                const entries =
+                    await ctx.chatluna.conversation.listConversationEntries(
+                        session,
+                        opts
+                    )
+                const targets = entries.filter((item) =>
+                    seqs.includes(item.displaySeq)
                 )
 
-                if (seqs === null) {
+                if (targets.length !== seqs.length) {
                     context.message = session.text(
                         'chatluna.conversation.messages.target_not_found',
                         [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
@@ -285,45 +306,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
 
-                if (seqs != null) {
-                    const entries =
-                        await ctx.chatluna.conversation.listConversationEntries(
+                const deleted: string[] = []
+                for (const item of targets) {
+                    const conversation =
+                        await ctx.chatluna.conversation.deleteConversation(
                             session,
-                            opts
+                            {
+                                ...opts,
+                                conversationId: item.conversation.id
+                            }
                         )
-                    const targets = entries.filter((item) =>
-                        seqs.includes(item.displaySeq)
+                    deleted.push(
+                        `${conversation.title} (${conversation.seq ?? conversation.id})`
                     )
-
-                    if (targets.length !== seqs.length) {
-                        context.message = session.text(
-                            'chatluna.conversation.messages.target_not_found',
-                            [ChatLunaErrorCode.CONVERSATION_NOT_FOUND]
-                        )
-                        return ChainMiddlewareRunStatus.STOP
-                    }
-
-                    const deleted: string[] = []
-                    for (const item of targets) {
-                        const conversation =
-                            await ctx.chatluna.conversation.deleteConversation(
-                                session,
-                                {
-                                    ...opts,
-                                    conversationId: item.conversation.id
-                                }
-                            )
-                        deleted.push(
-                            `${conversation.title} (${conversation.seq ?? conversation.id})`
-                        )
-                    }
-
-                    context.message = session.text(
-                        'chatluna.conversation.messages.delete_success_multi',
-                        [deleted.join('\n')]
-                    )
-                    return ChainMiddlewareRunStatus.STOP
                 }
+
+                context.message = session.text(
+                    'chatluna.conversation.messages.delete_success_multi',
+                    [deleted.join('\n')]
+                )
+                return ChainMiddlewareRunStatus.STOP
             }
 
             const conversation =
@@ -807,42 +809,6 @@ function requireConversation(
         )
     }
     return conversation
-}
-
-function parseDeleteSeqs(input?: string) {
-    if (input == null || input.length === 0) {
-        return
-    }
-
-    const parts = input.split(',')
-    if (input.length > 512 || parts.length > 100) return null
-
-    const seqs = new Set<number>()
-    for (const part of parts) {
-        const match = /^(\d+)(?:\.\.(\d+))?$/.exec(part)
-        if (match == null) return null
-
-        const start = Number(match[1])
-        const end = Number(match[2] ?? match[1])
-        if (
-            !Number.isSafeInteger(start) ||
-            !Number.isSafeInteger(end) ||
-            start < 1 ||
-            end < 1
-        ) {
-            return null
-        }
-
-        const min = Math.min(start, end)
-        const max = Math.max(start, end)
-
-        for (let seq = min; seq <= max; seq += 1) {
-            seqs.add(seq)
-            if (seqs.size > 100) return null
-        }
-    }
-
-    return Array.from(seqs)
 }
 
 function conversationSummary(conversation: ConversationRecord) {

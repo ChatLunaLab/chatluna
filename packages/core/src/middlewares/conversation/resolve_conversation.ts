@@ -9,6 +9,7 @@ import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
+import { parseDeleteSeqs } from '../../utils/conversation'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -25,12 +26,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 options.targetConversation
             const batchTarget =
                 context.command === 'conversation_delete' &&
-                targetConversation != null &&
-                targetConversation.length <= 512 &&
-                targetConversation.split(',').length <= 100 &&
-                /^\d+(?:\.\.\d+)?(?:,\d+(?:\.\.\d+)?)*$/.test(
-                    targetConversation
-                )
+                parseDeleteSeqs(targetConversation) !== undefined
             const explicitConversationId =
                 options.conversation?.conversationId ??
                 options.conversation?.conversation?.id

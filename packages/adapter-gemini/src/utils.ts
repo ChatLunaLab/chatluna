@@ -711,6 +711,12 @@ export async function createChatGenerationParams(
     const systemInstructionKey = pluginConfig.useCamelCaseSystemInstruction
         ? 'systemInstruction'
         : 'system_instruction'
+
+    const includeServerSideToolInvocationKey =
+        pluginConfig.useCamelCaseSystemInstruction
+            ? 'includeServerSideToolInvocations'
+            : 'include_server_side_tool_invocations'
+
     const tools =
         params.tools != null ||
         modelConfig.forceGoogleSearch ||
@@ -748,7 +754,9 @@ export async function createChatGenerationParams(
         tools,
         toolConfig:
             modelConfig.model.includes('gemini-3') && hasBuiltinTools
-                ? { includeServerSideToolInvocations: true }
+                ? {
+                      [includeServerSideToolInvocationKey]: true
+                  }
                 : undefined
     }
 }

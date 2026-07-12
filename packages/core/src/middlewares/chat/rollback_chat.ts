@@ -14,13 +14,6 @@ import {
 
 const MAX_ROLLBACK_HOPS = 1000
 
-function getTargetConversation(context: ChainMiddlewareContext) {
-    return (
-        context.options.conversation_manage?.targetConversation ??
-        context.options.targetConversation
-    )
-}
-
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('rollback_chat', async (session, context) => {
@@ -29,14 +22,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (command !== 'rollback') return ChainMiddlewareRunStatus.SKIPPED
 
             const rollbackRound = context.options.rollback_round ?? 1
-            const targetConversation = getTargetConversation(context)
+            const target =
+                context.options.conversation_manage?.targetConversation ??
+                context.options.targetConversation
             const resolved =
-                targetConversation == null
+                target == null
                     ? context.options.conversation
                     : await ctx.chatluna.conversation.resolveConversation(
                           session,
                           {
-                              targetConversation,
+                              targetConversation: target,
                               presetLane: context.options.presetLane,
                               allPresetLanes: context.options.allPresetLanes,
                               permission: 'manage',
