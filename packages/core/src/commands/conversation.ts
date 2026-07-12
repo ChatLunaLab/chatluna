@@ -234,7 +234,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command('chatluna.delete [conversation:string]', {
+    ctx.command('chatluna.delete [conversation:text]', {
         authority: 1
     })
         .option('preset', '-p <preset:string>')

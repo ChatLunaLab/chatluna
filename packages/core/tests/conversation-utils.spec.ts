@@ -13,10 +13,7 @@ import {
     parsePresetLaneInput
 } from '../src/utils/message_content'
 import { ChatLunaPromptRenderService } from '../src/services/prompt_renderer'
-import {
-    applyPresetLane,
-    computeBaseBindingKey
-} from '../src/types'
+import { applyPresetLane, computeBaseBindingKey } from '../src/types'
 import { usageSourceFromStack } from '../src/utils/usage_source'
 import { selectFromList } from '../src/utils/string'
 import {
@@ -24,6 +21,43 @@ import {
     type BindingSessionShape,
     FakeDatabase
 } from './helpers'
+import { parseDeleteSeqs } from '../src/utils/conversation'
+
+it('parseDeleteSeqs supports multi-separators, ranges, and safety limits', () => {
+    assert.deepEqual(parseDeleteSeqs('1,3'), [1, 3])
+    assert.deepEqual(parseDeleteSeqs('1，3'), [1, 3])
+    assert.deepEqual(parseDeleteSeqs('1; 2；3'), [1, 2, 3])
+    assert.deepEqual(parseDeleteSeqs('1 2'), [1, 2])
+    assert.deepEqual(parseDeleteSeqs('1  2   3'), [1, 2, 3])
+    assert.deepEqual(parseDeleteSeqs('1..2，4'), [1, 2, 4])
+    assert.deepEqual(parseDeleteSeqs('1..2'), [1, 2])
+    assert.deepEqual(parseDeleteSeqs('3..1'), [1, 2, 3])
+    assert.deepEqual(parseDeleteSeqs('1,1'), [1])
+    assert.deepEqual(parseDeleteSeqs('1..50,25..75'), [
+        ...Array.from({ length: 75 }, (_, i) => i + 1)
+    ])
+
+    // Titles with spaces / non-selector text stay intact (not batch).
+    assert.equal(parseDeleteSeqs('Claude Code 黑子'), undefined)
+    assert.equal(parseDeleteSeqs('hello,world'), undefined)
+    assert.equal(parseDeleteSeqs('1 and 2'), undefined)
+    assert.equal(parseDeleteSeqs(undefined), undefined)
+    assert.equal(parseDeleteSeqs(''), undefined)
+
+    // Invalid / over-limit pure selectors.
+    assert.equal(parseDeleteSeqs('1..101'), null)
+    assert.equal(
+        parseDeleteSeqs('999999999999999999999..999999999999999999999'),
+        null
+    )
+    assert.equal(parseDeleteSeqs('0'), null)
+    assert.equal(parseDeleteSeqs('1..0'), null)
+    assert.equal(parseDeleteSeqs(`1..${'9'.repeat(510)}`), null)
+    assert.equal(
+        parseDeleteSeqs(Array.from({ length: 101 }, (_, i) => i + 1).join(',')),
+        null
+    )
+})
 
 it('computeBaseBindingKey builds personal direct bindings', () => {
     const bindingKey = computeBaseBindingKey(

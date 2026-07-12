@@ -545,6 +545,7 @@ chatluna:
             rename_failed: '重命名会话失败：{0}'
             delete_success: '已删除会话：{0}'
             delete_success_multi: '已删除会话：\n{0}'
+            delete_partial: '部分会话删除成功：\n{0}\n删除失败：\n{1}'
             delete_failed: '删除会话失败：{0}'
             use_model_success: '{1} 已切换到模型 {0}。'
             use_model_failed: '切换模型失败：{0}'

@@ -752,6 +752,7 @@ it('chatluna.delete removes range and list selectors', async () => {
     ]
     const actions = new Map<string, (...args: any[]) => Promise<void>>()
     const deleted: string[] = []
+    const failures = new Set<string>()
     const messages: string[] = []
     const resolveTargets: (string | undefined)[] = []
     let listCalls = 0
@@ -806,6 +807,9 @@ it('chatluna.delete removes range and list selectors', async () => {
                     return entries()
                 },
                 deleteConversation: async (_session, opts) => {
+                    if (failures.has(opts.conversationId)) {
+                        throw new Error('delete failed')
+                    }
                     deleted.push(opts.conversationId)
                     return conversations.find(
                         (item) => item.id === opts.conversationId
@@ -852,9 +856,13 @@ it('chatluna.delete removes range and list selectors', async () => {
         return msg
     }
 
-    const action = actions.get('chatluna.delete [conversation:string]')!
+    const action = actions.get('chatluna.delete [conversation:text]')!
     await action({ options: {}, session }, '1..2')
     await action({ options: {}, session }, '1,3')
+    await action({ options: {}, session }, '1，3')
+    await action({ options: {}, session }, '1; 2；3')
+    await action({ options: {}, session }, '1 2')
+    await action({ options: {}, session }, '1..2，4')
     const validCount = deleted.length
     await action({ options: {}, session }, '1,4')
     assert.equal(deleted.length, validCount)
@@ -874,11 +882,21 @@ it('chatluna.delete removes range and list selectors', async () => {
     )
     assert.equal(deleted.length, beforeInvalid)
 
+    // Title with spaces must not be treated as batch selectors.
+    conversations.push(
+        createConversation({
+            id: 'conversation-space-title',
+            title: 'Claude Code 黑子',
+            seq: 4
+        })
+    )
+    await action({ options: {}, session }, 'Claude Code 黑子')
+
     conversations.push(
         createConversation({
             id: 'conversation-range-title',
             title: '1..101',
-            seq: 4
+            seq: 5
         })
     )
     await action({ options: {}, session }, '1..101')
@@ -889,14 +907,26 @@ it('chatluna.delete removes range and list selectors', async () => {
         'conversation-first',
         'conversation-third',
         'conversation-first',
+        'conversation-third',
         'conversation-first',
         'conversation-second',
         'conversation-third',
+        'conversation-first',
+        'conversation-second',
+        'conversation-first',
+        'conversation-first',
+        'conversation-second',
+        'conversation-third',
+        'conversation-space-title',
         'conversation-range-title'
     ])
     assert.deepEqual(resolveTargets, [
         '1..2',
         '1,3',
+        '1，3',
+        '1; 2；3',
+        '1 2',
+        '1..2，4',
         '1,4',
         '1,1',
         '3..1',
@@ -904,11 +934,16 @@ it('chatluna.delete removes range and list selectors', async () => {
         '1..50,25..75',
         '1..101',
         '999999999999999999999..999999999999999999999',
+        'Claude Code 黑子',
         '1..101'
     ])
     assert.deepEqual(messages, [
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)',
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nThird Topic (3)',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nThird Topic (3)',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)\nThird Topic (3)',
+        'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)',
+        'chatluna.conversation.messages.target_not_found:412',
         'chatluna.conversation.messages.target_not_found:412',
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)',
         'chatluna.conversation.messages.delete_success_multi:First Topic (1)\nSecond Topic (2)\nThird Topic (3)',
@@ -916,8 +951,23 @@ it('chatluna.delete removes range and list selectors', async () => {
         'chatluna.conversation.messages.target_not_found:412',
         'chatluna.conversation.messages.target_not_found:412',
         'chatluna.conversation.messages.target_not_found:412',
-        'chatluna.conversation.messages.delete_success:1..101,4,conversation-range-title'
+        'chatluna.conversation.messages.delete_success:Claude Code 黑子,4,conversation-space-title',
+        'chatluna.conversation.messages.delete_success:1..101,5,conversation-range-title'
     ])
+
+    failures.add('conversation-second')
+    await action({ options: {}, session }, '1,2')
+    assert.equal(
+        messages.at(-1),
+        'chatluna.conversation.messages.delete_partial:First Topic (1),Second Topic (2)'
+    )
+
+    failures.add('conversation-first')
+    await action({ options: {}, session }, '1,2')
+    assert.equal(
+        messages.at(-1),
+        'chatluna.conversation.messages.delete_failed:First Topic (1)\nSecond Topic (2)'
+    )
 })
 
 it('conversation_switch preserves explicit chain conversation through middleware order', async () => {

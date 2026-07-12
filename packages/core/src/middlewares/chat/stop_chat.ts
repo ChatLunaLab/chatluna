@@ -1,18 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../../config'
-import {
-    ChainMiddlewareContext,
-    ChainMiddlewareRunStatus,
-    ChatChain
-} from '../../chains/chain'
+import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { checkAdmin } from 'koishi-plugin-chatluna/utils/koishi'
-
-function getTargetConversation(context: ChainMiddlewareContext) {
-    return (
-        context.options.conversation_manage?.targetConversation ??
-        context.options.targetConversation
-    )
-}
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -21,14 +10,16 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             if (command !== 'stop_chat') return ChainMiddlewareRunStatus.SKIPPED
 
-            const targetConversation = getTargetConversation(context)
+            const target =
+                context.options.conversation_manage?.targetConversation ??
+                context.options.targetConversation
             const resolved =
-                targetConversation == null
+                target == null
                     ? context.options.conversation
                     : await ctx.chatluna.conversation.resolveConversation(
                           session,
                           {
-                              targetConversation,
+                              targetConversation: target,
                               presetLane: context.options.presetLane,
                               allPresetLanes: context.options.allPresetLanes,
                               permission: 'manage',
