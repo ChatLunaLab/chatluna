@@ -46,11 +46,15 @@ export class TriggerPlanner {
         }
         if (condition.type === 'once') {
             const at = new Date(condition.at)
+            if (at.valueOf() <= now.valueOf()) {
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.TRIGGER_INVALID_INPUT,
+                    new Error('once requires a future ISO timestamp')
+                )
+            }
             return {
                 status: 'waiting',
-                nextRunAt: new Date(
-                    Math.max(at.valueOf(), now.valueOf())
-                ).toISOString(),
+                nextRunAt: at.toISOString(),
                 suppressedUntil: null,
                 runCount: 0,
                 occurrenceKey: at.toISOString()

@@ -49,7 +49,7 @@ export class ChatRuntime {
         try {
             if (controller.signal.aborted) throw abortErr(state.timedOut)
 
-            const session = this.resolveSession(input)
+            const session = await this.resolveSession(input)
             if (session == null) {
                 if (input.routing == null) {
                     throw new ChatLunaError(
@@ -93,7 +93,7 @@ export class ChatRuntime {
 
             let deliverySession: Session | undefined
             if (input.delivery === 'direct' && !session.isDirect) {
-                deliverySession = buildVirtualSession(
+                deliverySession = await buildVirtualSession(
                     session.bot,
                     {
                         platform: session.platform,
@@ -240,13 +240,15 @@ export class ChatRuntime {
         )
     }
 
-    private resolveSession(input: ChatInvocationInput): Session | undefined {
+    private async resolveSession(
+        input: ChatInvocationInput
+    ): Promise<Session | undefined> {
         if (input.session != null) return input.session
         if (input.routing == null) return undefined
         const key = `${input.routing.platform}:${input.routing.selfId}`
         const bot = this.service.ctx.bots[key]
         if (bot == null) return undefined
-        return buildVirtualSession(bot, input.routing, {
+        return await buildVirtualSession(bot, input.routing, {
             message: input.message,
             messageName: input.messageName
         })

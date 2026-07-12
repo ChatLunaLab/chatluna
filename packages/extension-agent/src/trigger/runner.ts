@@ -484,7 +484,7 @@ export class TriggerRunner {
             return { engage: false }
         }
 
-        const session = buildVirtualSession(bot, routing, {
+        const session = await buildVirtualSession(bot, routing, {
             message: 'trigger-gate',
             messageName: 'trigger-gate'
         })
