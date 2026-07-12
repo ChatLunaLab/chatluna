@@ -102,60 +102,14 @@
                     {{ item.description || '这个 agent 暂时没有说明。' }}
                 </div>
 
-                <div v-if="!props.hideDesc" class="agent-meta">
-                    <div class="agent-path">
-                        {{ item.path || item.preset || '内置定义' }}
-                    </div>
-                </div>
-
                 <div class="agent-footer">
-                    <div class="agent-tags">
-                        <el-tag v-if="item.scope" size="small" effect="plain">
-                            {{ item.scope }}
-                        </el-tag>
-                        <el-tag
-                            size="small"
-                            effect="plain"
-                            :type="item.enabled ? 'success' : 'info'"
-                        >
-                            {{ item.enabled ? '启用' : '禁用' }}
-                        </el-tag>
-                        <el-tag
-                            v-if="item.hidden"
-                            size="small"
-                            effect="plain"
-                            type="warning"
-                        >
-                            已隐藏
-                        </el-tag>
-                        <el-tag
-                            size="small"
-                            effect="plain"
-                            :type="
-                                item.state === 'ready' &&
-                                !item.hidden &&
-                                !item.shadowedBy
-                                    ? 'success'
-                                    : 'info'
-                            "
-                        >
-                            {{
-                                item.state === 'ready' &&
-                                !item.hidden &&
-                                !item.shadowedBy
-                                    ? '可用'
-                                    : '不可用'
-                            }}
-                        </el-tag>
-                    </div>
-
                     <div class="agent-actions" @click.stop>
                         <el-button
                             size="small"
                             plain
                             @click="$emit('preview', item)"
                         >
-                            查看/修改内容
+                            查看
                         </el-button>
                         <el-button
                             size="small"
@@ -163,7 +117,7 @@
                             :disabled="!canExport(item)"
                             @click="$emit('export', item)"
                         >
-                            导出 MD
+                            导出
                         </el-button>
                         <el-button
                             v-if="canRemove(item)"
@@ -175,19 +129,6 @@
                         >
                             删除
                         </el-button>
-                    </div>
-
-                    <div
-                        v-if="item.diagnostics.length > 0"
-                        class="diagnostic-box"
-                    >
-                        <div
-                            v-for="line in item.diagnostics.slice(0, 3)"
-                            :key="line"
-                            class="diagnostic-line"
-                        >
-                            {{ line }}
-                        </div>
                     </div>
                 </div>
             </div>
@@ -356,7 +297,7 @@ function canExport(item: SubAgentInfo) {
 }
 
 .card-list {
-    --card-cols: 5;
+    --card-cols: 4;
     display: grid;
     grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
@@ -376,6 +317,7 @@ function canExport(item: SubAgentInfo) {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 0;
     cursor: pointer;
     overflow: hidden;
     box-sizing: border-box;
@@ -441,9 +383,7 @@ function canExport(item: SubAgentInfo) {
 }
 
 .agent-name,
-.agent-desc,
-.agent-path,
-.diagnostic-line {
+.agent-desc {
     margin-top: 4px;
     font-size: 12px;
     line-height: 1.6;
@@ -453,13 +393,17 @@ function canExport(item: SubAgentInfo) {
 
 .agent-desc {
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    min-height: calc(12px * 1.6 * 4);
+    height: calc(12px * 1.6 * 4);
 }
 
 .card-list.compact .agent-desc {
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 4;
+    min-height: calc(12px * 1.6 * 4);
+    height: calc(12px * 1.6 * 4);
 }
 
 .agent-icon {
@@ -474,33 +418,24 @@ function canExport(item: SubAgentInfo) {
     flex: 0 0 auto;
 }
 
-.agent-path {
-    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
-}
-
-.agent-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
 .agent-footer {
-    margin-top: auto;
+    margin-top: 4px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .agent-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
+    min-width: 0;
 }
 
 .agent-actions :deep(.el-button) {
-    width: 100%;
-    min-width: 0;
     margin: 0;
+    padding-inline: 12px;
 }
 
 .agent-actions :deep(.danger-soft.el-button) {
@@ -519,12 +454,6 @@ function canExport(item: SubAgentInfo) {
         var(--el-color-danger),
         var(--k-text-dark) 22%
     );
-}
-
-.diagnostic-box {
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--el-color-warning), transparent 95%);
 }
 
 .empty-state {

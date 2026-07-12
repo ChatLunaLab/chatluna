@@ -10,7 +10,29 @@
         <div class="page-header">
             <div class="headline">
                 <div class="page-title">{{ tool.name }} 工具设置</div>
-                <div class="page-description">调整当前工具的详细配置。</div>
+                <div class="page-tags">
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.main ? 'success' : 'info'"
+                    >
+                        主 Agent {{ draft.main ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.chatluna ? 'success' : 'info'"
+                    >
+                        主插件 {{ draft.chatluna ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.character ? 'warning' : 'info'"
+                    >
+                        伪装 {{ draft.character ? '可用' : '不可用' }}
+                    </el-tag>
+                </div>
             </div>
             
             <el-button type="primary" class="save-btn" @click="$emit('save')">
@@ -487,10 +509,15 @@ function agentLabel(item: SubAgentInfo) {
     color: var(--k-text-dark);
 }
 
-.page-description {
-    margin-top: 8px;
-    font-size: 13px;
-    color: var(--k-text-light);
+.page-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.page-tags :deep(.el-tag) {
+    border-radius: 6px;
 }
 
 .back-link {

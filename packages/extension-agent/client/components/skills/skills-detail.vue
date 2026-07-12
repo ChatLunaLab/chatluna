@@ -10,7 +10,50 @@
         <div class="page-header">
             <div class="headline">
                 <div class="page-title">{{ skill.name }} Skill 设置</div>
-                <div class="page-description">调整当前 Skill 的注入方式与可见范围。</div>
+                <div class="page-tags">
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.main ? 'success' : 'info'"
+                    >
+                        主 Agent {{ draft.main ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.chatluna ? 'success' : 'info'"
+                    >
+                        主插件 {{ draft.chatluna ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        size="small"
+                        effect="plain"
+                        :type="draft.character ? 'warning' : 'info'"
+                    >
+                        伪装 {{ draft.character ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        v-if="skill.homepage"
+                        size="small"
+                        effect="plain"
+                        type="info"
+                        class="page-tag-link"
+                        @click="openHomepage"
+                    >
+                        主页
+                    </el-tag>
+                    <el-tag
+                        v-if="hasDiagnostics"
+                        size="small"
+                        effect="plain"
+                        type="danger"
+                    >
+                        有错误
+                    </el-tag>
+                </div>
+                <div v-if="hasDiagnostics" class="page-alert">
+                    当前 Skill 存在依赖或诊断问题，请检查配置后再启用。
+                </div>
             </div>
 
             <el-button type="primary" class="save-btn" @click="$emit('save')">
@@ -317,6 +360,31 @@ const tabs = [
     { value: 'subagent', label: 'Sub Agent 权限' }
 ] as const
 
+const hasDiagnostics = computed(() => {
+    return (
+        props.skill.state !== 'ready' ||
+        !props.skill.available ||
+        (props.skill.diagnostics?.length ?? 0) > 0
+    )
+})
+
+function openHomepage() {
+    const value = props.skill.homepage?.trim()
+    if (!value) return
+
+    try {
+        const parsed = new URL(value)
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            ElMessage.warning('当前主页链接不是 http 或 https 地址。')
+            return
+        }
+
+        window.open(parsed.toString(), '_blank', 'noopener,noreferrer')
+    } catch {
+        ElMessage.warning('当前主页链接格式无效。')
+    }
+}
+
 const modeOptions = [
     { label: '描述', value: 'description' },
     { label: '全文', value: 'full' }
@@ -477,10 +545,26 @@ function agentLabel(item: SubAgentInfo) {
     color: var(--k-text-dark);
 }
 
-.page-description {
+.page-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.page-tags :deep(.el-tag) {
+    border-radius: 6px;
+}
+
+.page-tag-link {
+    cursor: pointer;
+}
+
+.page-alert {
     margin-top: 8px;
-    font-size: 13px;
-    color: var(--k-text-light);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--el-color-danger);
 }
 
 .back-link {
