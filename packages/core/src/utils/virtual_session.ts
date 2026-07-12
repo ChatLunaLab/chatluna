@@ -12,7 +12,7 @@ export interface VirtualSessionRouting {
     isDirect: boolean
 }
 
-export function buildVirtualSession(
+export async function buildVirtualSession(
     bot: Session['bot'],
     routing: VirtualSessionRouting,
     action: {
@@ -20,15 +20,18 @@ export function buildVirtualSession(
         messageName?: string
     }
 ) {
+    const channel = routing.isDirect
+        ? await bot.createDirectChannel(routing.userId)
+        : {
+              id: routing.channelId ?? routing.guildId ?? routing.userId,
+              type: 0
+          }
     const event: Partial<Universal.Event> = {
         type: 'message',
         platform: routing.platform,
         selfId: routing.selfId,
         timestamp: Date.now(),
-        channel: {
-            id: routing.channelId ?? routing.guildId ?? routing.userId,
-            type: routing.isDirect ? 1 : 0
-        },
+        channel,
         guild: routing.guildId == null ? undefined : { id: routing.guildId },
         user: {
             id: routing.userId,

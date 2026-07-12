@@ -38,7 +38,10 @@ export class ReplyStream {
         logger = createLogger(ctx)
         const options = {
             ...opts.renderOptions,
-            session: context.session
+            session:
+                context.options.deliverySession ??
+                opts.renderOptions?.session ??
+                context.session
         } as RenderOptions
         const plan = opts.enabled
             ? renderer.getStreamPlan(options)
@@ -46,7 +49,9 @@ export class ReplyStream {
 
         this.mode = plan.mode
         this.stream = renderer.createStreamSession(options, plan)
-        this.queue = new ReplyQueue(context.session)
+        this.queue = new ReplyQueue(
+            context.options.deliverySession ?? context.session
+        )
         this.send = opts.send !== false
         this.renderMessage =
             opts.renderMessage ??
@@ -174,7 +179,9 @@ export class ReplyStream {
 
     private async censor(elements: h[]) {
         if (!this.config.censor) return elements
-        return await this.ctx.censor.transform(elements, this.context.session)
+        const session =
+            this.context.options.deliverySession ?? this.context.session
+        return await this.ctx.censor.transform(elements, session)
     }
 
     private async finish() {

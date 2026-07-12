@@ -1,293 +1,276 @@
 <template>
-    <div class="trigger-page" :class="{ compact: compactMode }">
-        <div class="toolbar-container">
-            <div class="toolbar-main" v-if="currentView === 'list'">
-                <div class="headline">
-                    <div class="page-title">触发器</div>
-                    <el-button
-                        size="small"
-                        class="mobile-only-desc-toggle"
-                        :type="hideDesc ? 'primary' : 'default'"
-                        plain
-                        @click="hideDesc = !hideDesc"
-                    >
-                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
-                    </el-button>
-                </div>
-
-                <div class="actions-section">
-                    <el-button size="small" @click="loadAll">
-                        刷新
-                    </el-button>
-                    <el-button
-                        size="small"
-                        type="primary"
-                        @click="openCreate"
-                    >
-                        新建触发器
-                    </el-button>
-                    <el-button
-                        size="small"
-                        @click="providersDialog = true"
-                    >
-                        提供器
-                    </el-button>
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="compactMode ? 'primary' : 'default'"
-                        plain
-                        @click="compactMode = !compactMode"
-                    >
-                        {{ compactMode ? '紧凑模式' : '宽屏模式' }}
-                    </el-button>
-                    <el-button
-                        size="small"
-                        class="hidden-mobile"
-                        :type="hideDesc ? 'primary' : 'default'"
-                        plain
-                        @click="hideDesc = !hideDesc"
-                    >
-                        {{ hideDesc ? '显示描述' : '隐藏描述' }}
-                    </el-button>
-                </div>
-            </div>
-        </div>
-
-        <div class="page-content" v-loading="busy">
-            <Transition name="page-swap" mode="out-in">
-                <trigger-catalog
-                    v-if="currentView === 'list'"
-                    key="list"
-                    :tasks="tasks"
-                    :providers="providers"
-                    :compact-mode="compactMode"
-                    :hide-desc="hideDesc"
-                    @select="openEditor"
-                    @toggle="handleToggle"
-                    @fire="handleFire"
-                    @remove="handleRemove"
-                />
-
-                <trigger-detail
-                    v-else
-                    :key="detailKey"
-                    :task="editingTask"
-                    :providers="providers"
-                    :routes="routes"
-                    :tools="tools"
-                    @back="currentView = 'list'"
-                    @save="handleSave"
-                    @remove="handleRemoveSelected"
-                    @fire="handleFireSelected"
-                />
-            </Transition>
-        </div>
-
-        <el-dialog
-            v-model="providersDialog"
-            title="触发器提供器"
-            width="520px"
-            destroy-on-close
-        >
-            <div class="providers-dialog-hint">
-                关闭某个提供器后，模型将不再看到对应的创建说明，
-                被动触发也会失效，但已有任务不会被删除。
-            </div>
-            <div class="providers-dialog-list">
-                <div
-                    v-for="provider in providers"
-                    :key="provider.kind"
-                    class="provider-row"
-                >
-                    <div class="provider-row-info">
-                        <div class="provider-row-name">
-                            {{ provider.name }}
-                            <span class="provider-row-kind">
-                                ({{ provider.kind }})
-                            </span>
-                        </div>
-                        <div class="provider-row-desc">
-                            {{ provider.description }}
-                        </div>
+    <div
+        class="trigger-page"
+        :class="{ compact: compactMode }"
+        v-loading="busy"
+    >
+        <template v-if="view === 'list'">
+            <div class="toolbar-container">
+                <div class="toolbar-main">
+                    <div class="headline">
+                        <div class="page-title">触发器</div>
                     </div>
-                    <el-switch
-                        :model-value="provider.enabled"
-                        :loading="providerPending === provider.kind"
-                        :disabled="providerPending === provider.kind"
-                        @change="(value: boolean) => handleProviderToggle(provider.kind, value)"
-                    />
-                </div>
-                <div v-if="providers.length < 1" class="providers-empty">
-                    暂无已注册的提供器。
+                    <div class="actions-section">
+                        <el-button
+                            size="small"
+                            class="hidden-mobile"
+                            :type="compactMode ? 'primary' : 'default'"
+                            plain
+                            @click="compactMode = !compactMode"
+                        >
+                            {{ compactMode ? '紧凑模式' : '宽屏模式' }}
+                        </el-button>
+                        <el-button
+                            size="small"
+                            :icon="RefreshRight"
+                            :disabled="busy"
+                            @click="load"
+                        >
+                            刷新
+                        </el-button>
+                    </div>
                 </div>
             </div>
-        </el-dialog>
+
+            <el-alert
+                v-if="backendError"
+                class="backend-error"
+                type="error"
+                :title="backendError"
+                :closable="false"
+                show-icon
+            />
+
+            <trigger-catalog
+                :tasks="tasks"
+                :scenarios="scenarios"
+                :providers="providers"
+                :compact-mode="compactMode"
+                :busy="busy"
+                @create="openCreate"
+                @select="openEditor"
+                @toggle="toggle"
+                @fire="fire"
+                @resume="resume"
+                @remove="remove"
+            />
+        </template>
+
+        <trigger-editor
+            v-else
+            :key="editing?.id ?? 'new'"
+            :task="editing"
+            :routes="routes"
+            :tools="tools"
+            :models="models"
+            :presets="presets"
+            :providers="providers"
+            :scenarios="scenarios"
+            :busy="busy"
+            :error="backendError"
+            @back="closeEditor"
+            @save="save"
+            @fire="fireSelected"
+            @remove="removeSelected"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
+import { RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
-import TriggerCatalog from './trigger-catalog.vue'
-import TriggerDetail from './trigger-detail.vue'
+import { computed, ref, watch } from 'vue'
 import type {
     ToolAvailabilityInfo,
-    TriggerCreateTaskInput,
-    TriggerProviderDescriptor,
-    TriggerRoutingChoice,
+    TriggerProviderMeta,
     TriggerStatus,
-    TriggerTask
+    TriggerTask,
+    TriggerUpdateInput
 } from '../../../src/types'
-
-type TriggerDraftPayload = Omit<TriggerCreateTaskInput, 'createdBy' | 'source'>
+import { useCompactMode } from '../shared/use-hide-desc'
+import TriggerCatalog from './trigger-catalog.vue'
+import TriggerEditor from './trigger-editor.vue'
+import { toScenarios, type TriggerRouteChoice } from './types'
 
 const props = defineProps<{
     status?: TriggerStatus
     loading?: boolean
 }>()
 
-const currentView = ref<'list' | 'detail'>('list')
-const editingId = ref<number | null>(null)
+const view = ref<'list' | 'editor'>('list')
 const pending = ref(false)
-let loadSeq = 0
-const providersDialog = ref(false)
-const providerPending = ref<string | null>(null)
-const compactMode = useCompactMode('trigger')
-const hideDesc = useHideDesc('trigger')
-
 const tasks = ref<TriggerTask[]>([])
-const providers = ref<TriggerProviderDescriptor[]>([])
-const routes = ref<TriggerRoutingChoice[]>([])
+const editing = ref<TriggerTask | null>(null)
+const routes = ref<TriggerRouteChoice[]>([])
 const tools = ref<ToolAvailabilityInfo[]>([])
+const models = ref<string[]>([])
+const presets = ref<string[]>([])
+const providers = ref<TriggerProviderMeta[]>([])
+const backendError = ref('')
+const compactMode = useCompactMode('trigger')
+let seq = 0
 
-const busy = computed(() => props.loading || pending.value)
-
-const editingTask = computed(() => {
-    if (editingId.value == null) return null
-    return tasks.value.find((item) => item.id === editingId.value) ?? null
-})
-
-const detailKey = computed(() =>
-    editingId.value == null ? 'detail-new' : `detail-${editingId.value}`
-)
+const busy = computed(() => props.loading === true || pending.value)
+const scenarios = computed(() => toScenarios(providers.value))
 
 watch(
     () => props.status,
-    async () => {
-        await loadAll()
-    },
+    () => load(),
     { immediate: true }
 )
 
-async function loadAll() {
-    const current = ++loadSeq
+async function load() {
+    const current = ++seq
+    pending.value = true
+    backendError.value = ''
     try {
-        pending.value = true
-        const [nextTasks, nextProviders, nextRoutes, nextTools] =
-            await Promise.all([
-                send('chatluna-agent/listTriggerTasks'),
-                send('chatluna-agent/getTriggerProviders'),
-                send('chatluna-agent/getTriggerRoutingChoices'),
-                send('chatluna-agent/getToolAvailability')
-            ])
-        if (current !== loadSeq) return
-        tasks.value = nextTasks
-        providers.value = nextProviders
-        routes.value = nextRoutes
-        tools.value = nextTools
-    } catch {
-        if (current !== loadSeq) return
-        ElMessage.error('加载触发器数据失败。')
+        const result = await Promise.all([
+            send('chatluna-agent/listTriggers'),
+            send('chatluna-agent/getTriggerRoutingChoices'),
+            send('chatluna-agent/getToolAvailability'),
+            send('chatluna-agent/getModelNames'),
+            send('chatluna-agent/getPresetNames'),
+            send('chatluna-agent/listTriggerProviders')
+        ])
+        if (current !== seq) return
+        tasks.value = result[0]
+        routes.value = result[1]
+        tools.value = result[2]
+        models.value = result[3]
+        presets.value = result[4]
+        providers.value = result[5]
+    } catch (err) {
+        if (current !== seq) return
+        backendError.value = err instanceof Error ? err.message : String(err)
+        ElMessage.error(backendError.value)
     } finally {
-        if (current === loadSeq) {
-            pending.value = false
-        }
+        if (current === seq) pending.value = false
     }
-}
-
-function openEditor(id: number) {
-    editingId.value = id
-    currentView.value = 'detail'
 }
 
 function openCreate() {
-    editingId.value = null
-    currentView.value = 'detail'
+    editing.value = null
+    backendError.value = ''
+    view.value = 'editor'
 }
 
-async function handleSave(payload: TriggerDraftPayload) {
+async function openEditor(id: number) {
+    pending.value = true
+    backendError.value = ''
     try {
-        pending.value = true
-        if (editingId.value == null) {
-            const created = await send('chatluna-agent/createTriggerTask', {
-                ...payload,
-                createdBy: 'console'
-            })
-            ElMessage.success('触发任务已创建。')
-            editingId.value = created.id
+        editing.value = await send('chatluna-agent/getTrigger', id)
+        view.value = 'editor'
+    } catch (err) {
+        backendError.value = err instanceof Error ? err.message : String(err)
+        ElMessage.error(backendError.value)
+    } finally {
+        pending.value = false
+    }
+}
+
+function closeEditor() {
+    view.value = 'list'
+    editing.value = null
+    backendError.value = ''
+}
+
+async function save(input: TriggerUpdateInput) {
+    pending.value = true
+    backendError.value = ''
+    try {
+        if (editing.value) {
+            await send('chatluna-agent/updateTrigger', editing.value.id, input)
+            ElMessage.success('触发器已更新。')
         } else {
-            await send(
-                'chatluna-agent/updateTriggerTask',
-                editingId.value,
-                payload
-            )
-            ElMessage.success('触发任务已更新。')
+            await send('chatluna-agent/createTrigger', input)
+            ElMessage.success('触发器已创建。')
         }
-        await loadAll()
-        currentView.value = 'list'
-    } catch {
-        ElMessage.error(
-            editingId.value == null
-                ? '创建触发任务失败。'
-                : '更新触发任务失败。'
-        )
+        await load()
+        closeEditor()
+    } catch (err) {
+        backendError.value = err instanceof Error ? err.message : String(err)
+        ElMessage.error(backendError.value)
     } finally {
         pending.value = false
     }
 }
 
-async function handleToggle(id: number, enabled: boolean) {
+async function toggle(id: number, enabled: boolean) {
+    pending.value = true
+    backendError.value = ''
     try {
-        pending.value = true
-        await send('chatluna-agent/setTriggerTaskEnabled', id, enabled)
-        await loadAll()
-    } catch {
-        ElMessage.error('更新触发任务状态失败。')
+        const task = await send('chatluna-agent/setTriggerEnabled', id, enabled)
+        const index = tasks.value.findIndex((item) => item.id === id)
+        if (index >= 0) tasks.value[index] = task
+    } catch (err) {
+        backendError.value = err instanceof Error ? err.message : String(err)
+        ElMessage.error(backendError.value)
     } finally {
         pending.value = false
     }
 }
 
-async function handleFire(id: number) {
+async function resume(id: number) {
+    pending.value = true
+    backendError.value = ''
     try {
-        pending.value = true
-        const result = await send('chatluna-agent/fireTriggerTask', id)
-        await loadAll()
-        if (result.ok) {
-            ElMessage.success('触发任务已执行。')
+        const task = await send('chatluna-agent/resumeTrigger', id)
+        const index = tasks.value.findIndex((item) => item.id === id)
+        if (index >= 0) tasks.value[index] = task
+        ElMessage.success('触发器已恢复。')
+    } catch (err) {
+        backendError.value = err instanceof Error ? err.message : String(err)
+        ElMessage.error(backendError.value)
+    } finally {
+        pending.value = false
+    }
+}
+
+async function fire(id: number) {
+    pending.value = true
+    backendError.value = ''
+    try {
+        const run = await send('chatluna-agent/fireTrigger', id)
+        await load()
+        if (run.status === 'failed') {
+            backendError.value = run.error || '触发器执行失败。'
+            ElMessage.error(backendError.value)
             return
         }
-
-        ElMessage.error(result.error?.message || '触发任务执行失败。')
-    } catch {
-        ElMessage.error('执行触发任务失败。')
+        if (run.status === 'skipped') {
+            ElMessage.warning('触发器已跳过本次执行。')
+            return
+        }
+        ElMessage.success('触发器已执行。')
+    } catch (err) {
+        backendError.value = err instanceof Error ? err.message : String(err)
+        ElMessage.error(backendError.value)
     } finally {
         pending.value = false
     }
 }
 
-async function handleFireSelected() {
-    if (editingId.value == null) return
-    await handleFire(editingId.value)
+async function fireSelected() {
+    if (!editing.value) return
+    await fire(editing.value.id)
+    pending.value = true
+    try {
+        editing.value = await send(
+            'chatluna-agent/getTrigger',
+            editing.value.id
+        )
+    } catch (err) {
+        backendError.value = err instanceof Error ? err.message : String(err)
+    } finally {
+        pending.value = false
+    }
 }
 
-async function handleRemove(id: number) {
+async function remove(id: number) {
     try {
         await ElMessageBox.confirm(
-            '删除后触发器配置无法恢复，确定继续吗？',
+            '删除后任务定义和运行计划无法恢复。',
             '删除触发器',
             {
                 confirmButtonText: '删除',
@@ -295,62 +278,45 @@ async function handleRemove(id: number) {
                 type: 'warning'
             }
         )
-
-        pending.value = true
-        await send('chatluna-agent/removeTriggerTask', id)
-        if (editingId.value === id) {
-            editingId.value = null
-            currentView.value = 'list'
-        }
-        await loadAll()
-        ElMessage.success('触发任务已删除。')
     } catch (err) {
-        if (err !== 'cancel' && err !== 'close') {
-            ElMessage.error('删除触发任务失败。')
-        }
+        if (err === 'cancel' || err === 'close') return
+        backendError.value = err instanceof Error ? err.message : String(err)
+        return
+    }
+
+    pending.value = true
+    backendError.value = ''
+    try {
+        await send('chatluna-agent/removeTrigger', id)
+        if (editing.value?.id === id) closeEditor()
+        await load()
+        ElMessage.success('触发器已删除。')
+    } catch (err) {
+        backendError.value = err instanceof Error ? err.message : String(err)
+        ElMessage.error(backendError.value)
     } finally {
         pending.value = false
     }
 }
 
-async function handleRemoveSelected() {
-    if (editingId.value == null) return
-    await handleRemove(editingId.value)
-}
-
-async function handleProviderToggle(kind: string, enabled: boolean) {
-    try {
-        providerPending.value = kind
-        await send(
-            'chatluna-agent/setTriggerProviderEnabled',
-            kind,
-            enabled
-        )
-        const idx = providers.value.findIndex((item) => item.kind === kind)
-        if (idx >= 0) {
-            providers.value[idx] = { ...providers.value[idx], enabled }
-        }
-        ElMessage.success(enabled ? '提供器已启用。' : '提供器已禁用。')
-    } catch {
-        ElMessage.error('更新提供器状态失败。')
-    } finally {
-        providerPending.value = null
-    }
+async function removeSelected() {
+    if (!editing.value) return
+    await remove(editing.value.id)
 }
 </script>
 
 <style scoped>
 .trigger-page {
-    min-height: 100%;
     width: min(100%, 1800px);
     min-width: 0;
+    min-height: 480px;
     margin: 0 auto;
-    padding-bottom: 56px;
+    padding-bottom: 48px;
     box-sizing: border-box;
 }
 
 .trigger-page.compact {
-    width: min(100%, 1440px);
+    width: min(100%, 1200px);
 }
 
 .toolbar-container {
@@ -365,9 +331,6 @@ async function handleProviderToggle(kind: string, enabled: boolean) {
 }
 
 .headline {
-    display: flex;
-    align-items: center;
-    gap: 16px;
     min-width: 0;
 }
 
@@ -375,117 +338,43 @@ async function handleProviderToggle(kind: string, enabled: boolean) {
     font-size: 24px;
     font-weight: 600;
     color: var(--k-text-dark);
-}
-
-.mobile-only-desc-toggle {
-    display: none;
+    line-height: 1.35;
 }
 
 .actions-section {
     display: flex;
     align-items: center;
-    gap: 8px;
     flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
 }
 
-.page-content {
-    position: relative;
-    min-height: 200px;
+.backend-error {
+    margin-bottom: 14px;
 }
 
 :deep(.el-loading-mask) {
-    background-color: color-mix(in srgb, var(--k-page-bg), transparent 30%);
-    z-index: 10;
+    background: color-mix(in srgb, var(--k-page-bg), transparent 24%);
 }
 
-.page-swap-enter-active,
-.page-swap-leave-active {
-    transition: all 0.24s ease;
-}
+@media (max-width: 680px) {
+    .hidden-mobile {
+        display: none;
+    }
 
-.page-swap-enter-from,
-.page-swap-leave-to {
-    opacity: 0;
-    transform: translateX(18px) translateY(4px);
-}
-
-.providers-dialog-hint {
-    color: var(--k-text-light);
-    font-size: 13px;
-    line-height: 1.6;
-    margin-bottom: 12px;
-}
-
-.providers-dialog-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.provider-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 14px;
-    border: 1px solid var(--k-color-border);
-    border-radius: 8px;
-}
-
-.provider-row-info {
-    min-width: 0;
-    flex: 1;
-}
-
-.provider-row-name {
-    font-weight: 600;
-    color: var(--k-text-dark);
-    font-size: 14px;
-}
-
-.provider-row-kind {
-    color: var(--k-text-light);
-    font-weight: 400;
-    margin-left: 4px;
-    font-size: 12px;
-}
-
-.provider-row-desc {
-    color: var(--k-text-light);
-    font-size: 12px;
-    line-height: 1.6;
-    margin-top: 4px;
-}
-
-.providers-empty {
-    text-align: center;
-    color: var(--k-text-light);
-    padding: 24px 0;
-}
-
-@media (max-width: 768px) {
     .toolbar-main {
         flex-direction: column;
         align-items: flex-start;
     }
 
-    .headline {
-        justify-content: space-between;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
     .actions-section {
         width: 100%;
-        justify-content: flex-start;
     }
 
-    .hidden-mobile {
-        display: none;
-    }
-
-    .mobile-only-desc-toggle {
-        display: inline-flex;
+    .actions-section :deep(.el-button) {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
     }
 }
 </style>

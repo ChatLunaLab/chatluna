@@ -122,7 +122,7 @@ const hideDesc = useHideDesc('mcp')
 }
 
 .mcp-page.compact {
-    width: min(100%, 1440px);
+    width: min(100%, 1200px);
 }
 
 .toolbar-container {

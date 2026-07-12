@@ -10,16 +10,9 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import {
-    AdminRequiredError,
-    ConstraintDisabledError,
-    ConstraintFixedError,
-    ConstraintLockedError,
     ConversationListEntry,
-    ConversationNotFoundError,
     ConversationRecord,
-    ConversationResolutionError,
     getBaseBindingKey,
-    InvalidChatModeError,
     ResolvedConversationContext
 } from '../../types'
 import { Pagination } from 'koishi-plugin-chatluna/utils/pagination'
@@ -867,10 +860,14 @@ function actionLocked(session: Session, action: string) {
     ])
 }
 
-function actionDisabled(session: Session, action: string) {
+function actionDisabled(
+    session: Session,
+    action: string,
+    code = ChatLunaErrorCode.CONVERSATION_DISABLED
+) {
     return session.text('chatluna.conversation.messages.action_disabled', [
         session.text(`chatluna.conversation.action.${action}`),
-        ChatLunaErrorCode.CONVERSATION_DISABLED
+        code
     ])
 }
 
@@ -929,67 +926,74 @@ function formatConversationError(
     error: Error,
     action?: string
 ) {
-    if (error instanceof ConversationResolutionError) {
-        const ambiguous = error.code === 'ambiguous_target'
-        return session.text(
-            ambiguous
-                ? 'chatluna.conversation.messages.target_ambiguous'
-                : 'chatluna.conversation.messages.target_outside_route',
-            [
-                ambiguous
-                    ? ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS
-                    : ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE
-            ]
-        )
+    if (!(error instanceof ChatLunaError)) {
+        if (action != null) {
+            return session.text(
+                'chatluna.conversation.messages.action_failed',
+                [
+                    session.text(`chatluna.conversation.action.${action}`),
+                    error.message,
+                    ChatLunaErrorCode.UNKNOWN_ERROR
+                ]
+            )
+        }
+        return error.message
     }
 
-    if (error instanceof ConversationNotFoundError) {
+    const code = error.errorCode
+    if (code === ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS) {
+        return session.text('chatluna.conversation.messages.target_ambiguous', [
+            ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS
+        ])
+    }
+    if (code === ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE) {
+        return session.text(
+            'chatluna.conversation.messages.target_outside_route',
+            [ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE]
+        )
+    }
+    if (code === ChatLunaErrorCode.CONVERSATION_NOT_FOUND) {
         return session.text('chatluna.conversation.messages.target_not_found', [
             ChatLunaErrorCode.CONVERSATION_NOT_FOUND
         ])
     }
-
-    if (error instanceof AdminRequiredError) {
+    if (code === ChatLunaErrorCode.CONVERSATION_ADMIN_REQUIRED) {
         return session.text('chatluna.conversation.messages.admin_required', [
             ChatLunaErrorCode.CONVERSATION_ADMIN_REQUIRED
         ])
     }
-
-    if (error instanceof ConstraintLockedError) {
-        return actionLocked(session, error.action)
+    if (code === ChatLunaErrorCode.CONVERSATION_LOCKED) {
+        return actionLocked(session, error.data?.action ?? action ?? 'update')
     }
-
-    if (error instanceof ConstraintDisabledError) {
-        return actionDisabled(session, error.action)
+    if (code === ChatLunaErrorCode.CONVERSATION_DISABLED) {
+        return actionDisabled(session, error.data?.action ?? action ?? 'update')
     }
-
-    if (error instanceof ConstraintFixedError) {
-        return session.text(
-            `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[error.field]}`,
-            [error.value, ChatLunaErrorCode.CONVERSATION_FIXED]
+    if (code === ChatLunaErrorCode.CONVERSATION_CREATE_DISABLED) {
+        return actionDisabled(
+            session,
+            error.data?.action ?? action ?? 'create',
+            ChatLunaErrorCode.CONVERSATION_CREATE_DISABLED
         )
     }
-
-    if (error instanceof InvalidChatModeError) {
+    if (code === ChatLunaErrorCode.CONVERSATION_FIXED) {
+        const field = error.data?.field ?? 'model'
+        const value = error.data?.value ?? ''
+        return session.text(
+            `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[field] ?? 'fixed_model'}`,
+            [value, ChatLunaErrorCode.CONVERSATION_FIXED]
+        )
+    }
+    if (code === ChatLunaErrorCode.CONVERSATION_INVALID_CHAT_MODE) {
         return session.text(
             'chatluna.conversation.messages.invalid_chat_mode',
-            [error.mode, ChatLunaErrorCode.CONVERSATION_INVALID_CHAT_MODE]
+            [
+                error.data?.value ?? error.originError?.message ?? '',
+                ChatLunaErrorCode.CONVERSATION_INVALID_CHAT_MODE
+            ]
         )
     }
 
-    if (error instanceof ChatLunaError) {
-        return error.message
-    }
-
-    if (action != null) {
-        return session.text('chatluna.conversation.messages.action_failed', [
-            session.text(`chatluna.conversation.action.${action}`),
-            error.message,
-            ChatLunaErrorCode.UNKNOWN_ERROR
-        ])
-    }
-
-    return error.message
+    return error.originError?.message ?? error.message
 }
 
 function formatConversationLine(

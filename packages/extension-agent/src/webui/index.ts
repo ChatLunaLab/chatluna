@@ -8,7 +8,7 @@ import { logger } from '..'
 import { getSkillsRootPath } from '../config/path'
 import { readConfig } from '../config/read'
 import type { ChatLunaAgentService } from '../service'
-import type { SkillMode } from '../types'
+import type { SkillMode, TriggerActor } from '../types'
 import { AgentConsoleData, AgentStatus, McpServerConfig } from '../types'
 
 class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
@@ -114,8 +114,10 @@ function createEmptyStatus(ctx: Context): AgentStatus {
         trigger: {
             total: 0,
             enabled: 0,
-            scheduled: 0,
-            passive: 0
+            waiting: 0,
+            running: 0,
+            paused: 0,
+            error: 0
         }
     }
 }
@@ -397,6 +399,7 @@ function registerToolListeners(ctx: Context, agent: AgentRef) {
 }
 
 function registerTriggerListeners(ctx: Context, agent: AgentRef) {
+    const auth = { authority: 3 }
     const withBot = async <T>(
         platform: string,
         selfId: string,
@@ -413,58 +416,118 @@ function registerTriggerListeners(ctx: Context, agent: AgentRef) {
         }
     }
 
-    ctx.console.addListener('chatluna-agent/listTriggerTasks', async () =>
-        agent().trigger.listTasks()
-    )
-
-    ctx.console.addListener(
-        'chatluna-agent/createTriggerTask',
-        async (input) => await agent().trigger.createTask(input)
-    )
-
-    ctx.console.addListener('chatluna-agent/getTriggerProviders', async () =>
-        agent().trigger.listProviders()
-    )
-
     ctx.console.addListener(
         'chatluna-agent/getTriggerRoutingChoices',
-        async () => agent().trigger.listRoutingChoices()
+        async () => agent().trigger.listRoutingChoices(),
+        auth
     )
 
     ctx.console.addListener(
-        'chatluna-agent/triggerWakeup',
-        async (input) => await agent().trigger.adhocWakeup(input)
+        'chatluna-agent/listTriggerProviders',
+        async () => agent().trigger.listProviders(),
+        auth
     )
 
     ctx.console.addListener(
-        'chatluna-agent/updateTriggerTask',
-        async (id, patch) => await agent().trigger.updateTask(id, patch)
+        'chatluna-agent/listTriggers',
+        async function (filter) {
+            return await agent().trigger.list(consoleActor(this.id), filter)
+        },
+        auth
     )
 
     ctx.console.addListener(
-        'chatluna-agent/removeTriggerTask',
-        ok(async (id: number) => {
-            await agent().trigger.removeTask(id)
-        })
+        'chatluna-agent/getTrigger',
+        async function (id) {
+            return await agent().trigger.get(consoleActor(this.id), id)
+        },
+        auth
     )
 
     ctx.console.addListener(
-        'chatluna-agent/fireTriggerTask',
-        async (id) => await agent().trigger.fire(id)
+        'chatluna-agent/createTrigger',
+        async function (input) {
+            return await agent().trigger.create(consoleActor(this.id), input)
+        },
+        auth
     )
 
     ctx.console.addListener(
-        'chatluna-agent/setTriggerTaskEnabled',
-        ok(async (id: number, enabled: boolean) => {
-            await agent().trigger.setEnabled(id, enabled)
-        })
+        'chatluna-agent/updateTrigger',
+        async function (id, input) {
+            return await agent().trigger.update(
+                consoleActor(this.id),
+                id,
+                input
+            )
+        },
+        auth
     )
 
     ctx.console.addListener(
-        'chatluna-agent/setTriggerProviderEnabled',
-        ok(async (kind: string, enabled: boolean) => {
-            await agent().setTriggerProviderEnabled(kind, enabled)
-        })
+        'chatluna-agent/removeTrigger',
+        async function (id: number) {
+            await agent().trigger.remove(consoleActor(this.id), id)
+            return { success: true }
+        },
+        auth
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/setTriggerEnabled',
+        async function (id, enabled) {
+            return await agent().trigger.setEnabled(
+                consoleActor(this.id),
+                id,
+                enabled
+            )
+        },
+        auth
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/resumeTrigger',
+        async function (id) {
+            return await agent().trigger.resume(consoleActor(this.id), id)
+        },
+        auth
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/fireTrigger',
+        async function (id) {
+            return await agent().trigger.fire(consoleActor(this.id), id)
+        },
+        auth
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/listTriggerRuns',
+        async function (id, limit) {
+            return await agent().trigger.listRuns(
+                consoleActor(this.id),
+                id,
+                limit
+            )
+        },
+        auth
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/previewTriggerCondition',
+        async (condition, count) =>
+            (await agent().trigger.previewCondition(condition, count)).map(
+                (date) => date.toISOString()
+            ),
+        auth
+    )
+
+    ctx.console.addListener(
+        'chatluna-agent/wakeup',
+        async function (input) {
+            return await agent().trigger.wakeup(consoleActor(this.id), input)
+        },
+        auth
     )
 
     ctx.console.addListener(
@@ -494,7 +557,8 @@ function registerTriggerListeners(ctx: Context, agent: AgentRef) {
                     }
                 },
                 { guilds: [], friends: [] }
-            )
+            ),
+        auth
     )
 
     ctx.console.addListener(
@@ -513,8 +577,17 @@ function registerTriggerListeners(ctx: Context, agent: AgentRef) {
                     }))
                 },
                 []
-            )
+            ),
+        auth
     )
+}
+
+function consoleActor(id: string): TriggerActor {
+    return {
+        key: `console:${id}`,
+        userId: `console:${id}`,
+        authority: 3
+    }
 }
 
 function registerMcpListeners(ctx: Context, agent: AgentRef) {

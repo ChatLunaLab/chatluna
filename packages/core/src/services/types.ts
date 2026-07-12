@@ -4,6 +4,7 @@ import {
     ACLRecord,
     ArchiveRecord,
     BindingRecord,
+    ChatLunaObservedMessage,
     ConstraintRecord,
     ConversationRecord,
     Message,
@@ -191,10 +192,9 @@ declare module 'koishi' {
             session: Session
         }): Promise<void>
         'chatluna/before-check-sender'(session: Session): Promise<boolean>
-        'chatluna/check-passive-trigger'(
-            session: Session,
-            content: string
-        ): Promise<boolean>
+        'chatluna/message-observed'(
+            msg: ChatLunaObservedMessage
+        ): Awaitable<void>
     }
 
     interface Tables {
@@ -227,18 +227,12 @@ declare module '@chatluna/shared-prompt-renderer' {
 export * from '@chatluna/shared-prompt-renderer'
 
 export {
-    AdminRequiredError,
     applyPresetLane,
     computeBaseBindingKey,
-    ConstraintDisabledError,
-    ConstraintFixedError,
-    ConstraintLockedError,
-    ConversationNotFoundError,
-    ConversationResolutionError,
     getBaseBindingKey,
     getPresetLane,
-    InvalidChatModeError,
     type ACLRecord,
+    type ActiveConversationResolution,
     type ArchiveRecord,
     type ArchiveState,
     type BindingRecord,
@@ -253,12 +247,12 @@ export {
     type ConversationListEntry,
     type ConversationRecord,
     type ConversationResolution,
-    type ConversationResolutionErrorCode,
     type ConversationResolveMode,
     type ConversationStatus,
     type MessageRecord,
     type MetaRecord,
     type ResolveConversationOptions,
+    type ResolveInvocationInput,
     type ResolvedConstraint,
     type ResolvedConversationContext,
     type RouteMode

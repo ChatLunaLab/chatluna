@@ -14,7 +14,8 @@ export class ChatLunaError extends Error {
     constructor(
         public errorCode: ChatLunaErrorCode = ChatLunaErrorCode.UNKNOWN_ERROR,
         public originError?: Error,
-        public isTimeout: boolean = false
+        public isTimeout: boolean = false,
+        public data?: Record<string, string>
     ) {
         super(ERROR_FORMAT_TEMPLATE.replace('%s', errorCode.toString()))
 
@@ -46,6 +47,10 @@ export enum ChatLunaErrorCode {
     RENDER_ERROR = 4,
     ABORTED = 5,
     PLUGIN_ALREADY_REGISTERED = 6,
+    INVOCATION_ROUTING_REQUIRED = 7,
+    BOT_NOT_FOUND = 8,
+    BOT_OFFLINE = 9,
+    CHAIN_STOPPED = 10,
     API_KEY_UNAVAILABLE = 100,
     API_REQUEST_RESOLVE_CAPTCHA = 101,
     API_REQUEST_TIMEOUT = 102,
@@ -88,6 +93,13 @@ export enum ChatLunaErrorCode {
     CONVERSATION_RESTORE_FAILED = 420,
     CONVERSATION_PLATFORM_NOT_AVAILABLE = 421,
     CONVERSATION_INVALID_MODEL = 422,
+    CONVERSATION_CREATE_DISABLED = 423,
+    TRIGGER_NOT_FOUND = 430,
+    TRIGGER_CONFLICT = 431,
+    TRIGGER_FORBIDDEN = 432,
+    TRIGGER_INVALID_INPUT = 433,
+    TRIGGER_UNAVAILABLE = 434,
+    TRIGGER_FAILED = 435,
     KNOWLEDGE_CONFIG_INVALID = 500,
     KNOWLEDGE_DOC_NOT_FOUND = 501,
     KNOWLEDGE_LOOP_INCLUDE = 502,

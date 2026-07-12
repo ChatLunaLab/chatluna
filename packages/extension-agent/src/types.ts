@@ -1,6 +1,7 @@
 /** @module types */
 
 import type { DataService } from '@koishijs/plugin-console'
+import type { ChatInvocationResult } from 'koishi-plugin-chatluna'
 import type {
     ComputerBackendStatus,
     ComputerBackendType,
@@ -39,17 +40,19 @@ import type {
     SubAgentStatus
 } from './types/sub_agent'
 import type {
-    TriggerAdhocWakeupInput,
+    TriggerCondition,
     TriggerConfig,
-    TriggerCreateTaskInput,
-    TriggerProviderDescriptor,
-    TriggerRoutingChoice,
+    TriggerCreateInput,
+    TriggerListFilter,
+    TriggerProviderMeta,
+    TriggerRun,
     TriggerStatus,
     TriggerTask,
-    WakeupResult
+    TriggerUpdateInput,
+    TriggerWakeupInput
 } from './types/trigger'
 import type { ToolAvailabilityInfo, ToolConfig, ToolStatus } from './types/tool'
-import { ChatLunaAgentService } from './service'
+import type { ChatLunaAgentService } from './service'
 
 export * from './types/computer'
 export * from './types/mcp'
@@ -274,35 +277,45 @@ declare module '@koishijs/plugin-console' {
             name: string
         ) => Promise<ActionResult>
         'chatluna-agent/refreshConsoleData': () => Promise<ActionResult>
-        'chatluna-agent/listTriggerTasks': () => Promise<TriggerTask[]>
-        'chatluna-agent/createTriggerTask': (
-            input: TriggerCreateTaskInput
+        'chatluna-agent/listTriggers': (
+            filter?: Omit<TriggerListFilter, 'ownerKey'>
+        ) => Promise<TriggerTask[]>
+        'chatluna-agent/getTrigger': (id: number) => Promise<TriggerTask>
+        'chatluna-agent/createTrigger': (
+            input: TriggerCreateInput
         ) => Promise<TriggerTask>
-        'chatluna-agent/getTriggerProviders': () => Promise<
-            TriggerProviderDescriptor[]
-        >
+        'chatluna-agent/updateTrigger': (
+            id: number,
+            input: TriggerUpdateInput
+        ) => Promise<TriggerTask>
+        'chatluna-agent/removeTrigger': (id: number) => Promise<ActionResult>
+        'chatluna-agent/setTriggerEnabled': (
+            id: number,
+            enabled: boolean
+        ) => Promise<TriggerTask>
+        'chatluna-agent/resumeTrigger': (id: number) => Promise<TriggerTask>
+        'chatluna-agent/fireTrigger': (id: number) => Promise<TriggerRun>
+        'chatluna-agent/listTriggerRuns': (
+            id: number,
+            limit?: number
+        ) => Promise<TriggerRun[]>
+        'chatluna-agent/previewTriggerCondition': (
+            condition: TriggerCondition,
+            count?: number
+        ) => Promise<string[]>
+        'chatluna-agent/wakeup': (
+            input: TriggerWakeupInput
+        ) => Promise<ChatInvocationResult>
         'chatluna-agent/getTriggerRoutingChoices': () => Promise<
-            TriggerRoutingChoice[]
+            {
+                label: string
+                platform: string
+                selfId: string
+            }[]
         >
-        'chatluna-agent/triggerWakeup': (
-            input: TriggerAdhocWakeupInput
-        ) => Promise<WakeupResult>
-        'chatluna-agent/updateTriggerTask': (
-            id: number,
-            patch: Partial<TriggerTask>
-        ) => Promise<TriggerTask>
-        'chatluna-agent/removeTriggerTask': (
-            id: number
-        ) => Promise<ActionResult>
-        'chatluna-agent/fireTriggerTask': (id: number) => Promise<WakeupResult>
-        'chatluna-agent/setTriggerTaskEnabled': (
-            id: number,
-            enabled: boolean
-        ) => Promise<ActionResult>
-        'chatluna-agent/setTriggerProviderEnabled': (
-            kind: string,
-            enabled: boolean
-        ) => Promise<ActionResult>
+        'chatluna-agent/listTriggerProviders': () => Promise<
+            TriggerProviderMeta[]
+        >
         'chatluna-agent/getTriggerTargets': (
             platform: string,
             selfId: string

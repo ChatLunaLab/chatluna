@@ -11,7 +11,7 @@ import type {
     ConversationRecord,
     ConstraintRecord
 } from '../src/types'
-import { ConversationResolutionError } from '../src/types'
+import { ChatLunaError, ChatLunaErrorCode } from '../src/utils/error'
 import { gzipEncode } from '../src/utils/compression'
 import {
     createConversation,
@@ -1091,10 +1091,10 @@ it('ConversationService rejects ambiguous active exact title matches', async () 
         })
         assert.fail('Expected ambiguous target to throw.')
     } catch (error) {
-        assert.instanceOf(error, ConversationResolutionError)
+        assert.instanceOf(error, ChatLunaError)
         assert.equal(
-            (error as ConversationResolutionError).code,
-            'ambiguous_target'
+            (error as ChatLunaError).errorCode,
+            ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS
         )
     }
 })
@@ -1184,10 +1184,10 @@ it('ConversationService rejects ambiguous archived-only exact title matches when
         })
         assert.fail('Expected ambiguous target to throw.')
     } catch (error) {
-        assert.instanceOf(error, ConversationResolutionError)
+        assert.instanceOf(error, ChatLunaError)
         assert.equal(
-            (error as ConversationResolutionError).code,
-            'ambiguous_target'
+            (error as ChatLunaError).errorCode,
+            ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS
         )
     }
 })
@@ -1365,13 +1365,13 @@ it('ConversationService blocks raw id access outside route without ACL and allow
         })
         assert.fail('Expected outside-route target to throw.')
     } catch (error) {
-        assert.instanceOf(error, ConversationResolutionError)
+        assert.instanceOf(error, ChatLunaError)
         assert.equal(
-            (error as ConversationResolutionError).code,
-            'target_outside_route'
+            (error as ChatLunaError).errorCode,
+            ChatLunaErrorCode.CONVERSATION_TARGET_OUTSIDE_ROUTE
         )
         assert.equal(
-            (error as Error).message,
+            (error as ChatLunaError).originError?.message,
             'Conversation does not belong to current route.'
         )
     }
@@ -1501,13 +1501,13 @@ it('ConversationService rejects ambiguous global exact title matches', async () 
         })
         assert.fail('Expected ambiguous target to throw.')
     } catch (error) {
-        assert.instanceOf(error, ConversationResolutionError)
+        assert.instanceOf(error, ChatLunaError)
         assert.equal(
-            (error as ConversationResolutionError).code,
-            'ambiguous_target'
+            (error as ChatLunaError).errorCode,
+            ChatLunaErrorCode.CONVERSATION_TARGET_AMBIGUOUS
         )
         assert.equal(
-            (error as Error).message,
+            (error as ChatLunaError).originError?.message,
             'Conversation target is ambiguous.'
         )
     }

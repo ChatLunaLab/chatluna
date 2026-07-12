@@ -1,14 +1,5 @@
 <template>
-    <div class="panel runs-panel">
-        <div class="panel-header">
-            <div>
-                <div class="panel-title">运行记录</div>
-                <div class="panel-description">
-                    展示当前运行中的委托任务和最近完成的几次运行。
-                </div>
-            </div>
-        </div>
-
+    <div class="runs-view">
         <div v-if="runs.length > 0" class="runs-list">
             <div
                 v-for="item in runs"
@@ -44,7 +35,9 @@
                     </div>
                     <div class="run-last">
                         <span class="last-label">最后工具:</span>
-                        <code class="last-tool">{{ item.lastTool || '无' }}</code>
+                        <code class="last-tool">
+                            {{ item.lastTool || '无' }}
+                        </code>
                     </div>
                 </div>
 
@@ -57,7 +50,10 @@
                     >
                         停止
                     </el-button>
-                    <el-button size="small" @click.stop="selectedRunId = item.runId">
+                    <el-button
+                        size="small"
+                        @click.stop="selectedRunId = item.runId"
+                    >
                         详情
                     </el-button>
                 </div>
@@ -79,7 +75,9 @@
                 <div v-if="selectedRun" class="dialog-header">
                     <div>
                         <div class="dialog-title-row">
-                            <div class="dialog-title">{{ selectedRun.agentName }} 运行详情</div>
+                            <div class="dialog-title">
+                                {{ selectedRun.agentName }} 运行详情
+                            </div>
                             <button
                                 type="button"
                                 class="icon-btn"
@@ -92,10 +90,10 @@
                         </div>
                         <div class="dialog-meta">
                             {{ formatTime(selectedRun.startedAt) }}
-                            · 深度 {{ selectedRun.depth }}
-                            · 工具 {{ selectedRun.toolCount }}
-                            · 回合 {{ selectedRun.turnCount }}
-                            · 耗时 {{ formatDuration(selectedRun) }}
+                            · 深度 {{ selectedRun.depth }} · 工具
+                            {{ selectedRun.toolCount }} · 回合
+                            {{ selectedRun.turnCount }} · 耗时
+                            {{ formatDuration(selectedRun) }}
                         </div>
                     </div>
                     <div class="dialog-actions">
@@ -142,11 +140,17 @@
                     >
                         <div class="trace-head">
                             <div>
-                                <div class="trace-title">{{ item.title || traceLabel(item.type) }}</div>
+                                <div class="trace-title">
+                                    {{ item.title || traceLabel(item.type) }}
+                                </div>
                                 <div class="trace-meta">
                                     {{ traceLabel(item.type) }}
-                                    <template v-if="item.tool">· {{ item.tool }}</template>
-                                    <template v-if="item.callId">· {{ item.callId }}</template>
+                                    <template v-if="item.tool">
+                                        · {{ item.tool }}
+                                    </template>
+                                    <template v-if="item.callId">
+                                        · {{ item.callId }}
+                                    </template>
                                     · {{ formatTime(item.at) }}
                                 </div>
                             </div>
@@ -160,7 +164,9 @@
                                 <el-icon><CopyDocument /></el-icon>
                             </button>
                         </div>
-                        <pre class="trace-content">{{ item.text || '(empty)' }}</pre>
+                        <pre class="trace-content">{{
+                            item.text || '(empty)'
+                        }}</pre>
                     </div>
                 </div>
 
@@ -168,7 +174,10 @@
                     <el-empty description="该次运行暂时没有可展示的详情。" />
                 </div>
 
-                <div v-if="selectedRun.error && selectedRun.state !== 'aborted'" class="error-box">
+                <div
+                    v-if="selectedRun.error && selectedRun.state !== 'aborted'"
+                    class="error-box"
+                >
                     <div class="trace-title">运行错误</div>
                     <pre class="trace-content">{{ selectedRun.error }}</pre>
                 </div>
@@ -351,52 +360,25 @@ async function stopRun(run: SubAgentRunInfo) {
 </script>
 
 <style scoped>
-.runs-panel {
+.runs-view {
     --trace-surface: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 22%);
-    --trace-surface-soft: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 14%);
+    --trace-surface-soft: color-mix(
+        in srgb,
+        var(--k-side-bg),
+        var(--k-page-bg) 14%
+    );
     --trace-border: color-mix(in srgb, var(--k-color-divider), transparent 18%);
     --trace-scrollbar: color-mix(in srgb, var(--k-text-light), transparent 42%);
-    --trace-scrollbar-hover: color-mix(in srgb, var(--k-text-light), transparent 20%);
-}
-
-.panel {
-    border: 1px solid
-        var(--trace-border);
-    border-radius: 14px;
-    background: var(--trace-surface);
-    overflow: hidden;
-    min-height: 420px;
-}
-
-.panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 18px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
-}
-
-.panel-title,
-.run-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--k-text-dark);
-}
-
-.panel-description,
-.run-meta,
-.run-last {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-    word-break: break-word;
+    --trace-scrollbar-hover: color-mix(
+        in srgb,
+        var(--k-text-light),
+        transparent 20%
+    );
+    min-width: 0;
+    min-height: 280px;
 }
 
 .runs-list {
-    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -408,19 +390,19 @@ async function stopRun(run: SubAgentRunInfo) {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding: 16px;
+    padding: 14px;
     border: 1px solid var(--trace-border);
     border-radius: 12px;
-    background: var(--trace-surface);
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
     text-align: left;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease;
     box-sizing: border-box;
+    min-width: 0;
 }
 
 .run-row:hover {
-    border-color: color-mix(in srgb, var(--k-text-light), transparent 60%);
-    background: color-mix(in srgb, var(--trace-surface), var(--k-text-dark) 4%);
+    border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
 }
 
 .run-main {
@@ -435,6 +417,24 @@ async function stopRun(run: SubAgentRunInfo) {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
+}
+
+.run-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--k-text-dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.run-meta,
+.run-last {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--k-text-light);
+    word-break: break-word;
 }
 
 .run-meta {
@@ -442,8 +442,6 @@ async function stopRun(run: SubAgentRunInfo) {
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
-    font-size: 12px;
-    color: var(--k-text-light);
 }
 
 .meta-divider {
@@ -451,8 +449,6 @@ async function stopRun(run: SubAgentRunInfo) {
 }
 
 .run-last {
-    font-size: 12px;
-    color: var(--k-text-light);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -479,12 +475,7 @@ async function stopRun(run: SubAgentRunInfo) {
     display: flex;
     align-items: center;
     gap: 8px;
-    opacity: 0.8;
-    transition: opacity 0.2s;
-}
-
-.run-row:hover .run-actions {
-    opacity: 1;
+    flex-shrink: 0;
 }
 
 .dialog-header {
@@ -567,7 +558,9 @@ async function stopRun(run: SubAgentRunInfo) {
     border-radius: 8px;
     background: var(--trace-surface);
     padding: 16px;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease;
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
@@ -635,7 +628,9 @@ async function stopRun(run: SubAgentRunInfo) {
     background: transparent;
     color: var(--k-text-light);
     cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
 }
 
 .icon-btn:hover {
@@ -644,7 +639,8 @@ async function stopRun(run: SubAgentRunInfo) {
 }
 
 .icon-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--el-color-primary), transparent 50%);
+    outline: 2px solid
+        color-mix(in srgb, var(--el-color-primary), transparent 50%);
     outline-offset: 2px;
 }
 
@@ -685,7 +681,11 @@ async function stopRun(run: SubAgentRunInfo) {
 
 .trace-item-error {
     border-left: 4px solid var(--el-color-danger);
-    background: color-mix(in srgb, var(--el-color-danger), var(--trace-surface) 96%);
+    background: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--trace-surface) 96%
+    );
 }
 
 .trace-empty {
@@ -695,7 +695,11 @@ async function stopRun(run: SubAgentRunInfo) {
 .error-box {
     margin-top: 12px;
     border-left: 4px solid var(--el-color-danger);
-    background: color-mix(in srgb, var(--el-color-danger), var(--trace-surface) 96%);
+    background: color-mix(
+        in srgb,
+        var(--el-color-danger),
+        var(--trace-surface) 96%
+    );
 }
 
 :deep(.el-dialog) {

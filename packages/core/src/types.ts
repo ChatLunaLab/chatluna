@@ -1,5 +1,99 @@
-import { AIMessage, MessageContent } from '@langchain/core/messages'
+import {
+    AIMessage,
+    MessageContent,
+    MessageContentComplex,
+    UsageMetadata
+} from '@langchain/core/messages'
 import { h, Session } from 'koishi'
+import type { ToolMask } from './llm-core/agent'
+
+export interface ChatInvocationRouting {
+    platform: string
+    selfId: string
+    userId: string
+    username?: string
+    guildId?: string
+    channelId?: string
+    isDirect: boolean
+}
+
+export type ChatInvocationTarget =
+    | { type: 'route' }
+    | { type: 'task'; key: string }
+    | { type: 'fresh' }
+    | { type: 'existing'; id: string }
+    | { type: 'ephemeral' }
+
+export interface ChatInvocationInput {
+    session?: Session
+    routing?: ChatInvocationRouting
+    message: string | MessageContentComplex[]
+    messageName?: string
+    model?: string
+    preset?: string
+    conversation: ChatInvocationTarget
+    tools?: ToolMask
+    variables?: Record<string, unknown>
+    signal?: AbortSignal
+    timeout?: number
+    delivery: 'channel' | 'direct' | 'silent' | 'capture'
+    source: { kind: string; id?: string; detail?: unknown }
+    /** When false, do not persist conversation/message history. */
+    persist?: boolean
+}
+
+export interface ChatInvocationResult {
+    ok: boolean
+    requestId: string
+    model?: string
+    conversation?: ConversationRecord
+    reply?: Message
+    usage?: UsageMetadata
+    error?: { code: string; message: string }
+}
+
+export interface ChatInvocationContext {
+    requestId: string
+    delivery: ChatInvocationInput['delivery']
+    source: ChatInvocationInput['source']
+    variables: Record<string, unknown>
+    toolMask?: ToolMask
+    signal?: AbortSignal
+    usage?: UsageMetadata
+    persist?: boolean
+}
+
+export interface ResolveInvocationInput {
+    target: ChatInvocationTarget
+    requestId: string
+    model?: string
+    preset?: string
+    persist: boolean
+}
+
+export type ActiveConversationResolution = ConversationResolution & {
+    conversation: ConversationRecord
+    /**
+     * True when ConversationService creates a temporary record through
+     * createEphemeral().
+     */
+    transient: boolean
+}
+
+export interface ChatLunaObservedMessage {
+    id: string
+    at: Date
+    session: Session
+    platform: string
+    selfId: string
+    userId: string
+    username?: string
+    guildId?: string
+    channelId: string
+    isDirect: boolean
+    content: string
+    elements: h[]
+}
 
 /**
  * 渲染参数
@@ -217,26 +311,6 @@ export interface ResolvedConversationContext {
 
 export type ConversationResolveMode = 'context' | 'active' | 'target'
 
-export type ConversationResolutionErrorCode =
-    'ambiguous_target' | 'target_outside_route'
-
-export class ConversationResolutionError extends Error {
-    constructor(public readonly code: ConversationResolutionErrorCode) {
-        super(
-            code === 'ambiguous_target'
-                ? 'Conversation target is ambiguous.'
-                : 'Conversation does not belong to current route.'
-        )
-    }
-}
-
-export class ConversationNotFoundError extends Error {
-    constructor() {
-        super('Conversation not found.')
-        this.name = 'ConversationNotFoundError'
-    }
-}
-
 export type ConstraintAction =
     | 'create'
     | 'switch'
@@ -248,51 +322,7 @@ export type ConstraintAction =
     | 'update'
     | 'compress'
 
-export class ConstraintLockedError extends Error {
-    constructor(public readonly action: ConstraintAction) {
-        super(`Conversation ${action} is locked by constraint.`)
-        this.name = 'ConstraintLockedError'
-    }
-}
-
-export class ConstraintDisabledError extends Error {
-    constructor(public readonly action: ConstraintAction) {
-        super(`Conversation ${action} is disabled by constraint.`)
-        this.name = 'ConstraintDisabledError'
-    }
-}
-
 export type ConstraintFixedField = 'model' | 'preset' | 'chatMode'
-
-const FIXED_FIELD_LABEL: Record<ConstraintFixedField, string> = {
-    model: 'Model',
-    preset: 'Preset',
-    chatMode: 'Chat mode'
-}
-
-export class ConstraintFixedError extends Error {
-    constructor(
-        public readonly field: ConstraintFixedField,
-        public readonly value: string
-    ) {
-        super(`${FIXED_FIELD_LABEL[field]} is fixed to ${value}.`)
-        this.name = 'ConstraintFixedError'
-    }
-}
-
-export class InvalidChatModeError extends Error {
-    constructor(public readonly mode: string) {
-        super(`Chat mode ${mode} not found.`)
-        this.name = 'InvalidChatModeError'
-    }
-}
-
-export class AdminRequiredError extends Error {
-    constructor() {
-        super('Conversation management requires administrator permission.')
-        this.name = 'AdminRequiredError'
-    }
-}
 
 export interface ResolveConversationOptions {
     mode?: ConversationResolveMode

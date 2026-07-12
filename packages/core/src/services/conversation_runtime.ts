@@ -27,6 +27,7 @@ export interface ChatOptions {
     toolMask?: ToolMask
     callbacks?: Callbacks
     signal?: AbortSignal
+    persist?: boolean
 }
 
 export class ConversationRuntime {
@@ -48,7 +49,7 @@ export class ConversationRuntime {
     }
 
     async ensureChatInterface(conversation: ConversationRecord) {
-        const cached = this.interfaces.get(conversation.id)
+        const cached = this.interfaces.get(getInterfaceKey(conversation))
         if (cached != null) {
             cached.conversation = conversation
             return cached.chatInterface
@@ -56,7 +57,7 @@ export class ConversationRuntime {
 
         const chatInterface =
             await this.service.createChatInterface(conversation)
-        this.interfaces.set(conversation.id, {
+        this.interfaces.set(getInterfaceKey(conversation), {
             conversation,
             chatInterface
         })
@@ -78,7 +79,8 @@ export class ConversationRuntime {
                     conversation,
                     message,
                     options
-                )
+                ),
+            options.signal
         )
     }
 
@@ -156,6 +158,7 @@ export class ConversationRuntime {
                 postHandler: options.postHandler,
                 messageQueue: activeRequest.messageQueue,
                 toolMask: mask,
+                persist: options.persist,
                 callbacks: await this.service.resolveCallbacks({
                     session,
                     conversation,
@@ -177,7 +180,7 @@ export class ConversationRuntime {
                 }
             })
 
-            return this.buildReply(chainValues.message as AIMessage)
+            return this.buildReply(chainValues.message as AIMessage, events)
         } finally {
             releaseIdleTimer()
             releaseSignal()
@@ -185,12 +188,18 @@ export class ConversationRuntime {
         }
     }
 
-    private buildReply(aiMessage: AIMessage): Message {
+    private async buildReply(
+        aiMessage: AIMessage,
+        events?: ChatEvents
+    ): Promise<Message> {
         const reasoning = aiMessage.additional_kwargs?.reasoning_content as
             string | undefined
         const reasoningTime = aiMessage.additional_kwargs?.reasoning_time as
             number | undefined
         const usage = aiMessage.usage_metadata
+        if (usage != null) {
+            await events?.['llm-usage']?.(usage)
+        }
         const showThought = this.service.currentConfig.showThoughtMessage
         const additionalReplyMessages: Message[] = []
 
@@ -217,7 +226,7 @@ export class ConversationRuntime {
     }
 
     updateConversationRecord(conversation: ConversationRecord) {
-        const cached = this.interfaces.get(conversation.id)
+        const cached = this.interfaces.get(getInterfaceKey(conversation))
         if (cached != null) {
             cached.conversation = conversation
         }
@@ -258,7 +267,8 @@ export class ConversationRuntime {
 
     async withConversationAndPlatformLock<T>(
         conversation: ConversationRecord,
-        callback: (config: ClientConfig) => Promise<T>
+        callback: (config: ClientConfig) => Promise<T>,
+        signal?: AbortSignal
     ): Promise<T> {
         const requestId = randomUUID()
         const modelRequestId = randomUUID()
@@ -277,12 +287,13 @@ export class ConversationRuntime {
 
         const config = client.value.configPool.getConfig(true).value
 
+        let onAbort: (() => void) | undefined
         try {
             await Promise.all([
                 this.conversationQueue.add(conversation.id, requestId),
                 this.modelQueue.add(platform, modelRequestId)
             ])
-            await Promise.all([
+            const waiting = Promise.all([
                 this.conversationQueue.wait(
                     conversation.id,
                     requestId,
@@ -296,8 +307,43 @@ export class ConversationRuntime {
                     config.timeout
                 )
             ])
+
+            if (signal != null) {
+                if (signal.aborted) {
+                    throw (
+                        signal.reason ??
+                        new ChatLunaError(
+                            ChatLunaErrorCode.ABORTED,
+                            undefined,
+                            true
+                        )
+                    )
+                }
+                await Promise.race([
+                    waiting,
+                    new Promise<never>((_resolve, reject) => {
+                        onAbort = () =>
+                            reject(
+                                signal.reason ??
+                                    new ChatLunaError(
+                                        ChatLunaErrorCode.ABORTED,
+                                        undefined,
+                                        true
+                                    )
+                            )
+                        signal.addEventListener('abort', onAbort, {
+                            once: true
+                        })
+                    })
+                ])
+            } else {
+                await waiting
+            }
             return await callback(config)
         } finally {
+            if (onAbort != null) {
+                signal.removeEventListener('abort', onAbort)
+            }
             await Promise.all([
                 this.conversationQueue.remove(conversation.id, requestId),
                 this.modelQueue.remove(platform, modelRequestId)
@@ -400,7 +446,7 @@ export class ConversationRuntime {
     }
 
     async clearConversationCache(conversationId: string) {
-        return this.interfaces.delete(conversationId)
+        return this.deleteInterfaces(conversationId)
     }
 
     async clearConversationHistory(conversation: ConversationRecord) {
@@ -416,7 +462,7 @@ export class ConversationRuntime {
                 chatInterface
             )
             await chatInterface.clearChatHistory()
-            this.interfaces.delete(conversation.id)
+            this.deleteInterfaces(conversation.id)
             await this.service.ctx.root.parallel(
                 'chatluna/after-conversation-clear-history',
                 { conversation, chatInterface }
@@ -436,13 +482,15 @@ export class ConversationRuntime {
     }
 
     async clearConversationInterfaceLocked(conversation: ConversationRecord) {
-        const cached = this.interfaces.get(conversation.id)
-        const existed = cached != null
+        const cached = this.interfaces.get(getInterfaceKey(conversation))
+        const existed = Array.from(this.interfaces.values()).some(
+            (entry) => entry.conversation.id === conversation.id
+        )
         await this.service.ctx.root.parallel(
             'chatluna/before-conversation-cache-clear',
             { conversation, chatInterface: cached?.chatInterface }
         )
-        this.interfaces.delete(conversation.id)
+        this.deleteInterfaces(conversation.id)
         await this.service.ctx.root.parallel(
             'chatluna/after-conversation-cache-clear',
             { conversation }
@@ -477,17 +525,33 @@ export class ConversationRuntime {
             if (active.platform !== platform) continue
             abortActive(active)
             this.activeByConversation.delete(active.conversationId)
-            this.interfaces.delete(active.conversationId)
+            this.deleteInterfaces(active.conversationId)
         }
 
-        for (const [conversationId, entry] of Array.from(
-            this.interfaces.entries()
-        )) {
+        for (const [key, entry] of Array.from(this.interfaces.entries())) {
             if (parseRawModelName(entry.conversation.model)[0] === platform) {
-                this.interfaces.delete(conversationId)
+                this.interfaces.delete(key)
             }
         }
     }
+
+    private deleteInterfaces(conversationId: string) {
+        let deleted = false
+        for (const [key, entry] of Array.from(this.interfaces.entries())) {
+            if (entry.conversation.id !== conversationId) continue
+            deleted = this.interfaces.delete(key) || deleted
+        }
+        return deleted
+    }
+}
+
+function getInterfaceKey(conversation: ConversationRecord) {
+    return JSON.stringify([
+        conversation.id,
+        conversation.model,
+        conversation.preset,
+        conversation.chatMode
+    ])
 }
 
 const EVENT_KEYS: readonly (keyof ChatEvents)[] = [

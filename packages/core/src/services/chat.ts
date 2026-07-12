@@ -48,7 +48,13 @@ import {
     PlatformClientNames
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { PresetService } from 'koishi-plugin-chatluna/preset'
-import { ConstraintRecord, ConversationRecord, Message } from '../types'
+import {
+    ChatInvocationInput,
+    ChatInvocationResult,
+    ConstraintRecord,
+    ConversationRecord,
+    Message
+} from '../types'
 import {
     ChatLunaError,
     ChatLunaErrorCode
@@ -57,6 +63,7 @@ import { MessageTransformer } from './message_transform'
 import { ChatCallbackProviderInput, ChatCallbacksProvider } from './types'
 import { ConversationService } from './conversation'
 import { type ChatOptions, ConversationRuntime } from './conversation_runtime'
+import { ChatRuntime } from '../llm-core/chat/runtime'
 import { chatLunaFetch, ws } from 'koishi-plugin-chatluna/utils/request'
 import * as fetchType from 'undici/types/fetch'
 import { ClientOptions, WebSocket } from 'ws'
@@ -73,6 +80,13 @@ import type { Notifier } from '@koishijs/plugin-notifier'
 import { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaChatPrompt } from 'koishi-plugin-chatluna/llm-core/chain/prompt'
 
+export type {
+    ChatInvocationContext,
+    ChatInvocationInput,
+    ChatInvocationResult,
+    ChatInvocationRouting
+} from '../types'
+
 export class ChatLunaService extends Service<Config> {
     private _plugins: Record<string, ChatLunaPlugin> = {}
     private readonly _chain: ChatChain
@@ -85,6 +99,8 @@ export class ChatLunaService extends Service<Config> {
     private readonly _contextManager: ChatLunaContextManagerService
     private readonly _conversation: ConversationService
     private readonly _conversationRuntime: ConversationRuntime
+    private readonly _chatRuntime: ChatRuntime
+
     private readonly _callbackProviders = new Set<ChatCallbacksProvider>()
     declare public config: Config
 
@@ -110,8 +126,10 @@ export class ChatLunaService extends Service<Config> {
             ctx,
             config,
             this._conversationRuntime,
-            this._platformService
+            this._platformService,
+            this._preset
         )
+        this._chatRuntime = new ChatRuntime(this)
 
         this._createTempDir()
         this._defineDatabase()
@@ -222,18 +240,17 @@ export class ChatLunaService extends Service<Config> {
         return this._plugins[platformName]
     }
 
+    async invoke(input: ChatInvocationInput): Promise<ChatInvocationResult> {
+        return this._chatRuntime.invoke(input)
+    }
+
     chat(
         session: Session,
         conversation: ConversationRecord,
         message: Message,
         options: ChatOptions = {}
     ): Promise<Message> {
-        return this._conversationRuntime.chat(
-            session,
-            conversation,
-            message,
-            options
-        )
+        return this._chatRuntime.chat(session, conversation, message, options)
     }
 
     registerCallbacksProvider(provider: ChatCallbacksProvider) {
@@ -517,6 +534,10 @@ export class ChatLunaService extends Service<Config> {
 
     get conversationRuntime() {
         return this._conversationRuntime
+    }
+
+    get chatRuntime() {
+        return this._chatRuntime
     }
 
     protected async stop(): Promise<void> {

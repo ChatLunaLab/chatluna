@@ -1,295 +1,239 @@
 <template>
-    <div class="panel catalog-panel">
-        <div class="panel-header catalog-header">
-            <div class="catalog-header-content">
-                <div class="catalog-header-info">
-                    <div class="panel-title">触发器列表</div>
-                    <div class="panel-description">
-                        手动执行不会消耗下一次定时执行机会。
-                    </div>
-                </div>
-            </div>
-
-            <div class="search-row">
-                <el-popover
-                    placement="bottom-start"
-                    trigger="click"
-                    popper-class="trigger-filter-popper"
-                >
-                    <template #reference>
-                        <el-button class="filter-trigger" plain>
-                            {{
-                                filters.length > 0
-                                    ? `筛选 ${filters.length}`
-                                    : '筛选'
-                            }}
-                        </el-button>
-                    </template>
-
-                    <div class="filter-panel">
-                        <el-checkbox-group v-model="filters">
-                            <div class="filter-list">
-                                <el-checkbox
-                                    v-for="item in filterOptions"
-                                    :key="item.value"
-                                    :label="item.value"
-                                >
-                                    {{ item.label }}
-                                </el-checkbox>
-                            </div>
-                        </el-checkbox-group>
-
-                        <div class="filter-panel-actions">
-                            <el-button
-                                size="small"
-                                text
-                                :disabled="filters.length === 0"
-                                @click="filters = []"
-                            >
-                                清空
-                            </el-button>
-                        </div>
-                    </div>
-                </el-popover>
-
+    <div class="trigger-catalog">
+        <div class="catalog-controls">
+            <div class="catalog-search">
                 <el-input
-                    v-model="keyword"
-                    class="search-input"
-                    placeholder="搜索名称、绑定键、消息或触发参数"
+                    v-model="search"
                     clearable
+                    placeholder="搜索名称、条件或错误"
                 >
                     <template #prefix>
                         <el-icon><Search /></el-icon>
                     </template>
                 </el-input>
+                <el-select v-model="status" clearable placeholder="全部状态">
+                    <el-option
+                        v-for="(label, value) in statusLabels"
+                        :key="value"
+                        :label="label"
+                        :value="value"
+                    />
+                </el-select>
+                <el-select v-model="type" clearable placeholder="全部场景">
+                    <el-option
+                        v-for="item in scenarios"
+                        :key="item.id"
+                        :label="item.label"
+                        :value="item.id"
+                    />
+                </el-select>
+            </div>
+
+            <div class="catalog-actions">
+                <el-button
+                    type="primary"
+                    :icon="Plus"
+                    :disabled="busy"
+                    @click="emit('create')"
+                >
+                    新建触发器
+                </el-button>
             </div>
         </div>
 
         <div
-            v-if="filteredTasks.length > 0"
+            v-if="filtered.length"
             class="card-list"
-            :class="{ compact: compactMode }"
+            :class="{ compact: props.compactMode }"
         >
-            <div
-                v-for="item in filteredTasks"
-                :key="item.id"
-                class="trigger-card"
-                :class="{
-                    centered: hideDesc,
-                    muted: !item.enabled,
-                    invalid: !!item.lastError
-                }"
-                @click="$emit('select', item.id)"
+            <article
+                v-for="task in filtered"
+                :key="task.id"
+                class="task-card"
+                :class="{ disabled: !task.enabled }"
             >
-                <div class="card-top">
-                    <div class="card-brand">
-                        <div class="card-icon" :class="providerKind(item)">
+                <div class="task-top">
+                    <div class="task-brand">
+                        <div class="condition-icon">
                             <el-icon :size="16">
-                                <component :is="providerIcon(item)" />
+                                <component :is="conditionIcon(task)" />
                             </el-icon>
                         </div>
-                        <div class="card-copy">
-                            <div class="card-title">
-                                {{ formatTitle(item) }}
-                            </div>
-                            <div v-if="!hideDesc" class="card-subtitle">
-                                {{ formatProvider(item.providerKind) }} ·
-                                {{ item.bindingKey }}
+                        <div class="task-copy">
+                            <button
+                                type="button"
+                                class="task-title"
+                                :disabled="busy"
+                                @click="emit('select', task.id)"
+                            >
+                                {{ task.name }}
+                            </button>
+                            <div class="condition-summary">
+                                {{ summarize(task) }}
                             </div>
                         </div>
                     </div>
 
-                    <el-switch
-                        :model-value="item.enabled"
-                        @change="$emit('toggle', item.id, $event as boolean)"
-                        @click.stop
-                    />
-                </div>
-
-                <div v-if="!hideDesc" class="card-body">
-                    <div class="card-line">
-                        <span class="line-label">消息</span>
-                        <span class="line-value">
-                            {{ formatMessage(item.wakeupTemplate.message) }}
-                        </span>
-                    </div>
-                    <div class="card-line">
-                        <span class="line-label">
-                            {{
-                                item.providerKind === 'cron' || !item.providerKind
-                                    ? '计划'
-                                    : '参数'
-                            }}
-                        </span>
-                        <span class="line-value">
-                            {{ formatParams(item) }}
-                        </span>
-                    </div>
-                    <div v-if="item.nextFireAt" class="card-line">
-                        <span class="line-label">下次</span>
-                        <span class="line-value">
-                            {{ formatDate(item.nextFireAt) }}
-                        </span>
+                    <div class="task-status">
+                        <el-tag
+                            effect="plain"
+                            size="small"
+                            :type="statusType(task.state.status)"
+                        >
+                            {{ statusLabels[task.state.status] }}
+                        </el-tag>
+                        <el-switch
+                            :model-value="task.enabled"
+                            :disabled="busy"
+                            @change="emit('toggle', task.id, $event as boolean)"
+                        />
                     </div>
                 </div>
 
-                <div class="card-footer">
-                    <div class="card-chips">
-                        <el-tag
-                            size="small"
-                            effect="plain"
-                            :type="item.enabled ? 'success' : 'info'"
-                        >
-                            {{ item.enabled ? '启用' : '停用' }}
-                        </el-tag>
-                        <el-tag size="small" effect="plain">
-                            {{ formatToolMode(item) }}
-                        </el-tag>
-                        <el-tag
-                            size="small"
-                            effect="plain"
-                            :type="replyType(item)"
-                        >
-                            {{ formatReplyTo(item) }}
-                        </el-tag>
-                        <el-tag
-                            v-if="item.lastError"
-                            size="small"
-                            effect="plain"
-                            type="danger"
-                        >
-                            异常
-                        </el-tag>
+                <div class="task-body">
+                    <div class="task-meta">
+                        <div>
+                            <span>模型</span>
+                            <strong>{{ modelLabel(task) }}</strong>
+                        </div>
+                        <div>
+                            <span>下次执行</span>
+                            <strong>
+                                {{ formatDate(task.state.nextRunAt) }}
+                            </strong>
+                        </div>
+                        <div>
+                            <span>最后执行</span>
+                            <strong>
+                                {{ formatDate(task.state.lastRunAt) }}
+                            </strong>
+                        </div>
+                        <div>
+                            <span>运行次数</span>
+                            <strong>{{ task.state.runCount }}</strong>
+                        </div>
+                        <div>
+                            <span>最后决定</span>
+                            <strong>{{ decisionLabel(task) }}</strong>
+                        </div>
                     </div>
 
-                    <div v-if="!hideDesc" class="card-meta">
-                        执行 {{ item.fireCount }} 次
-                        <span v-if="item.lastFiredAt">
-                            · 最近 {{ formatDate(item.lastFiredAt) }}
-                        </span>
+                    <div v-if="task.state.lastError" class="task-error">
+                        {{ task.state.lastError }}
                     </div>
+                </div>
 
-                    <div
-                        v-if="!hideDesc && item.lastError"
-                        class="error-line"
-                    >
-                        {{ item.lastError }}
-                    </div>
-
-                    <div class="card-actions" @click.stop>
-                        <el-button size="small" plain @click="$emit('select', item.id)">
+                <div class="task-footer">
+                    <div class="task-actions">
+                        <el-button
+                            size="small"
+                            plain
+                            :icon="Edit"
+                            :disabled="busy"
+                            @click="emit('select', task.id)"
+                        >
                             编辑
                         </el-button>
                         <el-button
                             size="small"
                             plain
-                            @click="$emit('fire', item.id)"
+                            :icon="VideoPlay"
+                            :disabled="busy"
+                            @click="emit('fire', task.id)"
                         >
                             立即执行
+                        </el-button>
+                        <el-button
+                            v-if="canResume(task)"
+                            size="small"
+                            plain
+                            :icon="RefreshRight"
+                            :disabled="busy"
+                            @click="emit('resume', task.id)"
+                        >
+                            恢复
                         </el-button>
                         <el-button
                             class="danger-soft"
                             size="small"
                             plain
                             type="danger"
-                            @click="$emit('remove', item.id)"
+                            :icon="Delete"
+                            :disabled="busy"
+                            @click="emit('remove', task.id)"
                         >
                             删除
                         </el-button>
                     </div>
                 </div>
-            </div>
+            </article>
         </div>
 
-        <div v-else class="empty-state">
-            <el-empty :description="emptyText" />
-        </div>
+        <el-empty v-else :description="emptyText" />
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import {
     AlarmClock,
     Bell,
     ChatDotRound,
     Clock,
+    Delete,
+    Edit,
+    MagicStick,
+    Plus,
+    RefreshRight,
     Search,
-    TrendCharts
+    TrendCharts,
+    UserFilled,
+    VideoPlay
 } from '@element-plus/icons-vue'
-import type {
-    TriggerProviderDescriptor,
-    TriggerTask
-} from '../../../src/types'
+import { computed, ref } from 'vue'
+import type { TriggerTask, TriggerTaskStatus } from '../../../src/types'
+import type { TriggerProviderMeta } from '../../../src/types'
+import {
+    conditionKey,
+    dayOptions,
+    formatDate,
+    formatDecision,
+    statusLabels,
+    statusType,
+    type ScenarioChoice
+} from './types'
 
 const props = defineProps<{
     tasks: TriggerTask[]
-    providers: TriggerProviderDescriptor[]
-    compactMode: boolean
-    hideDesc: boolean
+    scenarios: ScenarioChoice[]
+    providers: TriggerProviderMeta[]
+    compactMode?: boolean
+    busy?: boolean
 }>()
-
-defineEmits<{
+const emit = defineEmits<{
+    create: []
     select: [id: number]
     toggle: [id: number, enabled: boolean]
     fire: [id: number]
+    resume: [id: number]
     remove: [id: number]
 }>()
 
-const keyword = ref('')
-const filters = ref<string[]>([])
+const search = ref('')
+const status = ref<TriggerTaskStatus | ''>('')
+const type = ref<string>('')
 
-const filterOptions = [
-    { label: '启用', value: 'enabled:yes' },
-    { label: '停用', value: 'enabled:no' },
-    { label: 'Cron 定时', value: 'kind:cron' },
-    { label: '关键词触发', value: 'kind:keyword' },
-    { label: '活跃度触发', value: 'kind:activity' },
-    { label: '一次性任务', value: 'kind:none' },
-    { label: '最近异常', value: 'state:error' }
-]
-
-const emptyText = computed(() => {
-    if (props.tasks.length < 1) {
-        return '还没有创建任何触发器，点击右上角「新建触发器」开始。'
-    }
-    return '没有匹配的触发器，调整筛选条件再试一次。'
-})
-
-const filteredTasks = computed(() => {
-    const text = keyword.value.trim().toLowerCase()
-    return props.tasks.filter((item) => {
-        if (
-            filters.value.length > 0 &&
-            !filters.value.every((value) => {
-                if (value === 'enabled:yes') return item.enabled
-                if (value === 'enabled:no') return !item.enabled
-                if (value === 'kind:cron') return item.providerKind === 'cron'
-                if (value === 'kind:keyword')
-                    return item.providerKind === 'keyword'
-                if (value === 'kind:activity')
-                    return item.providerKind === 'activity'
-                if (value === 'kind:none')
-                    return !item.providerKind || item.providerKind === 'once'
-                if (value === 'state:error') return !!item.lastError
-                return true
-            })
-        ) {
+const filtered = computed(() => {
+    const text = search.value.trim().toLowerCase()
+    return props.tasks.filter((task) => {
+        if (status.value && task.state.status !== status.value) return false
+        if (type.value && conditionKey(task.condition) !== type.value)
             return false
-        }
-
-        if (!text) {
-            return true
-        }
-
+        if (!text) return true
         return [
-            item.name ?? '',
-            item.bindingKey,
-            typeof item.wakeupTemplate.message === 'string'
-                ? item.wakeupTemplate.message
-                : '',
-            item.providerKind ?? '',
-            JSON.stringify(item.params ?? {})
+            task.name,
+            summarize(task),
+            task.state.lastError ?? '',
+            modelLabel(task)
         ]
             .join('\n')
             .toLowerCase()
@@ -297,216 +241,141 @@ const filteredTasks = computed(() => {
     })
 })
 
-function providerKind(task: TriggerTask) {
-    if (!task.providerKind || task.providerKind === 'once') return 'oneshot'
-    return task.providerKind
-}
+const emptyText = computed(() =>
+    props.tasks.length ? '没有符合筛选条件的触发器。' : '还没有创建触发器。'
+)
 
-function providerIcon(task: TriggerTask) {
-    if (task.providerKind === 'cron') return AlarmClock
-    if (task.providerKind === 'keyword') return ChatDotRound
-    if (task.providerKind === 'activity') return TrendCharts
-    if (!task.providerKind || task.providerKind === 'once') return Clock
+function conditionIcon(task: TriggerTask) {
+    const key = conditionKey(task.condition)
+    if (key === 'once') return Clock
+    if (key === 'calendar') return AlarmClock
+    if (key === 'interval') return RefreshRight
+    if (key === 'cron') return AlarmClock
+    if (key === 'window') return TrendCharts
+    if (key === 'keyword') return ChatDotRound
+    if (key === 'participation') return UserFilled
+    if (key === 'inactivity') return Bell
+    if (key === 'semantic') return MagicStick
     return Bell
 }
 
-function formatTitle(task: TriggerTask) {
-    return task.name?.trim() || `任务 #${task.id}`
-}
-
-function formatProvider(kind?: string | null) {
-    if (!kind || kind === 'once') return '一次性任务'
-    return props.providers.find((item) => item.kind === kind)?.name || kind
-}
-
-function formatMessage(value?: TriggerTask['wakeupTemplate']['message']) {
-    if (value == null) return '[沿用被动消息]'
-    return typeof value === 'string' ? value : '[复杂消息内容]'
-}
-
-function formatDate(value?: Date | string | null) {
-    if (!value) return '未安排'
-    return new Date(value).toLocaleString()
-}
-
-function formatParams(task: TriggerTask) {
-    if (task.providerKind === 'cron') {
-        const policy =
-            task.params?.missedRunPolicy === 'fire_once'
-                ? '过期补执行一次'
-                : '过期不执行'
-        const expr = task.params?.expression || '无效 cron 表达式'
-        return `${expr} · ${policy}`
+function summarize(task: TriggerTask) {
+    const condition = task.condition
+    if (condition.type === 'once') {
+        return `单次 · ${formatDate(condition.at)}`
     }
-
-    if (task.providerKind === 'keyword') {
-        const keywords = Array.isArray(task.params?.keywords)
-            ? task.params.keywords
-            : []
-        if (keywords.length < 1) return '未配置关键词'
-        const preview = keywords.slice(0, 4).join('、')
-        const more = keywords.length > 4 ? ` 等 ${keywords.length} 个` : ''
-        return `关键词：${preview}${more}`
+    if (condition.type === 'calendar') {
+        const days =
+            condition.days.length === 7
+                ? '每天'
+                : `每周 ${dayOptions
+                      .filter((item) => condition.days.includes(item.value))
+                      .map((item) => item.label)
+                      .join('、')}`
+        return `${days} ${condition.times.join('、')} · ${condition.timezone}`
     }
-
-    if (task.providerKind === 'activity') {
-        const init = task.params?.initialScore
-        const threshold = task.params?.activeThreshold
-        if (init == null || threshold == null) {
-            return '未配置活跃度参数'
-        }
-        const dirParam = task.params?.direction
-        const direction =
-            dirParam === 'up'
-                ? '越聊越活'
-                : dirParam === 'down'
-                  ? '越聊越冷'
-                  : Number(init) < Number(threshold)
-                    ? '越聊越活'
-                    : '越聊越冷'
-        const half = task.params?.decayHalfLifeMs
-        const halfLabel =
-            half != null ? ` · 半衰期 ${Math.round(Number(half) / 1000)}s` : ''
-        return `${direction}：${init} → ${threshold}${halfLabel}`
+    if (condition.type === 'interval') {
+        return `每 ${condition.everyMinutes} 分钟 · 锚点 ${formatDate(condition.anchorAt)}`
     }
-
-    return formatDate(task.nextFireAt)
+    if (condition.type === 'cron') {
+        return `Cron ${condition.expression} · ${condition.timezone}`
+    }
+    if (condition.type === 'window') {
+        const days =
+            condition.days.length === 7
+                ? '每天'
+                : dayOptions
+                      .filter((item) => condition.days.includes(item.value))
+                      .map((item) => item.label)
+                      .join('、')
+        return `${days} ${condition.start}-${condition.end}，每 ${condition.everyMinutes} 分钟 · ${condition.timezone}`
+    }
+    if (condition.type === 'keyword') {
+        const suffix =
+            condition.keywords.length > 4
+                ? ` 等 ${condition.keywords.length} 个`
+                : ''
+        return `关键词 ${condition.keywords.slice(0, 4).join('、')}${suffix}`
+    }
+    if (condition.type === 'participation') {
+        return `${condition.withinMinutes} 分钟内 ${condition.minMessages} 条消息 / ${condition.minUsers} 人`
+    }
+    if (condition.type === 'inactivity') {
+        return `活跃 ${condition.minMessages} 条后静默 ${condition.silentMinutes} 分钟`
+    }
+    if (condition.type === 'semantic') {
+        return `语义主题 · ${condition.topic}`
+    }
+    const provider = props.providers.find(
+        (item) => item.id === condition.provider
+    )
+    return provider
+        ? `${provider.label} · ${condition.provider}`
+        : `扩展提供方 · ${condition.provider}`
 }
 
-function formatToolMode(task: TriggerTask) {
-    const mask = task.wakeupTemplate.toolMask
-    if (mask == null) return '工具：全部'
-    if (mask.mode === 'all') return '工具：全部'
-    if (mask.mode === 'allow') {
-        const count = mask.allow?.length ?? 0
-        return count < 1 ? '工具：无' : `工具：${count} 个`
-    }
-    if (mask.mode === 'deny') {
-        const count = mask.deny?.length ?? 0
-        return `工具：除 ${count} 个外`
-    }
-    return '工具：继承'
+function modelLabel(task: TriggerTask) {
+    return task.execution.model.type === 'fixed'
+        ? task.execution.model.model
+        : '默认模型'
 }
 
-function formatReplyTo(task: TriggerTask) {
-    const value = task.wakeupTemplate.replyTo ?? 'channel'
-    if (value === 'channel') return '发送到频道'
-    if (value === 'user') return '发送给用户'
-    if (value === 'silent') return '静默执行'
-    if (value === 'callback') return '回调返回'
-    return value
+function decisionLabel(task: TriggerTask) {
+    const decision = task.state.lastDecision
+    if (!decision) return '无'
+    return formatDecision(decision)
 }
 
-function replyType(task: TriggerTask) {
-    const value = task.wakeupTemplate.replyTo ?? 'channel'
-    if (value === 'silent') return 'info'
-    if (value === 'callback') return 'warning'
-    return 'success'
+function canResume(task: TriggerTask) {
+    return (
+        task.enabled &&
+        (task.state.status === 'paused' ||
+            task.state.status === 'completed' ||
+            task.state.status === 'error')
+    )
 }
 </script>
 
 <style scoped>
-.panel {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
-    overflow: hidden;
-    min-height: 420px;
-    box-sizing: border-box;
+.trigger-catalog {
+    min-width: 0;
 }
 
-.panel-header,
-.catalog-header {
+.catalog-controls {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding: 16px 18px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
-    box-sizing: border-box;
-}
-
-.catalog-header-content {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
-.catalog-header-info {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 auto;
-    min-width: 0;
-}
-
-
-.panel-title {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--k-text-dark);
-}
-
-.panel-description,
-.card-subtitle,
-.card-meta,
-.error-line {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
-    word-break: break-word;
-}
-
-.search-row {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    width: auto;
-    flex-wrap: nowrap;
-    flex: 0 1 420px;
-    min-width: 220px;
-}
-
-.filter-trigger {
-    height: 32px;
-    min-width: 92px;
-    padding-inline: 12px;
-    flex: 0 0 auto;
-}
-
-.search-input {
-    width: auto;
-    min-width: 0;
-    flex: 1 1 260px;
-}
-
-.filter-panel {
-    min-width: 200px;
-    display: flex;
-    flex-direction: column;
     gap: 12px;
+    margin-bottom: 16px;
+    min-width: 0;
+    flex-wrap: wrap;
 }
 
-.filter-list {
+.catalog-actions {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin-left: auto;
 }
 
-.filter-panel-actions {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 8px;
-    border-top: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+.catalog-actions :deep(.el-button) {
+    margin: 0;
+}
+
+.catalog-search {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 150px 180px;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 520px;
+}
+
+.catalog-search :deep(.el-select),
+.catalog-search :deep(.el-input) {
+    width: 100%;
+    min-width: 0;
 }
 
 .card-list {
@@ -514,7 +383,6 @@ function replyType(task: TriggerTask) {
     display: grid;
     grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
-    padding: 16px;
     box-sizing: border-box;
 }
 
@@ -522,37 +390,30 @@ function replyType(task: TriggerTask) {
     --card-cols: 3;
 }
 
-.trigger-card {
+.task-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding: 14px;
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
     border-radius: 12px;
     background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    cursor: pointer;
-    overflow: hidden;
     box-sizing: border-box;
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
 }
 
-.trigger-card:hover {
+.task-card:hover {
     border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
-    transform: translateY(-1px);
 }
 
-.trigger-card.muted {
-    opacity: 0.72;
+.task-card.disabled {
+    opacity: 0.65;
 }
 
-.trigger-card.invalid {
-    border-color: color-mix(in srgb, var(--el-color-danger), transparent 66%);
-}
-
-.card-top {
+.task-top {
     display: flex;
     gap: 12px;
     justify-content: space-between;
@@ -560,139 +421,141 @@ function replyType(task: TriggerTask) {
     min-width: 0;
 }
 
-.trigger-card.centered .card-top {
-    align-items: center;
-    min-height: 34px;
-}
-
-.card-brand {
+.task-brand {
     display: flex;
-    justify-content: flex-start;
     gap: 12px;
     min-width: 0;
     flex: 1 1 auto;
 }
 
-.trigger-card.centered .card-brand {
-    align-items: center;
-}
-
-.card-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+.condition-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     background: color-mix(in srgb, var(--k-side-bg), var(--k-color-primary) 8%);
     color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 36%);
+    flex: 0 0 auto;
 }
 
-.card-icon.cron {
-    background: color-mix(in srgb, var(--k-side-bg), var(--el-color-primary) 10%);
-    color: color-mix(in srgb, var(--el-color-primary), var(--k-text-dark) 14%);
-}
-
-.card-icon.keyword {
-    background: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        var(--el-color-success) 10%
-    );
-    color: color-mix(in srgb, var(--el-color-success), var(--k-text-dark) 14%);
-}
-
-.card-icon.activity {
-    background: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        var(--el-color-warning) 10%
-    );
-    color: color-mix(in srgb, var(--el-color-warning), var(--k-text-dark) 14%);
-}
-
-.card-icon.oneshot {
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-text-light) 10%);
-    color: var(--k-text-light);
-}
-
-.card-copy {
+.task-copy {
     min-width: 0;
     flex: 1 1 auto;
 }
 
-.card-title {
-    font-size: 16px;
-    font-weight: 600;
+.task-title {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: var(--k-text-dark);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
     line-height: 1.4;
+    letter-spacing: 0;
+    text-align: left;
+    cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.card-body {
+.task-title:disabled {
+    cursor: not-allowed;
+}
+
+.condition-summary {
+    margin-top: 3px;
+    color: var(--k-text-light);
+    font-size: 12px;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.task-status {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--k-page-bg), transparent 40%);
-    box-shadow: inset 0 0 0 1px
-        color-mix(in srgb, var(--k-color-divider), transparent 40%);
-}
-
-.card-line {
-    display: flex;
+    align-items: flex-end;
     gap: 8px;
-    font-size: 12.5px;
-    line-height: 1.5;
-}
-
-.line-label {
     flex: 0 0 auto;
-    width: 36px;
-    color: var(--k-text-light);
 }
 
-.line-value {
-    flex: 1 1 auto;
-    min-width: 0;
-    color: var(--k-text-dark);
-    word-break: break-word;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-}
-
-.card-footer {
-    margin-top: auto;
+.task-body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
-.card-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.card-actions {
+.task-meta {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+}
+
+.task-meta > div {
+    min-width: 0;
+}
+
+.task-meta span,
+.task-meta strong {
+    display: block;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.task-meta span {
+    color: var(--k-text-light);
+}
+
+.task-meta strong {
+    margin-top: 2px;
+    color: var(--k-text-dark);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.task-error {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border-left: 3px solid var(--el-color-danger);
+    background: color-mix(in srgb, var(--el-color-danger), transparent 94%);
+    color: var(--el-color-danger);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.task-footer {
+    margin-top: auto;
+}
+
+.task-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
     gap: 8px;
 }
 
-.card-actions :deep(.el-button) {
+.task-actions :deep(.el-button) {
     width: 100%;
     min-width: 0;
     margin: 0;
 }
 
-.card-actions :deep(.danger-soft.el-button) {
+.task-actions :deep(.danger-soft.el-button) {
     --el-button-bg-color: color-mix(
         in srgb,
         var(--el-color-danger),
@@ -710,86 +573,77 @@ function replyType(task: TriggerTask) {
     );
 }
 
-.error-line {
-    padding: 8px 10px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--el-color-danger), transparent 92%);
-    color: color-mix(in srgb, var(--el-color-danger), var(--k-text-dark) 20%);
-    font-size: 12px;
-    line-height: 1.5;
-}
-
-.empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 280px;
-}
-
 @media (max-width: 1680px) {
     .card-list {
         --card-cols: 3;
     }
 
     .card-list.compact {
-        --card-cols: 2;
+        --card-cols: 3;
     }
 }
 
 @media (max-width: 1320px) {
-    .card-list {
-        --card-cols: 2;
-    }
-
-    .card-list.compact {
-        --card-cols: 2;
-    }
-}
-
-@media (max-width: 980px) {
     .card-list,
     .card-list.compact {
-        --card-cols: 1;
+        --card-cols: 2;
     }
 }
 
-@media (max-width: 768px) {
-    .catalog-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .catalog-header-content {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .search-row {
-        width: 100%;
-        min-width: 0;
-        flex: none;
+@media (max-width: 760px) {
+    .catalog-controls {
         display: grid;
         grid-template-columns: 1fr;
         gap: 10px;
         align-items: stretch;
-    }
-
-    .filter-trigger {
-        min-width: 0;
         width: 100%;
-        flex: none;
     }
 
-    .search-input {
-        width: 100% !important;
+    .catalog-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .catalog-actions :deep(.el-button) {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        justify-content: center;
+    }
+
+    .catalog-search {
+        width: 100%;
         min-width: 0;
         flex: none;
+        grid-template-columns: minmax(0, 1fr);
     }
 
-    .card-list,
-    .card-list.compact {
+    .card-list {
         --card-cols: 1;
+        grid-template-columns: 1fr;
+    }
+
+    .task-card {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 420px) {
+    .task-top {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .task-status {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .task-meta {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 </style>

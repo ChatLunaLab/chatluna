@@ -74,13 +74,15 @@ export async function readConfig(ctx: Context): Promise<AgentConfig> {
     try {
         const content = await readFile(path, 'utf-8')
         const base = getDefaultConfig()
-        const cfg = JSON.parse(content) as AgentConfig
+        const cfg = JSON.parse(content) as Omit<AgentConfig, 'trigger'> & {
+            trigger?: unknown
+        }
+        delete cfg.trigger
         return {
             ...base,
             ...cfg,
             skills: mergeSkills(base.skills, cfg.skills),
             tool: mergeTool(base.tool, cfg.tool),
-            trigger: deepAssign({}, base.trigger, cfg.trigger ?? {}),
             computer: deepAssign({}, base.computer, cfg.computer ?? {}),
             subAgent: deepAssign({}, base.subAgent, cfg.subAgent ?? {})
         }

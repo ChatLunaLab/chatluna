@@ -1,325 +1,323 @@
-import type {
-    MessageContentComplex,
-    UsageMetadata
-} from '@langchain/core/messages'
-import type { Awaitable, Session } from 'koishi'
-import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
-import type { ConversationRecord } from 'koishi-plugin-chatluna/services/chat'
-import type { Message } from 'koishi-plugin-chatluna'
-import type { ZodTypeAny } from 'zod'
+import type { UsageMetadata } from '@langchain/core/messages'
+import type { Session } from 'koishi'
+import type { z } from 'zod'
 
-export interface WakeupRouting {
-    platform: string
-    selfId: string
-    userId: string
-    username?: string
-    guildId?: string
-    channelId?: string
-    isDirect: boolean
+export interface TriggerConfig {}
+
+export type TriggerTaskStatus =
+    'waiting' | 'running' | 'paused' | 'completed' | 'error'
+
+export type TriggerRunOrigin = 'schedule' | 'event' | 'manual'
+
+export type TriggerRunStatus = 'running' | 'completed' | 'failed' | 'skipped'
+
+export type TriggerMisfirePolicy = 'skip' | 'fire_once'
+
+export type TriggerModelPolicy =
+    { type: 'default' } | { type: 'fixed'; model: string }
+
+export type TriggerConversationPolicy =
+    | { type: 'task' }
+    | { type: 'fresh' }
+    | { type: 'route' }
+    | { type: 'existing'; conversationId: string }
+
+export type TriggerToolPolicy =
+    { type: 'none' } | { type: 'allow'; names: string[] }
+
+export type TriggerGate =
+    | { type: 'none' }
+    | {
+          type: 'model'
+          model: TriggerModelPolicy
+          prompt?: string
+          timeoutSeconds: number
+          dailyTokenLimit: number
+      }
+
+export type TriggerBuiltinConditionType =
+    | 'once'
+    | 'calendar'
+    | 'interval'
+    | 'cron'
+    | 'window'
+    | 'keyword'
+    | 'participation'
+    | 'inactivity'
+    | 'semantic'
+
+export type TriggerProviderKind = 'scheduled' | 'event'
+
+export type TriggerCondition =
+    | {
+          type: 'once'
+          at: string
+      }
+    | {
+          type: 'calendar'
+          timezone: string
+          days: number[]
+          times: string[]
+          misfire: TriggerMisfirePolicy
+      }
+    | {
+          type: 'interval'
+          everyMinutes: number
+          anchorAt: string
+          misfire: TriggerMisfirePolicy
+      }
+    | {
+          type: 'cron'
+          expression: string
+          timezone: string
+          misfire: TriggerMisfirePolicy
+      }
+    | {
+          type: 'window'
+          timezone: string
+          days: number[]
+          start: string
+          end: string
+          everyMinutes: number
+          misfire: TriggerMisfirePolicy
+          control: 'fixed' | 'model'
+          defaultDecision: 'continue' | 'stop_period'
+      }
+    | {
+          type: 'keyword'
+          keywords: string[]
+          caseSensitive: boolean
+          cooldownMinutes: number
+      }
+    | {
+          type: 'participation'
+          withinMinutes: number
+          minMessages: number
+          minUsers: number
+          cooldownMinutes: number
+          gate: TriggerGate
+      }
+    | {
+          type: 'inactivity'
+          activeWithinMinutes: number
+          minMessages: number
+          silentMinutes: number
+          cooldownMinutes: number
+          gate: TriggerGate
+      }
+    | {
+          type: 'semantic'
+          topic: string
+          withinMinutes: number
+          minMessages: number
+          cooldownMinutes: number
+          gate: Extract<TriggerGate, { type: 'model' }>
+      }
+    | {
+          type: 'extension'
+          provider: string
+          config: unknown
+      }
+
+export interface TriggerExecution {
+    model: TriggerModelPolicy
+    conversation: TriggerConversationPolicy
+    preset?: string | null
+    prompt: string
+    timeoutSeconds: number
+    tools: TriggerToolPolicy
 }
 
-export type WakeupScope = 'personal' | 'shared'
-
-export type WakeupTarget = Session | WakeupRouting | { bindingKey: string }
-
-export function routingFromSession(s: Session): WakeupRouting {
-    return {
-        platform: s.platform,
-        selfId: s.selfId,
-        userId: s.userId,
-        username: s.username,
-        guildId: s.guildId ?? undefined,
-        channelId: s.channelId ?? undefined,
-        isDirect: s.isDirect
-    }
-}
-
-export function bindingKeyFromRouting(
-    routing: WakeupRouting,
-    scope: WakeupScope = 'personal'
-): string {
-    if (scope === 'shared') {
-        return `shared:${routing.platform}:${routing.selfId}:${routing.guildId ?? routing.channelId ?? routing.userId}`
-    }
-    if (routing.isDirect) {
-        return `personal:${routing.platform}:${routing.selfId}:direct:${routing.userId}`
-    }
-    return `personal:${routing.platform}:${routing.selfId}:${routing.guildId ?? routing.channelId}:${routing.userId}`
-}
-
-export function bindingKeyFromSession(
-    s: Session,
-    scope: WakeupScope = 'personal'
-): string {
-    return bindingKeyFromRouting(routingFromSession(s), scope)
-}
-
-export type ParseBindingKeyError = 'invalid-binding-key' | 'no-routing'
-
-export function parseBindingKey(bindingKey: string): {
-    routing?: WakeupRouting
-    error?: ParseBindingKeyError
-} {
-    const base = bindingKey.split(':preset:')[0]
-    const parts = base.split(':')
-    if (parts[0] === 'shared') {
-        return { error: 'no-routing' }
-    }
-    if (parts[0] === 'personal' && parts[3] === 'direct' && parts.length >= 5) {
-        return {
-            routing: {
-                platform: parts[1],
-                selfId: parts[2],
-                userId: parts[4],
-                isDirect: true
-            }
-        }
-    }
-    if (parts[0] === 'personal' && parts.length >= 5) {
-        return { error: 'no-routing' }
-    }
-    return { error: 'invalid-binding-key' }
-}
-
-/**
- * Common fields shared by any wakeup invocation, the per-task wakeup template,
- * and the webui adhoc input.
- */
-export interface WakeupTemplate {
-    message?: string | MessageContentComplex[]
-    messageName?: string
-    variables?: Record<string, unknown>
-    execMode?: 'chain' | 'direct'
-    chatMode?: string
-    toolMask?: ToolMask
-    replyTo?: 'channel' | 'user' | 'silent' | 'callback'
-    replyUserId?: string
-    onReply?: (msg: Message) => Awaitable<void>
-    timeout?: number
-    newConversation?: boolean
-    presetLane?: string | null
-    conversationId?: string | null
-}
-
-export interface WakeupSource {
-    kind: string
-    taskId?: number
-    providerKind?: string
-    detail?: unknown
-}
-
-export interface WakeupAction extends WakeupTemplate {
-    /** New unified entry. */
-    target?: WakeupTarget
-    /** @deprecated use {@link target} */
-    bindingKey?: string
-    /** @deprecated use {@link target} */
-    session?: Session
-    /** @deprecated use {@link target} */
-    routing?: WakeupRouting
-    source: WakeupSource
-    requestId?: string
-    signal?: AbortSignal
-}
-
-export interface WakeupResult {
-    ok: boolean
-    skipped?: boolean
-    deferred?: {
-        reason: 'bot-offline' | 'bot-not-found'
-        pendingKey: string
-    }
-    error?: {
-        code: string
-        message: string
-    }
-    conversation?: ConversationRecord
-    reply?: Message
-    requestId?: string
-    stats?: {
-        tokens?: UsageMetadata
-        durationMs: number
-    }
-}
-
-export type TriggerTaskTemplate = WakeupTemplate
-
-export type TriggerTaskMissedRunPolicy = 'skip' | 'fire_once'
-
-export interface TriggerTaskParams {
-    missedRunPolicy?: TriggerTaskMissedRunPolicy
-    recipient?: string | null
-    executorUserId?: string | null
-    [key: string]: unknown
-}
-
-export interface TriggerProviderPrepareContext {
-    input: Partial<TriggerCreateTaskInput> | Partial<TriggerTask>
-    task?: TriggerTask
-}
-
-export interface TriggerProviderPassiveContext {
-    session: Session
-    task: TriggerTask
-    content: string
-}
-
-export interface TriggerProviderPassiveMatch {
-    message?: string | MessageContentComplex[]
-    messageName?: string
-    variables?: Record<string, unknown>
-    detail?: unknown
-}
-
-export interface TriggerProviderAfterFireContext {
-    task: TriggerTask
-    currentDate?: Date
-    firedAt?: Date
-}
-
-export interface TriggerProviderRescheduleContext {
-    task: TriggerTask
-    after: Date
-}
-
-export interface TriggerProviderLifecycleContext {
-    task: TriggerTask
-}
-
-export interface TriggerProviderFireResultContext {
-    task: TriggerTask
-    result: WakeupResult
-}
-
-export type TriggerProviderDescriptor = Pick<
-    TriggerProvider,
-    'kind' | 'name' | 'description' | 'passive' | 'scheduled' | 'needsMessage'
-> & {
-    enabled?: boolean
-    schema?: Record<string, unknown>
-}
-
-export interface TriggerProviderItemConfig {
-    enabled: boolean
-}
-
-export interface TriggerConfig {
-    providers: Record<string, TriggerProviderItemConfig>
-}
-
-export interface TriggerProvider {
-    kind: string
-    name: string
-    description: string
-    passive?: boolean
-    scheduled?: boolean
-    needsMessage?: boolean
-    schema?: ZodTypeAny
-    prepare?: (
-        ctx: TriggerProviderPrepareContext
-    ) => Awaitable<Partial<TriggerTask>>
-    match?: (
-        ctx: TriggerProviderPassiveContext
-    ) => Awaitable<TriggerProviderPassiveMatch | null>
-    afterFire?: (
-        ctx: TriggerProviderAfterFireContext
-    ) => Awaitable<Partial<TriggerTask> | void>
-    reschedule?: (
-        ctx: TriggerProviderRescheduleContext
-    ) => Awaitable<Partial<TriggerTask>>
-    onTaskCreate?: (ctx: TriggerProviderLifecycleContext) => Awaitable<void>
-    onTaskRemove?: (ctx: TriggerProviderLifecycleContext) => Awaitable<void>
-    onTaskFire?: (ctx: TriggerProviderFireResultContext) => Awaitable<void>
-}
-
-export interface TriggerRoutingChoice {
-    label: string
+export interface TriggerBotTarget {
     platform: string
     selfId: string
 }
 
-export interface TriggerTargetEntry {
-    id: string
-    name?: string
-    avatar?: string
+export type TriggerDestination =
+    | { type: 'direct'; userId: string }
+    | { type: 'channel'; guildId?: string; channelId: string }
+
+export interface TriggerTarget {
+    bot: TriggerBotTarget
+    destination: TriggerDestination
+    principalId: string
+    observeScope?: 'channel' | 'guild' | 'direct'
+    delivery: 'channel' | 'direct' | 'silent'
 }
 
-export interface TriggerChannelEntry extends TriggerTargetEntry {
-    type: number
-}
+export type TriggerRunDecision =
+    | { type: 'continue'; reason?: string }
+    | { type: 'stop_period'; reason?: string }
+    | { type: 'complete'; reason?: string }
+    | { type: 'pause_until'; at: string; reason?: string }
+    | { type: 'reschedule'; at: string; reason?: string }
 
-export interface TriggerTargetBundle {
-    guilds: TriggerTargetEntry[]
-    friends: TriggerTargetEntry[]
+export interface TriggerTaskState {
+    status: TriggerTaskStatus
+    nextRunAt?: string | null
+    suppressedUntil?: string | null
+    lastRunAt?: string | null
+    lastDecision?: TriggerRunDecision | null
+    runCount: number
+    lastError?: string | null
+    periodKey?: string | null
+    occurrenceKey?: string | null
+    cooldownUntil?: string | null
+    cursor?: Record<string, unknown> | null
 }
-
-export type TriggerAdhocWakeupInput = Partial<WakeupRouting> &
-    WakeupTemplate & {
-        bindingKey?: string
-    }
 
 export interface TriggerTask {
     id: number
-    providerKind: string | null
+    name: string
     enabled: boolean
-    name?: string | null
-    bindingKey: string
-    presetLane?: string | null
-    conversationId?: string | null
-    selfId: string
-    platform: string
-    userId: string
-    username?: string | null
-    guildId?: string | null
-    channelId?: string | null
-    isDirect: boolean
-    wakeupTemplate: TriggerTaskTemplate
-    params: TriggerTaskParams | null
-    lastFiredAt?: Date | null
-    nextFireAt?: Date | null
-    fireCount: number
-    lastError?: string | null
-    source: 'webui' | 'agent' | 'command' | 'plugin'
-    createdBy: string
+    condition: TriggerCondition
+    execution: TriggerExecution
+    target: TriggerTarget
+    state: TriggerTaskState
+    ownerKey: string
     createdAt: Date
     updatedAt: Date
 }
 
-export interface TriggerCreateTaskInput {
-    providerKind?: string | null
+export interface TriggerCreateInput {
+    name: string
     enabled?: boolean
-    name?: string
-    bindingKey: string
-    presetLane?: string | null
-    conversationId?: string | null
-    selfId: string
-    platform: string
-    userId: string
-    username?: string | null
-    guildId?: string | null
-    channelId?: string | null
-    isDirect: boolean
-    wakeupTemplate: TriggerTaskTemplate
-    params?: TriggerTaskParams | null
-    nextFireAt?: Date | string
-    source?: TriggerTask['source']
-    createdBy: string
+    condition: TriggerCondition
+    execution: TriggerExecution
+    target: TriggerTarget
 }
 
-export interface TriggerListTaskFilter {
-    providerKind?: string | null
-    enabled?: boolean
+export interface TriggerUpdateInput {
+    name: string
+    enabled: boolean
+    condition: TriggerCondition
+    execution: TriggerExecution
+    target: TriggerTarget
+}
+
+export interface TriggerWakeupInput {
+    execution: TriggerExecution
+    target: TriggerTarget
+}
+
+export interface TriggerActor {
+    key: string
+    userId: string
+    authority: number
+    session?: Session
 }
 
 export interface TriggerStatus {
     total: number
     enabled: number
-    scheduled: number
-    passive: number
+    waiting: number
+    running: number
+    paused: number
+    error: number
 }
 
-declare module 'koishi' {
-    interface Tables {
-        chatluna_trigger_task: TriggerTask
-    }
+export interface TriggerRun {
+    id: string
+    taskId: number
+    origin: TriggerRunOrigin
+    status: TriggerRunStatus
+    scheduledAt?: Date | null
+    startedAt: Date
+    finishedAt?: Date | null
+    decision?: TriggerRunDecision | null
+    error?: string | null
+    usage?: UsageMetadata | null
+    createdAt: Date
+}
+
+export interface TriggerListFilter {
+    ownerKey?: string
+    status?: TriggerTaskStatus
+    conditionType?: TriggerCondition['type'] | string
+    enabled?: boolean
+}
+
+export interface TriggerStoreCreateInput extends TriggerCreateInput {
+    ownerKey: string
+    state: TriggerTaskState
+}
+
+export type TriggerStoreUpdate = Partial<
+    Pick<
+        TriggerTask,
+        'name' | 'enabled' | 'condition' | 'execution' | 'target' | 'state'
+    >
+>
+
+export type TriggerRunCreateInput = Omit<TriggerRun, 'createdAt'> & {
+    createdAt?: Date
+}
+
+export type TriggerRunFinishInput = Partial<
+    Pick<TriggerRun, 'status' | 'finishedAt' | 'decision' | 'error' | 'usage'>
+>
+
+// Provider public types (after core task/run types)
+
+export interface TriggerCandidate {
+    reason: string
+    scopeKey?: string
+    excerpts?: string[]
+    stats?: Record<string, number>
+    variables?: Record<string, unknown>
+    gate?: TriggerGate
+}
+
+export interface TriggerProviderOccurrence {
+    at: Date
+    periodKey?: string
+    occurrenceKey?: string
+}
+
+export interface TriggerProviderObserveMessage {
+    id: string
+    at: number
+    userId: string
+    username?: string
+    content: string
+}
+
+export interface TriggerProviderScheduleInput {
+    config: unknown
+    after: Date
+    skipPeriod?: string
+    occurrenceKey?: string
+}
+
+export interface TriggerProviderMatchInput {
+    config: unknown
+    content: string
+    message: TriggerProviderObserveMessage
+    history: TriggerProviderObserveMessage[]
+    task: TriggerTask
+}
+
+export interface TriggerProviderDef {
+    id: string
+    label: string
+    description?: string
+    kind: TriggerProviderKind
+    schema: z.ZodTypeAny
+    defaultConfig: unknown
+    next?: (
+        input: TriggerProviderScheduleInput
+    ) => TriggerProviderOccurrence | null
+    preview?: (config: unknown, count: number, now: Date) => Date[]
+    match?: (input: TriggerProviderMatchInput) => TriggerCandidate | undefined
+    cooldownMinutes?: (config: unknown) => number | undefined
+}
+
+export interface TriggerProviderMeta {
+    id: string
+    label: string
+    description?: string
+    kind: TriggerProviderKind
+    builtin: boolean
+    schema: Record<string, unknown>
+    defaultConfig: unknown
 }

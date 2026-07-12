@@ -1,8 +1,5 @@
 <template>
-    <div
-        class="sub-agent-page"
-        :class="{ compact: compactMode }"
-    >
+    <div class="sub-agent-page" :class="{ compact: compactMode }">
         <div class="toolbar-container">
             <div class="toolbar-main">
                 <div class="headline">
@@ -20,7 +17,9 @@
                 </div>
 
                 <div class="actions-section">
-                    <template v-if="currentView === 'list' && listTab === 'catalog'">
+                    <template
+                        v-if="currentView === 'list' && listTab === 'catalog'"
+                    >
                         <el-button
                             size="small"
                             class="hidden-mobile"
@@ -64,7 +63,10 @@
                         </button>
                         <button
                             type="button"
-                            :class="['tab', { active: listTab === 'availability' }]"
+                            :class="[
+                                'tab',
+                                { active: listTab === 'availability' }
+                            ]"
                             @click="listTab = 'availability'"
                         >
                             工具可用性
@@ -109,14 +111,16 @@
 
                 <sub-agent-detail
                     v-else-if="selectedAgent"
-                    :key="[
-                        'detail-view',
-                        selectedAgent.id,
-                        skillOptions.length,
-                        mcpOptions.length,
-                        computerOptions.length,
-                        Object.keys(props.tools ?? {}).length
-                    ].join(':')"
+                    :key="
+                        [
+                            'detail-view',
+                            selectedAgent.id,
+                            skillOptions.length,
+                            mcpOptions.length,
+                            computerOptions.length,
+                            Object.keys(props.tools ?? {}).length
+                        ].join(':')
+                    "
                     :agent="selectedAgent"
                     :draft="draft"
                     :model-names="modelNames"
@@ -605,7 +609,9 @@ async function loadMeta() {
 
 async function loadAvailability() {
     try {
-        toolAvailability.value = await send('chatluna-agent/getToolAvailability')
+        toolAvailability.value = await send(
+            'chatluna-agent/getToolAvailability'
+        )
     } catch {
         ElMessage.error('读取工具可用性失败，请稍后重试。')
     }
@@ -821,7 +827,9 @@ async function savePreview() {
     if (!item || !canSavePreview.value) return
 
     if (item.scope !== 'data' && item.name !== previewDraft.name.trim()) {
-        ElMessage.warning('外部 Markdown Agent 暂不支持在这里改名，请保持原名称后再保存。')
+        ElMessage.warning(
+            '外部 Markdown Agent 暂不支持在这里改名，请保持原名称后再保存。'
+        )
         return
     }
 
@@ -937,7 +945,7 @@ function canRemoveAgent(item: SubAgentInfo) {
 }
 
 .sub-agent-page.compact {
-    width: min(100%, 1440px);
+    width: min(100%, 1200px);
 }
 
 .toolbar-container {
