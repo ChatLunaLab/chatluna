@@ -1,3 +1,8 @@
+import {
+    ModelCapabilities,
+    ModelInfo
+} from 'koishi-plugin-chatluna/llm-core/platform/types'
+
 export function parseRawModelName(
     modelName: string
 ): [string | undefined, string | undefined] {
@@ -17,4 +22,22 @@ export function parseRawModelName(
     }
 
     return [value.slice(0, index), value.slice(index + 1)]
+}
+
+export function modelInfoSupportsElement(
+    info: ModelInfo | undefined,
+    type: 'img' | 'file' | 'video' | 'audio'
+) {
+    if (info == null) return false
+
+    switch (type) {
+        case 'img':
+            return info.capabilities.includes(ModelCapabilities.ImageInput)
+        case 'audio':
+            return info.capabilities.includes(ModelCapabilities.AudioInput)
+        case 'video':
+            return info.capabilities.includes(ModelCapabilities.VideoInput)
+        default:
+            return info.capabilities.includes(ModelCapabilities.FileInput)
+    }
 }

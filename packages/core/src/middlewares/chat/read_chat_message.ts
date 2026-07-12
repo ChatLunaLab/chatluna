@@ -22,6 +22,7 @@ import {
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
 import type { QQ } from '@koishijs/plugin-adapter-qq'
+import { modelInfoSupportsElement } from '../../utils/model'
 import { parsePresetLaneInput } from '../../utils/message_content'
 
 const CHATLUNA_DOWNLOAD_USER_AGENT =
@@ -788,25 +789,11 @@ function modelSupportsElement(
     model: string | undefined,
     type: 'img' | 'file' | 'video' | 'audio'
 ) {
-    const info = model != null ? ctx.chatluna.platform.findModel(model) : null
-    if (info?.value == null) return true
-
-    switch (type) {
-        case 'img':
-            return info.value.capabilities.includes(
-                ModelCapabilities.ImageInput
-            )
-        case 'audio':
-            return info.value.capabilities.includes(
-                ModelCapabilities.AudioInput
-            )
-        case 'video':
-            return info.value.capabilities.includes(
-                ModelCapabilities.VideoInput
-            )
-        default:
-            return info.value.capabilities.includes(ModelCapabilities.FileInput)
-    }
+    if (model == null || model.length < 1) return false
+    return modelInfoSupportsElement(
+        ctx.chatluna.platform.findModel(model).value,
+        type
+    )
 }
 
 function setElementUrl(element: h, url: string) {
