@@ -46,6 +46,7 @@ export class ChatChain {
             timeoutObj.autoRecallTimeout &&
                 clearTimeout(timeoutObj.autoRecallTimeout)
 
+            timeoutObj.setQueueCount(0)
             timeoutObj.recallFunc && (await timeoutObj.recallFunc())
 
             timeoutObj.timeout = null
@@ -71,11 +72,12 @@ export class ChatChain {
         context.recallThinkingMessage =
             this._createRecallThinkingMessage(context)
 
-        const result = await this._runMiddleware(session, context)
-
-        await context.recallThinkingMessage()
-
-        return result
+        try {
+            return await this._runMiddleware(session, context)
+        } finally {
+            await context.options.completeMessageTurn?.()
+            await context.recallThinkingMessage()
+        }
     }
 
     async receiveCommand(
@@ -124,11 +126,13 @@ export class ChatChain {
         context.recallThinkingMessage =
             this._createRecallThinkingMessage(context)
 
-        const ok = await this._runMiddleware(session, context)
-
-        await context.recallThinkingMessage()
-
-        return { ok, context }
+        try {
+            const ok = await this._runMiddleware(session, context)
+            return { ok, context }
+        } finally {
+            await context.options.completeMessageTurn?.()
+            await context.recallThinkingMessage()
+        }
     }
 
     middleware<T extends keyof ChainMiddlewareName>(
