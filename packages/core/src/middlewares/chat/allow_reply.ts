@@ -123,11 +123,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             if (
                 parsePresetLaneInput(
                     content,
-                    ctx.chatluna.preset
-                        .getAllPreset(true)
-                        .value.flatMap((entry) =>
-                            entry.split(',').map((item) => item.trim())
-                        )
+                    ctx.chatluna.preset.getKeywordTriggerAliases().value
                 ) != null
             ) {
                 return ChainMiddlewareRunStatus.CONTINUE

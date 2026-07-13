@@ -295,6 +295,7 @@ export function createConfig(overrides: Record<string, unknown> = {}) {
         defaultPreset: 'default-preset',
         defaultChatMode: 'plugin',
         defaultGroupRouteMode: 'shared',
+        enablePresetKeywordTrigger: true,
         ...overrides
     } as never
 }

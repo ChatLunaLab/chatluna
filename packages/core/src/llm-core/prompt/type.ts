@@ -54,6 +54,7 @@ export interface RawPreset {
         longMemoryNewQuestionPrompt?: string
         postHandler?: PostHandler
         reActInstruction?: string
+        enableKeywordTrigger?: boolean
     }
 }
 
@@ -106,6 +107,7 @@ export interface PresetTemplate {
         longMemoryNewQuestionPrompt?: string
         postHandler?: PostHandler
         reActInstruction?: string
+        enableKeywordTrigger?: boolean
     }
 }
 

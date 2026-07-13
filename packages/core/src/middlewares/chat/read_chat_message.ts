@@ -66,11 +66,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 const text = h.select(message as h[], 'text').join('')
                 const parsed = parsePresetLaneInput(
                     text,
-                    ctx.chatluna.preset
-                        .getAllPreset(true)
-                        .value.flatMap((entry) =>
-                            entry.split(',').map((item) => item.trim())
-                        )
+                    ctx.chatluna.preset.getKeywordTriggerAliases().value
                 )
 
                 if (parsed?.preset != null) {

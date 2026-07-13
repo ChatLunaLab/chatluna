@@ -67,6 +67,7 @@ $inner:
       defaultChatMode: Set default chat mode.
       defaultModel: Set default chat model.
       defaultPreset: Set default chat preset.
+      enablePresetKeywordTrigger: Allow switching preset lanes via keywords at the start of a message.
 
     - $desc: Miscellaneous
       errorTemplate: Set error prompt message template (subject to change).
