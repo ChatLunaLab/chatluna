@@ -169,7 +169,12 @@ export class PresetService {
                         this._updateSchema()
                     }
                 } catch (e) {
-                    if (e.code === 'ENOENT') {
+                    if (
+                        typeof e === 'object' &&
+                        e !== null &&
+                        'code' in e &&
+                        (e as NodeJS.ErrnoException).code === 'ENOENT'
+                    ) {
                         this._removePreset(filePath)
                         md5Cache.delete(filePath)
 
@@ -248,7 +253,9 @@ export class PresetService {
             }
 
             return this._presets.value
-                .filter((preset) => preset.config.enableKeywordTrigger !== false)
+                .filter(
+                    (preset) => preset.config.enableKeywordTrigger !== false
+                )
                 .flatMap((preset) =>
                     preset.triggerKeyword.flatMap((keyword) =>
                         keyword
@@ -316,8 +323,8 @@ export class PresetService {
         // check if preset dir exists
         try {
             await fs.access(presetDir)
-        } catch (err) {
-            if (err.code === 'ENOENT') {
+        } catch (err: any) {
+            if (err?.code === 'ENOENT') {
                 await fs.mkdir(presetDir, { recursive: true })
                 await this._copyDefaultPresets()
             } else {
