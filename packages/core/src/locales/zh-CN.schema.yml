@@ -68,8 +68,7 @@ $inner:
       defaultChatMode: 设置默认的聊天模式。
       defaultModel: 设置默认使用的聊天模型。
       defaultPreset: 设置默认使用的聊天预设。
-      enablePresetKeywordTrigger:
-          是否在消息开头识别预设关键词并切换预设分流。关闭后，仅通过命令或会话设置切换预设；也可在单个预设的 config.enableKeywordTrigger 中关闭该预设的关键词。
+      enablePresetKeywordTrigger: 是否允许通过消息开头的预设关键词切换预设分流。
 
     - $desc: 杂项
       errorTemplate: 设置错误提示消息的模板（此设置在未来版本中可能会有变更）。

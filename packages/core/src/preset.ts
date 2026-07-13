@@ -169,12 +169,7 @@ export class PresetService {
                         this._updateSchema()
                     }
                 } catch (e) {
-                    if (
-                        typeof e === 'object' &&
-                        e !== null &&
-                        'code' in e &&
-                        (e as NodeJS.ErrnoException).code === 'ENOENT'
-                    ) {
+                    if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
                         this._removePreset(filePath)
                         md5Cache.delete(filePath)
 
