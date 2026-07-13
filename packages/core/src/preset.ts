@@ -323,8 +323,8 @@ export class PresetService {
         // check if preset dir exists
         try {
             await fs.access(presetDir)
-        } catch (err: any) {
-            if (err?.code === 'ENOENT') {
+        } catch (err) {
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
                 await fs.mkdir(presetDir, { recursive: true })
                 await this._copyDefaultPresets()
             } else {
