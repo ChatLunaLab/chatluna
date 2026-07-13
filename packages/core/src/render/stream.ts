@@ -174,7 +174,7 @@ export class ReplyStream {
             return await this.queue.edit(processed)
         }
 
-        await this.context.send(processed)
+        await this.context.send([processed])
     }
 
     private async censor(elements: h[]) {

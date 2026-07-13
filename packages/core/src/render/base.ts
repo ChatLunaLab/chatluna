@@ -107,7 +107,14 @@ export abstract class BufferedRenderStreamSession implements RenderStreamSession
 
         const result: h[] = []
         for (const part of parts) {
-            result.push(...(await this.renderText(part)))
+            const elements = await this.renderText(part)
+            result.push(
+                ...(this.options.split && this.options.split !== 'none'
+                    ? elements.map((el) =>
+                          el.type === 'message' ? el : h('message', el)
+                      )
+                    : elements)
+            )
         }
         return result.length > 0 ? result : null
     }
