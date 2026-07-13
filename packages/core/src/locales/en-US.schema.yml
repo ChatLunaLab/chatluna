@@ -67,6 +67,8 @@ $inner:
       defaultChatMode: Set default chat mode.
       defaultModel: Set default chat model.
       defaultPreset: Set default chat preset.
+      enablePresetKeywordTrigger:
+          Whether to detect preset keywords at the start of a message and switch preset lanes. When disabled, switch presets only via commands or conversation settings. Per-preset opt-out: config.enableKeywordTrigger in the preset YAML.
 
     - $desc: Miscellaneous
       errorTemplate: Set error prompt message template (subject to change).

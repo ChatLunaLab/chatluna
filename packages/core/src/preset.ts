@@ -241,6 +241,25 @@ export class PresetService {
         })
     }
 
+    getKeywordTriggerAliases(): ComputedRef<string[]> {
+        return computed(() => {
+            if (!this.config.enablePresetKeywordTrigger) {
+                return []
+            }
+
+            return this._presets.value
+                .filter((preset) => preset.config.enableKeywordTrigger !== false)
+                .flatMap((preset) =>
+                    preset.triggerKeyword.flatMap((keyword) =>
+                        keyword
+                            .split(',')
+                            .map((item) => item.trim())
+                            .filter((item) => item.length > 0)
+                    )
+                )
+        })
+    }
+
     getAllPreset(concatKeyword: boolean = true): ComputedRef<string[]> {
         return computed(() =>
             this._presets.value.map((preset) =>
