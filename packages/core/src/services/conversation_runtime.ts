@@ -80,7 +80,8 @@ export class ConversationRuntime {
                     message,
                     options
                 ),
-            options.signal
+            options.signal,
+            options.event?.['llm-queue-waiting']
         )
     }
 
@@ -268,7 +269,8 @@ export class ConversationRuntime {
     async withConversationAndPlatformLock<T>(
         conversation: ConversationRecord,
         callback: (config: ClientConfig) => Promise<T>,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        onQueueWaiting?: ChatEvents['llm-queue-waiting']
     ): Promise<T> {
         const requestId = randomUUID()
         const modelRequestId = randomUUID()
@@ -293,6 +295,13 @@ export class ConversationRuntime {
                 this.conversationQueue.add(conversation.id, requestId),
                 this.modelQueue.add(platform, modelRequestId)
             ])
+            if (onQueueWaiting != null) {
+                const sizes = await Promise.all([
+                    this.conversationQueue.getQueueLength(conversation.id),
+                    this.modelQueue.getQueueLength(platform)
+                ])
+                await onQueueWaiting(Math.max(...sizes))
+            }
             const waiting = Promise.all([
                 this.conversationQueue.wait(
                     conversation.id,

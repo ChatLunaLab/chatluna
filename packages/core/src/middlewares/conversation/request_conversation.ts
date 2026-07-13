@@ -193,7 +193,7 @@ function createChatCallbacks(
                   await stream.write({ type: 'content', chunk })
               },
         'llm-queue-waiting': async (count: number) => {
-            context.options.queueCount = count
+            context.options.thinkingTimeoutObject?.setQueueCount(count)
         },
         'llm-usage': async (usage: UsageMetadata) => {
             if (context.options.invocation != null) {
@@ -293,6 +293,5 @@ declare module '../../chains/chain' {
         responseMessage?: Message
         finalResponseMessage?: Message
         inputMessage?: Message
-        queueCount?: number
     }
 }

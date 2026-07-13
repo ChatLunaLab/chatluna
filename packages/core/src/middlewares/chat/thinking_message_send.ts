@@ -1,11 +1,8 @@
 import { Context, Logger } from 'koishi'
 import { Config } from '../../config'
-import {
-    ChainMiddlewareContextOptions,
-    ChainMiddlewareRunStatus,
-    ChatChain
-} from '../../chains/chain'
+import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
 
 let logger: Logger
 
@@ -17,14 +14,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
             }
 
-            const thinkingTimeoutObject: ThinkingTimeoutObject = {}
+            const queue = withResolver<number>()
+            const thinkingTimeoutObject: ThinkingTimeoutObject = {
+                queueCount: queue.promise,
+                setQueueCount: queue.resolve
+            }
             context.options.thinkingTimeoutObject = thinkingTimeoutObject
 
             thinkingTimeoutObject.timeout = setTimeout(async () => {
-                const queueCount = await getQueueCount(
-                    thinkingTimeoutObject,
-                    context.options
-                )
+                const queueCount = await thinkingTimeoutObject.queueCount
 
                 if (thinkingTimeoutObject.timeout == null || queueCount < 1) {
                     return
@@ -63,23 +61,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .before('lifecycle-prepare')
 }
 
-async function getQueueCount(
-    obj: ThinkingTimeoutObject,
-    options: ChainMiddlewareContextOptions
-) {
-    await new Promise((resolve, reject) => {
-        const timer = setInterval(() => {
-            if (obj.timeout != null && options.queueCount != null) {
-                clearInterval(timer)
-                resolve(undefined)
-            }
-        })
-    })
-
-    return options.queueCount
-}
-
 export interface ThinkingTimeoutObject {
+    queueCount: Promise<number>
+    setQueueCount: (count: number) => void
     timeout?: NodeJS.Timeout
     recallFunc?: () => PromiseLike<void>
     autoRecallTimeout?: NodeJS.Timeout

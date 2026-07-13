@@ -130,38 +130,9 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         .after('transform_chat_message')
         .before('lifecycle-handle_command')
 
-    const completeTurn = async (conversationId: string) => {
-        const conversation = queues.get(conversationId)
-        if (!conversation) {
-            return
-        }
-
-        const current = conversation.turns.shift()
-        conversation.inFlight = false
-
-        if (current?.timeout) {
-            current.timeout()
-        }
-        if (current?.starter) {
-            current.starter.resolve(ChainMiddlewareRunStatus.STOP)
-            current.starter = undefined
-        }
-
-        if (conversation.turns.length === 0) {
-            queues.delete(conversationId)
-            return
-        }
-
-        tryStartHeadTurn(conversationId, conversation)
-
-        if (current) {
-            logger.debug(
-                `Completing turn for ${conversationId}, remaining: ${conversation.turns.length}`
-            )
-        }
-    }
-
-    ctx.on('chatluna/after-chat', completeTurn)
+    ctx.on('chatluna/after-chat', (conversationId) =>
+        completeTurn(conversationId)
+    )
 
     ctx.on('chatluna/after-chat-error', (_error, conversationId) =>
         completeTurn(conversationId)
@@ -207,6 +178,40 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
     ctx.on('chatluna/after-conversation-delete', async (payload) =>
         clearTurn(payload.conversation.id)
     )
+}
+
+async function completeTurn(conversationId: string, expected?: MessageTurn) {
+    const conversation = queues.get(conversationId)
+    if (
+        !conversation ||
+        (expected != null && conversation.turns[0] !== expected)
+    ) {
+        return
+    }
+
+    const current = conversation.turns.shift()
+    conversation.inFlight = false
+
+    if (current?.timeout) {
+        current.timeout()
+    }
+    if (current?.starter) {
+        current.starter.resolve(ChainMiddlewareRunStatus.STOP)
+        current.starter = undefined
+    }
+
+    if (conversation.turns.length === 0) {
+        queues.delete(conversationId)
+        return
+    }
+
+    tryStartHeadTurn(conversationId, conversation)
+
+    if (current) {
+        logger.debug(
+            `Completing turn for ${conversationId}, remaining: ${conversation.turns.length}`
+        )
+    }
 }
 
 function awaitTurnStart(
@@ -294,6 +299,8 @@ function startHeadTurn(
 
     conversation.inFlight = true
     head.state = 'processing'
+    starter.context.options.completeMessageTurn = () =>
+        completeTurn(conversationId, head)
     starter.context.options.inputMessage = mergeMessages(
         head.messages
             .sort((a, b) => a.timestamp - b.timestamp)
@@ -363,5 +370,6 @@ declare module '../../chains/chain' {
 
     interface ChainMiddlewareContextOptions {
         messageId?: string
+        completeMessageTurn?: () => Promise<void>
     }
 }
