@@ -74,7 +74,12 @@ class KoishiElementStreamSession implements RenderStreamSession {
             return transformAndEscape([h.text(this.text + '●')])
         }
 
-        const elements = this.splitter.writeText(text)
+        let elements = this.splitter.writeText(text)
+        if (this.options.split && this.options.split !== 'none') {
+            elements = elements.map((el) =>
+                el.type === 'message' ? el : h('message', el)
+            )
+        }
         return elements.length > 0 ? elements : null
     }
 
@@ -84,7 +89,12 @@ class KoishiElementStreamSession implements RenderStreamSession {
             return transformAndEscape([h.text(this.text)])
         }
 
-        const elements = this.splitter.flush()
+        let elements = this.splitter.flush()
+        if (this.options.split && this.options.split !== 'none') {
+            elements = elements.map((el) =>
+                el.type === 'message' ? el : h('message', el)
+            )
+        }
         return elements.length > 0 ? elements : null
     }
 }
