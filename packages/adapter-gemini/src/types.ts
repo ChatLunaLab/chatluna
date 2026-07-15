@@ -81,9 +81,8 @@ export type ChatFunctionCallingPart = {
 export type ChatFunctionResponsePart = {
     functionResponse: {
         name: string
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        response?: any
-        parts?: (ChatMessagePart | ChatInlineDataPart | ChatUploadDataPart)[]
+        response: Record<string, unknown>
+        parts?: (ChatInlineDataPart | ChatUploadDataPart)[]
         id?: string
     }
 }
