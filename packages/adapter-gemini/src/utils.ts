@@ -145,13 +145,18 @@ export function extractSystemMessages(
     ]
 }
 
-function parseJsonArgs(args: string) {
+function parseJsonArgs(args: string): Record<string, unknown> {
     try {
-        const result = JSON.parse(args)
-        if (typeof result === 'string') return { response: result }
-        if (Array.isArray(result)) return { response: result }
+        const result: unknown = JSON.parse(args)
+        if (
+            typeof result === 'object' &&
+            result != null &&
+            !Array.isArray(result)
+        ) {
+            return result as Record<string, unknown>
+        }
 
-        return result
+        return { response: result }
     } catch {
         return { response: args }
     }
@@ -222,19 +227,35 @@ async function processFunctionMessage(
 
     const finalMessage = message as ToolMessage
 
-    const functionResponse: ChatFunctionResponsePart['functionResponse'] =
-        Array.isArray(message.content)
-            ? {
-                  name: message.name,
-                  parts: await processGeminiContentParts(
-                      plugin,
-                      message.content
-                  )
-              }
-            : {
-                  name: message.name,
-                  response: parseJsonArgs(message.content as string)
-              }
+    const functionResponse: ChatFunctionResponsePart['functionResponse'] = {
+        name: message.name,
+        response: {}
+    }
+
+    if (Array.isArray(message.content)) {
+        const texts = message.content.flatMap((part) => {
+            if (isMessageContentText(part)) return [part.text]
+            return []
+        })
+
+        if (texts.length > 0) {
+            functionResponse.response = parseJsonArgs(texts.join(''))
+        }
+
+        const parts = await processGeminiContentParts(
+            plugin,
+            message.content.filter(
+                (part) =>
+                    isMessageContentImageUrl(part) ||
+                    isGeminiFileLikeContent(part)
+            )
+        )
+        if (parts.length > 0) {
+            functionResponse.parts = parts
+        }
+    } else {
+        functionResponse.response = parseJsonArgs(message.content as string)
+    }
 
     if (!removeId || finalMessage.tool_call_id) {
         functionResponse.id = finalMessage.tool_call_id
