@@ -26,6 +26,7 @@ import {
     renderTemplate,
     transformMessageContentToMarkdown
 } from './image'
+import { relaxedStrong } from '../utils'
 import fs from 'fs/promises'
 
 let logger: Logger
@@ -65,7 +66,8 @@ export class MixedImageRenderer extends Renderer {
                         hljs.highlightAuto(code, [lang]).value
                     }</code></pre>`
                 }
-            })
+            }),
+            relaxedStrong
         )
 
         ctx.on('dispose', async () => {

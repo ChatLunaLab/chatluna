@@ -23,6 +23,7 @@ import {
 import { MessageContent } from '@langchain/core/messages'
 import type {} from 'koishi-plugin-puppeteer'
 import { Config } from '..'
+import { relaxedStrong } from '../utils'
 import path from 'path'
 import fs from 'fs/promises'
 
@@ -69,7 +70,8 @@ export class ImageRenderer extends Renderer {
                         hljs.highlightAuto(code, [lang]).value
                     }</code></pre>`
                 }
-            })
+            }),
+            relaxedStrong
         )
 
         ctx.on('dispose', async () => {
