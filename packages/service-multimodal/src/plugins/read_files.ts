@@ -19,6 +19,7 @@ import {
     convertAudioToMp3,
     detectAudioMimeType,
     IMAGE_MIME_TYPES,
+    imageDescriptions,
     parseGifToFrames,
     processImageWithModel
 } from '../utils'
@@ -106,6 +107,23 @@ export class ReadFilesTool extends StructuredTool {
                     sourceUrl,
                     'Only http/https URLs are supported.'
                 )
+                continue
+            }
+
+            const cached = imageDescriptions.get(sourceUrl)
+            if (
+                cached != null &&
+                mimeEnabled(this.config, cached.mimeType) &&
+                (model == null || !modelSupportsMime(model, cached.mimeType))
+            ) {
+                report.files.push({
+                    sourceUrl,
+                    mimeType: cached.mimeType,
+                    status: 'described',
+                    description: cached.description
+                })
+                report.successCount++
+                describedCount++
                 continue
             }
 
@@ -391,7 +409,18 @@ export class ReadFilesTool extends StructuredTool {
                     `data:${mimeType};base64,${buffer.toString('base64')}`
                 )
             }
-            return await processImageWithModel(imageModel, this.config, fake)
+            const result = await processImageWithModel(
+                imageModel,
+                this.config,
+                fake
+            )
+            if (result) {
+                imageDescriptions.set(url, {
+                    mimeType,
+                    description: result
+                })
+            }
+            return result
         } catch (error) {
             logger.warn(`Describe image ${url} error:`, error)
             return null

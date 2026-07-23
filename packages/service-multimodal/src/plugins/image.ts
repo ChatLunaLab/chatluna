@@ -7,6 +7,7 @@ import { Config, logger } from '..'
 import {
     addImageToContent,
     addTextToContent,
+    imageDescriptions,
     parseGifToFrames,
     processImageWithModel,
     readImage
@@ -35,6 +36,18 @@ export async function apply(
 
                 const native = modelAcceptsImage(ctx, model)
                 if (!native && !config.enableContextImageDescription) {
+                    return false
+                }
+
+                const cached = imageDescriptions.get(url)
+                if (!native && cached != null) {
+                    if (
+                        cached.mimeType === 'image/gif' &&
+                        !config.enableContextGifHandling
+                    ) {
+                        return false
+                    }
+                    addTextToContent(message, '\n\n' + cached.description)
                     return false
                 }
 
@@ -120,6 +133,12 @@ async function describeAndInject(
         }
         const result = await processImageWithModel(imageModel, config, fake)
         if (result) {
+            if (imageData.ext != null) {
+                imageDescriptions.set(url, {
+                    mimeType: imageData.ext,
+                    description: result
+                })
+            }
             addTextToContent(message, '\n\n' + result)
             return true
         }

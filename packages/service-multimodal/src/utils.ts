@@ -224,6 +224,11 @@ function hasComplexDisposal(
 // Image
 // ---------------------------------------------------------------------------
 
+export const imageDescriptions = new Map<
+    string,
+    { mimeType: string; description: string }
+>()
+
 export async function readImage(ctx: Context, url: string) {
     if (url.startsWith('data:image') && url.includes('base64')) {
         const buffer = Buffer.from(url.split(',')[1], 'base64')
