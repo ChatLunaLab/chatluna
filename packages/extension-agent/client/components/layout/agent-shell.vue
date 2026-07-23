@@ -95,7 +95,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { send, store } from '@koishijs/client'
+import { send, socket, store } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
 import AgentSidebar from './agent-sidebar.vue'
 import McpPage from '../mcp/mcp-page.vue'
@@ -109,6 +109,7 @@ import type { AgentConfig } from '../../../src/types'
 const activeTab = ref('mcp')
 const pending = ref(false)
 let refreshTask: Promise<void> | undefined
+let refreshQueued = false
 const data = computed(() => store.chatluna_agent_webui)
 const config = computed(() => data.value?.config)
 const mcpCfg = computed(() => data.value?.config?.mcp)
@@ -123,8 +124,14 @@ const subAgentStatus = computed(() => data.value?.status?.subAgent)
 const toolStatus = computed(() => data.value?.status?.tool)
 const triggerStatus = computed(() => data.value?.status?.trigger)
 const loading = computed(() => pending.value || !data.value)
+const isConsoleConnected = () => socket.value?.readyState === 1
 
 const refreshData = async () => {
+    if (!isConsoleConnected()) {
+        refreshQueued = true
+        return
+    }
+
     if (refreshTask) {
         await refreshTask
         return
@@ -133,8 +140,21 @@ const refreshData = async () => {
     refreshTask = (async () => {
         try {
             pending.value = true
-            await send('chatluna-agent/refreshConsoleData')
-        } catch {
+            refreshQueued = false
+            const task = send(
+                'chatluna-agent/refreshConsoleData'
+            ) as Promise<unknown> | undefined
+            if (!task) {
+                refreshQueued = true
+                return
+            }
+            await task
+        } catch (error) {
+            console.warn('[chatluna-agent] 刷新控制台数据失败', error)
+            if (!isConsoleConnected()) {
+                refreshQueued = true
+                return
+            }
             ElMessage.error('刷新 Agent 数据失败')
         } finally {
             pending.value = false
@@ -149,14 +169,9 @@ const handleTabChange = (tab: string) => {
     activeTab.value = tab
 }
 
-watch(activeTab, async (tab) => {
-    if (
-        tab === 'skills' ||
-        tab === 'subAgent' ||
-        tab === 'tool' ||
-        tab === 'trigger'
-    ) {
-        await refreshData()
+watch(socket, (value) => {
+    if (value?.readyState === 1 && refreshQueued) {
+        void refreshData()
     }
 })
 
