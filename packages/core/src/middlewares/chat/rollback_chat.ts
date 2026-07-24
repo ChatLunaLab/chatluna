@@ -204,7 +204,12 @@ async function rollbackConversation(
             transformMessageContentToElements(humanContent),
             ctx.chatluna.conversation.pickModel(resolved.constraint, current) ??
                 current.model,
-            undefined,
+            {
+                content: '',
+                name: session.username,
+                conversationId: current.id,
+                additional_kwargs: {}
+            },
             {
                 quote: false,
                 includeQuoteReply: config.includeQuoteReply
