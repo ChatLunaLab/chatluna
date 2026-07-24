@@ -103,7 +103,7 @@ class WikipediaSearchProvider extends SearchProvider {
         const searchResults = await this._fetchSearchResults(query)
         const summaries: SearchResult[] = []
 
-        if (!searchResults.error) {
+        if (searchResults.error) {
             logger.error(
                 `Error fetching search results for query "${query}" in ${this.baseUrl}: ${JSON.stringify(searchResults.error)}`
             )
