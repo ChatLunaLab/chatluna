@@ -267,6 +267,7 @@ const tools = computed(() => {
                 ...item,
                 enabled: saved?.enabled ?? item.enabled,
                 main: saved?.main ?? item.main,
+                subAgent: saved?.subAgent ?? item.subAgent,
                 chatlunaEnabled: saved?.chatluna ?? item.chatlunaEnabled,
                 characterEnabled: saved?.character ?? item.characterEnabled,
                 characterGroupEnabled:
@@ -401,6 +402,7 @@ function createItem(
     return {
         enabled: item?.enabled !== false,
         main: item?.main !== false,
+        subAgent: item?.subAgent,
         chatluna:
             ((item as any)?.chatluna ?? (item as any)?.chatlunaEnabled) !==
             false,

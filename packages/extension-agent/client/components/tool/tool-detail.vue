@@ -21,6 +21,13 @@
                     <el-tag
                         size="small"
                         effect="plain"
+                        :type="subAgent ? 'success' : 'info'"
+                    >
+                        Sub Agent {{ subAgent ? '可用' : '不可用' }}
+                    </el-tag>
+                    <el-tag
+                        size="small"
+                        effect="plain"
                         :type="draft.chatluna ? 'success' : 'info'"
                     >
                         主插件 {{ draft.chatluna ? '可用' : '不可用' }}
@@ -126,6 +133,16 @@
                             <div class="field-help">控制 <code>chatluna</code> 主插件整体是否允许注入这个工具。</div>
                         </div>
                         <el-switch v-model="draft.chatluna" />
+                    </div>
+                </div>
+
+                <div class="field-card flat-card" style="margin-top: 8px;">
+                    <div class="scope-row">
+                        <div>
+                            <div class="field-subtitle">Sub Agent</div>
+                            <div class="field-help">控制 Sub Agent 是否允许注入这个工具。</div>
+                        </div>
+                        <el-switch v-model="subAgent" />
                     </div>
                 </div>
 
@@ -345,6 +362,11 @@ const props = defineProps<{
     draft: ToolItemConfig
     agentOptions: SubAgentInfo[]
 }>()
+
+const subAgent = computed({
+    get: () => props.draft.subAgent ?? props.tool.subAgent,
+    set: (value) => (props.draft.subAgent = value)
+})
 
 defineEmits<{
     back: []
