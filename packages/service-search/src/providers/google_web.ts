@@ -10,20 +10,23 @@ class GoogleWebSearchProvider extends SearchProvider {
         limit = this.config.topK
     ): Promise<SearchResult[]> {
         const page = await this.ctx.puppeteer.page()
-        await page.goto(
-            `https://www.google.com.hk/search?q=${encodeURIComponent(
-                query
-            )}&oq=${encodeURIComponent(
-                query
-            )}&uule=w+CAIQICIaQXVzdGluLFRleGFzLFVuaXRlZCBTdGF0ZXM&hl=en&gl=us&sourceid=chrome&ie=UTF-8%22#ip=1`,
-            {
-                waitUntil: 'networkidle2'
-            }
-        )
-        const summaries = await page.evaluate(readGoogleResults)
-        await page.close()
 
-        return summaries.slice(0, limit)
+        try {
+            await page.goto(
+                `https://www.google.com.hk/search?q=${encodeURIComponent(
+                    query
+                )}&oq=${encodeURIComponent(
+                    query
+                )}&uule=w+CAIQICIaQXVzdGluLFRleGFzLFVuaXRlZCBTdGF0ZXM&hl=en&gl=us&sourceid=chrome&ie=UTF-8#ip=1`,
+                {
+                    waitUntil: 'domcontentloaded',
+                    timeout: this.config.browserTimeout
+                }
+            )
+            return (await page.evaluate(readGoogleResults)).slice(0, limit)
+        } finally {
+            await page.close()
+        }
     }
 
     static schema = Schema.const('google-web').i18n({
@@ -34,21 +37,20 @@ class GoogleWebSearchProvider extends SearchProvider {
 }
 
 function readGoogleResults() {
-    const liElements = Array.from(
-        document.querySelector('#search > div > div').children
-    )
-
-    return liElements.map((li) => {
-        const linkElement = li.querySelector('a')
-        const href = linkElement.getAttribute('href')
-        const title = linkElement.querySelector('a > h3').textContent
-        const abstract = Array.from(
-            li.querySelectorAll('div > div > div > div > div > div > span')
-        )
-            .map((el) => el.textContent)
-            .join('')
-        return { url: href, title, description: abstract }
-    })
+    return Array.from(document.querySelectorAll('#search a > h3'))
+        .map((h3) => {
+            const a = h3.closest('a')
+            return {
+                url: a?.getAttribute('href')?.trim() ?? '',
+                title: h3.textContent?.trim() ?? '',
+                description:
+                    h3
+                        .closest('.g, .MjjYud')
+                        ?.querySelector('.VwiC3b')
+                        ?.textContent?.trim() ?? ''
+            }
+        })
+        .filter((r) => r.url && r.title)
 }
 
 export function apply(
