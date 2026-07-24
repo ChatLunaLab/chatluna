@@ -75,6 +75,7 @@ export type ChatLunaToolCharacterScope = 'all' | 'group' | 'private' | 'none'
 export interface ChatLunaToolDefaultAvailability {
     enabled?: boolean
     main?: boolean
+    subAgent?: boolean
     chatluna?: boolean
     characterScope?: ChatLunaToolCharacterScope
 }

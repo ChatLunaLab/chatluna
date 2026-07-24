@@ -5,6 +5,7 @@ export type ToolCharacterScope = 'all' | 'group' | 'private' | 'none'
 export interface ToolDefaultAvailability {
     enabled?: boolean
     main?: boolean
+    subAgent?: boolean
     chatluna?: boolean
     characterScope?: ToolCharacterScope
 }
@@ -46,6 +47,7 @@ export function createToolDefaultAvailability(
         input.defaultEnabled != null
     const hasMain =
         input.defaultAvailability?.main != null || input.defaultMain != null
+    const hasSubAgent = input.defaultAvailability?.subAgent != null
     const hasChatluna =
         input.defaultAvailability?.chatluna != null ||
         input.defaultChatluna != null
@@ -55,7 +57,13 @@ export function createToolDefaultAvailability(
         input.defaultCharacterGroup != null ||
         input.defaultCharacterPrivate != null
 
-    if (!hasEnabled && !hasMain && !hasChatluna && !hasCharacter) {
+    if (
+        !hasEnabled &&
+        !hasMain &&
+        !hasSubAgent &&
+        !hasChatluna &&
+        !hasCharacter
+    ) {
         return undefined
     }
 
@@ -68,6 +76,10 @@ export function createToolDefaultAvailability(
 
     if (hasMain) {
         output.main = input.defaultAvailability?.main ?? input.defaultMain
+    }
+
+    if (hasSubAgent) {
+        output.subAgent = input.defaultAvailability?.subAgent
     }
 
     if (hasChatluna) {
@@ -133,6 +145,7 @@ export interface PermissionRule {
 export interface ToolItemConfig {
     enabled: boolean
     main: boolean
+    subAgent: boolean
     chatluna: boolean
     character: boolean
     characterGroup: boolean
@@ -155,6 +168,7 @@ export interface ToolInfo {
     description?: string
     enabled: boolean
     main: boolean
+    subAgent: boolean
     chatlunaEnabled: boolean
     characterEnabled: boolean
     characterGroupEnabled: boolean

@@ -151,6 +151,7 @@ export class ChatLunaAgentPermissionService {
                         ...saved,
                         enabled: saved?.enabled ?? avail?.enabled ?? true,
                         main: saved?.main ?? avail?.main ?? true,
+                        subAgent: saved?.subAgent ?? avail?.subAgent ?? true,
                         chatluna: saved?.chatluna ?? avail?.chatluna ?? true,
                         character:
                             saved?.character ??
@@ -182,6 +183,7 @@ export class ChatLunaAgentPermissionService {
                     description: item.description,
                     enabled: cfg.enabled,
                     main: cfg.main,
+                    subAgent: cfg.subAgent,
                     chatlunaEnabled: cfg.chatluna,
                     characterEnabled: cfg.character,
                     characterGroupEnabled: cfg.characterGroup,
@@ -221,7 +223,10 @@ export class ChatLunaAgentPermissionService {
             mainEnabled: list.filter((item) => item.enabled && item.main)
                 .length,
             subAgentEnabled: list.filter(
-                (item) => item.enabled && hasSubAgentAccess(item.subAgents)
+                (item) =>
+                    item.enabled &&
+                    item.subAgent &&
+                    hasSubAgentAccess(item.subAgents)
             ).length,
             catalog: Object.fromEntries(list.map((item) => [item.name, item]))
         }
@@ -409,7 +414,7 @@ export class ChatLunaAgentPermissionService {
 
     canUseTool(info: SubAgentInfo, name: string): boolean {
         const tool = this.getTool(name)
-        if (!tool?.enabled) {
+        if (!tool?.enabled || !tool.subAgent) {
             return false
         }
 
