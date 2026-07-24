@@ -183,7 +183,7 @@ export class ChatLunaAgentPermissionService {
                     description: item.description,
                     enabled: cfg.enabled,
                     main: cfg.main,
-                    subAgent: cfg.subAgent,
+                    subAgent: cfg.subAgent ?? true,
                     chatlunaEnabled: cfg.chatluna,
                     characterEnabled: cfg.character,
                     characterGroupEnabled: cfg.characterGroup,

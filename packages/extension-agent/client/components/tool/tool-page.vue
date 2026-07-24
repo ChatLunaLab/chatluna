@@ -402,7 +402,7 @@ function createItem(
     return {
         enabled: item?.enabled !== false,
         main: item?.main !== false,
-        subAgent: item?.subAgent !== false,
+        subAgent: item?.subAgent,
         chatluna:
             ((item as any)?.chatluna ?? (item as any)?.chatlunaEnabled) !==
             false,

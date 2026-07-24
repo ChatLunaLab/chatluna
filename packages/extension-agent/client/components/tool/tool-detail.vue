@@ -21,9 +21,9 @@
                     <el-tag
                         size="small"
                         effect="plain"
-                        :type="draft.subAgent ? 'success' : 'info'"
+                        :type="subAgent ? 'success' : 'info'"
                     >
-                        Sub Agent {{ draft.subAgent ? '可用' : '不可用' }}
+                        Sub Agent {{ subAgent ? '可用' : '不可用' }}
                     </el-tag>
                     <el-tag
                         size="small"
@@ -142,7 +142,7 @@
                             <div class="field-subtitle">Sub Agent</div>
                             <div class="field-help">控制 Sub Agent 是否允许注入这个工具。</div>
                         </div>
-                        <el-switch v-model="draft.subAgent" />
+                        <el-switch v-model="subAgent" />
                     </div>
                 </div>
 
@@ -362,6 +362,11 @@ const props = defineProps<{
     draft: ToolItemConfig
     agentOptions: SubAgentInfo[]
 }>()
+
+const subAgent = computed({
+    get: () => props.draft.subAgent ?? props.tool.subAgent,
+    set: (value) => (props.draft.subAgent = value)
+})
 
 defineEmits<{
     back: []

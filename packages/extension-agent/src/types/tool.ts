@@ -145,7 +145,7 @@ export interface PermissionRule {
 export interface ToolItemConfig {
     enabled: boolean
     main: boolean
-    subAgent: boolean
+    subAgent?: boolean
     chatluna: boolean
     character: boolean
     characterGroup: boolean

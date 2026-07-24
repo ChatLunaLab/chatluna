@@ -92,7 +92,7 @@ export function createToolItemConfig(
     return {
         enabled: input.enabled !== false,
         main: input.main !== false,
-        subAgent: input.subAgent !== false,
+        subAgent: input.subAgent,
         chatluna: input.chatluna !== false,
         character: input.character !== false,
         characterGroup: input.characterGroup !== false,
