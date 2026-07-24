@@ -2,7 +2,7 @@
 import { StructuredTool } from '@langchain/core/tools'
 import { HumanMessage, MessageContentComplex } from '@langchain/core/messages'
 import { Context } from 'koishi'
-import { ComputedRef, Message } from 'koishi-plugin-chatluna'
+import { ComputedRef } from 'koishi-plugin-chatluna'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import type { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import {
@@ -11,21 +11,26 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
+import { getImageType } from 'koishi-plugin-chatluna/utils/string'
 import { Config, logger } from '..'
 import {
-    addImageToContent,
-    addTextToContent,
     BROWSER_UA,
+    buildDescribeMessage,
     convertAudioToMp3,
     detectAudioMimeType,
+    getOrDescribeImage,
     IMAGE_MIME_TYPES,
     parseGifToFrames,
-    processImageWithModel
+    processImageWithModel,
+    singleFlight
 } from '../utils'
 import z from 'zod'
 
 const DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const DEFAULT_MAX_TOTAL_SIZE_BYTES = 100 * 1024 * 1024
+
+type Fetched = { buffer: Buffer; contentType: string | null } | null
+const fetchLoads = new Map<string, Promise<Fetched>>()
 
 interface NativePart {
     mimeType: string
@@ -99,6 +104,8 @@ export class ReadFilesTool extends StructuredTool {
         let totalBytes = 0
         let describedCount = 0
 
+        const scope = conversationId
+
         for (const { url: sourceUrl } of files) {
             if (!isHttp(sourceUrl)) {
                 pushError(
@@ -110,7 +117,11 @@ export class ReadFilesTool extends StructuredTool {
             }
 
             try {
-                const fetched = await this._fetch(sourceUrl)
+                const fetched = await singleFlight(
+                    fetchLoads,
+                    scope == null ? undefined : `${scope}\0${sourceUrl}`,
+                    () => this._fetch(sourceUrl)
+                )
                 if (!fetched) {
                     pushError(report, sourceUrl, 'Failed to fetch URL.')
                     continue
@@ -120,7 +131,9 @@ export class ReadFilesTool extends StructuredTool {
                     ?.split(';')[0]
                     ?.trim()
                     ?.toLowerCase()
-                const mime = await detectAudioMimeType(fetched.buffer, declared)
+                const mime =
+                    getImageType(fetched.buffer) ??
+                    (await detectAudioMimeType(fetched.buffer, declared))
 
                 if (!mime) {
                     pushError(
@@ -265,7 +278,7 @@ export class ReadFilesTool extends StructuredTool {
                 // ----- Image without native support: describe via vision model -
                 if (isImage) {
                     const described = await this._describeImage(
-                        sourceUrl,
+                        scope,
                         fetched.buffer,
                         mime
                     )
@@ -356,44 +369,38 @@ export class ReadFilesTool extends StructuredTool {
     }
 
     private async _describeImage(
-        url: string,
+        scope: string | undefined,
         buffer: Buffer,
-        mimeType: string
+        mime: string
     ): Promise<string | null> {
-        const imageModel = this.imageModelRef().value
-        if (
-            !imageModel ||
-            !imageModel.modelInfo.capabilities.includes(
-                ModelCapabilities.ImageInput
-            )
-        ) {
-            logger.warn(
-                'Image model not loaded or lacks image input; cannot describe.'
-            )
-            return null
-        }
-
         try {
-            const fake: Message = { content: [] }
-            if (mimeType === 'image/gif') {
-                const frames = await parseGifToFrames(buffer, {
-                    strategy: this.config.gifStrategy,
-                    frameCount: this.config.gifFrameCount
-                })
-                addTextToContent(
-                    fake,
-                    'This is a GIF image. See the frames below:'
-                )
-                for (const frame of frames) addImageToContent(fake, frame)
-            } else {
-                addImageToContent(
-                    fake,
-                    `data:${mimeType};base64,${buffer.toString('base64')}`
-                )
-            }
-            return await processImageWithModel(imageModel, this.config, fake)
+            const text = await getOrDescribeImage(
+                scope,
+                buffer,
+                this.config,
+                async () => {
+                    const imageModel = this.imageModelRef().value
+                    if (
+                        imageModel == null ||
+                        !imageModel.modelInfo.capabilities.includes(
+                            ModelCapabilities.ImageInput
+                        )
+                    ) {
+                        logger.warn(
+                            'Image model not loaded or lacks image input; cannot describe.'
+                        )
+                        return null
+                    }
+                    return processImageWithModel(
+                        imageModel,
+                        this.config,
+                        await buildDescribeMessage(buffer, mime, this.config)
+                    )
+                }
+            )
+            return text ?? null
         } catch (error) {
-            logger.warn(`Describe image ${url} error:`, error)
+            logger.warn(`Describe image error:`, error)
             return null
         }
     }

@@ -146,7 +146,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         resolved.constraint,
                         resolved.conversation
                     ) ?? '',
-                    undefined,
+                    {
+                        content: '',
+                        name: session.username,
+                        conversationId: resolved.conversation?.id,
+                        additional_kwargs: {}
+                    },
                     {
                         quote: false,
                         includeQuoteReply: config.includeQuoteReply

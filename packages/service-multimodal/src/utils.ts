@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import {
     HumanMessage,
     MessageContentComplex,
@@ -221,8 +222,105 @@ function hasComplexDisposal(
 }
 
 // ---------------------------------------------------------------------------
-// Image
+// Image description cache
 // ---------------------------------------------------------------------------
+
+const DESC_TTL = 5 * 60 * 1000
+const DESC_MAX = 100
+
+const descs = new Map<string, { text: string; exp: number }>()
+const descPending = new Map<string, Promise<string | undefined>>()
+
+export async function singleFlight<T>(
+    pending: Map<string, Promise<T>>,
+    key: string | undefined,
+    load: () => Promise<T>
+): Promise<T> {
+    if (key == null) return load()
+    const existing = pending.get(key)
+    if (existing != null) return existing
+    const task = (async () => {
+        try {
+            return await load()
+        } finally {
+            pending.delete(key)
+        }
+    })()
+    pending.set(key, task)
+    return task
+}
+
+export async function getOrDescribeImage(
+    scope: string | undefined,
+    buffer: Buffer,
+    config: Config,
+    describe: () => Promise<string | null>
+): Promise<string | undefined> {
+    const wrap = (text: string) =>
+        config.imageInsertPrompt.replace('{img}', text)
+
+    if (scope == null) {
+        const text = await describe()
+        return text == null || text.length < 1 ? undefined : wrap(text)
+    }
+
+    const hash = createHash('sha256').update(buffer).digest('hex')
+    const key = `${hash}\0${config.imageModel}\0${config.imagePrompt}\0${config.gifStrategy}\0${config.gifFrameCount}`
+
+    const hit = descs.get(key)
+    if (hit != null) {
+        if (hit.exp <= Date.now()) descs.delete(key)
+        else {
+            descs.delete(key)
+            descs.set(key, hit)
+            return wrap(hit.text)
+        }
+    }
+
+    let pending = descPending.get(key)
+    if (pending == null) {
+        pending = (async () => {
+            try {
+                const text = await describe()
+                if (text == null || text.length < 1) return undefined
+                descs.delete(key)
+                descs.set(key, { text, exp: Date.now() + DESC_TTL })
+                if (descs.size > DESC_MAX) {
+                    descs.delete(descs.keys().next().value!)
+                }
+                return text
+            } finally {
+                descPending.delete(key)
+            }
+        })()
+        descPending.set(key, pending)
+    }
+    const text = await pending
+    return text == null ? undefined : wrap(text)
+}
+
+export async function buildDescribeMessage(
+    buffer: Buffer,
+    mime: string,
+    config: Config
+): Promise<Message> {
+    const msg: Message = { content: [] }
+    if (mime === 'image/gif') {
+        addTextToContent(msg, 'This is a GIF image. See the frames below:')
+        for (const frame of await parseGifToFrames(buffer, {
+            strategy: config.gifStrategy,
+            frameCount: config.gifFrameCount
+        })) {
+            addImageToContent(msg, frame)
+        }
+    } else {
+        addImageToContent(
+            msg,
+            `data:${mime};base64,${buffer.toString('base64')}`
+        )
+    }
+    return msg
+}
 
 export async function readImage(ctx: Context, url: string) {
     if (url.startsWith('data:image') && url.includes('base64')) {
@@ -253,23 +351,17 @@ export async function processImageWithModel(
     config: Config,
     message: Message
 ): Promise<string | null> {
-    const images = Array.isArray(message.content)
-        ? message.content.filter((item: MessageContentComplex) =>
-              isMessageContentImageUrl(item)
-          )
-        : []
-    if (images.length === 0) return null
+    const items = Array.isArray(message.content) ? message.content : []
+    if (!items.some((item) => isMessageContentImageUrl(item))) return null
 
     try {
         const content: MessageContentComplex[] = [
             { type: 'text', text: config.imagePrompt } as MessageContentText,
-            ...images
+            ...items
         ]
         const result = await model.invoke([new HumanMessage({ content })])
-        return config.imageInsertPrompt.replace(
-            '{img}',
-            getMessageContent(result.content)
-        )
+        const text = getMessageContent(result.content)
+        return text.length > 0 ? text : null
     } catch (error) {
         logger.warn('Failed to process image with model', error)
         return null

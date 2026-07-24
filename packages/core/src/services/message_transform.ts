@@ -67,6 +67,7 @@ export class MessageTransformer {
                 {
                     content: '',
                     name: session.username,
+                    conversationId: message.conversationId,
                     additional_kwargs: {}
                 },
                 {
