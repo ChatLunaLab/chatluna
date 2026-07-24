@@ -265,7 +265,7 @@ export async function getOrDescribeImage(
     }
 
     const hash = createHash('sha256').update(buffer).digest('hex')
-    const key = `${scope}\0${hash}\0${config.imageModel}\0${config.imagePrompt}\0${config.gifStrategy}\0${config.gifFrameCount}`
+    const key = `${hash}\0${config.imageModel}\0${config.imagePrompt}\0${config.gifStrategy}\0${config.gifFrameCount}`
 
     const hit = descs.get(key)
     if (hit != null) {
@@ -351,17 +351,13 @@ export async function processImageWithModel(
     config: Config,
     message: Message
 ): Promise<string | null> {
-    const images = Array.isArray(message.content)
-        ? message.content.filter((item: MessageContentComplex) =>
-              isMessageContentImageUrl(item)
-          )
-        : []
-    if (images.length === 0) return null
+    const items = Array.isArray(message.content) ? message.content : []
+    if (!items.some((item) => isMessageContentImageUrl(item))) return null
 
     try {
         const content: MessageContentComplex[] = [
             { type: 'text', text: config.imagePrompt } as MessageContentText,
-            ...images
+            ...items
         ]
         const result = await model.invoke([new HumanMessage({ content })])
         const text = getMessageContent(result.content)
