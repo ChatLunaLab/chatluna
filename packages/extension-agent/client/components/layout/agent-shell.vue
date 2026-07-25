@@ -124,10 +124,9 @@ const subAgentStatus = computed(() => data.value?.status?.subAgent)
 const toolStatus = computed(() => data.value?.status?.tool)
 const triggerStatus = computed(() => data.value?.status?.trigger)
 const loading = computed(() => pending.value || !data.value)
-const isConsoleConnected = () => socket.value?.readyState === 1
 
 const refreshData = async () => {
-    if (!isConsoleConnected()) {
+    if (socket.value?.readyState !== 1) {
         refreshQueued = true
         return
     }
@@ -141,17 +140,10 @@ const refreshData = async () => {
         try {
             pending.value = true
             refreshQueued = false
-            const task = send(
-                'chatluna-agent/refreshConsoleData'
-            ) as Promise<unknown> | undefined
-            if (!task) {
-                refreshQueued = true
-                return
-            }
-            await task
+            await send('chatluna-agent/refreshConsoleData')
         } catch (error) {
             console.warn('[chatluna-agent] 刷新控制台数据失败', error)
-            if (!isConsoleConnected()) {
+            if (socket.value?.readyState !== 1) {
                 refreshQueued = true
                 return
             }
@@ -169,9 +161,20 @@ const handleTabChange = (tab: string) => {
     activeTab.value = tab
 }
 
-watch(socket, (value) => {
+watch(activeTab, async (tab) => {
+    if (
+        tab === 'skills' ||
+        tab === 'subAgent' ||
+        tab === 'tool' ||
+        tab === 'trigger'
+    ) {
+        await refreshData()
+    }
+})
+
+watch(socket, async (value) => {
     if (value?.readyState === 1 && refreshQueued) {
-        void refreshData()
+        await refreshData()
     }
 })
 

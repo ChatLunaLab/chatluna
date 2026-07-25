@@ -1,50 +1,42 @@
 <template>
     <div class="servers-view">
-        <div class="panel">
-            <div class="panel-header">
-                <div>
-                    <div class="panel-title">服务器</div>
-                    <div class="panel-description">
-                        管理 MCP 服务器的连接方式、运行状态和重连操作。
-                    </div>
-                </div>
-
-                <div class="panel-actions">
-                    <el-button :loading="reloading" @click="reloadMcp">
-                        <el-icon><RefreshRight /></el-icon>
+        <div class="catalog-section">
+            <div class="catalog-controls">
+                <div class="section-title">服务器</div>
+                <div class="catalog-actions">
+                    <el-button
+                        :loading="reloading"
+                        :icon="RefreshRight"
+                        @click="reloadMcp"
+                    >
                         重新加载
                     </el-button>
-                    <el-button type="primary" @click="openCreate">
-                        <el-icon><Plus /></el-icon>
+                    <el-button type="primary" :icon="Plus" @click="openCreate">
                         添加服务器
                     </el-button>
                 </div>
             </div>
 
-            <div v-if="servers.length > 0" class="card-list server-grid">
+            <div
+                v-if="servers.length > 0"
+                class="card-list server-grid"
+                :class="{ compact: props.compactMode }"
+            >
                 <div
                     v-for="item in servers"
                     :key="item.name"
                     class="server-card"
                     :class="{
                         busy: item.updating,
+                        centered: props.hideDesc,
                         selected: selectedServerName === item.name
                     }"
                     role="button"
                     tabindex="0"
-                    :aria-pressed="selectedServerName === item.name"
                     @click="selectedServerName = item.name"
                     @keydown.enter.prevent="selectedServerName = item.name"
                     @keydown.space.prevent="selectedServerName = item.name"
                 >
-                    <span
-                        v-if="selectedServerName === item.name"
-                        class="server-selected-mark"
-                        aria-hidden="true"
-                    >
-                        <el-icon><Check /></el-icon>
-                    </span>
-
                     <div class="server-head">
                         <div class="server-brand">
                             <div class="server-icon">
@@ -69,83 +61,94 @@
                                     {{ item.status.title }}
                                 </div>
                                 <div class="server-name">{{ item.name }}</div>
-                                <div v-if="!props.hideDesc" class="server-kind">
-                                    <span>{{ item.kind }}</span>
-                                    <span v-if="item.status?.version">
-                                        v{{ item.status.version }}
-                                    </span>
+                                <div
+                                    v-if="
+                                        !props.hideDesc && item.status?.version
+                                    "
+                                    class="server-sub"
+                                >
+                                    v{{ item.status.version }}
                                 </div>
                             </div>
                         </div>
 
-                        <el-tag
-                            :type="
-                                stateTag(
-                                    item.updating
-                                        ? 'reconnecting'
-                                        : item.status?.state
-                                )
-                            "
-                            round
-                            effect="plain"
-                        >
-                            {{
-                                stateLabel(
-                                    item.updating
-                                        ? 'reconnecting'
-                                        : item.status?.state
-                                )
-                            }}
-                        </el-tag>
+                        <div class="server-controls">
+                            <div class="server-state" :class="stateClass(item)">
+                                <span class="state-dot" />
+                                <span>
+                                    {{
+                                        stateLabel(
+                                            item.updating
+                                                ? 'reconnecting'
+                                                : item.status?.state
+                                        )
+                                    }}
+                                </span>
+                            </div>
+                            <el-switch
+                                :model-value="item.tools.some((t) => t.enabled)"
+                                :loading="serverToolsBusy[item.name]"
+                                :disabled="
+                                    serverToolsBusy[item.name] ||
+                                    item.updating ||
+                                    item.tools.length === 0 ||
+                                    item.tools.some((t) => t.updating)
+                                "
+                                @click.stop
+                                @change="toggleServerTools(item.name)"
+                            />
+                        </div>
                     </div>
 
-                    <div class="server-chips">
-                        <el-tag size="small" effect="plain">
-                            {{ item.kind }}
-                        </el-tag>
-                        <el-tag size="small" effect="plain">
-                            {{ item.tools.length }} 工具
-                        </el-tag>
-                        <el-tag size="small" effect="plain">
-                            启动 {{ item.server.startupTimeout ?? 20 }}s
-                        </el-tag>
-                        <el-tag
-                            v-if="item.status?.attempts"
-                            size="small"
-                            type="warning"
-                            effect="plain"
-                        >
-                            重试 {{ item.status.attempts }}/{{
-                                item.status.maxAttempts ?? 5
-                            }}
-                        </el-tag>
+                    <div class="server-meta">
+                        <div class="meta-chips">
+                            <el-tag size="small" effect="plain" type="info">
+                                传输 {{ item.kind }}
+                            </el-tag>
+                            <el-tag size="small" effect="plain" type="success">
+                                工具 {{ item.tools.length }}
+                            </el-tag>
+                            <el-tag size="small" effect="plain" type="warning">
+                                超时 {{ item.server.timeout ?? 60 }}s
+                            </el-tag>
+                            <el-tag
+                                v-if="item.status?.attempts"
+                                size="small"
+                                effect="plain"
+                                type="danger"
+                            >
+                                重试 {{ item.status.attempts }}/{{
+                                    item.status.maxAttempts ?? 5
+                                }}
+                            </el-tag>
+                        </div>
                     </div>
 
                     <div v-if="item.status?.error" class="error-box">
                         {{ item.status.error }}
                     </div>
 
-                    <div class="server-actions" @click.stop @keydown.stop>
-                        <el-dropdown trigger="click" placement="bottom-end">
+                    <div class="server-footer">
+                        <el-dropdown
+                            trigger="click"
+                            @command="(cmd) => onServerMenu(cmd, item)"
+                        >
                             <el-button
-                                class="server-menu"
+                                class="more-btn"
                                 text
-                                circle
-                                :disabled="item.updating"
-                                :aria-label="`管理服务器 ${item.name}`"
-                            >
-                                <el-icon><MoreFilled /></el-icon>
-                            </el-button>
+                                :icon="More"
+                                @click.stop
+                            />
                             <template #dropdown>
                                 <el-dropdown-menu>
                                     <el-dropdown-item
+                                        command="toggle-tools"
                                         :disabled="
                                             serverToolsBusy[item.name] ||
                                             item.updating ||
                                             item.tools.length === 0 ||
                                             item.tools.some((t) => t.updating)
                                         "
-                                        @click="toggleServerTools(item.name)"
                                     >
                                         {{
                                             item.tools.some((t) => t.enabled)
@@ -154,20 +157,23 @@
                                         }}
                                     </el-dropdown-item>
                                     <el-dropdown-item
-                                        @click="openEdit(item.name)"
+                                        command="edit"
+                                        :disabled="item.updating"
                                     >
-                                        编辑服务器
+                                        编辑
                                     </el-dropdown-item>
                                     <el-dropdown-item
-                                        @click="reconnect(item.name)"
+                                        command="reconnect"
+                                        :disabled="item.updating"
                                     >
-                                        重新连接
+                                        {{ item.updating ? '重连中' : '重连' }}
                                     </el-dropdown-item>
                                     <el-dropdown-item
+                                        command="remove"
                                         divided
-                                        @click="removeServer(item.name)"
+                                        :disabled="item.updating"
                                     >
-                                        删除服务器
+                                        删除
                                     </el-dropdown-item>
                                 </el-dropdown-menu>
                             </template>
@@ -176,40 +182,37 @@
                 </div>
             </div>
 
-            <div v-else class="empty-state server-empty">
+            <div v-else class="empty-state">
                 <el-empty description="还没有 MCP 服务器，先添加一个。" />
             </div>
+        </div>
 
-            <div class="tool-section">
-                <div class="panel-header tool-panel-header">
-                    <div>
-                        <div class="panel-title">
-                            工具
-                            <span v-if="selectedServer" class="panel-count">
-                                {{ visibleTools.length }}
-                            </span>
-                        </div>
-                        <div v-if="selectedServer" class="panel-description">
-                            {{
-                                selectedServer.status?.title ||
-                                selectedServer.name
-                            }}
-                        </div>
-                    </div>
+        <div class="catalog-section">
+            <div class="catalog-controls tools-controls">
+                <div class="section-title">
+                    工具{{
+                        selectedServerName ? ` · ${selectedServerName}` : ''
+                    }}
                 </div>
+            </div>
 
-                <div v-if="visibleTools.length > 0" class="card-list tool-grid">
-                    <div
-                        v-for="item in visibleTools"
-                        :key="item.name"
-                        class="tool-card"
-                        :class="{ busy: item.updating }"
-                        role="button"
-                        tabindex="0"
-                        @click="openTool(item)"
-                        @keydown.enter.prevent="openTool(item)"
-                        @keydown.space.prevent="openTool(item)"
-                    >
+            <div
+                v-if="visibleTools.length > 0"
+                class="card-list tool-grid"
+                :class="{ compact: props.compactMode }"
+            >
+                <div
+                    v-for="item in visibleTools"
+                    :key="item.name"
+                    class="tool-card"
+                    :class="{ busy: item.updating, centered: props.hideDesc }"
+                    role="button"
+                    tabindex="0"
+                    @click="openTool(item)"
+                    @keydown.enter.prevent="openTool(item)"
+                    @keydown.space.prevent="openTool(item)"
+                >
+                    <div class="tool-top">
                         <div class="tool-brand">
                             <div class="tool-icon">
                                 <img
@@ -217,7 +220,7 @@
                                     :src="item.icon.src"
                                     alt=""
                                 />
-                                <el-icon v-else :size="14">
+                                <el-icon v-else :size="16">
                                     <Tools />
                                 </el-icon>
                             </div>
@@ -226,41 +229,37 @@
                                 <div class="tool-title">
                                     {{ item.title || item.name }}
                                 </div>
-                                <div
-                                    v-if="
-                                        item.title && item.title !== item.name
-                                    "
-                                    class="tool-name"
-                                >
-                                    {{ item.name }}
+                                <div v-if="!props.hideDesc" class="tool-name">
+                                    {{ item.server }}
                                 </div>
                             </div>
                         </div>
 
-                        <div class="tool-controls" @click.stop @keydown.stop>
-                            <el-switch
-                                :model-value="item.enabled"
-                                :loading="item.updating"
-                                :disabled="item.updating"
-                                :aria-label="`${item.enabled ? '禁用' : '启用'}工具 ${item.name}`"
-                                @change="
-                                    (value) =>
-                                        toggleTool(item, value as boolean)
-                                "
-                            />
-                        </div>
+                        <el-switch
+                            :model-value="item.enabled"
+                            :loading="item.updating"
+                            :disabled="item.updating"
+                            @click.stop
+                            @change="
+                                (value) => toggleTool(item, value as boolean)
+                            "
+                        />
+                    </div>
+
+                    <div v-if="!props.hideDesc" class="tool-description">
+                        {{ item.description || '这个工具暂时没有说明。' }}
                     </div>
                 </div>
+            </div>
 
-                <div v-else class="empty-state empty-tools">
-                    <el-empty
-                        :description="
-                            selectedServer
-                                ? '该服务器当前没有可用工具。'
-                                : '请先添加一个 MCP 服务器。'
-                        "
-                    />
-                </div>
+            <div v-else class="empty-state empty-tools">
+                <el-empty
+                    :description="
+                        selectedServerName
+                            ? '该服务器当前没有可用工具。'
+                            : '请先添加一个 MCP 服务器。'
+                    "
+                />
             </div>
         </div>
 
@@ -484,16 +483,6 @@
                                 </div>
 
                                 <div
-                                    v-if="form.type === 'stdio' && form.command"
-                                    class="preview-field"
-                                >
-                                    <span class="field-label">命令</span>
-                                    <span class="field-value">
-                                        {{ form.command }}
-                                    </span>
-                                </div>
-
-                                <div
                                     v-if="form.type !== 'stdio' && form.url"
                                     class="preview-field"
                                 >
@@ -511,7 +500,9 @@
                                 </div>
 
                                 <div class="preview-field">
-                                    <span class="field-label">工具调用超时</span>
+                                    <span class="field-label">
+                                        工具调用超时
+                                    </span>
                                     <span class="field-value">
                                         {{ form.timeout }}s
                                     </span>
@@ -550,13 +541,17 @@
                     <el-input :model-value="toolForm.name" disabled />
                 </div>
 
-                <div class="form-span tool-description-field">
+                <div class="form-group">
+                    <label class="form-label">来源服务器</label>
+                    <el-input :model-value="toolForm.server" disabled />
+                </div>
+
+                <div class="form-span">
                     <label class="form-label">工具描述</label>
                     <el-input
                         :model-value="toolForm.description || '暂无工具描述'"
                         type="textarea"
                         :rows="4"
-                        resize="none"
                         readonly
                     />
                 </div>
@@ -597,14 +592,13 @@ import { computed, reactive, ref, watch } from 'vue'
 import { send } from '@koishijs/client'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-    Check,
     Connection,
-    MoreFilled,
     Plus,
     RefreshRight,
     Tools,
     Menu,
-    Document
+    Document,
+    More
 } from '@element-plus/icons-vue'
 import type {
     McpConfig,
@@ -619,23 +613,6 @@ import CodeEditor from '../shared/code-editor.vue'
 function getServerType(config: McpServerConfig) {
     return config.type ?? (config.url ? 'http' : 'stdio')
 }
-
-function stateTag(state?: McpServerState) {
-    if (state === 'connected') {
-        return 'success'
-    }
-
-    if (state === 'connecting' || state === 'reconnecting') {
-        return 'warning'
-    }
-
-    if (state === 'error') {
-        return 'danger'
-    }
-
-    return 'info'
-}
-
 function stateLabel(state?: McpServerState) {
     if (state === 'connected') {
         return '已连接'
@@ -955,6 +932,7 @@ const form = reactive({
 
 const toolForm = reactive({
     name: '',
+    server: '',
     description: '',
     enabled: true,
     timeout: 0,
@@ -986,11 +964,9 @@ const tools = computed(() =>
         .sort((a, b) => a.name.localeCompare(b.name))
 )
 
-const selectedServer = computed(() =>
-    servers.value.find((server) => server.name === selectedServerName.value)
+const visibleTools = computed(() =>
+    tools.value.filter((tool) => tool.server === selectedServerName.value)
 )
-
-const visibleTools = computed(() => selectedServer.value?.tools ?? [])
 
 watch(
     servers,
@@ -1002,12 +978,15 @@ watch(
     { immediate: true }
 )
 
-function envCount(server: McpServerConfig) {
-    return Object.keys(server.env || {}).length
-}
-
-function headerCount(server: McpServerConfig) {
-    return Object.keys(server.headers || {}).length
+function stateClass(item: {
+    updating: boolean
+    status?: { state?: McpServerState }
+}) {
+    const state = item.updating ? 'reconnecting' : item.status?.state
+    if (state === 'connected') return 'is-connected'
+    if (state === 'connecting' || state === 'reconnecting') return 'is-pending'
+    if (state === 'error') return 'is-error'
+    return 'is-idle'
 }
 
 function getFormConfig() {
@@ -1136,8 +1115,37 @@ function openEdit(name: string) {
     showServerDialog.value = true
 }
 
+function onServerMenu(
+    command: string,
+    item: {
+        name: string
+        updating: boolean
+        tools: { enabled: boolean; updating?: boolean }[]
+    }
+) {
+    if (command === 'toggle-tools') {
+        toggleServerTools(item.name)
+        return
+    }
+
+    if (command === 'edit') {
+        openEdit(item.name)
+        return
+    }
+
+    if (command === 'reconnect') {
+        reconnect(item.name)
+        return
+    }
+
+    if (command === 'remove') {
+        removeServer(item.name)
+    }
+}
+
 function openTool(item: McpToolInfo) {
     toolForm.name = item.name
+    toolForm.server = item.server
     toolForm.description = item.description
     toolForm.enabled = item.enabled
     toolForm.timeout = item.timeout ?? 0
@@ -1331,122 +1339,98 @@ async function saveTool() {
 .servers-view {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 24px;
+    min-width: 0;
 }
 
-.panel {
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 20%);
-    overflow: hidden;
-    box-sizing: border-box;
+.catalog-section {
+    min-width: 0;
 }
 
-.panel-header {
+.catalog-controls {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 16px 18px;
-    border-bottom: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.tools-controls {
+    justify-content: flex-start;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--k-text-dark);
+    min-width: 0;
+}
+
+.catalog-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin-left: auto;
+}
+
+.catalog-actions :deep(.el-button) {
+    margin: 0;
+}
+
+.card-list {
+    --card-cols: 3;
+    display: grid;
+    grid-template-columns: repeat(var(--card-cols), minmax(0, 1fr));
     gap: 16px;
     box-sizing: border-box;
 }
 
-.panel-title {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--k-text-dark);
+.server-grid,
+.server-grid.compact {
+    --card-cols: 3;
 }
 
-.panel-description {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--k-text-light);
+.tool-grid {
+    --card-cols: 5;
 }
 
-.panel-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 22px;
-    height: 20px;
-    margin-left: 6px;
-    padding: 0 6px;
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--k-color-primary), transparent 88%);
-    color: var(--k-color-primary);
-    font-size: 12px;
-    font-weight: 600;
-    vertical-align: 2px;
-    box-sizing: border-box;
+.tool-grid.compact {
+    --card-cols: 4;
 }
 
-.panel-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.card-list {
-    display: grid;
-    box-sizing: border-box;
-}
-
-.server-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 14px;
-}
-
-.server-card {
-    position: relative;
+.server-card,
+.tool-card {
     border: 1px solid
         color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 18%);
-    padding: 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 16%);
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     box-sizing: border-box;
-    transition:
-        border-color 0.18s ease,
-        background-color 0.18s ease,
-        box-shadow 0.18s ease;
+    transition: border-color 0.2s ease;
     min-width: 0;
     overflow: hidden;
-    cursor: pointer;
-    outline: none;
 }
 
-.server-card:hover {
-    border-color: color-mix(in srgb, var(--k-color-primary), transparent 48%);
-    background: color-mix(
-        in srgb,
-        var(--k-color-primary),
-        var(--k-activity-bg) 95%
-    );
-}
-
-.server-card:focus-visible {
-    box-shadow: 0 0 0 2px
-        color-mix(in srgb, var(--k-color-primary), transparent 72%);
+.server-card:hover,
+.tool-card:hover {
+    border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
 }
 
 .server-card.selected {
     border-color: var(--k-color-primary);
-    background: color-mix(
-        in srgb,
-        var(--k-color-primary),
-        var(--k-activity-bg) 92%
-    );
-    box-shadow: inset 3px 0 0 var(--k-color-primary);
+    box-shadow: 0 0 0 1px var(--k-color-primary);
 }
 
-.server-card.busy {
+.server-card.busy,
+.tool-card.busy {
     border-color: color-mix(in srgb, var(--el-color-warning), transparent 68%);
     background: color-mix(
         in srgb,
@@ -1455,78 +1439,49 @@ async function saveTool() {
     );
 }
 
-.server-card.selected.busy {
-    box-shadow: inset 3px 0 0 var(--el-color-warning);
-}
-
-.server-selected-mark {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 24px;
-    height: 24px;
-    border-radius: 0 7px 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--k-color-primary);
-    color: white;
-    font-size: 13px;
-}
-
-.server-head {
+.server-head,
+.tool-top {
     display: flex;
     justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
     align-items: flex-start;
-    padding-right: 28px;
+}
+
+.server-card.centered .server-head {
+    align-items: center;
+    min-height: 34px;
+}
+
+.tool-card.centered .tool-top {
+    align-items: center;
+    min-height: 34px;
 }
 
 .server-brand,
 .tool-brand {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
     flex: 1 1 auto;
 }
 
-.server-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    background: color-mix(in srgb, var(--k-side-bg), transparent 8%);
-    display: inline-flex;
+.server-card.centered .server-brand,
+.tool-card.centered .tool-brand {
     align-items: center;
-    justify-content: center;
-    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 28%);
-    flex-shrink: 0;
-    overflow: hidden;
 }
 
+.server-icon,
 .tool-icon {
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 25%);
-    background: color-mix(in srgb, var(--k-side-bg), transparent 8%);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-color-primary) 8%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 28%);
+    color: color-mix(in srgb, var(--k-text-dark), var(--k-color-primary) 36%);
     flex-shrink: 0;
     overflow: hidden;
-}
-
-.server-icon :deep(.el-icon) {
-    font-size: 16px;
-}
-
-.tool-icon :deep(.el-icon) {
-    font-size: 14px;
 }
 
 .server-icon img,
@@ -1542,303 +1497,182 @@ async function saveTool() {
     flex: 1 1 auto;
 }
 
-.server-title {
+.server-card.centered .server-copy,
+.tool-card.centered .tool-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.server-title,
+.tool-name,
+.server-sub {
     font-size: 12px;
     color: var(--k-text-light);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.45;
 }
 
-.server-name {
-    margin-top: 2px;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--k-text-dark);
-    line-height: 1.3;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
+.server-name,
 .tool-title {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--k-text-dark);
-    line-height: 1.3;
+    line-height: 1.4;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.tool-name {
-    margin-top: 2px;
-    font-size: 10px;
-    line-height: 1.2;
+.server-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: 0 0 auto;
+    font-size: 12px;
+    line-height: 1.4;
     color: var(--k-text-light);
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.server-kind {
-    margin-top: 4px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--k-text-light);
-}
-
-.tool-section {
-    border-top: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 20%);
-}
-
-.tool-panel-header {
-    border-bottom: 0;
-    padding-bottom: 10px;
-}
-
-.tool-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    padding: 0 14px 14px;
-}
-
-.tool-card {
-    min-width: 0;
-    min-height: 52px;
-    padding: 8px 10px;
-    border: 1px solid
-        color-mix(in srgb, var(--k-color-divider), transparent 18%);
-    border-radius: 7px;
-    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 18%);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    box-sizing: border-box;
-    transition:
-        border-color 0.18s ease,
-        background-color 0.18s ease;
-    cursor: pointer;
-    outline: none;
-}
-
-.tool-card:hover {
-    border-color: color-mix(in srgb, var(--k-color-primary), transparent 62%);
-    background: color-mix(
-        in srgb,
-        var(--k-color-primary),
-        var(--k-activity-bg) 97%
-    );
-}
-
-.tool-card:focus-visible {
-    border-color: var(--k-color-primary);
-    box-shadow: 0 0 0 2px
-        color-mix(in srgb, var(--k-color-primary), transparent 76%);
-}
-
-.tool-card.busy {
-    border-color: color-mix(in srgb, var(--el-color-warning), transparent 68%);
-    background: color-mix(
-        in srgb,
-        var(--k-activity-bg),
-        var(--el-color-warning) 4%
-    );
-}
-
-.tool-controls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+.state-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--k-text-light), transparent 20%);
     flex: 0 0 auto;
 }
 
-.meta-grid {
+.server-state.is-connected {
+    color: var(--el-color-success);
+}
+
+.server-state.is-connected .state-dot {
+    background: var(--el-color-success);
+}
+
+.server-state.is-pending {
+    color: var(--el-color-warning);
+}
+
+.server-state.is-pending .state-dot {
+    background: var(--el-color-warning);
+}
+
+.server-state.is-error {
+    color: var(--el-color-danger);
+}
+
+.server-state.is-error .state-dot {
+    background: var(--el-color-danger);
+}
+
+.tool-description {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--k-text-light);
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.tool-grid.compact .tool-description {
+    -webkit-line-clamp: 3;
+}
+
+.server-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.meta-chips {
     display: flex;
     flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.meta-chips :deep(.el-tag) {
+    border-radius: 6px;
+}
+
+.server-controls {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
-    margin-top: 12px;
+    flex: 0 0 auto;
 }
 
-.meta-card {
-    flex: 1 1 120px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--k-activity-bg), transparent 22%);
-    padding: 8px 10px;
+.server-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: auto;
 }
 
-.meta-wide {
-    flex-basis: 100%;
+.more-btn {
+    --el-button-text-color: var(--k-text-light);
+    --el-button-hover-text-color: var(--k-text-dark);
+    padding: 4px;
+    min-height: 28px;
+    min-width: 28px;
 }
 
-.meta-card span {
-    display: block;
-    font-size: 11px;
-    color: var(--k-text-light);
+.more-btn :deep(.el-icon) {
+    transform: rotate(90deg);
 }
 
-.meta-card strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 13px;
-    color: var(--k-text-dark);
-    line-height: 1.4;
-    word-break: break-word;
+.tool-card {
+    cursor: pointer;
 }
 
 @media (max-width: 1680px) {
+    .server-grid,
+    .server-grid.compact {
+        --card-cols: 3;
+    }
+
     .tool-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        --card-cols: 5;
+    }
+
+    .tool-grid.compact {
+        --card-cols: 4;
     }
 }
 
 @media (max-width: 1320px) {
+    .server-grid {
+        --card-cols: 2;
+    }
+
+    .server-grid.compact {
+        --card-cols: 2;
+    }
+
     .tool-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        --card-cols: 3;
+    }
+
+    .tool-grid.compact {
+        --card-cols: 2;
     }
 }
 
-.detail-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 10px;
-}
-
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 11px;
-    color: var(--k-text-light);
-}
-
-.detail-row span:last-child {
-    color: var(--k-text-dark);
-    text-align: right;
-    word-break: break-word;
-}
-
-.server-chips {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    padding-right: 32px;
-}
-
 .error-box {
-    margin-top: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--el-color-danger), transparent 95%);
-    color: color-mix(in srgb, var(--el-color-danger), var(--k-text-dark) 36%);
-    font-size: 11px;
-    line-height: 1.5;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border-left: 3px solid var(--el-color-danger);
+    background: color-mix(in srgb, var(--el-color-danger), transparent 94%);
+    color: var(--el-color-danger);
+    font-size: 12px;
+    line-height: 1.45;
     word-break: break-word;
     overflow-wrap: anywhere;
-}
-
-.server-actions {
-    position: absolute;
-    right: 7px;
-    bottom: 7px;
-    display: flex;
-    align-items: center;
-}
-
-.server-menu {
-    width: 28px;
-    height: 28px;
-    color: var(--k-text-light);
-}
-
-.server-actions :deep(.neutral-outline.el-button) {
-    --el-button-bg-color: transparent;
-    --el-button-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 12%
-    );
-    --el-button-text-color: var(--k-text-dark);
-    --el-button-hover-bg-color: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        var(--k-page-bg) 18%
-    );
-    --el-button-hover-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 0%
-    );
-    --el-button-hover-text-color: var(--k-text-dark);
-    --el-button-active-bg-color: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        var(--k-page-bg) 26%
-    );
-    --el-button-active-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 0%
-    );
-    --el-button-active-text-color: var(--k-text-dark);
-    --el-button-disabled-bg-color: color-mix(
-        in srgb,
-        var(--k-side-bg),
-        transparent 10%
-    );
-    --el-button-disabled-border-color: color-mix(
-        in srgb,
-        var(--k-color-divider),
-        transparent 24%
-    );
-    --el-button-disabled-text-color: var(--k-text-light);
-}
-
-.server-actions :deep(.danger-soft.el-button) {
-    --el-button-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 92%
-    );
-    --el-button-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 68%
-    );
-    --el-button-text-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        var(--k-text-dark) 22%
-    );
-    --el-button-hover-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 86%
-    );
-    --el-button-hover-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 52%
-    );
-    --el-button-hover-text-color: var(--el-color-danger);
-    --el-button-active-bg-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 82%
-    );
-    --el-button-active-border-color: color-mix(
-        in srgb,
-        var(--el-color-danger),
-        transparent 44%
-    );
-    --el-button-active-text-color: var(--el-color-danger);
 }
 
 .empty-state {
@@ -1981,15 +1815,6 @@ async function saveTool() {
     overflow-wrap: anywhere;
 }
 
-.dialog-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--k-color-divider);
-}
-
 .dialog-head {
     display: flex;
     justify-content: center;
@@ -2016,12 +1841,6 @@ async function saveTool() {
     flex: 1 1 100%;
 }
 
-.tool-description-field :deep(.el-textarea__inner) {
-    line-height: 1.6;
-    color: var(--k-text-dark);
-    background: color-mix(in srgb, var(--k-activity-bg), var(--k-page-bg) 35%);
-}
-
 .form-label {
     display: block;
     margin-bottom: 8px;
@@ -2037,14 +1856,34 @@ async function saveTool() {
 }
 
 @media (max-width: 768px) {
-    .server-grid,
-    .tool-grid {
+    .card-list,
+    .card-list.compact,
+    .tool-grid,
+    .tool-grid.compact {
+        --card-cols: 1;
         grid-template-columns: 1fr;
     }
 
-    .panel-header {
+    .catalog-controls {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .catalog-actions {
+        width: 100%;
+        margin-left: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .catalog-actions :deep(.el-button) {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        justify-content: center;
     }
 
     .dialog-grid > .form-group,
@@ -2056,19 +1895,22 @@ async function saveTool() {
     .server-card,
     .tool-card {
         width: 100%;
+        min-width: 0;
     }
 
     .json-layout {
         grid-template-columns: 1fr;
     }
 
-    .meta-wide {
-        flex-basis: 100%;
+    .server-head {
+        flex-direction: column;
+        gap: 10px;
     }
-}
 
-.tooltip-trigger-wrapper {
-    display: inline-flex;
+    .server-state {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 .tooltip-trigger-wrapper :deep(.el-button.is-disabled),
