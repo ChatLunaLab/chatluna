@@ -34,8 +34,8 @@
                     role="button"
                     tabindex="0"
                     @click="selectedServerName = item.name"
-                    @keydown.enter.prevent="selectedServerName = item.name"
-                    @keydown.space.prevent="selectedServerName = item.name"
+                    @keydown.enter.self.prevent="selectedServerName = item.name"
+                    @keydown.space.self.prevent="selectedServerName = item.name"
                 >
                     <div class="server-head">
                         <div class="server-brand">
@@ -209,8 +209,8 @@
                     role="button"
                     tabindex="0"
                     @click="openTool(item)"
-                    @keydown.enter.prevent="openTool(item)"
-                    @keydown.space.prevent="openTool(item)"
+                    @keydown.enter.self.prevent="openTool(item)"
+                    @keydown.space.self.prevent="openTool(item)"
                 >
                     <div class="tool-top">
                         <div class="tool-brand">
