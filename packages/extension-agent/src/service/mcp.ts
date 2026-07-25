@@ -45,14 +45,17 @@ export class ChatLunaAgentMcpService {
             return
         }
 
-        await Promise.all(
-            Object.entries(this.config.mcp.mcpServers).map(([name, cfg]) => {
-                this._servers.set(name, { state: 'idle', attempts: 0 })
+        const tasks = Object.entries(this.config.mcp.mcpServers).map(
+            ([name, cfg]) => {
+                this._servers.set(name, {
+                    state: 'idle',
+                    attempts: 0
+                })
                 return this._connect(name, cfg)
-            })
+            }
         )
 
-        logger.info(`MCP service started with ${this._disposers.size} tool(s)`)
+        this._runInBackground(tasks, 'MCP startup')
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
@@ -61,8 +64,13 @@ export class ChatLunaAgentMcpService {
 
         for (const srv of this._servers.values()) {
             srv.reconnectDispose?.()
-            if (srv.client) {
-                await srv.client.close().catch(() => {})
+            srv.connectTask = undefined
+            const client = srv.client
+            srv.client = undefined
+            if (client) {
+                client.onclose = undefined
+                client.onerror = undefined
+                await client.close().catch(() => {})
             }
         }
 
@@ -84,7 +92,10 @@ export class ChatLunaAgentMcpService {
 
         const names = Object.keys(this.config.mcp.mcpServers)
         if (names.length > 0) {
-            await Promise.all(names.map((name) => this.reconnect(name)))
+            this._runInBackground(
+                names.map((name) => this.reconnect(name)),
+                'MCP reload'
+            )
         }
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
@@ -102,7 +113,10 @@ export class ChatLunaAgentMcpService {
             srv.error = undefined
             srv.state = 'reconnecting'
         } else {
-            this._servers.set(name, { state: 'reconnecting', attempts: 0 })
+            this._servers.set(name, {
+                state: 'reconnecting',
+                attempts: 0
+            })
         }
 
         this.ctx.chatluna_agent?.refreshConsoleData()
@@ -157,8 +171,9 @@ export class ChatLunaAgentMcpService {
         this.ctx.chatluna_agent?.refreshConsoleData()
 
         if (changed.size > 0) {
-            await Promise.all(
-                Array.from(changed).map((name) => this.reconnect(name))
+            this._runInBackground(
+                Array.from(changed).map((name) => this.reconnect(name)),
+                'MCP config sync'
             )
         }
     }
@@ -236,81 +251,122 @@ export class ChatLunaAgentMcpService {
         if (srv?.connectTask) {
             return srv.connectTask
         }
+        if (!srv || this._stopped) {
+            return false
+        }
+
+        srv.state = reconnecting ? 'reconnecting' : 'connecting'
+        srv.error = undefined
+        this.ctx.chatluna_agent?.refreshConsoleData()
+
+        const client = new Client({
+            name: 'ChatLuna',
+            version: '1.0.0',
+            title: 'ChatLuna ModelContext Protocol Client'
+        })
+        srv.client = client
 
         const task = (async () => {
             logger.debug(`Connecting to server ${name}`)
-            const srv = this._servers.get(name)
-            if (srv) {
-                srv.state = reconnecting ? 'reconnecting' : 'connecting'
-                srv.error = undefined
-            }
-            this.ctx.chatluna_agent?.refreshConsoleData()
+            const startupTimeout = calcStartupTimeout(cfg)
+            this._setupHandlers(client, name, cfg)
+            let clearTimer: (() => void) | undefined
+            const timeout = new Promise<never>((_resolve, reject) => {
+                clearTimer = this.ctx.setTimeout(() => {
+                    reject(
+                        new Error(
+                            `MCP server startup timed out after ${startupTimeout}ms`
+                        )
+                    )
+                }, startupTimeout)
+            })
 
             try {
-                await this._drop(name, false)
-
-                const client = new Client({
-                    name: 'ChatLuna',
-                    version: '1.0.0',
-                    title: 'ChatLuna ModelContext Protocol Client'
-                })
-
-                this._setupHandlers(client, name, cfg)
-                await client.connect(createTransport(name, cfg, this.plugin))
-
-                const meta = client.getServerVersion()
-                const srv = this._servers.get(name)
-                if (srv) {
-                    srv.client = client
-                    srv.state = 'connected'
-                    srv.error = undefined
-                    srv.attempts = 0
-                    srv.title = meta?.title ?? meta?.name
-                    srv.version = meta?.version
-                    srv.icon = selectIcon(meta?.icons)
+                try {
+                    await Promise.race([
+                        client.connect(
+                            createTransport(name, cfg, this.plugin),
+                            { timeout: startupTimeout }
+                        ),
+                        timeout
+                    ])
+                } finally {
+                    clearTimer?.()
                 }
 
-                await this._registerTools(client, name)
+                const meta = client.getServerVersion()
+                if (!this._isCurrent(name, client)) {
+                    await client.close().catch(() => {})
+                    return false
+                }
+
+                srv.title = meta?.title ?? meta?.name
+                srv.version = meta?.version
+                srv.icon = selectIcon(meta?.icons)
+
+                const toolCount = await this._registerTools(client, name, cfg)
+                if (toolCount == null || !this._isCurrent(name, client)) {
+                    await client.close().catch(() => {})
+                    return false
+                }
+
+                srv.state = 'connected'
+                srv.error = undefined
+                srv.attempts = 0
                 this.ctx.chatluna_agent?.refreshConsoleData()
-                logger.debug(`MCP client connected: ${name}`)
+                logger.info(
+                    `MCP client connected: ${name} (${toolCount} tool(s))`
+                )
                 return true
             } catch (error) {
-                await this._fail(
-                    name,
-                    cfg,
-                    error instanceof Error ? error.message : String(error)
-                )
-                logger.error(`Failed to connect to server ${name}`, error)
+                if (this._isCurrent(name, client)) {
+                    await this._fail(
+                        name,
+                        cfg,
+                        error instanceof Error ? error.message : String(error),
+                        client
+                    )
+                    logger.error(`Failed to connect to server ${name}`, error)
+                } else {
+                    await client.close().catch(() => {})
+                }
                 return false
             }
         })()
 
-        const srv2 = this._servers.get(name)
-        if (srv2) {
-            srv2.connectTask = task
-        }
+        srv.connectTask = task
 
         try {
             return await task
         } finally {
-            const srv3 = this._servers.get(name)
-            if (srv3) {
-                srv3.connectTask = undefined
+            const current = this._servers.get(name)
+            if (current?.connectTask === task) {
+                current.connectTask = undefined
             }
         }
     }
 
     private _setupHandlers(client: Client, name: string, cfg: McpServerConfig) {
         client.onerror = (error) => {
-            if (!this._stopped) {
-                this._fail(name, cfg, error.message)
+            if (this._isCurrent(name, client)) {
+                this._fail(name, cfg, error.message, client).catch((error) => {
+                    logger.error(
+                        `Failed to handle MCP error for ${name}`,
+                        error
+                    )
+                })
             }
         }
 
         client.onclose = () => {
-            if (!this._stopped) {
+            if (this._isCurrent(name, client)) {
                 logger.debug(`Client closed: ${name}`)
-                this._fail(name, cfg, '连接已断开')
+                this._fail(name, cfg, '连接已断开', client).catch((error) => {
+                    logger.error(
+                        `Failed to handle MCP close for ${name}`,
+                        error
+                    )
+                })
             }
         }
 
@@ -319,15 +375,26 @@ export class ChatLunaAgentMcpService {
             async () => {
                 logger.info(`Tool list changed for server: ${name}`)
                 try {
-                    const mcpTools = await client.listTools()
-                    if (mcpTools.tools.length === 0) {
-                        await this._fail(name, cfg, '工具列表为空，等待重连')
+                    const toolCount = await this._registerTools(
+                        client,
+                        name,
+                        cfg
+                    )
+                    if (toolCount == null) {
+                        return
+                    }
+                    if (toolCount === 0) {
+                        await this._fail(
+                            name,
+                            cfg,
+                            '工具列表为空，等待重连',
+                            client
+                        )
                         return
                     }
 
-                    await this._registerTools(client, name)
                     const srv = this._servers.get(name)
-                    if (srv) {
+                    if (srv?.client === client) {
                         srv.error = undefined
                         srv.state = 'connected'
                     }
@@ -337,7 +404,8 @@ export class ChatLunaAgentMcpService {
                     await this._fail(
                         name,
                         cfg,
-                        error instanceof Error ? error.message : String(error)
+                        error instanceof Error ? error.message : String(error),
+                        client
                     )
                     logger.error(
                         `Failed to handle tool list change for ${name}`,
@@ -348,29 +416,33 @@ export class ChatLunaAgentMcpService {
         )
     }
 
-    private async _fail(name: string, cfg: McpServerConfig, error: string) {
+    private async _fail(
+        name: string,
+        cfg: McpServerConfig,
+        error: string,
+        client: Client
+    ) {
         if (this._stopped) return
 
         const srv = this._servers.get(name)
-        if (srv) {
-            srv.error = error
-            srv.state = 'error'
+        if (srv?.client !== client) {
+            return
         }
+        srv.error = error
+        srv.state = 'error'
 
         await this._drop(name, false)
         this.ctx.chatluna_agent?.refreshConsoleData()
 
-        const attempts = srv?.attempts ?? 0
+        if (this._stopped || !this.config.mcp.mcpServers[name]) return
+
+        const attempts = srv.attempts
         if (attempts >= 5) {
             logger.error(`Max reconnect attempts reached for ${name}`)
             return
         }
 
-        if (srv) {
-            srv.state = 'reconnecting'
-        }
-        this.ctx.chatluna_agent?.refreshConsoleData()
-
+        srv.state = 'reconnecting'
         const delay = Math.min(1000 * Math.pow(2, attempts), 30000)
         logger.info(
             `Scheduling reconnect in ${delay}ms (attempt ${attempts + 1}/5)`
@@ -385,13 +457,21 @@ export class ChatLunaAgentMcpService {
             await this._connect(name, cfg, true)
         }, delay)
 
-        if (srv) {
-            srv.reconnectDispose = dispose
-        }
+        srv.reconnectDispose = dispose
+        this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
-    private async _registerTools(client: Client, serverName: string) {
-        const mcpTools = await client.listTools()
+    private async _registerTools(
+        client: Client,
+        serverName: string,
+        cfg: McpServerConfig
+    ): Promise<number | undefined> {
+        const mcpTools = await client.listTools(undefined, {
+            timeout: calcStartupTimeout(cfg)
+        })
+        if (!this._isCurrent(serverName, client)) {
+            return
+        }
         const serverCfg = this.config.mcp.mcpServers[serverName]
         if (!serverCfg) return
 
@@ -498,17 +578,36 @@ export class ChatLunaAgentMcpService {
         }
 
         this.ctx.chatluna_agent?.permission.invalidateCache()
+        return mcpTools.tools.length
+    }
+
+    private _runInBackground(tasks: Promise<unknown>[], reason: string) {
+        Promise.allSettled(tasks).then(() => {
+            if (this._stopped) return
+            logger.info(
+                `${reason} finished with ${this._disposers.size} tool(s)`
+            )
+            this.ctx.chatluna_agent?.refreshConsoleData()
+        })
+    }
+
+    private _isCurrent(name: string, client: Client) {
+        const srv = this._servers.get(name)
+        return !this._stopped && srv?.client === client
     }
 
     private async _drop(name: string, clearTools = true) {
         const srv = this._servers.get(name)
         if (srv) {
             srv.reconnectDispose?.()
-            if (srv.client) {
-                srv.client.onclose = undefined
-                srv.client.onerror = undefined
-                await srv.client.close().catch(() => {})
-                srv.client = undefined
+            srv.reconnectDispose = undefined
+            srv.connectTask = undefined
+            const client = srv.client
+            srv.client = undefined
+            if (client) {
+                client.onclose = undefined
+                client.onerror = undefined
+                await client.close().catch(() => {})
             }
         }
 
@@ -573,6 +672,10 @@ function calcTimeout(
     serverTimeout: number | undefined
 ) {
     return ((toolTimeout ?? 0) || serverTimeout || 60) * 1000
+}
+
+function calcStartupTimeout(server: McpServerConfig) {
+    return Math.max(1, server.startupTimeout ?? 20) * 1000
 }
 
 function stateText(

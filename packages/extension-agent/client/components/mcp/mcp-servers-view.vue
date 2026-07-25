@@ -26,7 +26,16 @@
                     v-for="item in servers"
                     :key="item.name"
                     class="server-card"
-                    :class="{ busy: item.updating, centered: props.hideDesc }"
+                    :class="{
+                        busy: item.updating,
+                        centered: props.hideDesc,
+                        selected: selectedServerName === item.name
+                    }"
+                    role="button"
+                    tabindex="0"
+                    @click="selectedServerName = item.name"
+                    @keydown.enter.self.prevent="selectedServerName = item.name"
+                    @keydown.space.self.prevent="selectedServerName = item.name"
                 >
                     <div class="server-head">
                         <div class="server-brand">
@@ -113,14 +122,6 @@
                                 }}
                             </el-tag>
                         </div>
-                        <div class="meta-endpoint">
-                            <span>
-                                {{ item.kind === 'stdio' ? '命令' : '入口' }}
-                            </span>
-                            <code :title="endpointLabel(item)">
-                                {{ endpointLabel(item) }}
-                            </code>
-                        </div>
                     </div>
 
                     <div v-if="item.status?.error" class="error-box">
@@ -188,24 +189,28 @@
 
         <div class="catalog-section">
             <div class="catalog-controls tools-controls">
-                <div class="section-title">工具</div>
+                <div class="section-title">
+                    工具{{
+                        selectedServerName ? ` · ${selectedServerName}` : ''
+                    }}
+                </div>
             </div>
 
             <div
-                v-if="tools.length > 0"
+                v-if="visibleTools.length > 0"
                 class="card-list tool-grid"
                 :class="{ compact: props.compactMode }"
             >
                 <div
-                    v-for="item in tools"
+                    v-for="item in visibleTools"
                     :key="item.name"
                     class="tool-card"
                     :class="{ busy: item.updating, centered: props.hideDesc }"
                     role="button"
                     tabindex="0"
                     @click="openTool(item)"
-                    @keydown.enter.prevent="openTool(item)"
-                    @keydown.space.prevent="openTool(item)"
+                    @keydown.enter.self.prevent="openTool(item)"
+                    @keydown.space.self.prevent="openTool(item)"
                 >
                     <div class="tool-top">
                         <div class="tool-brand">
@@ -248,7 +253,13 @@
             </div>
 
             <div v-else class="empty-state empty-tools">
-                <el-empty description="当前还没有可用工具。" />
+                <el-empty
+                    :description="
+                        selectedServerName
+                            ? '该服务器当前没有可用工具。'
+                            : '请先添加一个 MCP 服务器。'
+                    "
+                />
             </div>
         </div>
 
@@ -359,7 +370,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">超时时间 (秒)</label>
+                    <label class="form-label">启动超时 (秒)</label>
+                    <el-input-number
+                        v-model="form.startupTimeout"
+                        :min="1"
+                        :max="300"
+                        style="width: 100%"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">工具调用超时 (秒)</label>
                     <el-input-number
                         v-model="form.timeout"
                         :min="1"
@@ -462,16 +483,6 @@
                                 </div>
 
                                 <div
-                                    v-if="form.type === 'stdio' && form.command"
-                                    class="preview-field"
-                                >
-                                    <span class="field-label">命令</span>
-                                    <span class="field-value">
-                                        {{ form.command }}
-                                    </span>
-                                </div>
-
-                                <div
                                     v-if="form.type !== 'stdio' && form.url"
                                     class="preview-field"
                                 >
@@ -482,7 +493,16 @@
                                 </div>
 
                                 <div class="preview-field">
-                                    <span class="field-label">超时</span>
+                                    <span class="field-label">启动超时</span>
+                                    <span class="field-value">
+                                        {{ form.startupTimeout }}s
+                                    </span>
+                                </div>
+
+                                <div class="preview-field">
+                                    <span class="field-label">
+                                        工具调用超时
+                                    </span>
                                     <span class="field-value">
                                         {{ form.timeout }}s
                                     </span>
@@ -524,6 +544,16 @@
                 <div class="form-group">
                     <label class="form-label">来源服务器</label>
                     <el-input :model-value="toolForm.server" disabled />
+                </div>
+
+                <div class="form-span">
+                    <label class="form-label">工具描述</label>
+                    <el-input
+                        :model-value="toolForm.description || '暂无工具描述'"
+                        type="textarea"
+                        :rows="4"
+                        readonly
+                    />
                 </div>
 
                 <div class="form-group">
@@ -824,6 +854,7 @@ const savingServer = ref(false)
 const savingTool = ref(false)
 const reloading = ref(false)
 const editing = ref('')
+const selectedServerName = ref('')
 const serverMode = ref<'form' | 'json'>('form')
 const serverJson = ref('')
 const syncing = ref(false)
@@ -893,6 +924,7 @@ const form = reactive({
     env: '{}',
     url: '',
     headers: '{}',
+    startupTimeout: 20,
     timeout: 60,
     cwd: '',
     proxy: ''
@@ -901,6 +933,7 @@ const form = reactive({
 const toolForm = reactive({
     name: '',
     server: '',
+    description: '',
     enabled: true,
     timeout: 0,
     selector: ''
@@ -911,7 +944,6 @@ const servers = computed(() =>
         .map(([name, server]) => ({
             name,
             kind: getServerType(server),
-            endpoint: server.command || server.url || '',
             server,
             status: props.status.servers[name],
             updating:
@@ -932,19 +964,19 @@ const tools = computed(() =>
         .sort((a, b) => a.name.localeCompare(b.name))
 )
 
-function endpointLabel(item: {
-    kind: string
-    endpoint: string
-    server: McpServerConfig
-}) {
-    if (item.kind === 'stdio') {
-        const cmd = item.server.command || item.endpoint
-        const args = (item.server.args ?? []).join(' ')
-        if (!cmd) return '尚未填写入口'
-        return args ? `${cmd} ${args}` : cmd
-    }
-    return item.endpoint || '尚未填写入口'
-}
+const visibleTools = computed(() =>
+    tools.value.filter((tool) => tool.server === selectedServerName.value)
+)
+
+watch(
+    servers,
+    (value) => {
+        if (!value.some((server) => server.name === selectedServerName.value)) {
+            selectedServerName.value = value[0]?.name ?? ''
+        }
+    },
+    { immediate: true }
+)
 
 function stateClass(item: {
     updating: boolean
@@ -960,6 +992,7 @@ function stateClass(item: {
 function getFormConfig() {
     const config: McpServerConfig = {
         type: form.type,
+        startupTimeout: form.startupTimeout,
         timeout: form.timeout
     }
 
@@ -1002,6 +1035,7 @@ function fillForm(name: string, server: McpServerConfig) {
     form.env = JSON.stringify(next.env ?? {}, null, 2)
     form.url = next.url ?? ''
     form.headers = JSON.stringify(next.headers ?? {}, null, 2)
+    form.startupTimeout = next.startupTimeout ?? 20
     form.timeout = next.timeout ?? 60
     form.cwd = next.cwd ?? ''
     form.proxy = next.proxy ?? ''
@@ -1029,6 +1063,7 @@ function syncJsonToForm() {
         form.env = JSON.stringify(parsed.config.env ?? {}, null, 2)
         form.url = parsed.config.url ?? ''
         form.headers = JSON.stringify(parsed.config.headers ?? {}, null, 2)
+        form.startupTimeout = parsed.config.startupTimeout ?? 20
         form.timeout = parsed.config.timeout ?? 60
         form.cwd = parsed.config.cwd ?? ''
         form.proxy = parsed.config.proxy ?? ''
@@ -1111,6 +1146,7 @@ function onServerMenu(
 function openTool(item: McpToolInfo) {
     toolForm.name = item.name
     toolForm.server = item.server
+    toolForm.description = item.description
     toolForm.enabled = item.enabled
     toolForm.timeout = item.timeout ?? 0
     toolForm.selector = item.selector.join('\n')
@@ -1388,6 +1424,11 @@ async function saveTool() {
     border-color: color-mix(in srgb, var(--k-color-primary), transparent 40%);
 }
 
+.server-card.selected {
+    border-color: var(--k-color-primary);
+    box-shadow: 0 0 0 1px var(--k-color-primary);
+}
+
 .server-card.busy,
 .tool-card.busy {
     border-color: color-mix(in srgb, var(--el-color-warning), transparent 68%);
@@ -1558,33 +1599,6 @@ async function saveTool() {
 
 .meta-chips :deep(.el-tag) {
     border-radius: 6px;
-}
-
-.meta-endpoint {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-}
-
-.meta-endpoint span {
-    font-size: 11px;
-    line-height: 1.4;
-    color: var(--k-text-light);
-}
-
-.meta-endpoint code {
-    display: block;
-    min-width: 0;
-    color: var(--k-text-dark);
-    font-family:
-        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-        'Courier New', monospace;
-    font-size: 11px;
-    line-height: 1.5;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .server-controls {
@@ -1898,7 +1912,6 @@ async function saveTool() {
         justify-content: flex-start;
     }
 }
-
 
 .tooltip-trigger-wrapper :deep(.el-button.is-disabled),
 .tooltip-trigger-wrapper :deep(.el-button.is-loading) {

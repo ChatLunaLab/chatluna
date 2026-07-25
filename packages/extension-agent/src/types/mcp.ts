@@ -21,6 +21,8 @@ export interface McpServerConfig {
     type?: 'stdio' | 'sse' | 'http' | 'streamable_http'
     url?: string
     headers?: Record<string, string>
+    /** MCP connection and tool discovery timeout in seconds. */
+    startupTimeout?: number
     timeout?: number
     cwd?: string
     proxy?: string

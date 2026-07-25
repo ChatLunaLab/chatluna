@@ -95,7 +95,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { send, store } from '@koishijs/client'
+import { send, socket, store } from '@koishijs/client'
 import { ElMessage } from 'element-plus'
 import AgentSidebar from './agent-sidebar.vue'
 import McpPage from '../mcp/mcp-page.vue'
@@ -109,6 +109,7 @@ import type { AgentConfig } from '../../../src/types'
 const activeTab = ref('mcp')
 const pending = ref(false)
 let refreshTask: Promise<void> | undefined
+let refreshQueued = false
 const data = computed(() => store.chatluna_agent_webui)
 const config = computed(() => data.value?.config)
 const mcpCfg = computed(() => data.value?.config?.mcp)
@@ -125,6 +126,11 @@ const triggerStatus = computed(() => data.value?.status?.trigger)
 const loading = computed(() => pending.value || !data.value)
 
 const refreshData = async () => {
+    if (socket.value?.readyState !== 1) {
+        refreshQueued = true
+        return
+    }
+
     if (refreshTask) {
         await refreshTask
         return
@@ -133,8 +139,14 @@ const refreshData = async () => {
     refreshTask = (async () => {
         try {
             pending.value = true
+            refreshQueued = false
             await send('chatluna-agent/refreshConsoleData')
-        } catch {
+        } catch (error) {
+            console.warn('[chatluna-agent] 刷新控制台数据失败', error)
+            if (socket.value?.readyState !== 1) {
+                refreshQueued = true
+                return
+            }
             ElMessage.error('刷新 Agent 数据失败')
         } finally {
             pending.value = false
@@ -156,6 +168,12 @@ watch(activeTab, async (tab) => {
         tab === 'tool' ||
         tab === 'trigger'
     ) {
+        await refreshData()
+    }
+})
+
+watch(socket, async (value) => {
+    if (value?.readyState === 1 && refreshQueued) {
         await refreshData()
     }
 })
