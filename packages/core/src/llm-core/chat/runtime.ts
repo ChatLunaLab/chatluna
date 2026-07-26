@@ -193,10 +193,36 @@ export class ChatRuntime {
                           useRoutePresetLane: false
                       }
                   )
-        const conversation = resolved.conversation
+        let conversation = resolved.conversation
+        let effectiveModel = resolved.effectiveModel
+        if (
+            options.invocation == null &&
+            this.service.currentConfig.autoUpdateConversationModel &&
+            resolved.constraint.fixedModel == null
+        ) {
+            const model = this.service.conversation.pickModel(
+                resolved.constraint,
+                null
+            )
+            if (model != null && model !== conversation.model) {
+                const updated =
+                    await this.service.conversation.touchConversation(
+                        conversation.id,
+                        { model }
+                    )
+                if (updated != null) {
+                    await this.service.conversationRuntime.clearConversationInterface(
+                        updated
+                    )
+                    conversation = updated
+                    effectiveModel = model
+                }
+            }
+        }
         const resolution: ActiveConversationResolution = {
             ...resolved,
             conversation,
+            effectiveModel,
             transient: false
         }
         const prepared = await options.prepare({ conversation, resolution })
@@ -316,6 +342,7 @@ export class ChatRuntime {
 
 interface RequestOptions {
     conversation?: ConversationResolution
+    invocation?: ChatInvocationContext
     prepare: (args: {
         conversation: ConversationRecord
         resolution: ActiveConversationResolution

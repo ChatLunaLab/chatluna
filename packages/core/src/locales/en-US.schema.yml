@@ -67,6 +67,7 @@ $inner:
       defaultChatMode: Set default chat mode.
       defaultModel: Set default chat model.
       defaultPreset: Set default chat preset.
+      autoUpdateConversationModel: Update an active conversation's model to the configured default before each chat request, unless the conversation has a fixed model.
       enablePresetKeywordTrigger: Allow switching preset lanes via keywords at the start of a message.
 
     - $desc: Miscellaneous

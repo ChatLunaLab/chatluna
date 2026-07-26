@@ -47,6 +47,7 @@ export interface Config {
     defaultChatMode: string
     defaultModel: string
     defaultPreset: string
+    autoUpdateConversationModel: boolean
     enablePresetKeywordTrigger: boolean
 
     voiceSpeakId: number
@@ -175,6 +176,7 @@ export const Config: Schema<Config> = Schema.intersect([
         defaultChatMode: Schema.dynamic('chat-mode').default('plugin'),
         defaultModel: Schema.dynamic('model').default('无'),
         defaultPreset: Schema.dynamic('preset').default('sydney'),
+        autoUpdateConversationModel: Schema.boolean().default(false),
         enablePresetKeywordTrigger: Schema.boolean().default(true)
     }),
 

@@ -41,6 +41,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             try {
                 await ctx.chatluna.chatRuntime.request(session, {
                     conversation: context.options.conversation,
+                    invocation,
                     prepare: async ({ conversation, resolution }) => {
                         context.options.conversation = resolution
 
