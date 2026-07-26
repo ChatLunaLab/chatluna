@@ -70,6 +70,7 @@ import {
 import type { PresetService } from 'koishi-plugin-chatluna/preset'
 
 const EMPTY_MODEL_NAMES = new Set(['', '无', 'empty'])
+const AUTO_MODEL_UNLOCK_NAMES = new Set(['', '无', 'empty', 'auto', 'reset'])
 
 const FIXED_FIELDS: readonly {
     key: 'model' | 'preset' | 'chatMode'
@@ -1710,6 +1711,9 @@ export class ConversationService {
         assertActionAllowed('update', resolved, target)
 
         this.checkChatMode(options.chatMode)
+        const model = options.model?.trim()
+        const unlockModel =
+            model != null && AUTO_MODEL_UNLOCK_NAMES.has(model)
 
         const updated = await this.runtime.withConversationLock(
             conversation.id,
@@ -1719,8 +1723,8 @@ export class ConversationService {
 
                 await this.runtime.clearConversationInterfaceLocked(current)
                 return this.touchConversation(conversation.id, {
-                    model: options.model,
-                    lockedModel: options.model,
+                    model: unlockModel ? undefined : model,
+                    lockedModel: unlockModel ? null : model,
                     preset: options.preset,
                     chatMode: options.chatMode
                 })
@@ -1735,6 +1739,47 @@ export class ConversationService {
         }
 
         return updated
+    }
+
+    async applyAutoModelUpdate(
+        resolved: ConversationResolution,
+        command?: string
+    ) {
+        const conversation = resolved.conversation
+        const model =
+            this.config.autoUpdateConversationModel &&
+            [undefined, '', 'rollback'].includes(command) &&
+            conversation != null &&
+            conversation.lockedModel == null &&
+            resolved.constraint.fixedModel == null
+                ? this.pickModel(resolved.constraint, null)
+                : null
+
+        if (model == null || model === conversation?.model) {
+            return null
+        }
+
+        const updated = await this.runtime.withConversationLock(
+            conversation.id,
+            async () => {
+                const current = await this.getConversation(conversation.id)
+                if (current?.lockedModel != null) return
+
+                await this.runtime.clearConversationInterfaceLocked(
+                    current ?? conversation
+                )
+                return this.touchConversation(conversation.id, { model })
+            }
+        )
+
+        if (updated == null) {
+            return null
+        }
+
+        return {
+            conversation: updated,
+            effectiveModel: model
+        }
     }
 
     async recordCompression(

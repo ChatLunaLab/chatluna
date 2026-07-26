@@ -4,14 +4,13 @@ import {
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../../chains/chain'
-import { Config } from '../../config'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { parseDeleteSeqs } from '../../utils/conversation'
 
-export function apply(ctx: Context, config: Config, chain: ChatChain) {
+export function apply(ctx: Context, _config: unknown, chain: ChatChain) {
     chain
         .middleware('resolve_conversation', async (session, context) => {
             const { options } = context
@@ -76,45 +75,18 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
 
-                const conversation = resolved.conversation
-                const model =
-                    config.autoUpdateConversationModel &&
-                    [undefined, '', 'rollback'].includes(context.command) &&
-                    conversation != null &&
-                    conversation.lockedModel == null &&
-                    resolved.constraint.fixedModel == null
-                        ? ctx.chatluna.conversation.pickModel(
-                              resolved.constraint,
-                              null
-                          )
-                        : null
-                if (model != null && model !== conversation?.model) {
-                    const updated =
-                        await ctx.chatluna.conversationRuntime.withConversationLock(
-                            conversation.id,
-                            async () => {
-                                const current =
-                                    await ctx.chatluna.conversation.getConversation(
-                                        conversation.id
-                                    )
-                                if (current?.lockedModel != null) return
+                const updated =
+                    await ctx.chatluna.conversation.applyAutoModelUpdate(
+                        resolved,
+                        context.command
+                    )
 
-                                await ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
-                                    current ?? conversation
-                                )
-                                return ctx.chatluna.conversation.touchConversation(
-                                    conversation.id,
-                                    { model }
-                                )
-                            }
-                        )
-                    if (updated != null)
-                        Object.assign(resolved, {
-                            conversation: updated,
-                            conversationId: updated.id,
-                            effectiveModel: model
-                        })
-                }
+                if (updated != null)
+                    Object.assign(resolved, {
+                        conversation: updated.conversation,
+                        conversationId: updated.conversation.id,
+                        effectiveModel: updated.effectiveModel
+                    })
 
                 options.conversation = resolved
                 return ChainMiddlewareRunStatus.CONTINUE
