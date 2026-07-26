@@ -143,6 +143,7 @@ export type RenderType =
 export type SplitMode = 'none' | 'punctuation' | 'paragraph'
 
 export type ConversationStatus = 'active' | 'archived' | 'deleted' | 'broken'
+export type ConversationModelMode = 'fixed' | 'default'
 export type RouteMode = 'personal' | 'shared' | 'custom'
 export type ConstraintManageMode = 'anyone' | 'admin'
 export type ConstraintPrincipalType = 'user' | 'guild'
@@ -169,7 +170,7 @@ export interface ConversationRecord {
     bindingKey: string
     title: string
     model: string
-    lockedModel?: string | null
+    modelMode: ConversationModelMode
     preset: string
     chatMode: string
     createdBy: string

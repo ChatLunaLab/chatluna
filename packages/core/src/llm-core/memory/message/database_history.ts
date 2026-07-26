@@ -382,6 +382,7 @@ export class KoishiChatMessageHistory extends BaseChatMessageHistory {
                 bindingKey: this.conversationId,
                 title: 'Conversation',
                 model: this.chatluna.config.defaultModel,
+                modelMode: 'default',
                 preset: this.chatluna.config.defaultPreset,
                 chatMode: this.chatluna.config.defaultChatMode,
                 createdBy: 'system',
