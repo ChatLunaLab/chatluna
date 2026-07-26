@@ -169,6 +169,7 @@ export interface ConversationRecord {
     bindingKey: string
     title: string
     model: string
+    lockedModel?: string | null
     preset: string
     chatMode: string
     createdBy: string

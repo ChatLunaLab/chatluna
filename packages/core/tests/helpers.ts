@@ -376,6 +376,10 @@ export async function createService(
                     ) as ArchiveRecord | undefined
             },
             conversationRuntime: {
+                withConversationLock: async (
+                    _id: string,
+                    callback: () => Promise<unknown>
+                ) => callback(),
                 withConversationSync: async (
                     conversation: ConversationRecord,
                     callback: () => Promise<unknown>

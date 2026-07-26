@@ -621,6 +621,11 @@ export class ChatLunaService extends Service<Config> {
                     type: 'char',
                     length: 100
                 },
+                lockedModel: {
+                    type: 'char',
+                    length: 100,
+                    nullable: true
+                },
                 preset: {
                     type: 'char',
                     length: 255

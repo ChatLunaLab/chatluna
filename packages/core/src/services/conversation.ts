@@ -1711,11 +1711,21 @@ export class ConversationService {
 
         this.checkChatMode(options.chatMode)
 
-        const updated = await this.touchConversation(conversation.id, {
-            model: options.model,
-            preset: options.preset,
-            chatMode: options.chatMode
-        })
+        const updated = await this.runtime.withConversationLock(
+            conversation.id,
+            async () => {
+                const current = await this.getConversation(conversation.id)
+                if (current == null) return undefined
+
+                await this.runtime.clearConversationInterfaceLocked(current)
+                return this.touchConversation(conversation.id, {
+                    model: options.model,
+                    lockedModel: options.model,
+                    preset: options.preset,
+                    chatMode: options.chatMode
+                })
+            }
+        )
 
         if (updated == null) {
             throw new ChatLunaError(
@@ -1724,7 +1734,6 @@ export class ConversationService {
             )
         }
 
-        await this.runtime.clearConversationInterface(updated)
         return updated
     }
 
@@ -1858,6 +1867,7 @@ export class ConversationService {
     ) {
         const candidates = [
             constraint.fixedModel,
+            conversation?.lockedModel,
             conversation?.model,
             constraint.defaultModel,
             this.config.defaultModel
