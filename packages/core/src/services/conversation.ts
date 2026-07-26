@@ -71,7 +71,6 @@ import {
 import type { PresetService } from 'koishi-plugin-chatluna/preset'
 
 const EMPTY_MODEL_NAMES = new Set(['', '无', 'empty'])
-const AUTO_MODEL_UNLOCK_NAMES = new Set(['', '无', 'empty', 'auto', 'reset'])
 
 const FIXED_FIELDS: readonly {
     key: 'model' | 'preset' | 'chatMode'
@@ -1716,11 +1715,7 @@ export class ConversationService {
         this.checkChatMode(options.chatMode)
         const model = options.model?.trim()
         const modelMode: ConversationModelMode | undefined =
-            model == null
-                ? undefined
-                : AUTO_MODEL_UNLOCK_NAMES.has(model)
-                  ? 'default'
-                  : 'fixed'
+            model == null ? undefined : 'fixed'
 
         const updated = await this.runtime.withConversationLock(
             conversation.id,
