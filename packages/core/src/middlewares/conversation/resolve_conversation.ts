@@ -76,7 +76,46 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
 
-                options.conversation = resolved
+                let finalResolved = resolved
+                const conversation = resolved.conversation
+                if (
+                    (context.command == null ||
+                        context.command === '' ||
+                        context.command === 'rollback') &&
+                    config.autoUpdateConversationModel &&
+                    conversation != null &&
+                    resolved.constraint.fixedModel == null
+                ) {
+                    const model = ctx.chatluna.conversation.pickModel(
+                        resolved.constraint,
+                        null
+                    )
+                    if (model != null && model !== conversation.model) {
+                        const updated =
+                            await ctx.chatluna.conversationRuntime.withConversationLock(
+                                conversation.id,
+                                async () => {
+                                    await ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked(
+                                        conversation
+                                    )
+                                    return await ctx.chatluna.conversation.touchConversation(
+                                        conversation.id,
+                                        { model }
+                                    )
+                                }
+                            )
+                        if (updated != null) {
+                            finalResolved = {
+                                ...resolved,
+                                conversation: updated,
+                                conversationId: updated.id,
+                                effectiveModel: model
+                            }
+                        }
+                    }
+                }
+
+                options.conversation = finalResolved
                 return ChainMiddlewareRunStatus.CONTINUE
             } catch (error) {
                 if (error instanceof ChatLunaError) {

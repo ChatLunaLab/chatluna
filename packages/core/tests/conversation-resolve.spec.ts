@@ -19,6 +19,202 @@ import {
     createSession
 } from './helpers'
 
+function createResolveModelHarness(
+    targetModel = 'test-platform/new-model',
+    options: {
+        enabled?: boolean
+        fixedModel?: string | null
+    } = {}
+) {
+    const conversation = createConversation({
+        id: 'conversation-model-update',
+        model: 'test-platform/old-model'
+    })
+    const events: string[] = []
+    const pickedConversations: unknown[] = []
+    let run:
+        | ((session: any, context: any) => Promise<ChainMiddlewareRunStatus>)
+        | undefined
+    const ctx = {
+        chatluna: {
+            conversation: {
+                resolveConversation: async () => ({
+                    bindingKey: conversation.bindingKey,
+                    constraint: {
+                        fixedModel: options.fixedModel ?? null
+                    },
+                    effectiveModel: conversation.model,
+                    effectivePreset: conversation.preset,
+                    effectiveChatMode: conversation.chatMode,
+                    conversation,
+                    conversationId: conversation.id,
+                    mode: 'context'
+                }),
+                pickModel: (_constraint: unknown, current: unknown) => {
+                    pickedConversations.push(current)
+                    return targetModel
+                },
+                touchConversation: async (_id: string, patch: any) => {
+                    events.push('touch')
+                    return { ...conversation, ...patch }
+                }
+            },
+            conversationRuntime: {
+                withConversationLock: async (_id: string, callback: any) =>
+                    callback(),
+                clearConversationInterfaceLocked: async () => {
+                    events.push('clear')
+                }
+            }
+        }
+    }
+
+    applyResolve(
+        ctx as never,
+        { autoUpdateConversationModel: options.enabled ?? true } as never,
+        {
+            middleware: (_name, fn) => {
+                run = fn as never
+                return {
+                    after() {
+                        return this
+                    },
+                    before() {
+                        return this
+                    }
+                }
+            }
+        } as never
+    )
+
+    return { conversation, ctx, events, pickedConversations, run: run! }
+}
+
+it('resolve_conversation clears the old interface before updating the model', async () => {
+    const { events, pickedConversations, run } = createResolveModelHarness()
+    const state: any = { command: '', options: {} }
+
+    const status = await run(createSession(), state)
+
+    assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+    assert.deepEqual(events, ['clear', 'touch'])
+    assert.deepEqual(pickedConversations, [null])
+    assert.equal(
+        state.options.conversation.conversation.model,
+        'test-platform/new-model'
+    )
+    assert.equal(
+        state.options.conversation.conversationId,
+        'conversation-model-update'
+    )
+    assert.equal(
+        state.options.conversation.effectiveModel,
+        'test-platform/new-model'
+    )
+})
+
+it('resolve_conversation retries model persistence after cache clearing fails', async () => {
+    const { conversation, ctx, events, run } = createResolveModelHarness()
+    let attempts = 0
+    ctx.chatluna.conversationRuntime.clearConversationInterfaceLocked =
+        async () => {
+            events.push('clear')
+            attempts += 1
+            if (attempts === 1) throw new Error('cache clear failed')
+        }
+
+    const firstState: any = { command: 'rollback', options: {} }
+    try {
+        await run(createSession(), firstState)
+        assert.fail('Expected cache clearing to fail.')
+    } catch (err) {
+        assert.match(String(err), /cache clear failed/)
+    }
+    assert.deepEqual(events, ['clear'])
+    assert.equal(firstState.options.conversation, undefined)
+
+    const secondState: any = { command: 'rollback', options: {} }
+    const status = await run(createSession(), secondState)
+
+    assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+    assert.deepEqual(events, ['clear', 'clear', 'touch'])
+    assert.equal(conversation.model, 'test-platform/old-model')
+    assert.equal(
+        secondState.options.conversation.conversation.model,
+        'test-platform/new-model'
+    )
+})
+
+it('resolve_conversation skips cache clearing and persistence for excluded requests', async () => {
+    for (const { command, enabled, fixedModel } of [
+        { command: undefined, enabled: false },
+        { command: 'conversation_current', enabled: true },
+        {
+            command: '',
+            enabled: true,
+            fixedModel: 'test-platform/fixed-model'
+        }
+    ]) {
+        const { events, run } = createResolveModelHarness(
+            'test-platform/new-model',
+            { enabled, fixedModel }
+        )
+        const state: any = { command, options: {} }
+
+        const status = await run(createSession(), state)
+
+        assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+        assert.deepEqual(events, [])
+        assert.equal(
+            state.options.conversation.conversation.model,
+            'test-platform/old-model'
+        )
+    }
+})
+
+it('resolve_conversation preserves pre-resolved invocation models', async () => {
+    const { events, run } = createResolveModelHarness()
+    const conversation = createConversation({
+        model: 'test-platform/invocation-model'
+    })
+    const resolved = {
+        mode: 'active',
+        conversationId: conversation.id,
+        conversation,
+        constraint: {},
+        effectiveModel: conversation.model
+    }
+    const state: any = {
+        command: 'chat',
+        options: {
+            conversation: resolved,
+            invocation: { requestId: 'invocation' }
+        }
+    }
+
+    const status = await run(createSession(), state)
+
+    assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+    assert.deepEqual(events, [])
+    assert.strictEqual(state.options.conversation, resolved)
+})
+
+it('resolve_conversation skips cache clearing and persistence for the same model', async () => {
+    const { events, run } = createResolveModelHarness(
+        'test-platform/old-model'
+    )
+    const state: any = { options: {} }
+
+    const status = await run(createSession(), state)
+
+    assert.equal(status, ChainMiddlewareRunStatus.CONTINUE)
+    assert.deepEqual(events, [])
+    assert.equal(
+        state.options.conversation.conversation.model,
+        'test-platform/old-model'
+    )
+})
+
 it('resolve_conversation inherits active preset lane for explicit commands without target', async () => {
     const { app, ctx } = await createMemoryService()
 
