@@ -11,6 +11,7 @@ export interface Config {
     randomReplyFrequency: Computed<Awaitable<number>>
     includeQuoteReply: boolean
     attachForwardMsgIdToContext: boolean
+    autoUpdateConversationModel: boolean
     isLog: boolean
 
     isReplyWithAt: boolean
@@ -47,7 +48,6 @@ export interface Config {
     defaultChatMode: string
     defaultModel: string
     defaultPreset: string
-    autoUpdateConversationModel: boolean
     enablePresetKeywordTrigger: boolean
 
     voiceSpeakId: number
@@ -74,7 +74,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .step(0.01)
             .default(0)
             .computed(),
-        attachForwardMsgIdToContext: Schema.boolean().default(false)
+        attachForwardMsgIdToContext: Schema.boolean().default(false),
+        autoUpdateConversationModel: Schema.boolean().default(false)
     }),
 
     Schema.intersect([
@@ -176,7 +177,6 @@ export const Config: Schema<Config> = Schema.intersect([
         defaultChatMode: Schema.dynamic('chat-mode').default('plugin'),
         defaultModel: Schema.dynamic('model').default('无'),
         defaultPreset: Schema.dynamic('preset').default('sydney'),
-        autoUpdateConversationModel: Schema.boolean().default(false),
         enablePresetKeywordTrigger: Schema.boolean().default(true)
     }),
 

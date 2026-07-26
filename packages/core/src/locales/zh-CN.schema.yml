@@ -13,6 +13,7 @@ $inner:
       randomReplyFrequency: 设置随机回复的频率。
       includeQuoteReply: 是否在向模型的请求内容中添加被引用的消息内容
       attachForwardMsgIdToContext: 是否将合并转发聊天记录消息的 ID 附加到上下文中。启用后，检测到聊天记录会额外追加一条 [聊天记录] 消息。
+      autoUpdateConversationModel: 每次聊天请求前将活动会话的模型更新为当前配置的默认模型；会话设置了固定模型时不更新。
 
     - isForwardMsg: 是否以合并消息的形式发送 bot 的回复。
       forwardMsgMinLength: 合并消息的最小应用长度。为 0 则总是应用。设置大于 0 时，只有发送的文本大于此长度才会转为合并消息。
@@ -68,7 +69,6 @@ $inner:
       defaultChatMode: 设置默认的聊天模式。
       defaultModel: 设置默认使用的聊天模型。
       defaultPreset: 设置默认使用的聊天预设。
-      autoUpdateConversationModel: 每次聊天请求前将活动会话的模型更新为当前配置的默认模型；会话设置了固定模型时不更新。
       enablePresetKeywordTrigger: 是否允许通过消息开头的预设关键词切换预设分流。
 
     - $desc: 杂项

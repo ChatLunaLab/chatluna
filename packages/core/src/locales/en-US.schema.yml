@@ -13,6 +13,7 @@ $inner:
       randomReplyFrequency: Set random reply frequency (0-100, where 0 means never and 100 means always).
       includeQuoteReply: Include quoted message content in requests sent to the model.
       attachForwardMsgIdToContext: Attach forward message record IDs to context. When enabled, a "[聊天记录]" marker message will be appended if forward records are detected.
+      autoUpdateConversationModel: Update an active conversation's model to the configured default before each chat request, unless the conversation has a fixed model.
 
     - isForwardMsg: Send bot replies as forwarded messages.
       forwardMsgMinLength: Set minimum length of forwarded messages (characters).
@@ -67,7 +68,6 @@ $inner:
       defaultChatMode: Set default chat mode.
       defaultModel: Set default chat model.
       defaultPreset: Set default chat preset.
-      autoUpdateConversationModel: Update an active conversation's model to the configured default before each chat request, unless the conversation has a fixed model.
       enablePresetKeywordTrigger: Allow switching preset lanes via keywords at the start of a message.
 
     - $desc: Miscellaneous
