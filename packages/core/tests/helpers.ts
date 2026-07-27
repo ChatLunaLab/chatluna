@@ -466,7 +466,6 @@ export function createConversation(
         bindingKey: 'shared:discord:bot:guild',
         title: 'Conversation 1',
         model: 'test-platform/test-model',
-        modelMode: 'fixed',
         preset: 'default-preset',
         chatMode: 'plugin',
         createdBy: 'user',

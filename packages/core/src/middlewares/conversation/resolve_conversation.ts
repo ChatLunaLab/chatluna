@@ -4,13 +4,14 @@ import {
     ChainMiddlewareRunStatus,
     ChatChain
 } from '../../chains/chain'
+import { Config } from '../../config'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { parseDeleteSeqs } from '../../utils/conversation'
 
-export function apply(ctx: Context, _config: unknown, chain: ChatChain) {
+export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
         .middleware('resolve_conversation', async (session, context) => {
             const { options } = context
