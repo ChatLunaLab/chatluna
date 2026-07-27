@@ -51,7 +51,13 @@ export class MessageTransformer {
             .join()
 
         for (const element of elements) {
-            await this._processElement(session, element, message, model)
+            await this._processElement(
+                session,
+                element,
+                message,
+                model,
+                options
+            )
         }
 
         if (
@@ -256,7 +262,8 @@ export class MessageTransformer {
         session: Session,
         element: h,
         message: Message,
-        model: string
+        model: string,
+        options: MessageTransformOptions
     ) {
         const transformFunctions = this._transformFunctions.get(element.type)
 
@@ -268,8 +275,8 @@ export class MessageTransformer {
                     model,
                     message,
                     {
-                        quote: false,
-                        includeQuoteReply: true
+                        quote: options.quote,
+                        includeQuoteReply: false
                     }
                 )
             }
@@ -295,8 +302,8 @@ export class MessageTransformer {
                     model,
                     message,
                     {
-                        quote: false,
-                        includeQuoteReply: true
+                        quote: options.quote,
+                        includeQuoteReply: false
                     }
                 )
                 return
@@ -305,7 +312,7 @@ export class MessageTransformer {
 
         if (hasChildren) {
             await this.transform(session, element.children, model, message, {
-                quote: false,
+                quote: options.quote,
                 includeQuoteReply: false
             })
         }
