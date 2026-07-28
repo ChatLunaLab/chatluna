@@ -575,6 +575,7 @@ chatluna:
             rule_lock_success: 'Rule lock state set to {0}.'
             rule_lock_failed: 'Failed to update lock state: {0}'
             rule_show_header: 'Current conversation rules:'
+            auto_with_value_conflict: 'Cannot use --auto flag with an explicit value. Use either --auto or specify a value, not both.'
         action:
             create: 'creation'
             switch: 'switch'

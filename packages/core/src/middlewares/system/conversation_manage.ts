@@ -106,7 +106,12 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         resolved.conversation
                     ) ??
                     config.defaultModel,
-                modelMode: create?.model == null ? 'default' : 'fixed',
+                modelMode:
+                    create?.model != null
+                        ? 'fixed'
+                        : resolved.constraint.fixedModel != null
+                          ? 'fixed'
+                          : 'default',
                 preset:
                     create?.preset ??
                     resolved.effectivePreset ??
@@ -532,6 +537,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const auto =
                 autoKey != null &&
                 context.options.conversation_rule?.auto === true
+
+            // Validate that --auto and explicit value are not both provided
+            if (auto && value != null && value !== 'reset') {
+                context.message = session.text(
+                    'chatluna.conversation.messages.auto_with_value_conflict'
+                )
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             try {
                 const patch = clear

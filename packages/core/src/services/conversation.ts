@@ -208,7 +208,9 @@ export class ConversationService {
             fixedModel: firstDefined(constraints, 'fixedModel'),
             fixedPreset: firstDefined(constraints, 'fixedPreset'),
             fixedChatMode: firstDefined(constraints, 'fixedChatMode'),
-            autoUpdateModel: firstBoolean(constraints, 'autoUpdateModel', false) || undefined,
+            autoUpdateModel:
+                firstBoolean(constraints, 'autoUpdateModel', false) ||
+                undefined,
             lockConversation: firstBoolean(
                 constraints,
                 'lockConversation',
