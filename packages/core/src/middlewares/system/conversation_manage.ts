@@ -106,6 +106,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         resolved.conversation
                     ) ??
                     config.defaultModel,
+                modelMode: create?.model == null ? 'default' : 'fixed',
                 preset:
                     create?.preset ??
                     resolved.effectivePreset ??
@@ -519,6 +520,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         field,
         defaultKey,
         constraintKey,
+        autoKey,
         msgKey
     } of RULE_FIELDS) {
         middleware(cmd, async (session, context) => {
@@ -527,15 +529,24 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 context.options.conversation_rule?.clear === true ||
                 value === 'reset'
             const force = context.options.conversation_rule?.force === true
+            const auto =
+                autoKey != null &&
+                context.options.conversation_rule?.auto === true
 
             try {
                 const patch = clear
-                    ? { [defaultKey]: null, [constraintKey]: null }
-                    : force
-                      ? { [constraintKey]: value }
-                      : { [defaultKey]: value }
+                    ? {
+                          [defaultKey]: null,
+                          [constraintKey]: null,
+                          ...(autoKey ? { [autoKey]: null } : {})
+                      }
+                    : auto
+                      ? { [autoKey as string]: true }
+                      : force
+                        ? { [constraintKey]: value }
+                        : { [defaultKey]: value }
                 const record =
-                    value == null && !clear
+                    value == null && !clear && !auto
                         ? await ctx.chatluna.conversation.getManagedConstraint(
                               session
                           )
@@ -548,7 +559,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `chatluna.conversation.messages.${msgKey}`,
                     [
                         record?.[defaultKey] ?? 'reset',
-                        record?.[constraintKey] ?? 'reset'
+                        record?.[constraintKey] ?? 'reset',
+                        ...(autoKey
+                            ? [
+                                  formatAutoUpdateState(
+                                      record?.[autoKey] as
+                                          | boolean
+                                          | null
+                                          | undefined
+                                  )
+                              ]
+                            : [])
                     ]
                 )
             } catch (error) {
@@ -719,7 +740,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ]),
             session.text('chatluna.conversation.messages.rule_model_status', [
                 current?.defaultModel ?? 'reset',
-                current?.fixedModel ?? 'reset'
+                current?.fixedModel ?? 'reset',
+                formatAutoUpdateState(current?.autoUpdateModel)
             ]),
             session.text('chatluna.conversation.messages.rule_preset_status', [
                 formatPresetLane(
@@ -1029,6 +1051,10 @@ function formatLockState(lock: boolean | null | undefined) {
     return lock == null ? 'reset' : lock ? 'locked' : 'unlocked'
 }
 
+function formatAutoUpdateState(auto: boolean | null | undefined) {
+    return auto == null ? 'reset' : auto ? 'on' : 'off'
+}
+
 function formatPresetLane(session: Session, presetLane?: string | null) {
     return presetLane == null
         ? session.text('chatluna.conversation.main_lane')
@@ -1062,6 +1088,7 @@ const RULE_FIELDS = [
         field: 'model' as const,
         defaultKey: 'defaultModel' as const,
         constraintKey: 'fixedModel' as const,
+        autoKey: 'autoUpdateModel' as const,
         msgKey: 'rule_model_status'
     },
     {
@@ -1069,6 +1096,7 @@ const RULE_FIELDS = [
         field: 'chatMode' as const,
         defaultKey: 'defaultChatMode' as const,
         constraintKey: 'fixedChatMode' as const,
+        autoKey: undefined,
         msgKey: 'rule_mode_status'
     }
 ] as const

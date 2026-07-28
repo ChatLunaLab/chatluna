@@ -143,7 +143,7 @@ export type RenderType =
 export type SplitMode = 'none' | 'punctuation' | 'paragraph'
 
 export type ConversationStatus = 'active' | 'archived' | 'deleted' | 'broken'
-export type ConversationModelMode = 'fixed' | 'default'
+export type ConversationModelMode = 'fixed' | 'default' | 'auto'
 export type RouteMode = 'personal' | 'shared' | 'custom'
 export type ConstraintManageMode = 'anyone' | 'admin'
 export type ConstraintPrincipalType = 'user' | 'guild'
@@ -246,6 +246,7 @@ export interface ConstraintRecord {
     fixedModel?: string | null
     fixedPreset?: string | null
     fixedChatMode?: string | null
+    autoUpdateModel?: boolean | null
     lockConversation?: boolean | null
     allowNew?: boolean | null
     allowSwitch?: boolean | null
@@ -292,6 +293,7 @@ export interface ResolvedConstraint {
     fixedModel?: string | null
     fixedPreset?: string | null
     fixedChatMode?: string | null
+    autoUpdateModel?: boolean | null
     lockConversation: boolean
     allowNew: boolean
     allowSwitch: boolean

@@ -563,7 +563,7 @@ chatluna:
             export_empty: 'No conversation is available to export.'
             export_success: 'Exported conversation: {0}, file: {3}'
             export_failed: 'Failed to export conversation: {0}'
-            rule_model_status: 'Model rule: default {0}, fixed {1}.'
+            rule_model_status: 'Model rule: default {0}, fixed {1}, auto-update {2}.'
             rule_preset_status: 'Current preset lane: {0}. New conversation preset: {1}.'
             rule_mode_status: 'Chat mode rule: default {0}, fixed {1}.'
             rule_share_status: 'Route mode: {0}.'

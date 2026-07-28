@@ -208,6 +208,7 @@ export class ConversationService {
             fixedModel: firstDefined(constraints, 'fixedModel'),
             fixedPreset: firstDefined(constraints, 'fixedPreset'),
             fixedChatMode: firstDefined(constraints, 'fixedChatMode'),
+            autoUpdateModel: firstBoolean(constraints, 'autoUpdateModel', false) || undefined,
             lockConversation: firstBoolean(
                 constraints,
                 'lockConversation',
@@ -655,7 +656,7 @@ export class ConversationService {
             bindingKey: `ephemeral:${input.requestId}`,
             title: 'Ephemeral Conversation',
             model,
-            modelMode: 'default',
+            modelMode: input.model == null ? 'default' : 'fixed',
             preset,
             chatMode: base.effectiveChatMode ?? 'chat',
             createdBy: session.userId,
@@ -713,6 +714,7 @@ export class ConversationService {
             bindingKey,
             title: taskKey != null ? 'Task Conversation' : 'Fresh Conversation',
             model,
+            modelMode: input.model == null ? 'default' : 'fixed',
             preset,
             chatMode: base.effectiveChatMode ?? 'chat',
             setActive: false,
@@ -808,6 +810,7 @@ export class ConversationService {
             bindingKey: string
             title: string
             model: string
+            modelMode?: ConversationModelMode
             preset: string
             chatMode: string
             setActive?: boolean
@@ -839,7 +842,7 @@ export class ConversationService {
                 bindingKey: options.bindingKey,
                 title: options.title,
                 model: options.model,
-                modelMode: 'default',
+                modelMode: options.modelMode ?? 'default',
                 preset: options.preset,
                 chatMode: options.chatMode,
                 createdBy: session.userId,
@@ -1752,7 +1755,9 @@ export class ConversationService {
             this.config.autoUpdateConversationModel &&
             [undefined, '', 'rollback'].includes(command) &&
             conversation != null &&
-            conversation.modelMode === 'default' &&
+            (conversation.modelMode === 'default' ||
+                conversation.modelMode === 'auto' ||
+                resolved.constraint.autoUpdateModel === true) &&
             resolved.constraint.fixedModel == null
                 ? this.pickModel(resolved.constraint, null)
                 : null
@@ -1765,7 +1770,12 @@ export class ConversationService {
             conversation.id,
             async () => {
                 const current = await this.getConversation(conversation.id)
-                if (current?.modelMode !== 'default') return
+                if (
+                    current?.modelMode !== 'default' &&
+                    current?.modelMode !== 'auto' &&
+                    resolved.constraint.autoUpdateModel !== true
+                )
+                    return
 
                 await this.runtime.clearConversationInterfaceLocked(
                     current ?? conversation
