@@ -577,9 +577,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             ? [
                                   formatAutoUpdateState(
                                       record?.[autoKey] as
-                                          | boolean
-                                          | null
-                                          | undefined
+                                          boolean | null | undefined
                                   )
                               ]
                             : [])
