@@ -10,6 +10,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import {
+    ConstraintRecord,
     ConversationListEntry,
     ConversationRecord,
     getBaseBindingKey,
@@ -522,38 +523,33 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         msgKey
     } of RULE_FIELDS) {
         middleware(cmd, async (session, context) => {
-            const value = context.options.conversation_rule?.[field]
-            const clear =
-                context.options.conversation_rule?.clear === true ||
-                value === 'reset'
-            const force = context.options.conversation_rule?.force === true
-            const auto =
-                field === 'model' &&
-                context.options.conversation_rule?.auto === true
+            const rule = context.options.conversation_rule
+            const value = rule?.[field]
+            const isModel = field === 'model'
+            const clear = rule?.clear === true || value === 'reset'
+            const auto = isModel && rule?.auto === true
 
             try {
-                const patch = clear
-                    ? {
-                          [defaultKey]: null,
-                          [constraintKey]: null,
-                          ...(field === 'model'
-                              ? { autoUpdateModel: null }
-                              : {})
-                      }
-                    : auto
-                      ? {
-                            [constraintKey]: null,
-                            autoUpdateModel: true,
-                            ...(value != null ? { [defaultKey]: value } : {})
-                        }
-                      : force
-                        ? {
-                              [constraintKey]: value,
-                              ...(field === 'model'
-                                  ? { autoUpdateModel: null }
-                                  : {})
-                          }
-                        : { [defaultKey]: value }
+                let patch: Partial<ConstraintRecord> = { [defaultKey]: value }
+                if (clear) {
+                    patch = {
+                        [defaultKey]: null,
+                        [constraintKey]: null,
+                        ...(isModel ? { autoUpdateModel: null } : {})
+                    }
+                } else if (auto) {
+                    patch = {
+                        [constraintKey]: null,
+                        autoUpdateModel: true,
+                        ...(value != null ? { [defaultKey]: value } : {})
+                    }
+                } else if (rule?.force === true) {
+                    patch = {
+                        [constraintKey]: value,
+                        ...(isModel ? { autoUpdateModel: null } : {})
+                    }
+                }
+
                 const record =
                     value == null && !clear && !auto
                         ? await ctx.chatluna.conversation.getManagedConstraint(
@@ -569,7 +565,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     [
                         record?.[defaultKey] ?? 'reset',
                         record?.[constraintKey] ?? 'reset',
-                        ...(field === 'model'
+                        ...(isModel
                             ? [formatAutoUpdateState(record?.autoUpdateModel)]
                             : [])
                     ]
