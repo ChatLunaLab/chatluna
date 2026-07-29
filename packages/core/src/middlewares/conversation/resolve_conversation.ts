@@ -77,17 +77,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 }
 
                 const updated =
-                    await ctx.chatluna.conversation.applyAutoModelUpdate(
-                        resolved,
-                        context.command
-                    )
+                    config.autoUpdateConversationModel &&
+                    resolved.constraint.autoUpdateModel === true
+                        ? await ctx.chatluna.conversation.applyAutoModelUpdate(
+                              resolved,
+                              context.command
+                          )
+                        : null
 
-                if (updated != null)
-                    Object.assign(resolved, {
-                        conversation: updated.conversation,
-                        conversationId: updated.conversation.id,
-                        effectiveModel: updated.effectiveModel
-                    })
+                if (updated != null) {
+                    resolved.conversation = updated
+                    resolved.conversationId = updated.id
+                    resolved.effectiveModel = updated.model
+                }
 
                 options.conversation = resolved
                 return ChainMiddlewareRunStatus.CONTINUE

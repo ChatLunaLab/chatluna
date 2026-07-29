@@ -381,7 +381,6 @@ async function migrateRooms(ctx: Context) {
             bindingKey,
             title: room.roomName,
             model: room.model,
-            modelMode: 'fixed',
             preset: room.preset,
             chatMode: room.chatMode,
             createdBy: room.roomMasterId,

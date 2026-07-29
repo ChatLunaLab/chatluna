@@ -316,7 +316,6 @@ export class ChatRuntime {
 
 interface RequestOptions {
     conversation?: ConversationResolution
-    invocation?: ChatInvocationContext
     prepare: (args: {
         conversation: ConversationRecord
         resolution: ActiveConversationResolution

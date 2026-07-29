@@ -9,11 +9,11 @@ $inner:
       allowAtReply: 是否允许通过 @ bot 来触发对话。
       allowQuoteReply: 是否允许通过引用 bot 的消息来触发对话。
       privateChatWithoutCommand: 在私聊中是否允许无需命令直接与 bot 对话。
-      allowConversationTriggerPrefix: 是否允许使用会话标题前缀触发对话。注意：启用此选项可能会显著影响 ChatLuna 的性能，建议配合过滤器仅在特定群组中启用。
+      allowConversationTriggerPrefix: 是否允许使用会话的标题前缀触发对话。注意：启用此选项可能会显著影响 ChatLuna 的性能，建议配合过滤器仅在特定群组中启用。
       randomReplyFrequency: 设置随机回复的频率。
       includeQuoteReply: 是否在向模型的请求内容中添加被引用的消息内容
       attachForwardMsgIdToContext: 是否将合并转发聊天记录消息的 ID 附加到上下文中。启用后，检测到聊天记录会额外追加一条 [聊天记录] 消息。
-      autoUpdateConversationModel: 每次聊天请求前将活动会话的模型更新为当前配置的默认模型；会话设置了固定模型时不更新。
+      autoUpdateConversationModel: 是否允许自动把会话更新为全局默认默认模型。
 
     - isForwardMsg: 是否以合并消息的形式发送 bot 的回复。
       forwardMsgMinLength: 合并消息的最小应用长度。为 0 则总是应用。设置大于 0 时，只有发送的文本大于此长度才会转为合并消息。
@@ -26,31 +26,30 @@ $inner:
       sendThinkingMessageTimeout: 设置在模型开始响应前，等待多少毫秒后发送等待消息。
       thinkingMessage: 自定义等待消息的内容。
       msgCooldown: 设置全局消息冷却时间（单位：秒），用于防止适配器被过于频繁地调用。
-      messageQueue: 设置是否启用消息队列。启用后当发送了多条消息，并且模型未响应初始消息时，会将将消息缓存合并成一条消息，并等待模型响应后再发送。
+      messageQueue: 设置是否启用消息队列。启用后当用户发送了多条消息，并且模型未响应初始消息时，会将消息缓存合并成一条消息，并等待模型响应后再发送。
       messageQueueDelay: 设置消息队列的延迟时间（单位：秒）。为 0 则不启用延迟。开启延迟后，会等待指定时间后才发送消息给模型，如果在此期间内存在未处理的消息，则将消息缓存合并成多条消息发送给模型。
-      agentTaskAutoWakeup: 后台代理任务完成后自动唤醒所在对话。关闭后回到手动 status 查询模式。
-      showThoughtMessage: 在使用插件模式或思考模型时，是否显示思考过程。
+      agentTaskAutoWakeup: 是否允许后台代理任务完成后自动唤醒所在对话。
+      showThoughtMessage: 在使用 Agent 模式或思考模型时，是否显示思考过程。
 
     - $desc: 消息渲染选项
       outputMode:
           $desc: 选择消息回复的渲染输出模式。
       splitMessage:
-          $desc: 设置消息分割发送方式。非流式和流式回复都会按此选项切割；语音和混合语音会在达到切割点时立即渲染发送。
+          $desc: 设置消息分割发送方式。非流式和流式回复都会按此选项切割。
           $inner:
               - 不切割
               - 按标点切割
               - 按段落切割
       censor: 是否启用文本审核服务（需要安装 censor 服务）。
       rawOnCensor: 是否在 Post Handler 被触发时，将原始消息发送给模型。
-      streamResponse: 是否启用流式响应。启用后，bot 会在生成回复的过程中就开始发送消息，而不是等待完全生成后再发送。注意：启用此选项会导致渲染输出模式选项失效，且不支持插件模式。
-
+      streamResponse: 是否启用流式响应。启用后，bot 会在生成回复的过程中就开始发送消息，而不是等待完全生成后发送。
     - $desc: 黑名单选项
       blackList:
           $desc: 设置黑名单列表。请谨慎使用，只对需要拉黑的用户或群启用。1 表示启用黑名单，0 表示不启用黑名单。默认值为 0。
 
     - $desc: 历史记录选项
       infiniteContext: 启用「无限上下文」，当对话接近模型的上下文上限时自动压缩旧消息，保留关键话题和指令并丢弃无关内容。
-      infiniteContextThreshold: 设置无限上下文的触发阈值（百分比）。当对话历史的 token 数量达到模型上下文上限的该百分比时，将触发压缩。
+      infiniteContextThreshold: 设置无限上下文的触发阈值（百分比）。当对话历史的 token 数达到模型上下文上限的该百分比时，将触发压缩。
       autoArchive: 是否自动归档长期未使用的会话，而不是继续保留旧的房间状态。
       autoArchiveTimeout: 设置自动归档未使用会话的时间阈值（单位：秒）。
       autoPurgeArchive: 是否在归档会话超过保留时间后自动彻底删除。
@@ -69,7 +68,7 @@ $inner:
       defaultChatMode: 设置默认的聊天模式。
       defaultModel: 设置默认使用的聊天模型。
       defaultPreset: 设置默认使用的聊天预设。
-      enablePresetKeywordTrigger: 是否允许通过消息开头的预设关键词切换预设分流。
+      enablePresetKeywordTrigger: 是否允许通过预设关键词切换预设。
 
     - $desc: 杂项
       errorTemplate: 设置错误提示消息的模板（此设置在未来版本中可能会有变更）。

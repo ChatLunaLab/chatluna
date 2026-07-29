@@ -155,7 +155,6 @@ export function deserializeConversation(
 ): ConversationRecord {
     return {
         ...conversation,
-        modelMode: conversation.modelMode ?? 'fixed',
         createdAt: new Date(conversation.createdAt),
         updatedAt: new Date(conversation.updatedAt),
         lastChatAt: conversation.lastChatAt

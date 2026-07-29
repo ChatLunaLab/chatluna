@@ -106,12 +106,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         resolved.conversation
                     ) ??
                     config.defaultModel,
-                modelMode:
-                    create?.model != null
-                        ? 'fixed'
-                        : resolved.constraint.fixedModel != null
-                          ? 'fixed'
-                          : 'default',
                 preset:
                     create?.preset ??
                     resolved.effectivePreset ??
@@ -525,7 +519,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         field,
         defaultKey,
         constraintKey,
-        autoKey,
         msgKey
     } of RULE_FIELDS) {
         middleware(cmd, async (session, context) => {
@@ -535,28 +528,31 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 value === 'reset'
             const force = context.options.conversation_rule?.force === true
             const auto =
-                autoKey != null &&
+                field === 'model' &&
                 context.options.conversation_rule?.auto === true
-
-            // Validate that --auto and explicit value are not both provided
-            if (auto && value != null && value !== 'reset') {
-                context.message = session.text(
-                    'chatluna.conversation.messages.auto_with_value_conflict'
-                )
-                return ChainMiddlewareRunStatus.STOP
-            }
 
             try {
                 const patch = clear
                     ? {
                           [defaultKey]: null,
                           [constraintKey]: null,
-                          ...(autoKey ? { [autoKey]: null } : {})
+                          ...(field === 'model'
+                              ? { autoUpdateModel: null }
+                              : {})
                       }
                     : auto
-                      ? { [autoKey as string]: true }
+                      ? {
+                            [constraintKey]: null,
+                            autoUpdateModel: true,
+                            ...(value != null ? { [defaultKey]: value } : {})
+                        }
                       : force
-                        ? { [constraintKey]: value }
+                        ? {
+                              [constraintKey]: value,
+                              ...(field === 'model'
+                                  ? { autoUpdateModel: null }
+                                  : {})
+                          }
                         : { [defaultKey]: value }
                 const record =
                     value == null && !clear && !auto
@@ -573,13 +569,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     [
                         record?.[defaultKey] ?? 'reset',
                         record?.[constraintKey] ?? 'reset',
-                        ...(autoKey
-                            ? [
-                                  formatAutoUpdateState(
-                                      record?.[autoKey] as
-                                          boolean | null | undefined
-                                  )
-                              ]
+                        ...(field === 'model'
+                            ? [formatAutoUpdateState(record?.autoUpdateModel)]
                             : [])
                     ]
                 )
@@ -1099,7 +1090,6 @@ const RULE_FIELDS = [
         field: 'model' as const,
         defaultKey: 'defaultModel' as const,
         constraintKey: 'fixedModel' as const,
-        autoKey: 'autoUpdateModel' as const,
         msgKey: 'rule_model_status'
     },
     {
@@ -1107,7 +1097,6 @@ const RULE_FIELDS = [
         field: 'chatMode' as const,
         defaultKey: 'defaultChatMode' as const,
         constraintKey: 'fixedChatMode' as const,
-        autoKey: undefined,
         msgKey: 'rule_mode_status'
     }
 ] as const

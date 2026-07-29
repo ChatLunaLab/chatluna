@@ -13,7 +13,7 @@ $inner:
       randomReplyFrequency: Set random reply frequency (0-100, where 0 means never and 100 means always).
       includeQuoteReply: Include quoted message content in requests sent to the model.
       attachForwardMsgIdToContext: Attach forward message record IDs to context. When enabled, a "[聊天记录]" marker message will be appended if forward records are detected.
-      autoUpdateConversationModel: Update an active conversation's model to the configured default before each chat request, unless the conversation has a fixed model.
+      autoUpdateConversationModel: Allow conversations to be automatically updated to the global default model.
 
     - isForwardMsg: Send bot replies as forwarded messages.
       forwardMsgMinLength: Set minimum length of forwarded messages (characters).
@@ -26,23 +26,23 @@ $inner:
       sendThinkingMessageTimeout: Set timeout (ms) for waiting message dispatch.
       thinkingMessage: Customize waiting message content.
       msgCooldown: Set global message cooldown (seconds) to limit adapter calls.
-      messageQueue: Enable message queue. When enabled, if multiple messages are sent and the model has not responded to the initial message, the messages will be cached and merged into one message, and will be sent after waiting for the model response.
+      messageQueue: Enable message queue. When enabled, if a user sends multiple messages before the model responds to the initial message, the messages will be cached and merged into one message, then sent after the model responds.
       messageQueueDelay: Set message queue delay time (seconds). Set to 0 to disable delay. When delay is enabled, the system will wait for the specified time before sending messages to the model. If there are unprocessed messages during this period, they will be cached and merged into multiple messages to send to the model.
-      agentTaskAutoWakeup: Automatically wake up the conversation when a background agent task finishes. Disable to return to manual status checks.
-      showThoughtMessage: Display thinking message in plugin mode or reasoner model.
+      agentTaskAutoWakeup: Allow background agent tasks to wake up their conversations automatically when completed.
+      showThoughtMessage: Display the thinking process when using Agent mode or a reasoning model.
 
     - $desc: Message Rendering
       outputMode:
           $desc: Select message reply rendering mode.
       splitMessage:
-          $desc: Split outgoing messages. Applies to both streaming and non-streaming replies; voice and mixed-voice renderers send as soon as a split point is reached.
+          $desc: Split outgoing messages. Applies to both streaming and non-streaming replies.
           $inner:
               - Do not split
               - Split by punctuation
               - Split by paragraph
       censor: Enable text moderation (requires censor service).
       rawOnCensor: Whether to send the raw message to the model when the Post Handler is triggered.
-      streamResponse: 'Enable stream response. Initiates message sending during reply generation. Note: Disables rendering output mode and incompatible with plugin mode.'
+      streamResponse: Enable streaming responses so the bot starts sending content while generating the reply instead of waiting for completion.
 
     - $desc: Blacklist Management
       blackList: Configure blacklist. Use cautiously to avoid unintended blocking. The number 1 indicates enabled blacklist. Set to zero value to unenable blacklist.
@@ -68,7 +68,7 @@ $inner:
       defaultChatMode: Set default chat mode.
       defaultModel: Set default chat model.
       defaultPreset: Set default chat preset.
-      enablePresetKeywordTrigger: Allow switching preset lanes via keywords at the start of a message.
+      enablePresetKeywordTrigger: Allow switching presets via preset keywords.
 
     - $desc: Miscellaneous
       errorTemplate: Set error prompt message template (subject to change).

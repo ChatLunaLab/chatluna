@@ -574,7 +574,6 @@ chatluna:
             rule_lock_success: '规则锁定状态已设置为 {0}。'
             rule_lock_failed: '更新锁定状态失败：{0}'
             rule_show_header: '当前会话规则：'
-            auto_with_value_conflict: '不能同时使用 --auto 标志和指定具体值。请使用 --auto 或指定值，不能同时使用两者。'
         action:
             create: '创建'
             switch: '切换'

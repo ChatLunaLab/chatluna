@@ -20,8 +20,6 @@ tsconfig.temp.json
 *.ntvs*
 *.njsproj
 *.sln
-.omc
-.claude
 
 packages/*/node_modules
 packages/*/dist
