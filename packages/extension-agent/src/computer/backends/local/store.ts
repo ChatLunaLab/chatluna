@@ -1,14 +1,18 @@
 /** @module computer/backends/local/store */
 
-import { spawn } from 'node:child_process'
+import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
+import { createReadStream } from 'node:fs'
 import fs from 'fs/promises'
 import path from 'path'
+import { createInterface } from 'node:readline'
 import micromatch from 'micromatch'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
-import type { FileContent } from '../../types'
+import type { FileContent, TextOutput } from '../../types'
+import { LocalOutputCollector } from './output'
 
 const rg = which.sync('rg', { nothrow: true })
+const INTERNAL_IGNORES = ['**/.tmp-chatluna-*']
 
 export interface BaseFileStore {
     readFile(filePath: string, offset?: number, limit?: number): Promise<string>
@@ -23,8 +27,8 @@ export interface BaseFileStore {
         pattern: string,
         searchPath?: string,
         include?: string
-    ): Promise<string[]>
-    glob(pattern: string, searchPath?: string): Promise<string[]>
+    ): Promise<string[] | TextOutput>
+    glob(pattern: string, searchPath?: string): Promise<string[] | TextOutput>
     readonly scope: string
     isInScope(filePath: string): boolean
 }
@@ -130,106 +134,135 @@ export class FileStore implements BaseFileStore {
                 args.push('-g', include)
             }
 
-            for (const item of this._cfg.ignores) {
+            for (const item of [...this._cfg.ignores, ...INTERNAL_IGNORES]) {
                 args.push('-g', `!${item}`)
             }
 
             args.push('-e', pattern, '.')
 
+            const output = new LocalOutputCollector('grep')
+            let child: ChildProcessWithoutNullStreams | undefined
+            let closed: Promise<number> | undefined
+            let spawnError: Error | undefined
             try {
-                const result = await runProcess(rg, args, dir)
-                if (result.exitCode === 1) {
-                    return []
-                }
-
-                if (result.exitCode !== 0) {
-                    throw new Error(
-                        result.stderr ||
-                            `ripgrep exited with ${result.exitCode}`
-                    )
-                }
-
-                const matched = new Map<string, string[]>()
-                for (const line of result.stdout.split('\n')) {
-                    if (!line) {
-                        continue
-                    }
-
+                child = spawn(rg, args, {
+                    cwd: dir,
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                    windowsHide: true
+                })
+                let stderr = ''
+                child.stderr.setEncoding('utf8')
+                child.stderr.on('data', (text: string) => {
+                    stderr += text.slice(0, 8000 - stderr.length)
+                })
+                closed = new Promise<number>((resolve) => {
+                    child!.on('error', (err) => {
+                        spawnError = err
+                    })
+                    child.on('close', (code) => resolve(code ?? 0))
+                })
+                let count = 0
+                for await (const line of createInterface({
+                    input: child.stdout,
+                    crlfDelay: Infinity
+                })) {
                     const item = JSON.parse(line)
-                    if (item.type !== 'match') {
-                        continue
-                    }
+                    if (item.type !== 'match') continue
 
                     const raw = item.data.path.text as string | undefined
-                    if (!raw) {
-                        continue
-                    }
+                    if (!raw) continue
 
                     const file = path.resolve(dir, raw)
-                    if (this._shouldIgnore(file)) {
-                        continue
-                    }
-
-                    if (include && !this._matchPattern(file, include)) {
-                        continue
-                    }
+                    if (this._shouldIgnore(file)) continue
+                    if (include && !this._matchPattern(file, include)) continue
 
                     const text = (
                         (item.data.lines.text as string | undefined) || ''
                     ).replace(/\r?\n$/, '')
-                    if (!matched.has(file)) {
-                        matched.set(file, [])
-                    }
-                    matched
-                        .get(file)
-                        .push(`${file}:${item.data.line_number}:${text}`)
+                    await output.append(
+                        `${count > 0 ? '\n' : ''}${file}:${item.data.line_number}:${text}`
+                    )
+                    count += 1
                 }
 
-                const files = await sortByMtime([...matched.keys()])
-                return files.flatMap((f) => matched.get(f) || [])
+                const exitCode = await closed
+                if (spawnError) throw spawnError
+                if (exitCode === 1) {
+                    await output.dispose()
+                    return []
+                }
+
+                if (exitCode !== 0) {
+                    throw new Error(
+                        stderr.trim() || `ripgrep exited with ${exitCode}`
+                    )
+                }
+
+                if (count < 1) {
+                    await output.dispose()
+                    return []
+                }
+                return { ...(await output.finish()), count }
             } catch (err) {
+                if (
+                    child &&
+                    child.exitCode == null &&
+                    child.signalCode == null
+                ) {
+                    child.kill()
+                }
+                await closed
+                await output.dispose()
                 if (process.env['CHATLUNA_AGENT_DEBUG']) {
                     console.debug(err)
                 }
             }
         }
 
-        const files = stat.isDirectory()
-            ? await this._findFiles(dir, include)
-            : include == null || this._matchPattern(dir, include)
-              ? [dir]
-              : []
-
+        const output = new LocalOutputCollector('grep')
         const regex = new RegExp(pattern, 'gm')
-        const matched = new Map<string, string[]>()
+        let count = 0
+        try {
+            for await (const file of stat.isDirectory()
+                ? this._walk(dir)
+                : [dir]) {
+                if (this._shouldIgnore(file)) continue
+                if (include && !this._matchPattern(file, include)) continue
 
-        for (const file of files) {
-            if (this._shouldIgnore(file)) {
-                continue
-            }
+                const lines = createInterface({
+                    input: createReadStream(file),
+                    crlfDelay: Infinity
+                })[Symbol.asyncIterator]()
+                let lineNumber = 0
+                while (true) {
+                    const next = await lines.next().catch((err) => {
+                        if (process.env['CHATLUNA_AGENT_DEBUG']) {
+                            console.debug(err)
+                        }
+                        return undefined
+                    })
+                    if (!next || next.done) break
 
-            const content = await fs.readFile(file, 'utf-8').catch(() => null)
-            if (content == null) {
-                continue
-            }
-
-            const lines = content.split('\n')
-            const list: string[] = []
-            for (let idx = 0; idx < lines.length; idx++) {
-                if (regex.test(lines[idx])) {
-                    list.push(`${file}:${idx + 1}:${lines[idx]}`)
+                    lineNumber += 1
+                    if (regex.test(next.value)) {
+                        await output.append(
+                            `${count > 0 ? '\n' : ''}${file}:${lineNumber}:${next.value}`
+                        )
+                        count += 1
+                    }
+                    regex.lastIndex = 0
                 }
-                regex.lastIndex = 0
             }
 
-            if (list.length > 0) {
-                matched.set(file, list)
+            if (count < 1) {
+                await output.dispose()
+                return []
             }
+            return { ...(await output.finish()), count }
+        } catch (err) {
+            await output.dispose()
+            throw err
         }
-
-        return (await sortByMtime([...matched.keys()])).flatMap(
-            (f) => matched.get(f) || []
-        )
     }
 
     async glob(pattern: string, searchPath?: string) {
@@ -254,99 +287,132 @@ export class FileStore implements BaseFileStore {
             ]
 
             args.push('-g', pattern)
-            for (const item of this._cfg.ignores) {
+            for (const item of [...this._cfg.ignores, ...INTERNAL_IGNORES]) {
                 args.push('-g', `!${item}`)
             }
 
             args.push('.')
 
+            const output = new LocalOutputCollector('glob')
+            let child: ChildProcessWithoutNullStreams | undefined
+            let closed: Promise<number> | undefined
+            let spawnError: Error | undefined
             try {
-                const result = await runProcess(rg, args, dir)
-                if (result.exitCode !== 0) {
+                child = spawn(rg, args, {
+                    cwd: dir,
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                    windowsHide: true
+                })
+                let stderr = ''
+                child.stderr.setEncoding('utf8')
+                child.stderr.on('data', (text: string) => {
+                    stderr += text.slice(0, 8000 - stderr.length)
+                })
+                closed = new Promise<number>((resolve) => {
+                    child!.on('error', (err) => {
+                        spawnError = err
+                    })
+                    child.on('close', (code) => resolve(code ?? 0))
+                })
+                child.stdout.setEncoding('utf8')
+                let rest = ''
+                let count = 0
+                for await (const chunk of child.stdout) {
+                    const files = `${rest}${chunk}`.split('\0')
+                    rest = files.pop()!
+                    for (const raw of files) {
+                        const file = path.resolve(dir, raw)
+                        if (this._shouldIgnore(file)) continue
+                        if (!this._matchPattern(file, pattern)) continue
+                        await output.append(`${count > 0 ? '\n' : ''}${file}`)
+                        count += 1
+                    }
+                }
+
+                const exitCode = await closed
+                if (spawnError) throw spawnError
+                if (exitCode !== 0) {
                     throw new Error(
-                        result.stderr ||
-                            `ripgrep exited with ${result.exitCode}`
+                        stderr.trim() || `ripgrep exited with ${exitCode}`
                     )
                 }
 
-                return sortByMtime(
-                    result.stdout
-                        .split('\0')
-                        .filter(Boolean)
-                        .map((file) => path.resolve(dir, file))
-                        .filter(
-                            (file) =>
-                                !this._shouldIgnore(file) &&
-                                this._matchPattern(file, pattern)
-                        )
-                )
+                if (count < 1) {
+                    await output.dispose()
+                    return []
+                }
+                return { ...(await output.finish()), count }
             } catch (err) {
+                if (
+                    child &&
+                    child.exitCode == null &&
+                    child.signalCode == null
+                ) {
+                    child.kill()
+                }
+                await closed
+                await output.dispose()
                 if (process.env['CHATLUNA_AGENT_DEBUG']) {
                     console.debug(err)
                 }
             }
         }
 
-        return sortByMtime(await this._findFiles(dir, pattern))
+        const output = new LocalOutputCollector('glob')
+        let count = 0
+        try {
+            for await (const file of this._walk(dir)) {
+                if (!this._matchPattern(file, pattern)) continue
+                await output.append(`${count > 0 ? '\n' : ''}${file}`)
+                count += 1
+            }
+            if (count < 1) {
+                await output.dispose()
+                return []
+            }
+            return { ...(await output.finish()), count }
+        } catch (err) {
+            await output.dispose()
+            throw err
+        }
     }
 
-    private async _findFiles(
-        dirPath: string,
-        pattern?: string
-    ): Promise<string[]> {
+    private async *_walk(dirPath: string): AsyncGenerator<string> {
         try {
-            const entries = await fs.readdir(dirPath, { withFileTypes: true })
-            const results: string[] = []
-
-            for (const entry of entries) {
+            for await (const entry of await fs.opendir(dirPath)) {
                 const fullPath = path.join(dirPath, entry.name)
-                if (this._shouldIgnore(fullPath)) {
-                    continue
-                }
+                if (this._shouldIgnore(fullPath)) continue
 
                 if (entry.isDirectory()) {
-                    results.push(...(await this._findFiles(fullPath, pattern)))
+                    yield* this._walk(fullPath)
                     continue
                 }
 
                 if (entry.isFile()) {
-                    if (!pattern || this._matchPattern(fullPath, pattern)) {
-                        results.push(fullPath)
-                    }
+                    yield fullPath
                     continue
                 }
 
-                if (!entry.isSymbolicLink()) {
-                    continue
-                }
+                if (!entry.isSymbolicLink()) continue
 
                 try {
                     const stat = await fs.stat(fullPath)
                     if (stat.isDirectory()) {
-                        results.push(
-                            ...(await this._findFiles(fullPath, pattern))
-                        )
+                        yield* this._walk(fullPath)
                         continue
                     }
 
-                    if (stat.isFile()) {
-                        if (!pattern || this._matchPattern(fullPath, pattern)) {
-                            results.push(fullPath)
-                        }
-                    }
+                    if (stat.isFile()) yield fullPath
                 } catch (err) {
                     if (process.env['CHATLUNA_AGENT_DEBUG']) {
                         console.debug(err)
                     }
                 }
             }
-
-            return results
         } catch (err) {
             if (process.env['CHATLUNA_AGENT_DEBUG']) {
                 console.debug(err)
             }
-            return []
         }
     }
 
@@ -362,62 +428,14 @@ export class FileStore implements BaseFileStore {
     }
 
     private _shouldIgnore(filePath: string) {
-        if (this._cfg.ignores.length === 0) {
-            return false
-        }
         return micromatch.isMatch(
             path
                 .relative(this._cfg.scopePath || process.cwd(), filePath)
                 .replace(/\\/g, '/'),
-            this._cfg.ignores,
+            [...this._cfg.ignores, ...INTERNAL_IGNORES],
             { dot: true }
         )
     }
-}
-
-function runProcess(file: string, args: string[], cwd: string) {
-    return new Promise<{
-        exitCode: number
-        stdout: string
-        stderr: string
-    }>((resolve, reject) => {
-        const stdout: Buffer[] = []
-        const stderr: Buffer[] = []
-        const child = spawn(file, args, {
-            cwd,
-            stdio: ['ignore', 'pipe', 'pipe'],
-            windowsHide: true
-        })
-
-        child.stdout.on('data', (chunk: Buffer | string) => {
-            stdout.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-        })
-
-        child.stderr.on('data', (chunk: Buffer | string) => {
-            stderr.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-        })
-
-        child.on('error', reject)
-        child.on('close', (code) => {
-            resolve({
-                exitCode: code ?? 0,
-                stdout: Buffer.concat(stdout).toString('utf8'),
-                stderr: Buffer.concat(stderr).toString('utf8').trim()
-            })
-        })
-    })
-}
-
-async function sortByMtime(files: string[]) {
-    const list = await Promise.all(
-        files.map(async (file) => ({
-            path: file,
-            mtime: (await fs.stat(file).catch(() => null))?.mtimeMs ?? 0
-        }))
-    )
-
-    list.sort((a, b) => b.mtime - a.mtime)
-    return list.map((item) => item.path)
 }
 
 function replaceSubstring(

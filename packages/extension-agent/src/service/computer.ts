@@ -741,7 +741,13 @@ export class ChatLunaAgentComputerService {
         input: { pattern: string; path?: string; backend?: ComputerBackendType }
     ) {
         const session = await this.getOrCreateUiSession(clientId, input.backend)
-        return await session.glob(input.pattern, input.path)
+        const result = await session.glob(input.pattern, input.path)
+        if (Array.isArray(result)) return result
+        const end = result.outputPath
+            ? result.text.lastIndexOf('\n')
+            : undefined
+        const text = end == null ? result.text : result.text.slice(0, end + 1)
+        return text.split('\n').filter(Boolean)
     }
 
     async getHomeForUi(clientId: string, backend?: ComputerBackendType) {

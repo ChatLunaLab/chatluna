@@ -17,6 +17,7 @@ import {
 } from '../../types'
 import { buildPosixBackgroundCommand } from '../types'
 import { FileStore } from './store'
+import { LocalOutputCollector } from './output'
 import {
     ResolvedShellCommand,
     resolveInteractiveShellCommand,
@@ -237,8 +238,7 @@ async function runChildProcess(
     timeout: number
 ): Promise<ExecuteResult> {
     return await new Promise<ExecuteResult>((resolve, reject) => {
-        const stdoutChunks: Buffer[] = []
-        const stderrChunks: Buffer[] = []
+        const output = new LocalOutputCollector('bash')
         const child = spawn(shell.file, shell.args, {
             cwd,
             env,
@@ -248,66 +248,93 @@ async function runChildProcess(
         })
 
         let done = false
-        const finish = (result: ExecuteResult) => {
-            if (done) {
-                return
-            }
+        let timedOut = false
+        let hasOutput = false
+        let hasStderr = false
+        let stdout = ''
+        let stderr = ''
+        const pending = new Set<Promise<void>>()
+        const append = (stream: NodeJS.ReadableStream, text: string) => {
+            stream.pause()
+            const task = output.append(text).finally(() => {
+                pending.delete(task)
+                stream.resume()
+            })
+            pending.add(task)
+            task.catch((err) => {
+                killLocalChild(child).catch(() => undefined)
+                fail(err).catch(reject)
+            })
+        }
+        const finish = async (result: ExecuteResult) => {
+            if (done) return
 
             done = true
             clearTimeout(timer)
-            resolve(result)
+            try {
+                await Promise.all(pending)
+                const value = await output.finish()
+                resolve({
+                    ...result,
+                    stdout,
+                    stderr,
+                    output: {
+                        ...value,
+                        text: value.text || '(no output)'
+                    }
+                })
+            } catch (err) {
+                await output.dispose()
+                reject(err)
+            }
+        }
+        const fail = async (err: unknown) => {
+            if (done) return
+            done = true
+            clearTimeout(timer)
+            await output.dispose()
+            reject(err)
         }
         const timer =
             timeout > 0
                 ? setTimeout(() => {
-                      finish({
-                          exitCode: 1,
-                          stdout: Buffer.concat(stdoutChunks)
-                              .toString('utf8')
-                              .replace(/\r\n/g, '\n'),
-                          stderr: Buffer.concat(stderrChunks)
-                              .toString('utf8')
-                              .replace(/\r\n/g, '\n'),
-                          timedOut: true
-                      })
+                      timedOut = true
                       killLocalChild(child).catch(() => undefined)
                   }, timeout)
                 : undefined
 
-        child.stdout.on('data', (chunk: Buffer | string) => {
-            stdoutChunks.push(
-                Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-            )
+        child.stdout.setEncoding('utf8')
+        child.stderr.setEncoding('utf8')
+        child.stdout.on('data', (text: string) => {
+            const value = text.replace(/\r\n/g, '\n')
+            stdout += value.slice(0, 8000 - stdout.length)
+            append(child.stdout, value)
+            hasOutput = true
         })
 
-        child.stderr.on('data', (chunk: Buffer | string) => {
-            stderrChunks.push(
-                Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+        child.stderr.on('data', (text: string) => {
+            const value = text.replace(/\r\n/g, '\n')
+            stderr += value.slice(0, 8000 - stderr.length)
+            append(
+                child.stderr,
+                `${hasStderr ? '' : `${hasOutput ? '\n' : ''}[stderr]\n`}${value}`
             )
+            hasOutput = true
+            hasStderr = true
         })
 
         child.on('error', (err) => {
-            if (done) {
-                return
-            }
-
-            done = true
-            clearTimeout(timer)
-            reject(err)
+            fail(err).catch(reject)
         })
 
         child.on('close', (code, signal) => {
             finish({
-                exitCode: code ?? 0,
-                stdout: Buffer.concat(stdoutChunks)
-                    .toString('utf8')
-                    .replace(/\r\n/g, '\n'),
-                stderr: Buffer.concat(stderrChunks)
-                    .toString('utf8')
-                    .replace(/\r\n/g, '\n'),
+                exitCode: timedOut ? 1 : (code ?? 0),
+                stdout,
+                stderr,
                 signal: signal ?? undefined,
-                timedOut: false
-            })
+                timedOut
+            }).catch(reject)
         })
     })
 }

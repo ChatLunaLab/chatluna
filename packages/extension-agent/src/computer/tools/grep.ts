@@ -12,7 +12,7 @@ export class GrepTool extends ComputerToolBase {
 - Searches file contents using regular expressions
 - Supports full regex syntax (eg. "log.*Error", "function\\s+\\w+", etc.)
 - Filter files by glob pattern with the include parameter (eg. "*.js", "*.{ts,tsx}")
-- Returns file paths and line numbers with at least one match, sorted by modification time`
+- Returns file paths and line numbers in search traversal order`
 
     schema = z.object({
         pattern: z
@@ -50,17 +50,20 @@ export class GrepTool extends ComputerToolBase {
                 input.path,
                 input.include
             )
-            if (results.length < 1) {
+            const count = Array.isArray(results)
+                ? results.length
+                : (results.count ?? 0)
+            if (count < 1) {
                 return 'No matches found.'
             }
 
-            this.log(computer, `找到 ${results.length} 条匹配`)
+            this.log(computer, `找到 ${count} 条匹配`)
             return this.withBackend(
                 computer,
                 await this.formatLargeResult(
                     computer,
                     'grep',
-                    results.join('\n')
+                    Array.isArray(results) ? results.join('\n') : results
                 )
             )
         } catch (err) {

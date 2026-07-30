@@ -198,7 +198,7 @@ When to use:
                 const output = await this.formatLargeResult(
                     computer,
                     'bash',
-                    formatExecuteResult(result)
+                    result.output ?? formatExecuteResult(result)
                 )
                 return this.withBackend(
                     computer,
@@ -209,7 +209,7 @@ When to use:
             const output = await this.formatLargeResult(
                 computer,
                 'bash',
-                formatExecuteResult(result)
+                result.output ?? formatExecuteResult(result)
             )
 
             if (result.signal) {

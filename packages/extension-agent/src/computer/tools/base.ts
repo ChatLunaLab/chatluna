@@ -6,7 +6,7 @@
 import { StructuredTool } from '@langchain/core/tools'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { logger } from '../..'
-import type { ComputerSessionApi } from '../types'
+import type { ComputerSessionApi, TextOutput } from '../types'
 import type { ChatLunaAgentComputerService } from '../../service/computer'
 
 /** Computer 工具抽象基类。 */
@@ -31,12 +31,15 @@ export abstract class ComputerToolBase extends StructuredTool {
     protected async formatLargeResult(
         session: ComputerSessionApi,
         name: string,
-        text: string,
+        text: string | TextOutput,
         limit = 8000
     ) {
         return await this.computer.ctx.chatluna_agent.truncateTextOutput({
             name,
-            text,
+            text: typeof text === 'string' ? text : text.text,
+            outputPath: typeof text === 'string' ? undefined : text.outputPath,
+            totalLength:
+                typeof text === 'string' ? undefined : text.totalLength,
             limit,
             session
         })

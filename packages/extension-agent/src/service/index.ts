@@ -611,9 +611,20 @@ export class ChatLunaAgentService extends Service {
         limit?: number
         session?: ComputerSessionApi
         outputDir?: string
+        outputPath?: string
+        totalLength?: number
     }) {
         const limit = input.limit ?? 8000
-        if (input.text.length <= limit) return input.text
+        const length = input.totalLength ?? input.text.length
+        if (length <= limit) return input.text
+
+        if (input.outputPath) {
+            return `${truncateOutput(input.text, limit)}
+
+Output too large (${length} chars). Full output saved to: ${input.outputPath}
+Use file_read with this path plus offset/limit to inspect more.
+`
+        }
 
         if (input.session) {
             const dir = (await input.session.getTempDir()).replace(
