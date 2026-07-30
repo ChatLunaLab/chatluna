@@ -207,6 +207,7 @@ export class ConversationService {
             fixedModel: firstDefined(constraints, 'fixedModel'),
             fixedPreset: firstDefined(constraints, 'fixedPreset'),
             fixedChatMode: firstDefined(constraints, 'fixedChatMode'),
+            autoUpdateModel: firstDefined(constraints, 'autoUpdateModel'),
             lockConversation: firstBoolean(
                 constraints,
                 'lockConversation',
@@ -1711,11 +1712,20 @@ export class ConversationService {
 
         this.checkChatMode(options.chatMode)
 
-        const updated = await this.touchConversation(conversation.id, {
-            model: options.model,
-            preset: options.preset,
-            chatMode: options.chatMode
-        })
+        const updated = await this.runtime.withConversationLock(
+            conversation.id,
+            async () => {
+                const current = await this.getConversation(conversation.id)
+                if (current == null) return undefined
+
+                await this.runtime.clearConversationInterfaceLocked(current)
+                return this.touchConversation(conversation.id, {
+                    model: options.model?.trim(),
+                    preset: options.preset,
+                    chatMode: options.chatMode
+                })
+            }
+        )
 
         if (updated == null) {
             throw new ChatLunaError(
@@ -1724,8 +1734,37 @@ export class ConversationService {
             )
         }
 
-        await this.runtime.clearConversationInterface(updated)
         return updated
+    }
+
+    async applyAutoModelUpdate(
+        resolved: ConversationResolution,
+        command?: string
+    ) {
+        const conversation = resolved.conversation
+        if (
+            conversation == null ||
+            ![undefined, '', 'rollback'].includes(command) ||
+            resolved.constraint.fixedModel != null
+        ) {
+            return null
+        }
+
+        const model = this.pickModel(resolved.constraint, null)
+        if (model == null || model === conversation.model) {
+            return null
+        }
+
+        return await this.runtime.withConversationLock(
+            conversation.id,
+            async () => {
+                const current = await this.getConversation(conversation.id)
+                if (current == null || current.model === model) return current
+
+                await this.runtime.clearConversationInterfaceLocked(current)
+                return this.touchConversation(conversation.id, { model })
+            }
+        )
     }
 
     async recordCompression(

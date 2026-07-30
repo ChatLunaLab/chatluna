@@ -893,6 +893,10 @@ export class ChatLunaService extends Service<Config> {
                     length: 20,
                     nullable: true
                 },
+                autoUpdateModel: {
+                    type: 'boolean',
+                    nullable: true
+                },
                 lockConversation: {
                     type: 'boolean',
                     nullable: true

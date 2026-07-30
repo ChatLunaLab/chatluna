@@ -76,6 +76,21 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     return ChainMiddlewareRunStatus.STOP
                 }
 
+                const updated =
+                    config.autoUpdateConversationModel &&
+                    resolved.constraint.autoUpdateModel === true
+                        ? await ctx.chatluna.conversation.applyAutoModelUpdate(
+                              resolved,
+                              context.command
+                          )
+                        : null
+
+                if (updated != null) {
+                    resolved.conversation = updated
+                    resolved.conversationId = updated.id
+                    resolved.effectiveModel = updated.model
+                }
+
                 options.conversation = resolved
                 return ChainMiddlewareRunStatus.CONTINUE
             } catch (error) {

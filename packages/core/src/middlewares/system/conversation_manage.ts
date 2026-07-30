@@ -10,6 +10,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import {
+    ConstraintRecord,
     ConversationListEntry,
     ConversationRecord,
     getBaseBindingKey,
@@ -522,20 +523,35 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         msgKey
     } of RULE_FIELDS) {
         middleware(cmd, async (session, context) => {
-            const value = context.options.conversation_rule?.[field]
-            const clear =
-                context.options.conversation_rule?.clear === true ||
-                value === 'reset'
-            const force = context.options.conversation_rule?.force === true
+            const rule = context.options.conversation_rule
+            const value = rule?.[field]
+            const isModel = field === 'model'
+            const clear = rule?.clear === true || value === 'reset'
+            const auto = isModel && rule?.auto === true
 
             try {
-                const patch = clear
-                    ? { [defaultKey]: null, [constraintKey]: null }
-                    : force
-                      ? { [constraintKey]: value }
-                      : { [defaultKey]: value }
+                let patch: Partial<ConstraintRecord> = { [defaultKey]: value }
+                if (clear) {
+                    patch = {
+                        [defaultKey]: null,
+                        [constraintKey]: null,
+                        ...(isModel ? { autoUpdateModel: null } : {})
+                    }
+                } else if (auto) {
+                    patch = {
+                        [constraintKey]: null,
+                        autoUpdateModel: true,
+                        ...(value != null ? { [defaultKey]: value } : {})
+                    }
+                } else if (rule?.force === true) {
+                    patch = {
+                        [constraintKey]: value,
+                        ...(isModel ? { autoUpdateModel: null } : {})
+                    }
+                }
+
                 const record =
-                    value == null && !clear
+                    value == null && !clear && !auto
                         ? await ctx.chatluna.conversation.getManagedConstraint(
                               session
                           )
@@ -548,7 +564,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                     `chatluna.conversation.messages.${msgKey}`,
                     [
                         record?.[defaultKey] ?? 'reset',
-                        record?.[constraintKey] ?? 'reset'
+                        record?.[constraintKey] ?? 'reset',
+                        ...(isModel
+                            ? [formatAutoUpdateState(record?.autoUpdateModel)]
+                            : [])
                     ]
                 )
             } catch (error) {
@@ -719,7 +738,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             ]),
             session.text('chatluna.conversation.messages.rule_model_status', [
                 current?.defaultModel ?? 'reset',
-                current?.fixedModel ?? 'reset'
+                current?.fixedModel ?? 'reset',
+                formatAutoUpdateState(current?.autoUpdateModel)
             ]),
             session.text('chatluna.conversation.messages.rule_preset_status', [
                 formatPresetLane(
@@ -1027,6 +1047,10 @@ function formatConversationLine(
 
 function formatLockState(lock: boolean | null | undefined) {
     return lock == null ? 'reset' : lock ? 'locked' : 'unlocked'
+}
+
+function formatAutoUpdateState(auto: boolean | null | undefined) {
+    return auto == null ? 'reset' : auto ? 'on' : 'off'
 }
 
 function formatPresetLane(session: Session, presetLane?: string | null) {

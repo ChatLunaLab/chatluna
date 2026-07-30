@@ -295,6 +295,7 @@ export function createConfig(overrides: Record<string, unknown> = {}) {
         defaultPreset: 'default-preset',
         defaultChatMode: 'plugin',
         defaultGroupRouteMode: 'shared',
+        autoUpdateConversationModel: false,
         enablePresetKeywordTrigger: true,
         ...overrides
     } as never
@@ -375,6 +376,10 @@ export async function createService(
                     ) as ArchiveRecord | undefined
             },
             conversationRuntime: {
+                withConversationLock: async (
+                    _id: string,
+                    callback: () => Promise<unknown>
+                ) => callback(),
                 withConversationSync: async (
                     conversation: ConversationRecord,
                     callback: () => Promise<unknown>

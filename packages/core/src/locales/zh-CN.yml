@@ -562,7 +562,7 @@ chatluna:
             export_empty: '没有可导出的会话。'
             export_success: '已导出会话：{0}，文件：{3}'
             export_failed: '导出会话失败：{0}'
-            rule_model_status: '模型规则：默认 {0}，强制 {1}。'
+            rule_model_status: '模型规则：默认 {0}，强制 {1}，自动更新 {2}。'
             rule_preset_status: '当前预设线：{0}；新建默认预设：{1}。'
             rule_mode_status: '聊天模式规则：默认 {0}，强制 {1}。'
             rule_share_status: '路由模式：{0}。'

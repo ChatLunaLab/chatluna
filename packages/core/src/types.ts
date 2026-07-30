@@ -244,6 +244,7 @@ export interface ConstraintRecord {
     fixedModel?: string | null
     fixedPreset?: string | null
     fixedChatMode?: string | null
+    autoUpdateModel?: boolean | null
     lockConversation?: boolean | null
     allowNew?: boolean | null
     allowSwitch?: boolean | null
@@ -290,6 +291,7 @@ export interface ResolvedConstraint {
     fixedModel?: string | null
     fixedPreset?: string | null
     fixedChatMode?: string | null
+    autoUpdateModel?: boolean | null
     lockConversation: boolean
     allowNew: boolean
     allowSwitch: boolean

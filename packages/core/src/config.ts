@@ -11,6 +11,7 @@ export interface Config {
     randomReplyFrequency: Computed<Awaitable<number>>
     includeQuoteReply: boolean
     attachForwardMsgIdToContext: boolean
+    autoUpdateConversationModel: boolean
     isLog: boolean
 
     isReplyWithAt: boolean
@@ -73,7 +74,8 @@ export const Config: Schema<Config> = Schema.intersect([
             .step(0.01)
             .default(0)
             .computed(),
-        attachForwardMsgIdToContext: Schema.boolean().default(false)
+        attachForwardMsgIdToContext: Schema.boolean().default(false),
+        autoUpdateConversationModel: Schema.boolean().default(false)
     }),
 
     Schema.intersect([

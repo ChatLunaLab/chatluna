@@ -324,6 +324,7 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     })
         .option('force', '-f')
         .option('clear', '-c')
+        .option('auto', '-a')
         .action(async ({ options, session }, model) => {
             await chain.receiveCommand(
                 session,
@@ -332,7 +333,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                     conversation_rule: {
                         model: model?.trim() || undefined,
                         force: options.force === true,
-                        clear: options.clear === true
+                        clear: options.clear === true,
+                        auto: options.auto === true
                     }
                 },
                 ctx
@@ -445,6 +447,7 @@ declare module '../chains/chain' {
             force?: boolean
             newOnly?: boolean
             clear?: boolean
+            auto?: boolean
         }
         conversation_compress?: {
             instruction?: string
