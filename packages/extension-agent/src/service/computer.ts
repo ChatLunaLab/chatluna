@@ -746,7 +746,10 @@ export class ChatLunaAgentComputerService {
         const end = result.outputPath
             ? result.text.lastIndexOf('\n')
             : undefined
-        const text = end == null ? result.text : result.text.slice(0, end + 1)
+        const text =
+            end != null && end >= 0
+                ? result.text.slice(0, end + 1)
+                : result.text
         return text.split('\n').filter(Boolean)
     }
 

@@ -251,8 +251,16 @@ async function runChildProcess(
         let timedOut = false
         let hasOutput = false
         let hasStderr = false
-        let stdout = ''
-        let stderr = ''
+        const stdout = { value: '', truncated: false }
+        const stderr = { value: '', truncated: false }
+        const appendPreview = (
+            text: string,
+            target: { value: string; truncated: boolean }
+        ) => {
+            const remaining = 8000 - target.value.length
+            if (text.length > remaining) target.truncated = true
+            target.value += text.slice(0, remaining)
+        }
         const pending = new Set<Promise<void>>()
         const append = (stream: NodeJS.ReadableStream, text: string) => {
             stream.pause()
@@ -276,8 +284,12 @@ async function runChildProcess(
                 const value = await output.finish()
                 resolve({
                     ...result,
-                    stdout,
-                    stderr,
+                    stdout: stdout.truncated
+                        ? `${stdout.value}\n...[output truncated]`
+                        : stdout.value,
+                    stderr: stderr.truncated
+                        ? `${stderr.value}\n...[output truncated]`
+                        : stderr.value,
                     output: {
                         ...value,
                         text: value.text || '(no output)'
@@ -307,14 +319,14 @@ async function runChildProcess(
         child.stderr.setEncoding('utf8')
         child.stdout.on('data', (text: string) => {
             const value = text.replace(/\r\n/g, '\n')
-            stdout += value.slice(0, 8000 - stdout.length)
+            appendPreview(value, stdout)
             append(child.stdout, value)
             hasOutput = true
         })
 
         child.stderr.on('data', (text: string) => {
             const value = text.replace(/\r\n/g, '\n')
-            stderr += value.slice(0, 8000 - stderr.length)
+            appendPreview(value, stderr)
             append(
                 child.stderr,
                 `${hasStderr ? '' : `${hasOutput ? '\n' : ''}[stderr]\n`}${value}`
@@ -330,8 +342,8 @@ async function runChildProcess(
         child.on('close', (code, signal) => {
             finish({
                 exitCode: timedOut ? 1 : (code ?? 0),
-                stdout,
-                stderr,
+                stdout: stdout.value,
+                stderr: stderr.value,
                 signal: signal ?? undefined,
                 timedOut
             }).catch(reject)

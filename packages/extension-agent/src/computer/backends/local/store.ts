@@ -10,6 +10,7 @@ import which from 'which'
 import { LocalBackendConfig } from '../../../types'
 import type { FileContent, TextOutput } from '../../types'
 import { LocalOutputCollector } from './output'
+import { logger } from '../../..'
 
 const rg = which.sync('rg', { nothrow: true })
 const INTERNAL_IGNORES = ['**/.tmp-chatluna-*']
@@ -144,6 +145,7 @@ export class FileStore implements BaseFileStore {
             let child: ChildProcessWithoutNullStreams | undefined
             let closed: Promise<number> | undefined
             let spawnError: Error | undefined
+            let count = 0
             try {
                 child = spawn(rg, args, {
                     cwd: dir,
@@ -161,7 +163,6 @@ export class FileStore implements BaseFileStore {
                     })
                     child.on('close', (code) => resolve(code ?? 0))
                 })
-                let count = 0
                 for await (const line of createInterface({
                     input: child.stdout,
                     crlfDelay: Infinity
@@ -212,10 +213,11 @@ export class FileStore implements BaseFileStore {
                     child.kill()
                 }
                 await closed
-                await output.dispose()
-                if (process.env['CHATLUNA_AGENT_DEBUG']) {
-                    console.debug(err)
+                if (count > 0) {
+                    return { ...(await output.finish()), count }
                 }
+                await output.dispose()
+                logger.warn(err)
             }
         }
 
@@ -229,28 +231,25 @@ export class FileStore implements BaseFileStore {
                 if (this._shouldIgnore(file)) continue
                 if (include && !this._matchPattern(file, include)) continue
 
-                const lines = createInterface({
-                    input: createReadStream(file),
-                    crlfDelay: Infinity
-                })[Symbol.asyncIterator]()
                 let lineNumber = 0
-                while (true) {
-                    const next = await lines.next().catch((err) => {
-                        if (process.env['CHATLUNA_AGENT_DEBUG']) {
-                            console.debug(err)
+                try {
+                    for await (const line of createInterface({
+                        input: createReadStream(file),
+                        crlfDelay: Infinity
+                    })) {
+                        lineNumber += 1
+                        if (regex.test(line)) {
+                            await output.append(
+                                `${count > 0 ? '\n' : ''}${file}:${lineNumber}:${line}`
+                            )
+                            count += 1
                         }
-                        return undefined
-                    })
-                    if (!next || next.done) break
-
-                    lineNumber += 1
-                    if (regex.test(next.value)) {
-                        await output.append(
-                            `${count > 0 ? '\n' : ''}${file}:${lineNumber}:${next.value}`
-                        )
-                        count += 1
+                        regex.lastIndex = 0
                     }
-                    regex.lastIndex = 0
+                } catch (err) {
+                    if (process.env['CHATLUNA_AGENT_DEBUG']) {
+                        console.debug(err)
+                    }
                 }
             }
 
@@ -297,6 +296,7 @@ export class FileStore implements BaseFileStore {
             let child: ChildProcessWithoutNullStreams | undefined
             let closed: Promise<number> | undefined
             let spawnError: Error | undefined
+            let count = 0
             try {
                 child = spawn(rg, args, {
                     cwd: dir,
@@ -316,7 +316,6 @@ export class FileStore implements BaseFileStore {
                 })
                 child.stdout.setEncoding('utf8')
                 let rest = ''
-                let count = 0
                 for await (const chunk of child.stdout) {
                     const files = `${rest}${chunk}`.split('\0')
                     rest = files.pop()!
@@ -331,6 +330,11 @@ export class FileStore implements BaseFileStore {
 
                 const exitCode = await closed
                 if (spawnError) throw spawnError
+                if (exitCode === 1) {
+                    await output.dispose()
+                    return []
+                }
+
                 if (exitCode !== 0) {
                     throw new Error(
                         stderr.trim() || `ripgrep exited with ${exitCode}`
@@ -351,10 +355,11 @@ export class FileStore implements BaseFileStore {
                     child.kill()
                 }
                 await closed
-                await output.dispose()
-                if (process.env['CHATLUNA_AGENT_DEBUG']) {
-                    console.debug(err)
+                if (count > 0) {
+                    return { ...(await output.finish()), count }
                 }
+                await output.dispose()
+                logger.warn(err)
             }
         }
 
