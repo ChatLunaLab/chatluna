@@ -5,6 +5,7 @@ import { createReadStream } from 'node:fs'
 import fs from 'fs/promises'
 import path from 'path'
 import { createInterface } from 'node:readline'
+import type { Readable } from 'node:stream'
 import micromatch from 'micromatch'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
@@ -142,94 +143,51 @@ export class FileStore implements BaseFileStore {
             args.push('-e', pattern, '.')
 
             const output = new LocalOutputCollector('grep')
-            let child: ChildProcessWithoutNullStreams | undefined
-            let closed: Promise<number> | undefined
-            let spawnError: Error | undefined
-            let count = 0
             try {
-                child = spawn(rg, args, {
-                    cwd: dir,
-                    stdio: ['ignore', 'pipe', 'pipe'],
-                    windowsHide: true
+                const found = await this._runRg(args, dir, async (stdout) => {
+                    for await (const line of createInterface({
+                        input: stdout,
+                        crlfDelay: Infinity
+                    })) {
+                        const item = JSON.parse(line)
+                        if (item.type !== 'match') continue
+
+                        const raw = item.data.path.text as string | undefined
+                        if (!raw) continue
+
+                        const file = path.resolve(dir, raw)
+                        if (this._shouldIgnore(file)) continue
+                        if (include && !this._matchPattern(file, include))
+                            continue
+
+                        const text = (
+                            (item.data.lines.text as string | undefined) || ''
+                        ).replace(/\r?\n$/, '')
+                        await output.appendLine(
+                            `${file}:${item.data.line_number}:${text}`
+                        )
+                    }
                 })
-                let stderr = ''
-                child.stderr.setEncoding('utf8')
-                child.stderr.on('data', (text: string) => {
-                    stderr += text.slice(0, 8000 - stderr.length)
-                })
-                closed = new Promise<number>((resolve) => {
-                    child!.on('error', (err) => {
-                        spawnError = err
-                    })
-                    child.on('close', (code) => resolve(code ?? 0))
-                })
-                for await (const line of createInterface({
-                    input: child.stdout,
-                    crlfDelay: Infinity
-                })) {
-                    const item = JSON.parse(line)
-                    if (item.type !== 'match') continue
-
-                    const raw = item.data.path.text as string | undefined
-                    if (!raw) continue
-
-                    const file = path.resolve(dir, raw)
-                    if (this._shouldIgnore(file)) continue
-                    if (include && !this._matchPattern(file, include)) continue
-
-                    const text = (
-                        (item.data.lines.text as string | undefined) || ''
-                    ).replace(/\r?\n$/, '')
-                    await output.append(
-                        `${count > 0 ? '\n' : ''}${file}:${item.data.line_number}:${text}`
-                    )
-                    count += 1
-                }
-
-                const exitCode = await closed
-                if (spawnError) throw spawnError
-                if (exitCode === 1) {
+                if (!found) {
                     await output.dispose()
                     return []
                 }
-
-                if (exitCode !== 0) {
-                    throw new Error(
-                        stderr.trim() || `ripgrep exited with ${exitCode}`
-                    )
-                }
-
-                if (count < 1) {
-                    await output.dispose()
-                    return []
-                }
-                return { ...(await output.finish()), count }
+                return await output.finish()
             } catch (err) {
-                if (
-                    child &&
-                    child.exitCode == null &&
-                    child.signalCode == null
-                ) {
-                    child.kill()
-                }
-                await closed
-                if (count > 0) {
-                    return { ...(await output.finish()), count }
+                if (output.count > 0) {
+                    return await output.finish()
                 }
                 await output.dispose()
                 logger.warn(err)
             }
         }
 
-        const output = new LocalOutputCollector('grep')
         const regex = new RegExp(pattern, 'gm')
-        let count = 0
-        try {
-            for await (const file of stat.isDirectory()
-                ? this._walk(dir)
-                : [dir]) {
-                if (this._shouldIgnore(file)) continue
-                if (include && !this._matchPattern(file, include)) continue
+        return await this._scanFallback(
+            'grep',
+            stat.isDirectory() ? this._walk(dir) : [dir],
+            async (output, file) => {
+                if (include && !this._matchPattern(file, include)) return
 
                 let lineNumber = 0
                 try {
@@ -239,10 +197,9 @@ export class FileStore implements BaseFileStore {
                     })) {
                         lineNumber += 1
                         if (regex.test(line)) {
-                            await output.append(
-                                `${count > 0 ? '\n' : ''}${file}:${lineNumber}:${line}`
+                            await output.appendLine(
+                                `${file}:${lineNumber}:${line}`
                             )
-                            count += 1
                         }
                         regex.lastIndex = 0
                     }
@@ -252,16 +209,7 @@ export class FileStore implements BaseFileStore {
                     }
                 }
             }
-
-            if (count < 1) {
-                await output.dispose()
-                return []
-            }
-            return { ...(await output.finish()), count }
-        } catch (err) {
-            await output.dispose()
-            throw err
-        }
+        )
     }
 
     async glob(pattern: string, searchPath?: string) {
@@ -293,89 +241,101 @@ export class FileStore implements BaseFileStore {
             args.push('.')
 
             const output = new LocalOutputCollector('glob')
-            let child: ChildProcessWithoutNullStreams | undefined
-            let closed: Promise<number> | undefined
-            let spawnError: Error | undefined
-            let count = 0
             try {
-                child = spawn(rg, args, {
-                    cwd: dir,
-                    stdio: ['ignore', 'pipe', 'pipe'],
-                    windowsHide: true
-                })
-                let stderr = ''
-                child.stderr.setEncoding('utf8')
-                child.stderr.on('data', (text: string) => {
-                    stderr += text.slice(0, 8000 - stderr.length)
-                })
-                closed = new Promise<number>((resolve) => {
-                    child!.on('error', (err) => {
-                        spawnError = err
-                    })
-                    child.on('close', (code) => resolve(code ?? 0))
-                })
-                child.stdout.setEncoding('utf8')
-                let rest = ''
-                for await (const chunk of child.stdout) {
-                    const files = `${rest}${chunk}`.split('\0')
-                    rest = files.pop()!
-                    for (const raw of files) {
-                        const file = path.resolve(dir, raw)
-                        if (this._shouldIgnore(file)) continue
-                        if (!this._matchPattern(file, pattern)) continue
-                        await output.append(`${count > 0 ? '\n' : ''}${file}`)
-                        count += 1
+                const found = await this._runRg(args, dir, async (stdout) => {
+                    let rest = ''
+                    for await (const chunk of stdout) {
+                        const files = `${rest}${chunk}`.split('\0')
+                        rest = files.pop()!
+                        for (const raw of files) {
+                            const file = path.resolve(dir, raw)
+                            if (this._shouldIgnore(file)) continue
+                            if (!this._matchPattern(file, pattern)) continue
+                            await output.appendLine(file)
+                        }
                     }
-                }
-
-                const exitCode = await closed
-                if (spawnError) throw spawnError
-                if (exitCode === 1) {
+                })
+                if (!found) {
                     await output.dispose()
                     return []
                 }
-
-                if (exitCode !== 0) {
-                    throw new Error(
-                        stderr.trim() || `ripgrep exited with ${exitCode}`
-                    )
-                }
-
-                if (count < 1) {
-                    await output.dispose()
-                    return []
-                }
-                return { ...(await output.finish()), count }
+                return await output.finish()
             } catch (err) {
-                if (
-                    child &&
-                    child.exitCode == null &&
-                    child.signalCode == null
-                ) {
-                    child.kill()
-                }
-                await closed
-                if (count > 0) {
-                    return { ...(await output.finish()), count }
+                if (output.count > 0) {
+                    return await output.finish()
                 }
                 await output.dispose()
                 logger.warn(err)
             }
         }
 
-        const output = new LocalOutputCollector('glob')
-        let count = 0
+        return await this._scanFallback(
+            'glob',
+            this._walk(dir),
+            async (output, file) => {
+                if (!this._matchPattern(file, pattern)) return
+                await output.appendLine(file)
+            }
+        )
+    }
+
+    private async _runRg(
+        args: string[],
+        dir: string,
+        consume: (stdout: Readable) => Promise<void>
+    ): Promise<boolean> {
+        let child: ChildProcessWithoutNullStreams | undefined
+        let closed: Promise<number> | undefined
+        let spawnError: Error | undefined
         try {
-            for await (const file of this._walk(dir)) {
-                if (!this._matchPattern(file, pattern)) continue
-                await output.append(`${count > 0 ? '\n' : ''}${file}`)
-                count += 1
+            child = spawn(rg, args, {
+                cwd: dir,
+                stdio: ['ignore', 'pipe', 'pipe'],
+                windowsHide: true
+            })
+            let stderr = ''
+            child.stderr.setEncoding('utf8')
+            child.stderr.on('data', (text: string) => {
+                stderr += text.slice(0, 8000 - stderr.length)
+            })
+            child.stdout.setEncoding('utf8')
+            closed = new Promise<number>((resolve) => {
+                child!.on('error', (err) => {
+                    spawnError = err
+                })
+                child.on('close', (code) => resolve(code ?? 0))
+            })
+            await consume(child.stdout)
+            const exitCode = await closed
+            if (spawnError) throw spawnError
+            if (exitCode === 1) return false
+            if (exitCode !== 0) {
+                throw new Error(
+                    stderr.trim() || `ripgrep exited with ${exitCode}`
+                )
             }
-            if (count < 1) {
-                await output.dispose()
-                return []
+            return true
+        } catch (err) {
+            if (child && child.exitCode == null && child.signalCode == null) {
+                child.kill()
             }
-            return { ...(await output.finish()), count }
+            await closed
+            throw err
+        }
+    }
+
+    private async _scanFallback(
+        name: string,
+        files: AsyncIterable<string> | Iterable<string>,
+        collect: (output: LocalOutputCollector, file: string) => Promise<void>
+    ): Promise<TextOutput> {
+        const output = new LocalOutputCollector(name)
+        try {
+            for await (const file of files) {
+                if (this._shouldIgnore(file)) continue
+                await collect(output, file)
+            }
+            return await output.finish()
         } catch (err) {
             await output.dispose()
             throw err

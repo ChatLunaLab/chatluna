@@ -10,6 +10,8 @@ export class LocalOutputCollector {
 
     private _length = 0
 
+    private _count = 0
+
     private _path?: string
 
     private _stream?: WriteStream
@@ -24,6 +26,10 @@ export class LocalOutputCollector {
         private readonly _name: string,
         private readonly _limit = 8000
     ) {}
+
+    get count() {
+        return this._count
+    }
 
     append(text: string) {
         if (this._result) return Promise.reject(new Error('Output is finished'))
@@ -59,10 +65,19 @@ export class LocalOutputCollector {
         return task
     }
 
+    appendLine(text: string) {
+        this._count += 1
+        return this.append(`${this._count > 1 ? '\n' : ''}${text}`)
+    }
+
     finish() {
         this._result ??= this._pending.then(async () => {
             if (!this._stream) {
-                return { text: this._text, totalLength: this._length }
+                return {
+                    text: this._text,
+                    totalLength: this._length,
+                    count: this._count
+                }
             }
 
             if (!this._stream.closed) {
@@ -78,7 +93,8 @@ export class LocalOutputCollector {
             return {
                 text: this._text,
                 outputPath: this._path,
-                totalLength: this._length
+                totalLength: this._length,
+                count: this._count
             }
         })
         return this._result

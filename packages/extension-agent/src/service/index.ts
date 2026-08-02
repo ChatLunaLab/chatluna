@@ -618,57 +618,35 @@ export class ChatLunaAgentService extends Service {
         const length = input.totalLength ?? input.text.length
         if (length <= limit) return input.text
 
-        if (input.outputPath) {
-            return `${truncateOutput(input.text, limit)}
-
-Output too large (${length} chars). Full output saved to: ${input.outputPath}
-Use file_read with this path plus offset/limit to inspect more.
-`
-        }
-
-        if (input.session) {
-            const dir = (await input.session.getTempDir()).replace(
-                /[\\/]+$/,
-                ''
-            )
+        const preview = truncateOutput(input.text, limit)
+        let saved = input.outputPath
+        if (!saved) {
+            const dir = input.session
+                ? (await input.session.getTempDir()).replace(/[\\/]+$/, '')
+                : (input.outputDir ??
+                  resolve(os.tmpdir(), 'chatluna', 'truncation'))
             const filePath = `${dir}/${input.name}-${Date.now()}-${randomUUID()}.txt`
-
             try {
-                await input.session.writeFile(filePath, input.text)
-                return `${truncateOutput(input.text, limit)}
-
-Output too large (${input.text.length} chars). Full output saved to: ${filePath}
-Use file_read with this path plus offset/limit to inspect more.
-`
+                if (input.session) {
+                    await input.session.writeFile(filePath, input.text)
+                } else {
+                    await mkdir(dir, { recursive: true })
+                    await writeFile(filePath, input.text, 'utf-8')
+                }
+                saved = filePath
             } catch (err) {
                 logger.warn(err)
-                return `${truncateOutput(input.text, limit)}
+                return `${preview}
 
-Output too large (${input.text.length} chars). Failed to save full output: ${getErrorMessage(err)}`
+Output too large (${length} chars). Failed to save full output: ${getErrorMessage(err)}`
             }
         }
 
-        const dir =
-            input.outputDir ?? resolve(os.tmpdir(), 'chatluna', 'truncation')
-        const filePath = join(
-            dir,
-            `${input.name}-${Date.now()}-${randomUUID()}.txt`
-        )
+        return `${preview}
 
-        try {
-            await mkdir(dir, { recursive: true })
-            await writeFile(filePath, input.text, 'utf-8')
-            return `${truncateOutput(input.text, limit)}
-
-Output too large (${input.text.length} chars). Full output saved to: ${filePath}
+Output too large (${length} chars). Full output saved to: ${saved}
 Use file_read with this path plus offset/limit to inspect more.
 `
-        } catch (err) {
-            logger.warn(err)
-            return `${truncateOutput(input.text, limit)}
-
-Output too large (${input.text.length} chars). Failed to save full output: ${getErrorMessage(err)}`
-        }
     }
 
     async updateConfigPath(

@@ -31,15 +31,18 @@ export abstract class ComputerToolBase extends StructuredTool {
     protected async formatLargeResult(
         session: ComputerSessionApi,
         name: string,
-        text: string | TextOutput,
+        text: string | string[] | TextOutput,
         limit = 8000
     ) {
+        const value =
+            typeof text === 'string'
+                ? { text }
+                : Array.isArray(text)
+                  ? { text: text.join('\n') }
+                  : text
         return await this.computer.ctx.chatluna_agent.truncateTextOutput({
             name,
-            text: typeof text === 'string' ? text : text.text,
-            outputPath: typeof text === 'string' ? undefined : text.outputPath,
-            totalLength:
-                typeof text === 'string' ? undefined : text.totalLength,
+            ...value,
             limit,
             session
         })

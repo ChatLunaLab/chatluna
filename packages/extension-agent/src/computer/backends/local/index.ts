@@ -251,15 +251,15 @@ async function runChildProcess(
         let timedOut = false
         let hasOutput = false
         let hasStderr = false
-        const stdout = { value: '', truncated: false }
-        const stderr = { value: '', truncated: false }
+        const stdout = { text: '', truncated: false }
+        const stderr = { text: '', truncated: false }
         const appendPreview = (
             text: string,
-            target: { value: string; truncated: boolean }
+            target: { text: string; truncated: boolean }
         ) => {
-            const remaining = 8000 - target.value.length
+            const remaining = 8000 - target.text.length
             if (text.length > remaining) target.truncated = true
-            target.value += text.slice(0, remaining)
+            target.text += text.slice(0, remaining)
         }
         const pending = new Set<Promise<void>>()
         const append = (stream: NodeJS.ReadableStream, text: string) => {
@@ -285,11 +285,11 @@ async function runChildProcess(
                 resolve({
                     ...result,
                     stdout: stdout.truncated
-                        ? `${stdout.value}\n...[output truncated]`
-                        : stdout.value,
+                        ? `${stdout.text}\n...[output truncated]`
+                        : stdout.text,
                     stderr: stderr.truncated
-                        ? `${stderr.value}\n...[output truncated]`
-                        : stderr.value,
+                        ? `${stderr.text}\n...[output truncated]`
+                        : stderr.text,
                     output: {
                         ...value,
                         text: value.text || '(no output)'
@@ -342,8 +342,8 @@ async function runChildProcess(
         child.on('close', (code, signal) => {
             finish({
                 exitCode: timedOut ? 1 : (code ?? 0),
-                stdout: stdout.value,
-                stderr: stderr.value,
+                stdout: stdout.text,
+                stderr: stderr.text,
                 signal: signal ?? undefined,
                 timedOut
             }).catch(reject)

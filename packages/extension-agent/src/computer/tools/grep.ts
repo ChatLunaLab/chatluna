@@ -52,7 +52,7 @@ export class GrepTool extends ComputerToolBase {
             )
             const count = Array.isArray(results)
                 ? results.length
-                : (results.count ?? 0)
+                : results.count
             if (count < 1) {
                 return 'No matches found.'
             }
@@ -60,11 +60,7 @@ export class GrepTool extends ComputerToolBase {
             this.log(computer, `找到 ${count} 条匹配`)
             return this.withBackend(
                 computer,
-                await this.formatLargeResult(
-                    computer,
-                    'grep',
-                    Array.isArray(results) ? results.join('\n') : results
-                )
+                await this.formatLargeResult(computer, 'grep', results)
             )
         } catch (err) {
             return this.formatResult(

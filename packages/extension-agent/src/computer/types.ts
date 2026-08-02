@@ -8,7 +8,7 @@ export interface TextOutput {
     text: string
     outputPath?: string
     totalLength: number
-    count?: number
+    count: number
 }
 
 export interface ComputerSessionApi {

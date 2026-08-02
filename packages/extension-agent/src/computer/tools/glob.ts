@@ -38,7 +38,7 @@ export class GlobTool extends ComputerToolBase {
             const results = await computer.glob(input.pattern, input.path)
             const count = Array.isArray(results)
                 ? results.length
-                : (results.count ?? 0)
+                : results.count
             if (count < 1) {
                 return 'No files matched.'
             }
@@ -46,11 +46,7 @@ export class GlobTool extends ComputerToolBase {
             this.log(computer, `找到 ${count} 个文件`)
             return this.withBackend(
                 computer,
-                await this.formatLargeResult(
-                    computer,
-                    'glob',
-                    Array.isArray(results) ? results.join('\n') : results
-                )
+                await this.formatLargeResult(computer, 'glob', results)
             )
         } catch (err) {
             return this.formatResult(
