@@ -79,14 +79,18 @@ export class SearchManager {
                 ? Math.max(1, Math.round(limit / providers.length))
                 : limit
 
-        let failedCount = 0
+        const failures: { name: string; reason: string }[] = []
 
         const searchPromises = providers.map(async (provider) => {
             try {
                 const results = await provider.search(query, signalLimit)
                 searchResults.push(...results)
             } catch (error) {
-                failedCount += 1
+                failures.push({
+                    name: provider.name,
+                    reason:
+                        error instanceof Error ? error.message : String(error)
+                })
                 logger.error(
                     `Error searching with provider ${provider.name}:`,
                     error
@@ -96,8 +100,12 @@ export class SearchManager {
 
         await Promise.all(searchPromises)
 
-        if (failedCount === providers.length) {
-            throw new Error('All search providers failed')
+        if (failures.length === providers.length) {
+            throw new Error(
+                `All search providers failed: ${failures
+                    .map((f) => `${f.name} (${f.reason})`)
+                    .join('; ')}`
+            )
         }
 
         if (searchResults.length > limit) {

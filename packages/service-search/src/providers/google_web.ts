@@ -23,15 +23,15 @@ class GoogleWebSearchProvider extends SearchProvider {
                     timeout: this.config.browserTimeout
                 }
             )
-            const finalUrl = page.url()
+            const finalUrl = new URL(page.url())
             if (response && response.status() >= 400) {
                 throw new Error(
                     `google-web request failed with HTTP ${response.status()}`
                 )
             }
             if (
-                finalUrl.includes('/sorry/') ||
-                finalUrl.includes('consent.google.com')
+                finalUrl.pathname.includes('/sorry/') ||
+                finalUrl.hostname === 'consent.google.com'
             ) {
                 throw new Error(
                     'google-web request blocked by captcha or consent page'
@@ -67,10 +67,15 @@ function readGoogleResults() {
         .filter((r) => r.url && r.title)
 
     if (results.length > 0) return results
-    if (!document.querySelector('#search')) {
-        throw new Error('google-web page structure changed or blocked')
+
+    const stats = document.querySelector('#result-stats')?.textContent ?? ''
+    if (
+        document.querySelector('.obcontainer') ||
+        /about 0 results|did not match any/i.test(stats)
+    ) {
+        return []
     }
-    return []
+    throw new Error('google-web page structure changed or blocked')
 }
 
 export function apply(
