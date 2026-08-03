@@ -433,13 +433,15 @@ function readBrowserText(selector?: string, includeLinks?: boolean) {
     ).forEach((el) => el.remove())
 
     const lines = []
-    function walk(node: Node) {
+    const stack: Node[] = [copy]
+    while (stack.length > 0) {
+        const node = stack.pop()!
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent?.replace(/\s+/g, ' ').trim()
             if (text) lines.push(text)
-            return
+            continue
         }
-        if (node.nodeType !== Node.ELEMENT_NODE) return
+        if (node.nodeType !== Node.ELEMENT_NODE) continue
 
         const el = node as Element
         const tag = el.tagName.toLowerCase()
@@ -447,7 +449,7 @@ function readBrowserText(selector?: string, includeLinks?: boolean) {
             lines.push(
                 '\n' + '#'.repeat(Number(tag[1])) + ' ' + el.textContent?.trim()
             )
-            return
+            continue
         }
         if (tag === 'p' || tag === 'section' || tag === 'article')
             lines.push('\n')
@@ -457,18 +459,17 @@ function readBrowserText(selector?: string, includeLinks?: boolean) {
             lines.push(
                 '\n\x60\x60\x60\n' + el.textContent?.trim() + '\n\x60\x60\x60\n'
             )
-            return
+            continue
         }
         if (tag === 'tr') lines.push('\n| ')
         if (tag === 'td' || tag === 'th') {
             lines.push((el.textContent ?? '').trim() + ' | ')
-            return
+            continue
         }
 
-        for (const child of Array.from(el.childNodes)) walk(child)
+        const children = Array.from(el.childNodes)
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i])
     }
-
-    walk(copy)
 
     if (includeLinks) {
         const links = Array.from(copy.querySelectorAll('a[href]'))
