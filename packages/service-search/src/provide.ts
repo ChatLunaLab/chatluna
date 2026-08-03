@@ -16,6 +16,10 @@ export abstract class SearchProvider {
         protected _plugin: ChatLunaPlugin
     ) {}
 
+    /**
+     * Search for results. Implementations must throw an `Error` (not a raw
+     * value) when a request fails, so callers can rely on `error.message`.
+     */
     abstract search(query: string, limit: number): Promise<SearchResult[]>
 
     abstract name: string
@@ -88,8 +92,7 @@ export class SearchManager {
             } catch (error) {
                 failures.push({
                     name: provider.name,
-                    reason:
-                        error instanceof Error ? error.message : String(error)
+                    reason: (error as Error).message
                 })
                 logger.error(
                     `Error searching with provider ${provider.name}:`,
