@@ -305,16 +305,38 @@ export class FileStore implements BaseFileStore {
                 })
                 child.on('close', (code) => resolve(code ?? 0))
             })
-            await consume(child.stdout)
-            const exitCode = await closed
-            if (spawnError) throw spawnError
-            if (exitCode === 1) return false
-            if (exitCode !== 0) {
-                throw new Error(
-                    stderr.trim() || `ripgrep exited with ${exitCode}`
-                )
+            const timeout = this._cfg.commandTimeoutMs
+            let timedOut = false
+            const timer =
+                timeout > 0
+                    ? setTimeout(() => {
+                          timedOut = true
+                          if (
+                              child &&
+                              child.exitCode == null &&
+                              child.signalCode == null
+                          ) {
+                              child.kill()
+                          }
+                      }, timeout)
+                    : undefined
+            try {
+                await consume(child.stdout)
+                const exitCode = await closed
+                if (spawnError) throw spawnError
+                if (timedOut) {
+                    throw new Error(`ripgrep timed out after ${timeout}ms`)
+                }
+                if (exitCode === 1) return false
+                if (exitCode !== 0) {
+                    throw new Error(
+                        stderr.trim() || `ripgrep exited with ${exitCode}`
+                    )
+                }
+                return true
+            } finally {
+                if (timer) clearTimeout(timer)
             }
-            return true
         } catch (err) {
             if (child && child.exitCode == null && child.signalCode == null) {
                 child.kill()
