@@ -5,6 +5,8 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { TextOutput } from '../../types'
 
+const OUTPUT_FILE_PREFIX = '.tmp-chatluna-'
+
 export class LocalOutputCollector {
     private _text = ''
 
@@ -44,10 +46,11 @@ export class LocalOutputCollector {
             if (!this._stream) {
                 this._path = path.join(
                     os.tmpdir(),
-                    `.tmp-chatluna-${this._name}-${Date.now()}-${randomUUID()}.txt`
+                    `${OUTPUT_FILE_PREFIX}${this._name}-${Date.now()}-${randomUUID()}.txt`
                 )
                 this._stream = createWriteStream(this._path, {
-                    encoding: 'utf8'
+                    encoding: 'utf8',
+                    mode: 0o600
                 })
                 this._stream.on('error', (err) => {
                     this._error = err
@@ -119,4 +122,30 @@ export class LocalOutputCollector {
             })
         })
     }
+}
+
+export async function cleanupExpiredOutputs(maxAgeMs: number) {
+    const dir = os.tmpdir()
+    let entries: string[]
+    try {
+        entries = await fs.readdir(dir)
+    } catch {
+        return
+    }
+    const cutoff = Date.now() - maxAgeMs
+    await Promise.all(
+        entries
+            .filter((name) => name.startsWith(OUTPUT_FILE_PREFIX))
+            .map(async (name) => {
+                const file = path.join(dir, name)
+                try {
+                    const stat = await fs.stat(file)
+                    if (stat.mtimeMs < cutoff) {
+                        await fs.rm(file, { force: true })
+                    }
+                } catch {
+                    // ignore
+                }
+            })
+    )
 }

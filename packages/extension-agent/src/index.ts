@@ -10,6 +10,7 @@ import * as webui from './webui'
 import * as mcpCommands from './commands/mcp'
 import * as agentCommands from './commands/agent'
 import * as taskCommands from './commands/task'
+import { cleanupExpiredOutputs } from './computer/backends/local/output'
 
 export * from './types'
 
@@ -26,6 +27,17 @@ export async function apply(ctx: Context, config: Config) {
         config: await readConfig(ctx),
         plugin
     })
+
+    ctx.setInterval(
+        () => {
+            cleanupExpiredOutputs(60 * 60 * 1000).catch((err) => {
+                logger.warn(
+                    `Failed to clean up expired temporary outputs: ${err}`
+                )
+            })
+        },
+        10 * 60 * 1000
+    )
 
     ctx.plugin(webui)
     ctx.plugin(mcpCommands)

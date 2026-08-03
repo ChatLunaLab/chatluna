@@ -342,14 +342,20 @@ export class FileStore implements BaseFileStore {
         }
     }
 
-    private async *_walk(dirPath: string): AsyncGenerator<string> {
+    private async *_walk(
+        dirPath: string,
+        seen = new Set<string>()
+    ): AsyncGenerator<string> {
+        const real = await fs.realpath(dirPath).catch(() => dirPath)
+        if (seen.has(real)) return
+        seen.add(real)
         try {
             for await (const entry of await fs.opendir(dirPath)) {
                 const fullPath = path.join(dirPath, entry.name)
                 if (this._shouldIgnore(fullPath)) continue
 
                 if (entry.isDirectory()) {
-                    yield* this._walk(fullPath)
+                    yield* this._walk(fullPath, seen)
                     continue
                 }
 
@@ -363,7 +369,7 @@ export class FileStore implements BaseFileStore {
                 try {
                     const stat = await fs.stat(fullPath)
                     if (stat.isDirectory()) {
-                        yield* this._walk(fullPath)
+                        yield* this._walk(fullPath, seen)
                         continue
                     }
 
