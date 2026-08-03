@@ -524,10 +524,12 @@ export function formatToolsToGeminiAITools(
 export function formatToolToGeminiAITool(
     tool: StructuredTool
 ): ChatCompletionFunction {
-    const parameters = removeAdditionalProperties(
-        isZodSchemaV3(tool.schema)
-            ? generateSchema(tool.schema as never, true, '3.0')
-            : tool.schema
+    const parameters = sanitizeGeminiSchema(
+        removeAdditionalProperties(
+            isZodSchemaV3(tool.schema)
+                ? generateSchema(tool.schema as never, true, '3.0')
+                : tool.schema
+        )
     )
 
     return {
@@ -536,6 +538,63 @@ export function formatToolToGeminiAITool(
         // any?
         parameters
     }
+}
+
+// Strip keys outside the Gemini `Schema` field set (exclusiveMinimum,
+// exclusiveMaximum, discriminator, ...) which upstream rejects with HTTP 400.
+const GEMINI_SCHEMA_KEYS = new Set([
+    'type',
+    'format',
+    'title',
+    'description',
+    'nullable',
+    'default',
+    'example',
+    'enum',
+    'items',
+    'minItems',
+    'maxItems',
+    'minLength',
+    'maxLength',
+    'minProperties',
+    'maxProperties',
+    'minimum',
+    'maximum',
+    'pattern',
+    'properties',
+    'required',
+    'propertyOrdering',
+    'anyOf'
+])
+
+function sanitizeGeminiSchema(schema: any): any {
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+        return schema
+    }
+
+    const result: Record<string, any> = {}
+    for (const [key, value] of Object.entries(schema)) {
+        if (key === 'oneOf' || key === 'anyOf') {
+            result['anyOf'] = (value as any[]).map(sanitizeGeminiSchema)
+            continue
+        }
+        if (!GEMINI_SCHEMA_KEYS.has(key)) continue
+        if (key === 'items') {
+            result['items'] = sanitizeGeminiSchema(value)
+            continue
+        }
+        if (key === 'properties') {
+            result['properties'] = Object.fromEntries(
+                Object.entries(value).map(([name, sub]) => [
+                    name,
+                    sanitizeGeminiSchema(sub)
+                ])
+            )
+            continue
+        }
+        result[key] = value
+    }
+    return result
 }
 
 export function messageTypeToGeminiRole(
