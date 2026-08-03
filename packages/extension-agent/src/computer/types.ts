@@ -4,6 +4,13 @@ import { ComputerBackendType, ComputerCapability } from '../types'
 
 export type FileContent = string | Uint8Array
 
+export interface TextOutput {
+    text: string
+    outputPath?: string
+    totalLength: number
+    count: number
+}
+
 export interface ComputerSessionApi {
     readonly backend: ComputerBackendType
     readonly sessionId: string
@@ -27,8 +34,8 @@ export interface ComputerSessionApi {
         pattern: string,
         searchPath?: string,
         include?: string
-    ): Promise<string[]>
-    glob(pattern: string, searchPath?: string): Promise<string[]>
+    ): Promise<string[] | TextOutput>
+    glob(pattern: string, searchPath?: string): Promise<string[] | TextOutput>
     execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult>
     readAsset?(path: string): Promise<string>
     openAsset(path: string): Promise<OpenAssetResult>
@@ -64,6 +71,7 @@ export interface ExecuteResult {
     stderr: string
     signal?: string
     timedOut: boolean
+    output?: TextOutput
 }
 
 export interface EditResult {

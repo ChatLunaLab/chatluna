@@ -10,7 +10,7 @@ export class GlobTool extends ComputerToolBase {
 
     description = `Fast file pattern matching tool that works with any codebase size.
 - Supports glob patterns like "**/*.js" or "src/**/*.ts"
-- Returns matching file paths sorted by modification time`
+- Returns matching file paths in search traversal order`
 
     schema = z.object({
         pattern: z
@@ -36,18 +36,17 @@ export class GlobTool extends ComputerToolBase {
 
         try {
             const results = await computer.glob(input.pattern, input.path)
-            if (results.length < 1) {
+            const count = Array.isArray(results)
+                ? results.length
+                : results.count
+            if (count < 1) {
                 return 'No files matched.'
             }
 
-            this.log(computer, `找到 ${results.length} 个文件`)
+            this.log(computer, `找到 ${count} 个文件`)
             return this.withBackend(
                 computer,
-                await this.formatLargeResult(
-                    computer,
-                    'glob',
-                    results.join('\n')
-                )
+                await this.formatLargeResult(computer, 'glob', results)
             )
         } catch (err) {
             return this.formatResult(
