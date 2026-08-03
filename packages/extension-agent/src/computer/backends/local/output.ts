@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { TextOutput } from '../../types'
+import { logger } from '../../..'
 
 const OUTPUT_FILE_PREFIX = '.tmp-chatluna-'
 
@@ -129,7 +130,8 @@ export async function cleanupExpiredOutputs(maxAgeMs: number) {
     let entries: string[]
     try {
         entries = await fs.readdir(dir)
-    } catch {
+    } catch (err) {
+        logger.warn(`Failed to list temp directory for output cleanup: ${err}`)
         return
     }
     const cutoff = Date.now() - maxAgeMs
@@ -143,8 +145,10 @@ export async function cleanupExpiredOutputs(maxAgeMs: number) {
                     if (stat.mtimeMs < cutoff) {
                         await fs.rm(file, { force: true })
                     }
-                } catch {
-                    // ignore
+                } catch (err) {
+                    logger.warn(
+                        `Failed to clean up temporary output ${file}: ${err}`
+                    )
                 }
             })
     )

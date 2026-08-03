@@ -31,9 +31,7 @@ export async function apply(ctx: Context, config: Config) {
     ctx.setInterval(
         () => {
             cleanupExpiredOutputs(60 * 60 * 1000).catch((err) => {
-                logger.warn(
-                    `Failed to clean up expired temporary outputs: ${err}`
-                )
+                logger.error(err)
             })
         },
         10 * 60 * 1000
