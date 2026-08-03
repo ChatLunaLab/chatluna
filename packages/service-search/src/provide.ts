@@ -69,15 +69,7 @@ export class SearchManager {
 
         if (providers.length === 1) {
             // 一个源就不用分了，直接返回
-            try {
-                return await providers[0].search(query, limit)
-            } catch (error) {
-                logger.error(
-                    `Error searching with provider ${providers[0].name}:`,
-                    error
-                )
-                return []
-            }
+            return await providers[0].search(query, limit)
         }
 
         const searchResults: SearchResult[] = []
@@ -87,11 +79,14 @@ export class SearchManager {
                 ? Math.max(1, Math.round(limit / providers.length))
                 : limit
 
+        let failedCount = 0
+
         const searchPromises = providers.map(async (provider) => {
             try {
                 const results = await provider.search(query, signalLimit)
                 searchResults.push(...results)
             } catch (error) {
+                failedCount += 1
                 logger.error(
                     `Error searching with provider ${provider.name}:`,
                     error
@@ -100,6 +95,10 @@ export class SearchManager {
         })
 
         await Promise.all(searchPromises)
+
+        if (failedCount === providers.length) {
+            throw new Error('All search providers failed')
+        }
 
         if (searchResults.length > limit) {
             return this._reRankResults(query, searchResults, limit)
