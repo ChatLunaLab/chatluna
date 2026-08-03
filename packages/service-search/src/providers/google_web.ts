@@ -12,7 +12,7 @@ class GoogleWebSearchProvider extends SearchProvider {
         const page = await this.ctx.puppeteer.page()
 
         try {
-            await page.goto(
+            const response = await page.goto(
                 `https://www.google.com.hk/search?q=${encodeURIComponent(
                     query
                 )}&oq=${encodeURIComponent(
@@ -23,6 +23,20 @@ class GoogleWebSearchProvider extends SearchProvider {
                     timeout: this.config.browserTimeout
                 }
             )
+            const finalUrl = new URL(page.url())
+            if (response && response.status() >= 400) {
+                throw new Error(
+                    `google-web request failed with HTTP ${response.status()}`
+                )
+            }
+            if (
+                finalUrl.pathname.includes('/sorry/') ||
+                finalUrl.hostname === 'consent.google.com'
+            ) {
+                throw new Error(
+                    'google-web request blocked by captcha or consent page'
+                )
+            }
             return (await page.evaluate(readGoogleResults)).slice(0, limit)
         } finally {
             await page.close()
@@ -37,7 +51,7 @@ class GoogleWebSearchProvider extends SearchProvider {
 }
 
 function readGoogleResults() {
-    return Array.from(document.querySelectorAll('#search a > h3'))
+    const results = Array.from(document.querySelectorAll('#search a > h3'))
         .map((h3) => {
             const a = h3.closest('a')
             return {
@@ -51,6 +65,17 @@ function readGoogleResults() {
             }
         })
         .filter((r) => r.url && r.title)
+
+    if (results.length > 0) return results
+
+    const stats = document.querySelector('#result-stats')?.textContent ?? ''
+    if (
+        document.querySelector('.obcontainer') ||
+        /about 0 results|did not match any/i.test(stats)
+    ) {
+        return []
+    }
+    throw new Error('google-web page structure changed or blocked')
 }
 
 export function apply(

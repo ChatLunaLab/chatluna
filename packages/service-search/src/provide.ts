@@ -16,6 +16,10 @@ export abstract class SearchProvider {
         protected _plugin: ChatLunaPlugin
     ) {}
 
+    /**
+     * Search for results. Implementations must throw an `Error` (not a raw
+     * value) when a request fails, so callers can rely on `error.message`.
+     */
     abstract search(query: string, limit: number): Promise<SearchResult[]>
 
     abstract name: string
@@ -69,15 +73,7 @@ export class SearchManager {
 
         if (providers.length === 1) {
             // 一个源就不用分了，直接返回
-            try {
-                return await providers[0].search(query, limit)
-            } catch (error) {
-                logger.error(
-                    `Error searching with provider ${providers[0].name}:`,
-                    error
-                )
-                return []
-            }
+            return await providers[0].search(query, limit)
         }
 
         const searchResults: SearchResult[] = []
@@ -87,11 +83,17 @@ export class SearchManager {
                 ? Math.max(1, Math.round(limit / providers.length))
                 : limit
 
+        const failures: { name: string; reason: string }[] = []
+
         const searchPromises = providers.map(async (provider) => {
             try {
                 const results = await provider.search(query, signalLimit)
                 searchResults.push(...results)
             } catch (error) {
+                failures.push({
+                    name: provider.name,
+                    reason: (error as Error).message
+                })
                 logger.error(
                     `Error searching with provider ${provider.name}:`,
                     error
@@ -100,6 +102,14 @@ export class SearchManager {
         })
 
         await Promise.all(searchPromises)
+
+        if (failures.length === providers.length) {
+            throw new Error(
+                `All search providers failed: ${failures
+                    .map((f) => `${f.name} (${f.reason})`)
+                    .join('; ')}`
+            )
+        }
 
         if (searchResults.length > limit) {
             return this._reRankResults(query, searchResults, limit)
