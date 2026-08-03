@@ -83,9 +83,10 @@ class WikipediaSearchProvider extends SearchProvider {
         this.topKResults = params.topKResults ?? this.topKResults
         this.maxDocContentLength =
             params.maxDocContentLength ?? this.maxDocContentLength
-        this.baseUrls = params.baseUrls ?? [
-            params.baseUrl ?? 'https://en.wikipedia.org/w/api.php'
-        ]
+        this.baseUrls =
+            params.baseUrls?.length > 0
+                ? params.baseUrls
+                : [params.baseUrl ?? 'https://en.wikipedia.org/w/api.php']
 
         if (!model) {
             logger?.warn(
@@ -109,12 +110,6 @@ class WikipediaSearchProvider extends SearchProvider {
         const summaries: SearchResult[] = []
 
         if (!searchResults) return []
-        if (searchResults.error) {
-            logger.error(
-                `Error fetching search results for query "${query}": ${JSON.stringify(searchResults.error)}`
-            )
-            return []
-        }
 
         const topK = Math.min(limit, searchResults.query.search.length)
 
@@ -124,12 +119,12 @@ class WikipediaSearchProvider extends SearchProvider {
             const page = searchResults.query.search[i].title
 
             try {
-                const pageDetails = await this._tryEach((baseUrl) =>
-                    this._fetchPage(page, true, baseUrl)
-                )
-                const pageUrl = await this._tryEach((baseUrl) =>
-                    this._getPageUrl(page, baseUrl)
-                )
+                const [pageDetails, pageUrl] = await Promise.all([
+                    this._tryEach((baseUrl) =>
+                        this._fetchPage(page, true, baseUrl)
+                    ),
+                    this._tryEach((baseUrl) => this._getPageUrl(page, baseUrl))
+                ])
 
                 if (!pageDetails || !pageUrl) {
                     continue
@@ -257,6 +252,10 @@ class WikipediaSearchProvider extends SearchProvider {
         if (!response.ok) throw new Error('Network response was not ok')
 
         const data = (await response.json()) as SearchResults
+
+        if (data.error) {
+            throw new Error(JSON.stringify(data.error))
+        }
 
         return data
     }
