@@ -16,6 +16,7 @@ export interface WikipediaQueryRunParams {
     topKResults?: number
     maxDocContentLength?: number
     baseUrl?: string
+    baseUrls?: string[]
 }
 
 /**
@@ -66,7 +67,7 @@ class WikipediaSearchProvider extends SearchProvider {
 
     protected maxDocContentLength = 5000
 
-    protected baseUrl = 'https://en.wikipedia.org/w/api.php'
+    protected baseUrls: string[]
 
     private searchedKeyword: string[] = []
 
@@ -82,7 +83,9 @@ class WikipediaSearchProvider extends SearchProvider {
         this.topKResults = params.topKResults ?? this.topKResults
         this.maxDocContentLength =
             params.maxDocContentLength ?? this.maxDocContentLength
-        this.baseUrl = params.baseUrl ?? this.baseUrl
+        this.baseUrls = params.baseUrls ?? [
+            params.baseUrl ?? 'https://en.wikipedia.org/w/api.php'
+        ]
 
         if (!model) {
             logger?.warn(
@@ -100,15 +103,19 @@ class WikipediaSearchProvider extends SearchProvider {
             logger?.debug(`Extracted keyword For Wikipedia: ${query}`)
         }
 
-        const searchResults = await this._fetchSearchResults(query)
+        const searchResults = await this._tryEach((baseUrl) =>
+            this._fetchSearchResults(query, baseUrl)
+        )
         const summaries: SearchResult[] = []
 
+        if (!searchResults) return []
         if (searchResults.error) {
             logger.error(
-                `Error fetching search results for query "${query}" in ${this.baseUrl}: ${JSON.stringify(searchResults.error)}`
+                `Error fetching search results for query "${query}": ${JSON.stringify(searchResults.error)}`
             )
             return []
         }
+
         const topK = Math.min(limit, searchResults.query.search.length)
 
         const documentContentLength = (this.maxDocContentLength / topK) * 2
@@ -117,12 +124,16 @@ class WikipediaSearchProvider extends SearchProvider {
             const page = searchResults.query.search[i].title
 
             try {
-                const pageDetails = await this._fetchPage(page, true)
+                const pageDetails = await this._tryEach((baseUrl) =>
+                    this._fetchPage(page, true, baseUrl)
+                )
+                const pageUrl = await this._tryEach((baseUrl) =>
+                    this._getPageUrl(page, baseUrl)
+                )
 
-                if (!pageDetails) {
+                if (!pageDetails || !pageUrl) {
                     continue
                 }
-                const pageUrl = await this._getPageUrl(page)
                 summaries.push({
                     title: page,
                     description: pageDetails.extract.slice(
@@ -171,15 +182,13 @@ class WikipediaSearchProvider extends SearchProvider {
      * @returns The extracted content of the specific Wikipedia page as a string.
      */
     public async content(page: string, redirect = true): Promise<string> {
-        try {
-            const result = await this._fetchPage(page, redirect)
-            return result.extract
-        } catch (error) {
-            logger?.error(error)
-            throw new Error(
-                `Failed to fetch content for page "${page}": ${error}`
-            )
+        const result = await this._tryEach((baseUrl) =>
+            this._fetchPage(page, redirect, baseUrl)
+        )
+        if (!result) {
+            throw new Error(`Failed to fetch content for page "${page}"`)
         }
+        return result.extract
     }
 
     /**
@@ -194,10 +203,23 @@ class WikipediaSearchProvider extends SearchProvider {
             .filter(([_, value]) => value !== undefined)
             .map(([key, value]) => [key, `${value}`])
         const searchParams = new URLSearchParams(nonUndefinedParams)
-        return `${this.baseUrl}?${searchParams}`
+        return `${this.baseUrls[0]}?${searchParams}`
     }
 
-    private async _getPageUrl(title: string): Promise<string> {
+    private async _tryEach<T>(
+        fn: (baseUrl: string) => Promise<T>
+    ): Promise<T | undefined> {
+        for (const baseUrl of this.baseUrls) {
+            try {
+                return await fn(baseUrl)
+            } catch (error) {
+                logger.error(`Wikipedia ${baseUrl} failed: ${error}`)
+            }
+        }
+        return undefined
+    }
+
+    private async _getPageUrl(title: string, baseUrl: string): Promise<string> {
         const params = new URLSearchParams({
             action: 'query',
             prop: 'info',
@@ -207,7 +229,7 @@ class WikipediaSearchProvider extends SearchProvider {
         })
 
         const response = await this._plugin.fetch(
-            `${this.baseUrl}?${params.toString()}`
+            `${baseUrl}?${params.toString()}`
         )
         if (!response.ok) throw new Error('Network response was not ok')
 
@@ -218,7 +240,10 @@ class WikipediaSearchProvider extends SearchProvider {
         return pages[pageId].fullurl
     }
 
-    private async _fetchSearchResults(query: string): Promise<SearchResults> {
+    private async _fetchSearchResults(
+        query: string,
+        baseUrl: string
+    ): Promise<SearchResults> {
         const searchParams = new URLSearchParams({
             action: 'query',
             list: 'search',
@@ -227,7 +252,7 @@ class WikipediaSearchProvider extends SearchProvider {
         })
 
         const response = await this._plugin.fetch(
-            `${this.baseUrl}?${searchParams.toString()}`
+            `${baseUrl}?${searchParams.toString()}`
         )
         if (!response.ok) throw new Error('Network response was not ok')
 
@@ -236,7 +261,11 @@ class WikipediaSearchProvider extends SearchProvider {
         return data
     }
 
-    private async _fetchPage(page: string, redirect: boolean): Promise<Page> {
+    private async _fetchPage(
+        page: string,
+        redirect: boolean,
+        baseUrl: string
+    ): Promise<Page> {
         const params = new URLSearchParams({
             action: 'query',
             prop: 'extracts',
@@ -247,7 +276,7 @@ class WikipediaSearchProvider extends SearchProvider {
         })
 
         const response = await this._plugin.fetch(
-            `${this.baseUrl}?${params.toString()}`
+            `${baseUrl}?${params.toString()}`
         )
         if (!response.ok) throw new Error('Network response was not ok')
 
@@ -299,22 +328,19 @@ export async function apply(
         logger?.error(error)
     }
 
-    const wikipediaBaseURLs = config.wikipediaBaseURL
-    for (const baseURL of wikipediaBaseURLs) {
-        manager.addProvider(
-            new WikipediaSearchProvider(
-                ctx,
-                config,
-                plugin,
-                {
-                    baseUrl: baseURL,
-                    maxDocContentLength:
-                        config.summaryType !== SummaryType.Balanced
-                            ? config.maxWikipediaDocContentLength
-                            : 100000
-                },
-                summaryModel
-            )
+    manager.addProvider(
+        new WikipediaSearchProvider(
+            ctx,
+            config,
+            plugin,
+            {
+                baseUrls: config.wikipediaBaseURL,
+                maxDocContentLength:
+                    config.summaryType !== SummaryType.Balanced
+                        ? config.maxWikipediaDocContentLength
+                        : 100000
+            },
+            summaryModel
         )
-    }
+    )
 }
