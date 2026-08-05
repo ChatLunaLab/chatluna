@@ -7,6 +7,8 @@ import {
 } from '@langchain/core/messages'
 import type { Session } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
+import type { ConversationRecord, Message } from 'koishi-plugin-chatluna'
+import type { ChatEvents } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { observationToMessageContent } from '../legacy-executor'
 import { MessageQueue } from '../types'
@@ -99,6 +101,28 @@ export async function runAgentTask(options: {
           }
         : undefined
 
+    const requestId =
+        options.runConfig?.configurable?.agentContext?.requestId ?? runId
+
+    // The sub-agent must not inherit the parent agent's callbacks, otherwise
+    // its intermediate tokens and tool calls would bubble up and be streamed
+    // to the channel as if they were the main agent's output. Only the
+    // registered callbacks providers (runtime sync, etc.) are kept.
+    const callbacks = isBg
+        ? undefined
+        : await options.session.app.chatluna.resolveCallbacks({
+              session: options.session,
+              conversation: {
+                  id: options.conversationId
+              } as ConversationRecord,
+              message: { content: options.prompt } as Message,
+              event: {} as ChatEvents,
+              stream: false,
+              variables: {},
+              requestId,
+              callbacks: undefined
+          })
+
     options.task.activeRunId = runId
     options.runs.set(runId, run)
     if (snapshot) options.snapshots.set(runId, snapshot)
@@ -136,10 +160,7 @@ export async function runAgentTask(options: {
                 prompt: options.prompt,
                 session: options.session,
                 conversationId: options.task.conversationId,
-                requestId: isBg
-                    ? runId
-                    : (options.runConfig?.configurable?.agentContext
-                          ?.requestId ?? runId),
+                requestId,
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
@@ -162,7 +183,7 @@ export async function runAgentTask(options: {
                 toolMask,
                 subagentContext: subCtx,
                 source: options.source,
-                callbacks: isBg ? undefined : options.runConfig?.callbacks,
+                callbacks,
                 onStep: async (event) => {
                     await onTaskEvent(options.task, run, saveUser, event)
                     await options.runtime.refresh?.()
