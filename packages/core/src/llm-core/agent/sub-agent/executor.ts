@@ -101,6 +101,9 @@ export async function runAgentTask(options: {
           }
         : undefined
 
+    const requestId =
+        options.runConfig?.configurable?.agentContext?.requestId ?? runId
+
     // The sub-agent must not inherit the parent agent's callbacks, otherwise
     // its intermediate tokens and tool calls would bubble up and be streamed
     // to the channel as if they were the main agent's output. Only the
@@ -116,7 +119,7 @@ export async function runAgentTask(options: {
               event: {} as ChatEvents,
               stream: false,
               variables: {},
-              requestId: runId,
+              requestId,
               callbacks: undefined
           })
 
@@ -157,10 +160,7 @@ export async function runAgentTask(options: {
                 prompt: options.prompt,
                 session: options.session,
                 conversationId: options.task.conversationId,
-                requestId: isBg
-                    ? runId
-                    : (options.runConfig?.configurable?.agentContext
-                          ?.requestId ?? runId),
+                requestId,
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
