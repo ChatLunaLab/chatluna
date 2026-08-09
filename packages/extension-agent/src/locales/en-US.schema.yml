@@ -1,2 +1,10 @@
 name: ChatLuna Agent Framework
 description: Provides MCP, Skills, Scheduler, Tool and Sub-Agent support
+$inner:
+    - {}
+    - $desc: MCP tool loading
+      mcpToolMode:
+          $desc: Controls how MCP tools are disclosed to the model.
+          $inner:
+              - Eager mode. Send every enabled MCP tool's complete schema to the model.
+              - Catalog lazy-loading mode. Keep only stable search and invoke gateway tools in context, and retrieve real tool contracts on demand.

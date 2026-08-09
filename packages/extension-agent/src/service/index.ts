@@ -5,8 +5,9 @@ import { mkdir, rm, stat, writeFile } from 'fs/promises'
 import os from 'node:os'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { logger } from '..'
+import { type Config, logger } from '..'
 import { truncateOutput } from '../computer/backends/types'
 import type { ComputerSessionApi } from '../computer/types'
 import { createSubAgentItemConfig } from '../config/defaults'
@@ -60,7 +61,10 @@ export class ChatLunaAgentService extends Service {
 
     constructor(
         public ctx: Context,
-        public args: { config: AgentConfig; plugin: ChatLunaPlugin }
+        public args: {
+            config: AgentConfig
+            plugin: ChatLunaPlugin<ClientConfig, Config>
+        }
     ) {
         super(ctx, 'chatluna_agent')
 
