@@ -1,6 +1,7 @@
 /** @module extension-agent */
 
 import { Context, Logger, Schema } from 'koishi'
+import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { ChatLunaAgentService } from './service'
@@ -15,12 +16,17 @@ import { cleanupExpiredOutputs } from './computer/backends/local/output'
 export * from './types'
 
 export let logger: Logger
-export let plugin: ChatLunaPlugin
+export let plugin: ChatLunaPlugin<ClientConfig, Config>
 
 export async function apply(ctx: Context, config: Config) {
     logger = createLogger(ctx, 'chatluna-agent')
 
-    plugin = new ChatLunaPlugin(ctx, config, 'agent', false)
+    plugin = new ChatLunaPlugin<ClientConfig, Config>(
+        ctx,
+        config,
+        'agent',
+        false
+    )
     await migrateAgentData(ctx)
 
     ctx.plugin(ChatLunaAgentService, {
@@ -43,9 +49,22 @@ export async function apply(ctx: Context, config: Config) {
     ctx.plugin(taskCommands)
 }
 
-export const Config: Schema<Config> = Schema.intersect([ChatLunaPlugin.Config])
+export const Config: Schema<Config> = Schema.intersect([
+    ChatLunaPlugin.Config,
+    Schema.object({
+        mcpToolMode: Schema.union([
+            Schema.const('eager'),
+            Schema.const('catalog')
+        ]).default('eager')
+    })
+]).i18n({
+    'zh-CN': require('./locales/zh-CN.schema.yml'),
+    'en-US': require('./locales/en-US.schema.yml')
+}) as Schema<Config>
 
-export interface Config extends ChatLunaPlugin.Config {}
+export interface Config extends ChatLunaPlugin.Config {
+    mcpToolMode: 'eager' | 'catalog'
+}
 
 export const inject = {
     required: ['chatluna', 'console'],
