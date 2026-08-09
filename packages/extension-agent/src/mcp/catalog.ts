@@ -18,6 +18,11 @@ export type McpCatalogSourceTool = {
     inputSchema: Record<string, unknown>
 }
 
+/**
+ * Create a catalog entry from an MCP tool definition by parsing its schema.
+ * @param tool - The source MCP tool definition
+ * @returns A catalog entry with summary, parameters, and keywords
+ */
 export function createMcpCatalogTool(
     tool: McpCatalogSourceTool
 ): McpCatalogTool {
@@ -39,6 +44,13 @@ export function createMcpCatalogTool(
     }
 }
 
+/**
+ * Score a tool's relevance to a search query using keyword matching.
+ * @param query - The search query
+ * @param server - The server name
+ * @param tool - The catalog tool to score
+ * @returns A relevance score (higher is better, 0 means no match)
+ */
 export function scoreMcpCatalogTool(
     query: string,
     server: string,
@@ -64,6 +76,12 @@ export function scoreMcpCatalogTool(
     return score
 }
 
+/**
+ * Create a compact summary result for search results (without inputSchema).
+ * @param server - The server name
+ * @param tool - The catalog tool
+ * @returns A summary object with server, name, summary, and parameters
+ */
 export function createMcpCatalogSummaryResult(
     server: string,
     tool: McpCatalogTool
@@ -76,6 +94,12 @@ export function createMcpCatalogSummaryResult(
     }
 }
 
+/**
+ * Create a full schema result including inputSchema for tool invocation.
+ * @param server - The server name
+ * @param tool - The catalog tool
+ * @returns A complete tool definition with inputSchema
+ */
 export function createMcpCatalogSchemaResult(
     server: string,
     tool: McpCatalogTool
@@ -86,6 +110,13 @@ export function createMcpCatalogSchemaResult(
     }
 }
 
+/**
+ * Validate tool arguments against an inputSchema using AJV validator.
+ * @param validator - The AJV schema validator instance
+ * @param schema - The JSON schema to validate against
+ * @param args - The arguments to validate
+ * @returns Validation result with data or error details
+ */
 export function validateMcpArguments(
     validator: AjvJsonSchemaValidator,
     schema: Record<string, unknown>,
@@ -120,6 +151,11 @@ export type McpArgumentValidation =
           message: string
       }
 
+/**
+ * Format JSON schema properties into a human-readable parameter description.
+ * @param schema - The JSON schema object
+ * @returns A formatted string describing parameters
+ */
 function formatParameters(schema: Record<string, unknown>) {
     const source = schema as {
         properties?: Record<string, { type?: string; description?: string }>

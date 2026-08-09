@@ -54,6 +54,10 @@ export class ChatLunaAgentMcpService {
         public plugin: ChatLunaPlugin<ClientConfig, Config>
     ) {}
 
+    /**
+     * Start the MCP service. In catalog mode, initializes server records without connecting.
+     * In eager mode, connects to all configured servers immediately.
+     */
     async start() {
         this._stopped = false
         logger.info('Starting MCP service')
@@ -101,6 +105,9 @@ export class ChatLunaAgentMcpService {
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
+    /**
+     * Stop the MCP service, waiting for active calls to complete and closing all connections.
+     */
     async stop() {
         this._stopped = true
         this._indexing = false
@@ -139,6 +146,9 @@ export class ChatLunaAgentMcpService {
         this._indexingPromise = undefined
     }
 
+    /**
+     * Reload the MCP service, removing deleted servers and reconnecting to existing/new ones.
+     */
     async reload() {
         await Promise.all(
             Array.from(this._servers.keys())
@@ -163,6 +173,10 @@ export class ChatLunaAgentMcpService {
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
+    /**
+     * Reconnect to a specific MCP server, resetting retry attempts and error state.
+     * @param name - The server name to reconnect
+     */
     async reconnect(name: string) {
         return await this._enqueueServerOperation(name, () =>
             this._reconnectNow(name)
@@ -193,11 +207,20 @@ export class ChatLunaAgentMcpService {
         await this._connect(name, cfg, true)
     }
 
+    /**
+     * Sync MCP configuration changes by stopping and restarting the service.
+     * @param _prev - Previous configuration (unused)
+     * @param _next - Next configuration (unused)
+     */
     async sync(_prev: McpConfig, _next: McpConfig) {
         await this.stop()
         await this.start()
     }
 
+    /**
+     * Get the current status of all MCP servers and tools.
+     * @returns Status object containing server states and tool information
+     */
     getStatus(): McpStatus {
         const servers: Record<string, McpServerStatus> = {}
         const tools: Record<string, McpToolInfo> = {}
@@ -256,6 +279,10 @@ export class ChatLunaAgentMcpService {
         }
     }
 
+    /**
+     * List all available MCP tools from connected servers.
+     * @returns Array of tool information objects
+     */
     listTools() {
         return Object.values(this._tools).filter(
             (t) => this.config.mcp.mcpServers[t.server]
