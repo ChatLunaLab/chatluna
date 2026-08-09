@@ -82,7 +82,7 @@ export class ChatLunaAgentMcpService {
             this._registerGateways()
             logger.info(
                 `MCP catalog mode initialized with ${this._servers.size} server(s). ` +
-                `Servers will be indexed on first search.`
+                    `Servers will be indexed on first search.`
             )
             this.ctx.chatluna_agent?.refreshConsoleData()
             return
@@ -1148,7 +1148,7 @@ function getRequiredToolCallMask(config?: RunnableConfig) {
     if (!callMask) {
         logger.warn(
             'MCP tool permission context is unavailable, falling back to allow-all mode. ' +
-            'This may indicate the permission service is not initialized.'
+                'This may indicate the permission service is not initialized.'
         )
         return { mode: 'all' as const, tools: [], allow: [], deny: [] }
     }
