@@ -26,12 +26,32 @@ export type McpCatalogSourceTool = {
 export function createMcpCatalogTool(
     tool: McpCatalogSourceTool
 ): McpCatalogTool {
+    const source = tool.inputSchema as {
+        properties?: Record<string, { type?: string; description?: string }>
+        required?: string[]
+    }
+    const required = new Set(source.required ?? [])
+    const properties = Object.entries(source.properties ?? {})
+    const parameters =
+        properties.length === 0
+            ? 'No parameters'
+            : properties
+                  .map(([name, info]) => {
+                      const type = info.type ?? 'value'
+                      const description = info.description
+                          ? ` - ${info.description}`
+                          : ''
+                      return `${name}${required.has(name) ? ' (required)' : ''}: ${type}${description}`
+                  })
+                  .join('; ')
+                  .slice(0, 200)
+
     return {
         name: tool.name,
         summary: (tool.description || `MCP tool ${tool.name}`)
             .trim()
             .slice(0, 200),
-        parameters: formatParameters(tool.inputSchema),
+        parameters,
         keywords: Array.from(
             new Set(
                 `${tool.name} ${tool.title ?? ''} ${tool.description ?? ''}`
@@ -150,27 +170,3 @@ export type McpArgumentValidation =
           error: 'validation_error' | 'schema_error'
           message: string
       }
-
-/**
- * Format JSON schema properties into a human-readable parameter description.
- * @param schema - The JSON schema object
- * @returns A formatted string describing parameters
- */
-function formatParameters(schema: Record<string, unknown>) {
-    const source = schema as {
-        properties?: Record<string, { type?: string; description?: string }>
-        required?: string[]
-    }
-    const required = new Set(source.required ?? [])
-    const properties = Object.entries(source.properties ?? {})
-    if (properties.length === 0) return 'No parameters'
-
-    return properties
-        .map(([name, info]) => {
-            const type = info.type ?? 'value'
-            const description = info.description ? ` - ${info.description}` : ''
-            return `${name}${required.has(name) ? ' (required)' : ''}: ${type}${description}`
-        })
-        .join('; ')
-        .slice(0, 200)
-}
