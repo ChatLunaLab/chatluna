@@ -3,6 +3,7 @@
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
+import { formatFileDiff } from '../file_changes'
 import { ComputerToolBase } from './base'
 
 export class EditFileTool extends ComputerToolBase {
@@ -59,7 +60,7 @@ Usage:
             )
             return this.withBackend(
                 computer,
-                `Replaced ${result.replacements} occurrence(s) in ${input.filePath}\n\nContext (> marks modified lines):\n${result.context}`
+                `Diff:\n${formatFileDiff(result.before, result.after)}\n\nReplaced ${result.replacements} occurrence(s) in ${input.filePath}`
             )
         } catch (err) {
             return this.formatResult(

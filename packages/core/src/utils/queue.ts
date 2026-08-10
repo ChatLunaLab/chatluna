@@ -1,6 +1,7 @@
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    createAbortError
 } from 'koishi-plugin-chatluna/utils/error'
 import { ObjectLock } from 'koishi-plugin-chatluna/utils/lock'
 import { withResolver } from 'koishi-plugin-chatluna/utils/promise'
@@ -146,13 +147,7 @@ export class RequestIdQueue {
 
             // Settle removed waiters so abort/cancel paths do not hang.
             if (removed != null && !removed.active) {
-                removed.notifyPromise.reject(
-                    new ChatLunaError(
-                        ChatLunaErrorCode.ABORTED,
-                        undefined,
-                        true
-                    )
-                )
+                removed.notifyPromise.reject(createAbortError())
             }
 
             items.forEach((item) => item.notifyPromise.resolve())

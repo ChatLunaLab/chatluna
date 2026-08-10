@@ -461,7 +461,7 @@ export class ChatLunaContextManagerService {
         afterUserMessage,
         currentMessages
     }: CollectPromptContextOptions): PromptContextInjectionCollection {
-        const conversationId = configurable?.conversationId
+        const conversationId = configurable?.agentContext?.conversationId
 
         // Step 1: stamp ids on any message that lacks one.
         for (const msg of currentMessages) {

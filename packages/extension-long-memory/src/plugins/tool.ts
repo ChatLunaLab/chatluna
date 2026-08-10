@@ -21,7 +21,7 @@ function buildMemoryInfo(config: ChatLunaToolRunnable) {
         guildId:
             config.configurable.session.guildId ||
             config.configurable.session.channelId,
-        userId: config.configurable.userId
+        userId: config.configurable.agentContext.userId
     }
 }
 
@@ -164,7 +164,7 @@ export class MemorySearchTool extends StructuredTool {
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,
-                config.configurable.conversationId,
+                config.configurable.agentContext.conversationId,
                 parsedLayerType
             )
 
@@ -265,7 +265,7 @@ export class MemoryAddTool extends StructuredTool {
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,
-                config.configurable.conversationId,
+                config.configurable.agentContext.conversationId,
                 parsedLayerType
             )
 
@@ -349,7 +349,7 @@ export class MemoryDeleteTool extends StructuredTool {
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,
-                config.configurable.conversationId,
+                config.configurable.agentContext.conversationId,
                 parsedLayerType
             )
 
@@ -445,7 +445,7 @@ export class MemoryUpdateTool extends StructuredTool {
 
             await this.ctx.chatluna_long_memory.initMemoryLayers(
                 info,
-                config.configurable.conversationId,
+                config.configurable.agentContext.conversationId,
                 layers
             )
 

@@ -49,9 +49,7 @@ export async function createSubAgent(
 
             return await base.agent.generate({
                 ...input,
-                prompt,
-                toolMask: base.toolMask,
-                subagentContext: base.subCtx
+                prompt
             })
         },
         async stream(input) {
@@ -66,9 +64,7 @@ export async function createSubAgent(
 
             return await base.agent.stream({
                 ...input,
-                prompt,
-                toolMask: base.toolMask,
-                subagentContext: base.subCtx
+                prompt
             })
         },
         asTool(toolOptions?: AgentToolOptions) {
@@ -152,27 +148,9 @@ async function createInnerAgent(
           )
         : []
 
-    const subCtx =
-        input.subagentContext != null
-            ? { ...input.subagentContext, toolMask }
-            : {
-                  agentId: options.info.id,
-                  agentName: options.info.name,
-                  parentConversationId: input.conversationId ?? '',
-                  depth: 1,
-                  maxDepth: 1,
-                  toolMask,
-                  disableHandoff: true,
-                  traceInfo: {
-                      runId: options.info.id,
-                      parentAgent: 'main',
-                      startedAt: Date.now()
-                  }
-              }
-
     const system = renderSubAgentSystemPrompt(
         options.info,
-        subCtx,
+        input.subagentContext,
         skills,
         backends.length > 0 && computer?.getStatus().enabled
             ? {
@@ -194,7 +172,6 @@ async function createInnerAgent(
     return {
         llm,
         toolMask,
-        subCtx,
         agent: await options.ctx.chatluna.createAgent({
             id: options.info.id,
             name: options.info.name,

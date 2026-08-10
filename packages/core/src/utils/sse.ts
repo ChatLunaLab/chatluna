@@ -1,6 +1,8 @@
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    createAbortError,
+    createTimeoutError
 } from 'koishi-plugin-chatluna/utils/error'
 import * as fetchType from 'undici/types/fetch'
 
@@ -155,12 +157,43 @@ export async function checkResponse(
 }
 
 // eslint-disable-next-line generator-star-spacing
-async function* readSSE(reader: ReadableStreamDefaultReader) {
+async function* readSSE(
+    reader: ReadableStreamDefaultReader,
+    signal?: AbortSignal
+) {
     const decoder = new TextDecoder('utf-8')
 
     try {
         while (true) {
-            const { value, done } = await reader.read()
+            if (signal?.aborted) {
+                const error = signal.reason ?? createAbortError()
+                // eslint-disable-next-line no-void
+                void reader.cancel(error).catch(() => {})
+                throw error
+            }
+
+            let abort: (() => void) | undefined
+            const pending = [reader.read()]
+
+            if (signal) {
+                pending.push(
+                    // eslint-disable-next-line promise/param-names
+                    new Promise<never>((_, reject) => {
+                        abort = () => {
+                            const error = signal.reason ?? createAbortError()
+                            reject(error)
+                            // eslint-disable-next-line no-void
+                            void reader.cancel(error).catch(() => {})
+                        }
+                        signal.addEventListener('abort', abort, { once: true })
+                        if (signal.aborted) abort()
+                    })
+                )
+            }
+
+            const { value, done } = await Promise.race(pending).finally(() => {
+                if (abort) signal?.removeEventListener('abort', abort)
+            })
 
             if (done) {
                 return
@@ -171,26 +204,16 @@ async function* readSSE(reader: ReadableStreamDefaultReader) {
             yield decodeValue
         }
     } finally {
+        await reader.cancel().catch(() => {})
         reader.releaseLock()
-    }
-}
-
-export async function sse(
-    response: fetchType.Response | ReadableStreamDefaultReader<string>,
-    onEvent: (
-        rawData: string
-    ) => Promise<string | boolean | void> = async () => {},
-    cacheCount: number = 0
-) {
-    for await (const rawChunk of rawSeeAsIterable(response, cacheCount)) {
-        await onEvent(rawChunk)
     }
 }
 
 // eslint-disable-next-line generator-star-spacing
 export async function* rawSeeAsIterable(
     response: fetchType.Response | ReadableStreamDefaultReader<string>,
-    cacheCount: number = 0
+    cacheCount: number = 0,
+    signal?: AbortSignal
 ) {
     await checkResponse(response)
 
@@ -203,7 +226,7 @@ export async function* rawSeeAsIterable(
 
     let tempCount = 0
 
-    for await (const rawChunk of readSSE(reader)) {
+    for await (const rawChunk of readSSE(reader, signal)) {
         bufferString += rawChunk
         tempCount++
 
@@ -222,14 +245,48 @@ export async function* rawSeeAsIterable(
 
 // eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(
-    response: fetchType.Response | ReadableStreamDefaultReader<string>
+    response: fetchType.Response | ReadableStreamDefaultReader<string>,
+    timeout?: number,
+    signal?: AbortSignal
 ) {
+    const idleTimeout = timeout == null ? undefined : Math.min(timeout, 60_000)
     const parser = createParser()
+    const controller = new AbortController()
+    let timer: NodeJS.Timeout | undefined
+    const abort = () => controller.abort(signal?.reason)
 
-    for await (const rawChunk of rawSeeAsIterable(response)) {
-        for (const event of parser(rawChunk)) {
-            yield event
+    const reset = () => {
+        if (idleTimeout == null || controller.signal.aborted) return
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(
+            () => controller.abort(createTimeoutError()),
+            idleTimeout
+        )
+    }
+
+    if (signal) {
+        signal.addEventListener('abort', abort, { once: true })
+        if (signal.aborted) abort()
+    }
+
+    reset()
+
+    try {
+        for await (const rawChunk of rawSeeAsIterable(
+            response,
+            0,
+            controller.signal
+        )) {
+            for (const event of parser(rawChunk)) {
+                if (Object.keys(event).some((key) => key !== 'comments')) {
+                    reset()
+                }
+                yield event
+            }
         }
+    } finally {
+        if (timer) clearTimeout(timer)
+        signal?.removeEventListener('abort', abort)
     }
 
     return '[DONE]'

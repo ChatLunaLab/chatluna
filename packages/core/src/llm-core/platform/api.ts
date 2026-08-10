@@ -9,8 +9,9 @@ import { Context, Logger } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import * as fetchType from 'undici/types/fetch'
 import {
-    ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    isAbortError,
+    isErrorWithCode
 } from 'koishi-plugin-chatluna/utils/error'
 import type {
     EmbeddingsResult,
@@ -152,13 +153,13 @@ export abstract class ModelRequester<
             )
         } catch (e) {
             if (
-                (e instanceof ChatLunaError &&
-                    (e.errorCode === ChatLunaErrorCode.NETWORK_ERROR ||
-                        e.errorCode === ChatLunaErrorCode.API_REQUEST_TIMEOUT ||
-                        e.errorCode === ChatLunaErrorCode.ABORTED ||
-                        e.errorCode ===
-                            ChatLunaErrorCode.API_UNSAFE_CONTENT)) ||
-                e.name === 'AbortError'
+                isErrorWithCode(e, [
+                    ChatLunaErrorCode.NETWORK_ERROR,
+                    ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+                    ChatLunaErrorCode.ABORTED,
+                    ChatLunaErrorCode.API_UNSAFE_CONTENT
+                ]) ||
+                isAbortError(e)
             ) {
                 // Ignore network errors
                 throw e

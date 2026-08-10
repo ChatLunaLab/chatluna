@@ -212,12 +212,11 @@ export interface ToolMask {
 
 export interface AgentRunContext {
     kind: 'main' | 'subagent'
-    agentId?: string
-    agentName?: string
-    conversationId?: string
-    parentConversationId?: string
-    requestId?: string
-    source?: 'chatluna' | 'character'
+    agentId: string
+    agentName: string
+    conversationId: string
+    requestId: string
+    source: 'chatluna' | 'character'
     userId?: string
     guildId?: string
     channelId?: string
@@ -226,17 +225,15 @@ export interface AgentRunContext {
 }
 
 export interface SubagentContext {
-    agentId: string
-    agentName: string
     parentConversationId: string
     depth: number
     maxDepth: number
-    toolMask: ToolMask
     disableHandoff: boolean
     traceInfo: {
         runId: string
         parentAgent: string
         startedAt: number
+        parentRequestId?: string
     }
 }
 

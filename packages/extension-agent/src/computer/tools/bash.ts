@@ -191,8 +191,10 @@ When to use:
             const result = await computer.execute(command, {
                 workdir: input.workdir,
                 timeout,
-                session: toolConfig?.configurable?.session
+                session: toolConfig?.configurable?.session,
+                signal: toolConfig.signal
             })
+            const status = `Exit code: ${result.exitCode}`
 
             if (result.timedOut) {
                 const output = await this.formatLargeResult(
@@ -202,7 +204,7 @@ When to use:
                 )
                 return this.withBackend(
                     computer,
-                    `Command timed out after ${timeout}ms.\n${output}`
+                    `${status}\nCommand timed out after ${timeout}ms.\n${output}`
                 )
             }
 
@@ -215,21 +217,22 @@ When to use:
             if (result.signal) {
                 return this.withBackend(
                     computer,
-                    `Command terminated by signal ${result.signal}:\n${output}`
+                    `${status}\nCommand terminated by signal ${result.signal}:\n${output}`
                 )
             }
 
             if (result.exitCode !== 0) {
-                return this.withBackend(
-                    computer,
-                    `Command exited with code ${result.exitCode}:\n${output}`
-                )
+                return this.withBackend(computer, `${status}\n${output}`)
             }
 
             this.log(computer, output)
 
-            return this.withBackend(computer, output)
+            return this.withBackend(computer, `${status}\n${output}`)
         } catch (err) {
+            if (toolConfig.signal?.aborted) {
+                throw toolConfig.signal.reason ?? err
+            }
+
             return this.formatResult(
                 false,
                 `Command execution failed: ${getErrorMessage(err)}`

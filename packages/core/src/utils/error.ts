@@ -40,6 +40,40 @@ export class ChatLunaError extends Error {
     }
 }
 
+export function isAbortError(e: unknown): boolean {
+    return e instanceof Error && e.name === 'AbortError'
+}
+
+export function isErrorWithCode(
+    e: unknown,
+    codes: ChatLunaErrorCode[]
+): boolean {
+    return e instanceof ChatLunaError && codes.includes(e.errorCode)
+}
+
+export function isRequestFailure(e: unknown): boolean {
+    return (
+        isErrorWithCode(e, [
+            ChatLunaErrorCode.NETWORK_ERROR,
+            ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            ChatLunaErrorCode.ABORTED
+        ]) || isAbortError(e)
+    )
+}
+
+export function createTimeoutError(originError?: Error): ChatLunaError {
+    return new ChatLunaError(
+        ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+        originError,
+        true
+    )
+}
+
+export function createAbortError(): ChatLunaError {
+    return new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+}
+
 export enum ChatLunaErrorCode {
     NETWORK_ERROR = 1,
     UNSUPPORTED_PROXY_PROTOCOL = 2,

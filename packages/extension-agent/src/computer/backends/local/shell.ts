@@ -58,11 +58,11 @@ export function getPosixShellArgs(shell: string, command?: string) {
     }
 
     if (name.includes('fish')) {
-        return ['--interactive', '--command', command]
+        return ['--command', command]
     }
 
     if (name.includes('bash') || name.includes('zsh')) {
-        return ['-ic', command]
+        return ['-c', command]
     }
 
     return ['-c', command]
@@ -139,7 +139,8 @@ export async function resolveShellCommand(
         const shell = getPosixShell()
         return {
             file: shell,
-            args: getPosixShellArgs(shell, command)
+            args: getPosixShellArgs(shell, command),
+            env: process.env
         }
     }
 

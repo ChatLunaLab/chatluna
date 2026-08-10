@@ -1,8 +1,8 @@
-import { createWriteStream, type WriteStream } from 'node:fs'
-import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { createWriteStream, type WriteStream } from 'fs'
+import fs from 'fs/promises'
+import os from 'os'
+import path from 'path'
+import { randomUUID } from 'crypto'
 import type { TextOutput } from '../../types'
 import { logger } from '../../..'
 
@@ -27,6 +27,7 @@ export class LocalOutputCollector {
 
     constructor(
         private readonly _name: string,
+        private readonly _tmp: string,
         private readonly _limit = 8000
     ) {}
 
@@ -46,7 +47,7 @@ export class LocalOutputCollector {
 
             if (!this._stream) {
                 this._path = path.join(
-                    os.tmpdir(),
+                    this._tmp,
                     `${OUTPUT_FILE_PREFIX}${this._name}-${Date.now()}-${randomUUID()}.txt`
                 )
                 this._stream = createWriteStream(this._path, {

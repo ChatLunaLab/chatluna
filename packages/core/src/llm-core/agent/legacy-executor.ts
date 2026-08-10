@@ -22,6 +22,7 @@ import {
     BaseChain,
     ChainInputs
 } from 'koishi-plugin-chatluna/llm-core/chain/base'
+import { isRequestFailure } from 'koishi-plugin-chatluna/utils/error'
 import {
     AgentAction,
     AgentCallbackEvent,
@@ -118,9 +119,10 @@ async function executeTools(
                 } as AgentStep
             }
 
-            const mask =
-                config?.configurable?.['toolMask'] ??
-                config?.configurable?.['subagentContext']?.['toolMask']
+            const context = (
+                config?.configurable as AgentRuntimeConfigurable | undefined
+            )?.agentContext
+            const mask = context?.toolMask
             if (mask && !applyToolMask(action.tool, mask)) {
                 const allowed = Object.values(toolMap)
                     .map((item) => item.name)
@@ -137,10 +139,7 @@ async function executeTools(
                 } as AgentStep
             }
 
-            const callMask =
-                config?.configurable?.['toolMask']?.toolCallMask ??
-                config?.configurable?.['subagentContext']?.['toolMask']
-                    ?.toolCallMask
+            const callMask = context?.toolMask?.toolCallMask
             if (callMask && !applyToolMask(action.tool, callMask)) {
                 return {
                     action,
@@ -229,7 +228,8 @@ async function plan(
     input: ChainValues,
     steps: AgentStep[],
     scratchpad: ScratchpadEntry[],
-    config: RunnableConfig | undefined
+    config: RunnableConfig | undefined,
+    signal?: AbortSignal
 ) {
     const stream = await agent.stream(
         {
@@ -243,6 +243,8 @@ async function plan(
     let result: AgentAction[] | AgentAction | AgentFinish | undefined
 
     for await (const chunk of stream) {
+        checkAborted(signal)
+
         if (result !== undefined) {
             throw new Error('Multiple outputs from agent stream')
         }
@@ -314,14 +316,38 @@ export async function* runAgent(
                 options.input,
                 steps,
                 scratchpad,
-                config
+                config,
+                signal
             )
         } catch (e) {
-            if (!(e instanceof OutputParserException)) {
+            checkAborted(signal)
+
+            if (e instanceof OutputParserException) {
+                output = [toParsingErrorAction(handleParsingErrors, e)]
+            } else if (
+                runtime.agentContext?.kind === 'subagent' &&
+                loopState.changed &&
+                !signal?.aborted &&
+                isRequestFailure(e)
+            ) {
+                yield {
+                    type: 'round-decision',
+                    canContinue: false
+                }
+
+                yield {
+                    type: 'done',
+                    output:
+                        'Workspace changes were applied but final model ' +
+                        'response failed.',
+                    log: e instanceof Error ? e.message : String(e),
+                    steps
+                }
+
+                return
+            } else {
                 throw e
             }
-
-            output = [toParsingErrorAction(handleParsingErrors, e)]
         }
 
         checkAborted(signal)
@@ -379,6 +405,27 @@ export async function* runAgent(
         steps.push(...newSteps)
         scratchpad.push(...newSteps)
 
+        for (const step of newSteps) {
+            const name = step.action.tool?.toLowerCase()
+            const input = step.action.toolInput
+            const path =
+                typeof input === 'object' && input != null
+                    ? input['filePath']
+                    : undefined
+            const text = toOutput(step.observation)
+            if (
+                typeof path === 'string' &&
+                !/(?:^|[/\\])(?:[^/\\]*[-_.])?(?:scratch|check|tests?|verif(?:y|ication)|tmp|temp)(?:[-_.][^/\\]*)?$/i.test(
+                    path
+                ) &&
+                ((name === 'file_write' && /\bWrote /.test(text)) ||
+                    (name === 'file_edit' &&
+                        /\bReplaced \d+ occurrence/.test(text)))
+            ) {
+                loopState.changed = true
+            }
+        }
+
         if (newSteps.length > 0) {
             yield {
                 type: 'tool-result',
@@ -400,7 +447,8 @@ export async function* runAgent(
                     scratchpad,
                     options.input,
                     model,
-                    config?.configurable?.['conversationId'] ?? '',
+                    (config?.configurable as AgentRuntimeConfigurable)
+                        ?.agentContext?.conversationId ?? '',
                     inputTokens,
                     signal
                 )
@@ -465,7 +513,7 @@ export async function* runAgent(
 
 /**
  * Compress scratchpad when input tokens approach context limit.
- * Summarizes early scratchpad + chat_history, keeps recent entries.
+ * Summarizes the scratchpad prefix + chat_history and keeps the latest batch.
  */
 async function compressScratchpad(
     scratchpad: ScratchpadEntry[],
@@ -481,17 +529,25 @@ async function compressScratchpad(
             ? invocation.maxTokenLimit
             : model.getModelMaxContextSize()
 
-    if (!limit || limit <= 0 || inputTokens < limit * 0.85) return
+    if (!limit || limit <= 0 || inputTokens < limit) return
+
+    const keepIndex = scratchpad
+        .map(
+            (entry) =>
+                !('messages' in entry) &&
+                (entry.action.messageLog?.length ?? 0) > 0
+        )
+        .lastIndexOf(true)
+    const count = keepIndex < 0 ? scratchpad.length : keepIndex
+    if (count === 0) return
 
     logger.info(
-        '[ScratchpadCompress] %d tokens exceed 85%% of %d, compressing',
+        '[ScratchpadCompress] %d provider input tokens reached usable limit %d, compressing',
         inputTokens,
         limit
     )
 
-    const keepCount = Math.min(3, scratchpad.length)
-    const toCompress = scratchpad.slice(0, scratchpad.length - keepCount)
-    if (toCompress.length === 0) return
+    const toCompress = scratchpad.slice(0, count)
 
     const chatHistory = (input['chat_history'] ?? []) as BaseMessage[]
     const chatPart = chatHistory
@@ -547,14 +603,15 @@ async function compressScratchpad(
                 additional_kwargs: { source: 'scratchpad-compression' }
             })
         ]
-        scratchpad.splice(0, scratchpad.length - keepCount)
+        scratchpad.splice(0, count)
 
         logger.info(
             '[ScratchpadCompress] Compressed %d entries, kept %d',
-            toCompress.length,
-            keepCount
+            count,
+            scratchpad.length
         )
     } catch (e) {
+        checkAborted(signal)
         logger.error('[ScratchpadCompress] Failed:', e)
     }
 }

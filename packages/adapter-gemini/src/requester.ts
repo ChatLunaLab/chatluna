@@ -54,6 +54,7 @@ import { ToolCallChunk } from '@langchain/core/messages/tool'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { trackLogToLocal } from 'koishi-plugin-chatluna/utils/logger'
 import {
+    createRequestSignal,
     createUsageMetadata,
     ReasoningState
 } from '@chatluna/v1-shared-adapter'
@@ -114,7 +115,11 @@ export class GeminiRequester
 
             await checkResponse(response)
 
-            yield* this._processResponseStream(response)
+            yield* this._processResponseStream(
+                response,
+                params.timeout,
+                params.signal
+            )
         } catch (e) {
             if (this.ctx.chatluna.currentConfig.isLog) {
                 await trackLogToLocal(
@@ -144,13 +149,14 @@ export class GeminiRequester
             modelConfig,
             this._pluginConfig
         )
+        const requestSignal = createRequestSignal(params)
 
         try {
             const response = await this._post(
                 `models/${modelConfig.model}:generateContent`,
                 chatGenerationParams,
                 {
-                    signal: params.signal
+                    signal: requestSignal.signal
                 }
             )
 
@@ -177,6 +183,8 @@ export class GeminiRequester
             } else {
                 throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
+        } finally {
+            requestSignal.dispose()
         }
     }
 
@@ -184,15 +192,18 @@ export class GeminiRequester
         params: EmbeddingsRequestParams
     ): Promise<EmbeddingsResult> {
         const input = this._prepareEmbeddingsInput(params.input)
+        const requestSignal = createRequestSignal(params)
 
         try {
             const response = await this._post(
                 `models/${params.model}:batchEmbedContents`,
-                this._createEmbeddingsRequest(params.model, input)
+                this._createEmbeddingsRequest(params.model, input),
+                { signal: requestSignal.signal }
             )
 
             return await this._processEmbeddingsResponse(response)
         } catch (e) {
+            if (e instanceof ChatLunaError) throw e
             const error = new Error(
                 'error when calling gemini embeddings, Error: ' + e.message
             )
@@ -200,6 +211,8 @@ export class GeminiRequester
             error.cause = e.cause
             logger.debug(e)
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, error)
+        } finally {
+            requestSignal.dispose()
         }
     }
 
@@ -363,14 +376,20 @@ export class GeminiRequester
         return result
     }
 
-    private async *_processResponseStream(response: fetchType.Response) {
+    private async *_processResponseStream(
+        response: fetchType.Response,
+        timeout?: number,
+        signal?: AbortSignal
+    ) {
         const { groundingContent, currentGroundingIndex } =
             this._createStreamContext()
 
         const iterable = this._setupStreamTransform(
             response,
             groundingContent,
-            currentGroundingIndex
+            currentGroundingIndex,
+            timeout,
+            signal
         )
 
         const reasoningState = new ReasoningState()
@@ -409,7 +428,9 @@ export class GeminiRequester
     private _setupStreamTransform(
         response: fetchType.Response | ChatResponse,
         groundingContent: { value: string },
-        currentGroundingIndex: { value: number }
+        currentGroundingIndex: { value: number },
+        timeout?: number,
+        signal?: AbortSignal
     ) {
         const transformToChatPartStream = this._createTransformStream(
             groundingContent,
@@ -424,7 +445,11 @@ export class GeminiRequester
                     return
                 }
 
-                for await (const chunk of sseIterable(response)) {
+                for await (const chunk of sseIterable(
+                    response,
+                    timeout,
+                    signal
+                )) {
                     controller.enqueue(chunk.data)
                 }
                 controller.close()

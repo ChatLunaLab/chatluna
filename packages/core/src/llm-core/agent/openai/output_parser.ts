@@ -165,6 +165,16 @@ export class OpenAIToolsAgentOutputParser extends BaseOutputParser<
         if (
             (message instanceof AIMessageChunk ||
                 message instanceof AIMessage) &&
+            message.invalid_tool_calls?.length > 0
+        ) {
+            throw new OutputParserException(
+                `Invalid or incomplete tool call arguments: ${JSON.stringify(message.invalid_tool_calls)}`
+            )
+        }
+
+        if (
+            (message instanceof AIMessageChunk ||
+                message instanceof AIMessage) &&
             message.tool_calls?.length > 0
         ) {
             const toolCalls = message.tool_calls

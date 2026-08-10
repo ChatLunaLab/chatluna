@@ -2,13 +2,19 @@ import type { Callbacks } from '@langchain/core/callbacks/manager'
 import { AIMessage, HumanMessage } from '@langchain/core/messages'
 import type { Session } from 'koishi'
 import { LRUCache } from 'lru-cache'
-import { MessageQueue, type ToolMask } from '../llm-core/agent/types'
+import {
+    AgentRunContext,
+    MessageQueue,
+    type ToolMask
+} from '../llm-core/agent/types'
 import { RequestIdQueue } from 'koishi-plugin-chatluna/utils/queue'
 import { randomUUID } from 'crypto'
 import type { ChatLunaService } from './chat'
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    createAbortError,
+    createTimeoutError
 } from 'koishi-plugin-chatluna/utils/error'
 import type { ClientConfig } from '../llm-core/platform/config'
 import { markChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
@@ -25,6 +31,7 @@ export interface ChatOptions {
     postHandler?: PostHandler
     requestId?: string
     toolMask?: ToolMask
+    source?: AgentRunContext['source']
     callbacks?: Callbacks
     signal?: AbortSignal
     persist?: boolean
@@ -119,13 +126,7 @@ export class ConversationRuntime {
                 () => {
                     if (abortController.signal.aborted) return
                     if (Date.now() - lastActiveAt < config.timeout) return
-                    abortController.abort(
-                        new ChatLunaError(
-                            ChatLunaErrorCode.API_REQUEST_TIMEOUT,
-                            undefined,
-                            true
-                        )
-                    )
+                    abortController.abort(createTimeoutError())
                 },
                 Math.min(config.timeout, 30000)
             )
@@ -153,6 +154,7 @@ export class ConversationRuntime {
                 stream,
                 conversationId: conversation.id,
                 requestId,
+                source: options.source ?? 'chatluna',
                 session,
                 variables,
                 signal: abortController.signal,
@@ -319,27 +321,13 @@ export class ConversationRuntime {
 
             if (signal != null) {
                 if (signal.aborted) {
-                    throw (
-                        signal.reason ??
-                        new ChatLunaError(
-                            ChatLunaErrorCode.ABORTED,
-                            undefined,
-                            true
-                        )
-                    )
+                    throw signal.reason ?? createAbortError()
                 }
                 await Promise.race([
                     waiting,
                     new Promise<never>((_resolve, reject) => {
                         onAbort = () =>
-                            reject(
-                                signal.reason ??
-                                    new ChatLunaError(
-                                        ChatLunaErrorCode.ABORTED,
-                                        undefined,
-                                        true
-                                    )
-                            )
+                            reject(signal.reason ?? createAbortError())
                         signal.addEventListener('abort', onAbort, {
                             once: true
                         })

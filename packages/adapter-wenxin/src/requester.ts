@@ -96,7 +96,10 @@ export class WenxinRequester
                 signal: params.signal
             })
 
-            yield* processStreamResponse(requestContext, sseIterable(response))
+            yield* processStreamResponse(
+                requestContext,
+                sseIterable(response, params.timeout, params.signal)
+            )
         } catch (e) {
             if (e instanceof ChatLunaError) {
                 throw e

@@ -1,0 +1,11 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "baseUrl": "..",
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "composite": false,
+        "noEmit": true
+    },
+    "include": ["aider-eval.ts", "terminal-bench-eval.ts"]
+}

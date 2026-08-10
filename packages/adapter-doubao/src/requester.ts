@@ -100,7 +100,11 @@ export class DoubaoRequester
                 signal: params.signal
             })
 
-            const iterator = sseIterable(response)
+            const iterator = sseIterable(
+                response,
+                params.timeout,
+                params.signal
+            )
             yield* processStreamResponse(requestContext, iterator)
         } catch (e) {
             if (e instanceof ChatLunaError) {

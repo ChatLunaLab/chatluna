@@ -66,12 +66,13 @@ export async function compressIfNeeded(
     // Step 3: determine if compression is needed
     if (!force) {
         const invocation = model.invocationParams()
-        const maxTokenLimit =
+        const hardContext = model.getModelMaxContextSize()
+        const usableLimit =
             invocation.maxTokenLimit && invocation.maxTokenLimit > 0
                 ? invocation.maxTokenLimit
-                : model.getModelMaxContextSize()
+                : hardContext
 
-        if (!maxTokenLimit || maxTokenLimit <= 0) return noCompressResult()
+        if (!usableLimit || usableLimit <= 0) return noCompressResult()
 
         const presetMessages = Array.isArray(opts.preset?.value?.messages)
             ? (opts.preset.value.messages as BaseMessage[])
@@ -80,9 +81,11 @@ export async function compressIfNeeded(
             presetMessages,
             tokenCounter
         )
-        const threshold = Math.floor(maxTokenLimit * (opts.threshold ?? 0.85))
+        const threshold = Math.floor(
+            Math.min(usableLimit, hardContext * (opts.threshold ?? 0.85))
+        )
 
-        if (inputTokens + presetTokens <= threshold) return noCompressResult()
+        if (inputTokens + presetTokens < threshold) return noCompressResult()
 
         logger.info(
             '[InfiniteContext] Start compression: history=%d tokens, total=%d, threshold=%d',

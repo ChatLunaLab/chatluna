@@ -320,13 +320,16 @@ export class ChatLunaAgentSubAgentService {
             toolMask: await this.permission.createSubAgentToolMask(
                 info,
                 ctx.session,
-                ctx.source ?? 'chatluna'
+                ctx.agentContext?.source ?? 'chatluna'
             )
         })
 
         return createTaskTool({
-            list: ({ session, source }) =>
-                this.listRunnableAgents(session, source).map((item) => ({
+            list: ({ session, agentContext }) =>
+                this.listRunnableAgents(
+                    session,
+                    agentContext?.source ?? 'chatluna'
+                ).map((item) => ({
                     id: item.id,
                     name: item.name,
                     description: item.description
@@ -335,7 +338,7 @@ export class ChatLunaAgentSubAgentService {
                 const info = this.findRunnableAgent(
                     name,
                     ctx.session,
-                    ctx.source
+                    ctx.agentContext?.source
                 )
 
                 if (!info) {
@@ -358,7 +361,7 @@ export class ChatLunaAgentSubAgentService {
                     !this.permission.canUseSubAgent(
                         info,
                         ctx.session,
-                        ctx.source
+                        ctx.agentContext?.source
                     )
                 ) {
                     return undefined
@@ -418,16 +421,13 @@ export class ChatLunaAgentSubAgentService {
         this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
             'after_system_prompts',
             async (runtime: PromptContextRuntime, next) => {
-                if (!runtime.configurable?.conversationId) return next()
-                if (runtime.configurable?.subagentContext) return next()
+                const agentContext = runtime.configurable?.agentContext
+                if (!agentContext?.conversationId) return next()
+                if (agentContext.kind === 'subagent') return next()
 
                 const session = runtime.configurable?.session
-                const source = (runtime.configurable?.source ??
-                    'chatluna') as Parameters<
-                    ChatLunaAgentPermissionService['canUseSubAgent']
-                >[2]
-
-                const mask = runtime.configurable?.toolMask
+                const source = agentContext.source
+                const mask = agentContext.toolMask
 
                 if (
                     mask != null &&

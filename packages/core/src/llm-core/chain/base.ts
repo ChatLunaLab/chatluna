@@ -11,7 +11,7 @@ import { ChainValues } from '@langchain/core/utils/types'
 import { Session } from 'koishi'
 import { BufferMemory } from 'koishi-plugin-chatluna/llm-core/memory/langchain'
 import { ChatEvents } from '../../services/types'
-import { SubagentContext, ToolMask } from '../agent'
+import { ToolMask } from '../agent'
 import { ChatLunaChatModel } from 'koishi-plugin-chatluna/llm-core/platform/model'
 import {
     ChatLunaError,
@@ -43,15 +43,16 @@ export interface ChatLunaLLMCallArg {
     conversationId: string
     requestId: string
     session: Session
+    source?: 'chatluna' | 'character'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variables?: Record<string, any>
     signal?: AbortSignal
     postHandler?: PostHandler
     maxToken?: number
+    maxTokenLimit?: number
     messageQueue?: MessageQueue
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void
     toolMask?: ToolMask
-    subagentContext?: SubagentContext
     callbacks?: Callbacks
     persist?: boolean
 }

@@ -90,7 +90,11 @@ export class QWenRequester
                 signal: params.signal
             })
 
-            const iterator = sseIterable(response)
+            const iterator = sseIterable(
+                response,
+                params.timeout,
+                params.signal
+            )
             const streamChunks = processStreamResponse(requestContext, iterator)
 
             for await (const chunk of streamChunks) {

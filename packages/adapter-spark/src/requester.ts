@@ -119,7 +119,9 @@ export class SparkRequester extends ModelRequester<SparkClientConfig, Config> {
 
             yield* processStreamResponse(
                 requestContext,
-                this._validateSparkStream(sseIterable(response))
+                this._validateSparkStream(
+                    sseIterable(response, params.timeout, params.signal)
+                )
             )
         } catch (e) {
             if (e instanceof ChatLunaError) {

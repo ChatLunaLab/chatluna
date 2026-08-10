@@ -4,7 +4,8 @@ import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_t
 import { ModelType } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    isAbortError
 } from 'koishi-plugin-chatluna/utils/error'
 import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
 import { buildVirtualSession } from 'koishi-plugin-chatluna/utils/virtual_session'
@@ -355,7 +356,7 @@ function mapFail(
     let code = 'invoke_failed'
     let message = error.message
 
-    if (timedOut || controller.signal.aborted || error.name === 'AbortError') {
+    if (timedOut || controller.signal.aborted || isAbortError(error)) {
         code = timedOut ? 'timeout' : 'aborted'
         message = timedOut
             ? 'Chat invocation timed out.'

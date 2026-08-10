@@ -3,7 +3,7 @@ import type { StructuredTool } from '@langchain/core/tools'
 import type { Awaitable, Session } from 'koishi'
 import type { ChatLunaAgent } from '../agent'
 import type { ChatLunaToolRunnable } from '../../platform/types'
-import type { MessageQueue, SubagentContext, ToolMask } from '../types'
+import type { AgentRunContext, MessageQueue, ToolMask } from '../types'
 
 export interface AgentTaskDescriptor {
     id: string
@@ -110,12 +110,10 @@ export interface AgentTaskInput {
 
 export interface AgentTaskQueryContext {
     session?: Session
-    source?: 'chatluna' | 'character'
+    agentContext?: AgentRunContext
 }
 
 export interface AgentTaskResolveContext extends AgentTaskQueryContext {
-    conversationId?: string
-    parent?: SubagentContext
     runConfig?: ChatLunaToolRunnable
 }
 

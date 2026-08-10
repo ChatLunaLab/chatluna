@@ -1,8 +1,8 @@
 /** @module computer/backends/e2b */
 
 import { createHash, randomUUID } from 'crypto'
-import { Buffer } from 'node:buffer'
-import { Readable } from 'node:stream'
+import { Buffer } from 'buffer'
+import { Readable } from 'stream'
 import {
     CommandExitError,
     CommandHandle,
@@ -35,6 +35,7 @@ import {
     TerminalHandle,
     TerminalOptions
 } from '../types'
+import { replaceFileContent } from '../file_changes'
 
 interface SandboxWrapper {
     sandboxId: string
@@ -262,13 +263,17 @@ export class E2BComputerSession implements ComputerSessionApi {
             const target = this.resolvePath(filePath)
             const sandbox = await this.ensureSandbox()
             if (typeof content === 'string') {
+                const before = (await sandbox.files.exists(target))
+                    ? await sandbox.files.read(target)
+                    : ''
                 await sandbox.files.write(target, content)
-                return
+                return { type: 'text' as const, before, after: content }
             }
 
             const data = new ArrayBuffer(content.byteLength)
             new Uint8Array(data).set(content)
             await sandbox.files.write(target, data)
+            return { type: 'binary' as const }
         } catch (err) {
             logger.error(err)
             throw new Error(
@@ -313,48 +318,17 @@ export class E2BComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        const content = await this.readFile(filePath)
-        if (!content.includes(oldString)) {
-            return { success: false, context: '', replacements: 0 }
-        }
+        const result = replaceFileContent(
+            await this.readFile(filePath),
+            oldString,
+            newString,
+            replaceCount
+        )
+        if (!result.success) return result
+        if (result.before === result.after) return result
 
-        if (replaceCount === 1) {
-            const firstIdx = content.indexOf(oldString)
-            if (content.indexOf(oldString, firstIdx + 1) !== -1) {
-                throw new Error(
-                    `Found multiple matches for oldString in ${filePath}. ` +
-                        'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
-                )
-            }
-        }
-
-        let replacements = 0
-        const next = content.replaceAll(oldString, (match) => {
-            if (replaceCount != null && replacements >= replaceCount) {
-                return match
-            }
-
-            replacements += 1
-            return newString
-        })
-
-        await this.writeFile(filePath, next)
-        const lines = next.split('\n')
-        const row = lines.findIndex((line) => line.includes(newString))
-        const start = Math.max(0, row - 10)
-        const end = Math.min(lines.length, row + 11)
-
-        return {
-            success: true,
-            replacements,
-            context: lines
-                .slice(start, end)
-                .map(
-                    (line, idx) =>
-                        `${start + idx + 1 === row + 1 ? '>' : ' '} ${start + idx + 1}: ${line}`
-                )
-                .join('\n')
-        }
+        await this.writeFile(filePath, result.after)
+        return result
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {

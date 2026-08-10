@@ -542,9 +542,10 @@ export class TriggerRunner {
                         stats: candidate?.stats,
                         excerpts: candidate?.excerpts
                     }),
+                conversationId: `trigger:${task.id}`,
+                requestId: randomUUID(),
                 session,
-                signal: controller.signal,
-                toolMask
+                signal: controller.signal
             })
             used = result.message?.usage_metadata?.total_tokens ?? 0
             const text = getMessageContent(

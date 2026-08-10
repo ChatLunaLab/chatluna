@@ -100,7 +100,8 @@ export async function apply(
             toolConfig: ChatLunaToolRunnable
         ) => {
             const todos = input.todos as Todo[]
-            const conversationId = toolConfig.configurable.conversationId
+            const conversationId =
+                toolConfig.configurable.agentContext.conversationId
             const session = toolConfig.configurable.session
             const prev = todosStore.get(conversationId)
             const unchanged =
@@ -209,7 +210,8 @@ export async function apply(
     contextManager.pipeline(
         'after_scratchpad',
         async (runtime: PromptContextRuntime, next) => {
-            const conversationId = runtime.configurable?.conversationId
+            const conversationId =
+                runtime.configurable?.agentContext?.conversationId
             if (!conversationId) return next()
 
             const todos = todosStore.get(conversationId)

@@ -3,6 +3,7 @@
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import z from 'zod'
 import { getErrorMessage } from '../../utils/shell'
+import { formatFileDiff } from '../file_changes'
 import { ComputerToolBase } from './base'
 
 export class WriteFileTool extends ComputerToolBase {
@@ -34,11 +35,18 @@ Usage:
         this.log(computer, `写入文件: ${input.filePath}`)
 
         try {
-            await computer.writeFile(input.filePath, input.content)
+            const result = await computer.writeFile(
+                input.filePath,
+                input.content
+            )
             this.log(computer, `完成写入: ${input.filePath}`)
             return this.withBackend(
                 computer,
-                this.formatResult(true, `Wrote ${input.filePath}`)
+                result.type === 'text'
+                    ? result.before === result.after
+                        ? `No changes. ${input.filePath} already has the requested content.`
+                        : `Diff:\n${formatFileDiff(result.before, result.after)}\n\nWrote ${input.filePath}`
+                    : `Wrote ${input.filePath}`
             )
         } catch (err) {
             return this.formatResult(

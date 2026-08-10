@@ -1,6 +1,6 @@
 /** @module utils/runtime_sync */
 
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 import { createHash } from 'crypto'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname, join, posix } from 'path'
@@ -335,7 +335,7 @@ function getRuntimeKey(context: AgentRunContext) {
     return [
         context.requestId ??
             context.conversationId ??
-            context.parentConversationId ??
+            context.subagentContext?.parentConversationId ??
             'runtime',
         context.kind,
         context.agentId ?? 'main'

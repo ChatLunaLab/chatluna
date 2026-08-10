@@ -1,9 +1,9 @@
 /** @module computer/backends/open_terminal */
 
 import { createHash, randomUUID } from 'crypto'
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 import { posix } from 'path'
-import { Readable } from 'node:stream'
+import { Readable } from 'stream'
 import { Context } from 'koishi'
 import type {} from '@koishijs/plugin-proxy-agent'
 import mimeTypes from 'mime-types'
@@ -19,6 +19,7 @@ import {
     TerminalHandle,
     TerminalOptions
 } from '../types'
+import { replaceFileContent } from '../file_changes'
 
 export class OpenTerminalComputerSession implements ComputerSessionApi {
     readonly backend = 'open-terminal' as const
@@ -222,13 +223,32 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 clearTimeout(timer)
             }
 
-            return
+            return { type: 'binary' as const }
         }
 
+        const target = this.resolvePath(filePath)
+        const current = await this.ctx.http(this.url('/files/view'), {
+            method: 'GET',
+            proxyAgent: '',
+            headers: this.headers(),
+            params: { path: target },
+            responseType: 'arraybuffer',
+            validateStatus: () => true
+        })
+        if (
+            current.status !== 404 &&
+            (current.status < 200 || current.status >= 300)
+        ) {
+            throw new Error(`Failed to read before write: ${current.status}`)
+        }
+        const before =
+            current.status === 404
+                ? ''
+                : Buffer.from(current.data).toString('utf-8')
         await this.ctx.http.post(
             this.url('/files/write'),
             {
-                path: this.resolvePath(filePath),
+                path: target,
                 content
             },
             {
@@ -239,6 +259,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }
             }
         )
+        return { type: 'text' as const, before, after: content }
     }
 
     async hashFiles(paths: string[]) {
@@ -285,29 +306,14 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        const content = await this.readFile(filePath)
-        if (!content.includes(oldString)) {
-            return { success: false, context: '', replacements: 0 }
-        }
-
-        if (replaceCount === 1) {
-            const firstIdx = content.indexOf(oldString)
-            if (content.indexOf(oldString, firstIdx + 1) !== -1) {
-                throw new Error(
-                    `Found multiple matches for oldString in ${filePath}. ` +
-                        'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
-                )
-            }
-        }
-
-        let replacements = 0
-        const next = content.replaceAll(oldString, (match) => {
-            if (replaceCount != null && replacements >= replaceCount) {
-                return match
-            }
-            replacements += 1
-            return newString
-        })
+        const result = replaceFileContent(
+            await this.readFile(filePath),
+            oldString,
+            newString,
+            replaceCount
+        )
+        if (!result.success) return result
+        if (result.before === result.after) return result
 
         await this.ctx.http.post(
             this.url('/files/replace'),
@@ -330,21 +336,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             }
         )
 
-        const lines = next.split('\n')
-        const row = lines.findIndex((line) => line.includes(newString))
-        const start = Math.max(0, row - 10)
-
-        return {
-            success: true,
-            replacements,
-            context: lines
-                .slice(start, Math.min(lines.length, row + 11))
-                .map(
-                    (line, idx) =>
-                        `${start + idx + 1 === row + 1 ? '>' : ' '} ${start + idx + 1}: ${line}`
-                )
-                .join('\n')
-        }
+        return result
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {

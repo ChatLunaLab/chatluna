@@ -51,19 +51,20 @@ export interface CreateAgentOptions {
 export interface AgentGenerateOptions {
     prompt: string | HumanMessage
     session?: Session
-    conversationId?: string
+    conversationId: string
+    requestId: string
+    source?: 'chatluna' | 'character'
     history?: BaseMessage[]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     variables?: Record<string, any>
     signal?: AbortSignal
     maxToken?: number
+    maxTokenLimit?: number
     messageQueue?: MessageQueue
     pauseGate?: (signal?: AbortSignal) => Promise<void>
     toolMask?: ToolMask
     subagentContext?: SubagentContext
-    source?: 'chatluna' | 'character'
     onStep?: (event: AgentEvent) => Promise<void> | void
-    requestId?: string
     onToken?: (token: string) => Promise<void> | void
     onChunk?: (chunk: BaseMessageChunk) => Promise<void> | void
     callbacks?: Callbacks
@@ -125,39 +126,40 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                     : input.prompt
             const text = getMessageContent(message.content)
             const history = input.history ?? []
-            const vars = {
-                ...(input.variables ?? {}),
-                prompt: text,
-                built: {
-                    conversationId: input.conversationId,
-                    requestId: input.requestId,
-                    userId: input.session?.userId,
-                    guildId: input.session?.guildId,
-                    channelId: input.session?.channelId,
-                    chatPlatform: input.session?.platform
-                }
-            }
-            const toolMask =
-                input.subagentContext?.toolMask ??
-                input.toolMask ??
-                options.toolMask
             const ctx = {
                 kind: input.subagentContext ? 'subagent' : 'main',
                 agentId: id,
                 agentName: name,
                 conversationId: input.conversationId,
-                parentConversationId:
-                    input.subagentContext?.parentConversationId,
                 requestId: input.requestId,
-                source: input.source,
+                source: input.source ?? 'chatluna',
                 userId: input.session?.userId,
                 guildId: input.session?.guildId,
                 channelId: input.session?.channelId,
-                toolMask,
+                toolMask: options.toolMask ?? input.toolMask,
                 subagentContext: input.subagentContext
             } satisfies AgentRunContext
+            const maxTokens =
+                input.maxToken ??
+                options.prompt.preset.value.config.maxOutputToken
+            const vars = {
+                ...(input.variables ?? {}),
+                prompt: text,
+                built: {
+                    conversationId: ctx.conversationId,
+                    requestId: ctx.requestId,
+                    userId: ctx.userId,
+                    guildId: ctx.guildId,
+                    channelId: ctx.channelId,
+                    chatPlatform: input.session?.platform
+                }
+            }
 
-            toolsRef.update(input.session, history.concat(message), toolMask)
+            toolsRef.update(
+                input.session,
+                history.concat(message),
+                ctx.toolMask
+            )
 
             const bound = runner.value.withConfig({
                 configurable: {
@@ -172,13 +174,12 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                 {
                     input: message,
                     chat_history: [...history],
+                    maxTokens,
+                    maxTokenLimit: input.maxTokenLimit,
                     variables: vars,
                     variables_hide: vars,
                     configurable: {
                         session: input.session,
-                        conversationId: input.conversationId,
-                        toolMask,
-                        subagentContext: input.subagentContext,
                         agentContext: ctx
                     }
                 },
@@ -203,12 +204,7 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                     configurable: {
                         session: input.session,
                         model: options.llm.value,
-                        conversationId: input.conversationId,
                         preset: name,
-                        userId: input.session?.userId,
-                        toolMask,
-                        subagentContext: input.subagentContext,
-                        source: input.source,
                         agentContext: ctx
                     }
                 } as ChatLunaToolRunnable
@@ -318,18 +314,39 @@ class AgentTool extends StructuredTool {
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
+        const parent = runConfig?.configurable?.agentContext
+        if (!parent) throw new Error('Agent execution context is required')
+        const runId = randomUUID()
+        const parentSub = parent.subagentContext
+        const depth = (parentSub?.depth ?? 0) + 1
+        const maxDepth = parentSub?.maxDepth ?? 1
+        if (parentSub?.disableHandoff || depth > maxDepth) {
+            throw new Error(`Maximum sub-agent depth ${maxDepth} reached`)
+        }
+
+        const subagentContext: SubagentContext = {
+            parentConversationId: parent.conversationId,
+            depth,
+            maxDepth,
+            disableHandoff: depth >= maxDepth,
+            traceInfo: {
+                runId,
+                parentAgent: parent.agentName,
+                startedAt: Date.now(),
+                parentRequestId: parent.requestId
+            }
+        }
+
         const result = await this._agent.generate({
             prompt: input.prompt,
             session: runConfig?.configurable?.session,
-            conversationId: runConfig?.configurable?.conversationId,
-            toolMask: runConfig?.configurable?.toolMask,
-            subagentContext:
-                runConfig?.configurable?.agentContext?.subagentContext,
+            conversationId: `subagent:${runId}`,
+            requestId: runId,
+            source: parent.source,
+            toolMask: parent.toolMask,
+            subagentContext,
             signal: runConfig?.signal,
-            callbacks: runConfig?.callbacks,
-            source: (
-                runConfig?.configurable as { source?: 'chatluna' | 'character' }
-            )?.source
+            callbacks: runConfig?.callbacks
         })
 
         return result.output

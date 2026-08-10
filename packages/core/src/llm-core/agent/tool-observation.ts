@@ -16,6 +16,7 @@ export interface AgentLoopState {
     failures: Map<string, number>
     results: Map<string, { hash: string; count: number }>
     busy: Map<string, number>
+    changed: boolean
 }
 
 export function createAgentLoopState(): AgentLoopState {
@@ -23,7 +24,8 @@ export function createAgentLoopState(): AgentLoopState {
         calls: new Map(),
         failures: new Map(),
         results: new Map(),
-        busy: new Map()
+        busy: new Map(),
+        changed: false
     }
 }
 
@@ -59,7 +61,7 @@ export function applyLoopGuidance(
 
     const tool = action.tool?.toLowerCase() ?? ''
     const text = toOutput(observation)
-    const failure = failed || isFailureObservation(text)
+    const failure = failed
     const hints: string[] = []
 
     if (failure) {
@@ -318,18 +320,6 @@ function appendObservation(observation: AgentObservation, text: string) {
     }
 
     return observation
-}
-
-function isFailureObservation(text: string) {
-    const value = text.slice(0, 800).toLowerCase()
-    return (
-        value.startsWith('error') ||
-        value.includes('"error"') ||
-        value.includes('failed') ||
-        value.includes('exception') ||
-        value.includes('permission denied') ||
-        value.includes('not found')
-    )
 }
 
 function isNoProgressTool(tool: string) {

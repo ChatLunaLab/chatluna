@@ -15,6 +15,13 @@ export interface ChatLunaInvocationMetrics {
 }
 
 const chatlunaMetricsKey = 'chatluna_invocation_metrics'
+const STREAM_METADATA_SNAPSHOTS = [
+    'reasoning_time',
+    'output_tokens',
+    'total_tokens',
+    'totalMs',
+    'tps'
+] as const
 
 type MetricsCarrier = { [chatlunaMetricsKey]?: ChatLunaInvocationMetrics }
 
@@ -89,6 +96,23 @@ function hasResponseChunk(chunk: ChatGenerationChunk) {
     )
 }
 
+function snapshotKeys(
+    target: Record<string, unknown> | null | undefined,
+    out: Record<string, unknown>
+): Record<string, unknown> | undefined {
+    if (target == null) return undefined
+    const keys = STREAM_METADATA_SNAPSHOTS.filter((key) =>
+        Object.hasOwn(target, key)
+    )
+    if (keys.length === 0) return undefined
+    const copy = { ...target }
+    for (const key of keys) {
+        out[key] = copy[key]
+        delete copy[key]
+    }
+    return copy
+}
+
 /**
  * Collects timing + usage across a streaming completion and attaches a single
  * ChatLunaInvocationMetrics payload to the trailing chunk. Encapsulates the
@@ -98,18 +122,39 @@ export class StreamMetricsTracker {
     private readonly start = Date.now()
     private firstAt?: number
     private usage?: UsageMetadata
+    private readonly kwargs: Record<string, unknown> = {}
+    private readonly metadata: Record<string, unknown> = {}
+    private readonly info: Record<string, unknown> = {}
 
     observe(chunk: ChatGenerationChunk): void {
-        const message = chunk.message as AIMessageChunk | undefined
-        if (message?.usage_metadata != null) {
+        const message = chunk.message as AIMessageChunk
+        if (message.usage_metadata != null) {
             this.usage = message.usage_metadata
         }
+        const kwargs = snapshotKeys(message.additional_kwargs, this.kwargs)
+        if (kwargs) message.additional_kwargs = kwargs
+        const metadata = snapshotKeys(message.response_metadata, this.metadata)
+        if (metadata) message.response_metadata = metadata
+        const info = snapshotKeys(chunk.generationInfo, this.info)
+        if (info) chunk.generationInfo = info
         if (this.firstAt == null && hasResponseChunk(chunk)) {
             this.firstAt = Date.now()
         }
     }
 
     attachTo(chunk: ChatGenerationChunk): ChatGenerationChunk {
+        chunk.message.additional_kwargs = {
+            ...chunk.message.additional_kwargs,
+            ...this.kwargs
+        }
+        chunk.message.response_metadata = {
+            ...chunk.message.response_metadata,
+            ...this.metadata
+        }
+        chunk.generationInfo = {
+            ...chunk.generationInfo,
+            ...this.info
+        }
         attachInvocationMetrics(chunk, {
             usageMetadata: this.usage,
             timing: createModelUsageTiming(this.start, this.firstAt, this.usage)

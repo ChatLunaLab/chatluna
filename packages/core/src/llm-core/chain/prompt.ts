@@ -212,8 +212,7 @@ export class ChatLunaChatPrompt
 
         // Debug logging
         if (logger?.level === Logger.DEBUG) {
-            const name =
-                runtime.configurable?.subagentContext?.agentName || 'main'
+            const name = runtime.configurable?.agentContext?.agentName || 'main'
             if (runtime.usedTokens > runtime.sendTokenLimit) {
                 logger?.debug(
                     '[Agent %s] Used tokens: %c exceed limit: %c',

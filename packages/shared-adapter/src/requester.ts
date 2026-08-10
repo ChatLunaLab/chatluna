@@ -31,6 +31,7 @@ import {
 import {
     convertDeltaToMessageChunk,
     convertMessageToMessageChunk,
+    createRequestSignal,
     formatToolsToOpenAITools,
     formatToolsToResponseTools,
     langchainMessageToOpenAIMessage,
@@ -89,14 +90,21 @@ export interface ResponseToolOptions {
     builtinTools?: ResponseBuiltinTool[]
 }
 
-function throwIfUnsafeCode(
-    code: string | undefined | null,
-    detail: string
-): void {
+function throwIfBadCode(code: string | undefined | null, detail: string): void {
     if (code != null && UNSAFE_OPENAI_ERROR_CODES.includes(code)) {
         throw new ChatLunaError(
             ChatLunaErrorCode.API_UNSAFE_CONTENT,
             new Error('Unsafe content detected, please try again.' + detail)
+        )
+    }
+    if (
+        code === 'length' ||
+        code === 'max_tokens' ||
+        code === 'max_output_tokens'
+    ) {
+        throw new ChatLunaError(
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            new Error('Model output reached its token limit. ' + detail)
         )
     }
 }
@@ -104,7 +112,7 @@ function throwIfUnsafeCode(
 function throwIfUnsafeBody(body: string): void {
     try {
         const parsed = JSON.parse(body) as { error?: OpenAIError } | null
-        if (parsed) throwIfUnsafeCode(parsed.error?.code, body)
+        if (parsed) throwIfBadCode(parsed.error?.code, body)
     } catch (e) {
         if (e instanceof ChatLunaError) throw e
     }
@@ -248,7 +256,7 @@ export async function* processStreamResponse<
             const data = JSON.parse(chunk) as ChatCompletionResponse
 
             if (data.error) {
-                throwIfUnsafeCode(data.error.code, chunk)
+                throwIfBadCode(data.error.code, chunk)
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error('Error when calling completion, Result: ' + chunk)
@@ -257,7 +265,7 @@ export async function* processStreamResponse<
 
             const choice = data.choices?.[0]
 
-            throwIfUnsafeCode(choice?.finish_reason, chunk)
+            throwIfBadCode(choice?.finish_reason, chunk)
 
             if (data.usage) {
                 const usageMetadata = openAIUsageToUsageMetadata(data.usage)
@@ -423,7 +431,7 @@ export async function processResponse<
         const data = JSON.parse(responseText) as ChatCompletionResponse
 
         if (data.error) {
-            throwIfUnsafeCode(data.error.code, responseText)
+            throwIfBadCode(data.error.code, responseText)
             throw new ChatLunaError(
                 ChatLunaErrorCode.API_REQUEST_FAILED,
                 new Error(
@@ -434,7 +442,7 @@ export async function processResponse<
 
         const choice = data.choices?.[0]
 
-        throwIfUnsafeCode(choice?.finish_reason, responseText)
+        throwIfBadCode(choice?.finish_reason, responseText)
 
         if (!choice) {
             throw new ChatLunaError(
@@ -480,14 +488,14 @@ export async function responseToChatGeneration(
     imageProvider?: ResponseImageProvider
 ) {
     if (response.error) {
-        throwIfUnsafeCode(response.error.code, response.error.message ?? '')
+        throwIfBadCode(response.error.code, response.error.message ?? '')
         throw new ChatLunaError(
             ChatLunaErrorCode.API_REQUEST_FAILED,
             new Error(response.error.message ?? JSON.stringify(response.error))
         )
     }
 
-    throwIfUnsafeCode(response.incomplete_details?.reason, '')
+    throwIfBadCode(response.incomplete_details?.reason, '')
 
     const text = responseOutputText(response)
     const toolCalls = responseOutputToolCalls(response)
@@ -600,7 +608,7 @@ export async function* processResponseApiStream<
             const data = JSON.parse(chunk) as ResponseStreamEvent
 
             if (data.type === 'error') {
-                throwIfUnsafeCode(data.code, data.message ?? chunk)
+                throwIfBadCode(data.code, data.message ?? chunk)
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
                     new Error(chunk)
@@ -711,8 +719,8 @@ export async function* processResponseApiStream<
                 data.type === 'response.incomplete' ||
                 data.type === 'response.error'
             ) {
-                throwIfUnsafeCode(data.response?.incomplete_details?.reason, '')
-                throwIfUnsafeCode(data.response?.error?.code, '')
+                throwIfBadCode(data.response?.incomplete_details?.reason, '')
+                throwIfBadCode(data.response?.error?.code, '')
 
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
@@ -744,6 +752,13 @@ export async function* completionStream<
     enableGoogleSearch?: boolean,
     supportImageInput?: boolean
 ): AsyncGenerator<ChatGenerationChunk> {
+    if (params.signal?.aborted) {
+        throw (
+            params.signal.reason ??
+            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+        )
+    }
+
     const { modelRequester } = requestContext
 
     const chatCompletionParams = await buildChatCompletionParams(
@@ -752,17 +767,28 @@ export async function* completionStream<
         enableGoogleSearch ?? false,
         supportImageInput ?? true
     )
+    const timeout =
+        params.timeout == null ? undefined : Math.min(params.timeout, 60_000)
+    const requestSignal = createRequestSignal(params, timeout)
 
     try {
+        if (requestSignal.signal?.aborted) {
+            throw (
+                requestSignal.signal.reason ??
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
+        }
+
         const response = await modelRequester.post(
             completionUrl,
             chatCompletionParams,
             {
-                signal: params.signal
+                signal: requestSignal.signal
             }
         )
+        requestSignal.clearTimeout()
 
-        const iterator = sseIterable(response)
+        const iterator = sseIterable(response, timeout, requestSignal.signal)
         yield* processStreamResponse(requestContext, iterator)
     } catch (e) {
         if (requestContext.ctx.chatluna.currentConfig.isLog) {
@@ -773,11 +799,16 @@ export async function* completionStream<
                 'warn'
             )
         }
+        if (requestSignal.signal?.aborted) {
+            throw requestSignal.signal.reason ?? e
+        }
         if (e instanceof ChatLunaError) {
             throw e
         } else {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         }
+    } finally {
+        requestSignal.dispose()
     }
 }
 
@@ -803,12 +834,13 @@ export async function completion<
 
     delete chatCompletionParams.stream
 
+    const requestSignal = createRequestSignal(params)
     try {
         const response = await modelRequester.post(
             completionUrl,
             chatCompletionParams,
             {
-                signal: params.signal
+                signal: requestSignal.signal
             }
         )
 
@@ -830,6 +862,8 @@ export async function completion<
         } else {
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         }
+    } finally {
+        requestSignal.dispose()
     }
 }
 
@@ -844,6 +878,13 @@ export async function* responseApiCompletionStream<
     supportImageInput?: boolean,
     imageProvider?: ResponseImageProvider
 ): AsyncGenerator<ChatGenerationChunk> {
+    if (params.signal?.aborted) {
+        throw (
+            params.signal.reason ??
+            new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+        )
+    }
+
     const { modelRequester } = requestContext
     const request = await buildResponseParams(
         params,
@@ -851,15 +892,26 @@ export async function* responseApiCompletionStream<
         opts,
         supportImageInput ?? true
     )
+    const timeout =
+        params.timeout == null ? undefined : Math.min(params.timeout, 60_000)
+    const requestSignal = createRequestSignal(params, timeout)
 
     try {
+        if (requestSignal.signal?.aborted) {
+            throw (
+                requestSignal.signal.reason ??
+                new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+            )
+        }
+
         const response = await modelRequester.post('responses', request, {
-            signal: params.signal
+            signal: requestSignal.signal
         })
+        requestSignal.clearTimeout()
 
         yield* processResponseApiStream(
             requestContext,
-            sseIterable(response),
+            sseIterable(response, timeout, requestSignal.signal),
             imageProvider
         )
     } catch (e) {
@@ -871,8 +923,13 @@ export async function* responseApiCompletionStream<
                 'warn'
             )
         }
+        if (requestSignal.signal?.aborted) {
+            throw requestSignal.signal.reason ?? e
+        }
         if (e instanceof ChatLunaError) throw e
         throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+    } finally {
+        requestSignal.dispose()
     }
 }
 
@@ -898,9 +955,10 @@ export async function responseApiCompletion<
     delete request.stream
     delete request.stream_options
 
+    const requestSignal = createRequestSignal(params)
     try {
         const response = await modelRequester.post('responses', request, {
-            signal: params.signal
+            signal: requestSignal.signal
         })
 
         return attachUsage(
@@ -918,6 +976,8 @@ export async function responseApiCompletion<
         }
         if (e instanceof ChatLunaError) throw e
         throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+    } finally {
+        requestSignal.dispose()
     }
 }
 
@@ -930,12 +990,17 @@ export async function createEmbeddings<
     embeddingUrl: string = 'embeddings'
 ): Promise<EmbeddingsResult> {
     const { modelRequester } = requestContext
+    const requestSignal = createRequestSignal(params)
 
     try {
-        const response = await modelRequester.post(embeddingUrl, {
-            input: params.input,
-            model: params.model
-        })
+        const response = await modelRequester.post(
+            embeddingUrl,
+            {
+                input: params.input,
+                model: params.model
+            },
+            { signal: requestSignal.signal }
+        )
 
         const data = (await response.json()) as CreateEmbeddingResponse
 
@@ -959,6 +1024,8 @@ export async function createEmbeddings<
         }
 
         throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+    } finally {
+        requestSignal.dispose()
     }
 }
 
@@ -971,6 +1038,7 @@ export async function createRerank<
     rerankUrl: string = 'rerank'
 ): Promise<RerankerResult[] | RerankerUsageResult> {
     const { modelRequester } = requestContext
+    const requestSignal = createRequestSignal(params)
 
     try {
         const response = await modelRequester.post(
@@ -984,7 +1052,7 @@ export async function createRerank<
                 return_documents: false
             },
             {
-                signal: params.signal
+                signal: requestSignal.signal
             }
         )
 
@@ -1024,6 +1092,8 @@ export async function createRerank<
         }
 
         throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+    } finally {
+        requestSignal.dispose()
     }
 }
 
