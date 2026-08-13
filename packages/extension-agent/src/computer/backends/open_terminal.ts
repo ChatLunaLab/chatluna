@@ -19,6 +19,7 @@ import {
     TerminalHandle,
     TerminalOptions
 } from '../types'
+import { replaceFileContent } from '../file_changes'
 
 export class OpenTerminalComputerSession implements ComputerSessionApi {
     readonly backend = 'open-terminal' as const
@@ -222,13 +223,32 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 clearTimeout(timer)
             }
 
-            return
+            return { type: 'binary' as const }
         }
 
+        const target = this.resolvePath(filePath)
+        const current = await this.ctx.http(this.url('/files/view'), {
+            method: 'GET',
+            proxyAgent: '',
+            headers: this.headers(),
+            params: { path: target },
+            responseType: 'arraybuffer',
+            validateStatus: () => true
+        })
+        if (
+            current.status !== 404 &&
+            (current.status < 200 || current.status >= 300)
+        ) {
+            throw new Error(`Failed to read before write: ${current.status}`)
+        }
+        const before =
+            current.status === 404
+                ? ''
+                : Buffer.from(current.data).toString('utf-8')
         await this.ctx.http.post(
             this.url('/files/write'),
             {
-                path: this.resolvePath(filePath),
+                path: target,
                 content
             },
             {
@@ -239,6 +259,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
                 }
             }
         )
+        return { type: 'text' as const, before, after: content }
     }
 
     async hashFiles(paths: string[]) {
@@ -285,29 +306,14 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        const content = await this.readFile(filePath)
-        if (!content.includes(oldString)) {
-            return { success: false, context: '', replacements: 0 }
-        }
-
-        if (replaceCount === 1) {
-            const firstIdx = content.indexOf(oldString)
-            if (content.indexOf(oldString, firstIdx + 1) !== -1) {
-                throw new Error(
-                    `Found multiple matches for oldString in ${filePath}. ` +
-                        'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
-                )
-            }
-        }
-
-        let replacements = 0
-        const next = content.replaceAll(oldString, (match) => {
-            if (replaceCount != null && replacements >= replaceCount) {
-                return match
-            }
-            replacements += 1
-            return newString
-        })
+        const result = replaceFileContent(
+            await this.readFile(filePath),
+            oldString,
+            newString,
+            replaceCount
+        )
+        if (!result.success) return result
+        if (result.before === result.after) return result
 
         await this.ctx.http.post(
             this.url('/files/replace'),
@@ -330,21 +336,7 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             }
         )
 
-        const lines = next.split('\n')
-        const row = lines.findIndex((line) => line.includes(newString))
-        const start = Math.max(0, row - 10)
-
-        return {
-            success: true,
-            replacements,
-            context: lines
-                .slice(start, Math.min(lines.length, row + 11))
-                .map(
-                    (line, idx) =>
-                        `${start + idx + 1 === row + 1 ? '>' : ' '} ${start + idx + 1}: ${line}`
-                )
-                .join('\n')
-        }
+        return result
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
@@ -414,6 +406,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
+        if (options.signal?.aborted) {
+            throw options.signal.reason ?? new Error('Aborted')
+        }
         const cwd = this.resolvePath(options.workdir || this._cwd)
         const timeout = options.timeout ?? 120000
         const result: ExecuteResult = {
@@ -423,29 +418,44 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             timedOut: false
         }
         const start = Date.now()
-        let data = await this.postExecute(command, cwd, options, timeout)
+        let data = await this.postExecute(
+            command,
+            cwd,
+            options,
+            timeout,
+            options.signal
+        )
         let offset = collectOpenTerminalOutput(data, result)
         let left = timeout <= 0 ? 300000 : timeout - (Date.now() - start)
 
         while (data.id && data.status === 'running' && left > 0) {
-            data = await this.getExecuteStatus(data.id, offset, left)
+            if (options.signal?.aborted) {
+                await this.forceDeleteExecute(data.id).catch(() => undefined)
+                throw options.signal.reason ?? new Error('Aborted')
+            }
+            try {
+                data = await this.getExecuteStatus(
+                    data.id,
+                    offset,
+                    left,
+                    options.signal
+                )
+            } catch (e) {
+                if (options.signal?.aborted) {
+                    await this.forceDeleteExecute(data.id).catch(
+                        () => undefined
+                    )
+                    throw options.signal.reason ?? e
+                }
+                throw e
+            }
             offset = collectOpenTerminalOutput(data, result)
             left = timeout <= 0 ? 300000 : timeout - (Date.now() - start)
         }
 
         if (data.id && data.status === 'running') {
             result.timedOut = true
-            await this.ctx.http
-                .delete(
-                    this.url(
-                        `/execute/${encodeURIComponent(data.id)}?force=true`
-                    ),
-                    {
-                        proxyAgent: '',
-                        headers: this.headers()
-                    }
-                )
-                .catch(() => undefined)
+            await this.forceDeleteExecute(data.id).catch(() => undefined)
         }
 
         result.exitCode = data.exit_code ?? (result.timedOut ? 1 : 0)
@@ -591,7 +601,7 @@ exit
         return undefined
     }
 
-    isInScope() {
+    async isInScope() {
         return true
     }
 
@@ -603,7 +613,8 @@ exit
         command: string,
         cwd: string,
         options: ExecuteOptions,
-        timeout: number
+        timeout: number,
+        signal?: AbortSignal
     ) {
         const query = new URLSearchParams({
             wait: String(Math.min(Math.max(timeout, 0), 300000) / 1000)
@@ -618,6 +629,7 @@ exit
                 },
                 {
                     proxyAgent: '',
+                    signal,
                     headers: {
                         ...this.headers(),
                         'content-type': 'application/json'
@@ -630,7 +642,8 @@ exit
     private async getExecuteStatus(
         id: string,
         offset: number,
-        timeout: number
+        timeout: number,
+        signal?: AbortSignal
     ) {
         const query = new URLSearchParams({
             wait: String(Math.min(Math.max(timeout, 0), 300000) / 1000),
@@ -644,9 +657,20 @@ exit
                 {
                     method: 'GET',
                     proxyAgent: '',
+                    signal,
                     headers: this.headers()
                 }
             )
+        )
+    }
+
+    private async forceDeleteExecute(id: string) {
+        await this.ctx.http.delete(
+            this.url(`/execute/${encodeURIComponent(id)}?force=true`),
+            {
+                proxyAgent: '',
+                headers: this.headers()
+            }
         )
     }
 

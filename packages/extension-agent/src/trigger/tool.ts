@@ -288,10 +288,7 @@ export class FinishTriggerRunTool extends StructuredTool {
         _: unknown,
         config?: ChatLunaToolRunnable
     ) {
-        const requestId =
-            config?.configurable.agentContext?.requestId ??
-            (config?.configurable as { requestId?: string } | undefined)
-                ?.requestId
+        const requestId = config?.configurable.agentContext?.requestId
         if (!requestId) {
             return JSON.stringify({
                 ok: false,

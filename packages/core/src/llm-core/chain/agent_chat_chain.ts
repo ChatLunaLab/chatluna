@@ -167,49 +167,34 @@ export class ChatLunaPluginChain
         })
     }
 
-    async call({
-        message,
-        signal,
-        session,
-        events,
-        conversationId,
-        variables,
-        maxToken,
-        messageQueue,
-        onAgentEvent,
-        toolMask: callToolMask,
-        subagentContext,
-        requestId,
-        callbacks
-    }: ChatLunaLLMCallArg): Promise<ChainValues> {
+    async call(arg: ChatLunaLLMCallArg): Promise<ChainValues> {
+        const ctx = {
+            kind: 'main',
+            agentId: arg.conversationId,
+            agentName:
+                this.preset.value.triggerKeyword[0] ?? arg.conversationId,
+            conversationId: arg.conversationId,
+            requestId: arg.requestId,
+            source: arg.source ?? 'chatluna',
+            userId: arg.session.userId,
+            guildId: arg.session.guildId,
+            channelId: arg.session.channelId,
+            toolMask: arg.toolMask
+        } satisfies AgentRunContext
+
         const requests: ChainValues & {
             chat_history?: BaseMessage[]
             id?: string
             session?: Session
         } = {
-            input: message
+            input: arg.message
         }
-        const nextVars = Object.assign({}, variables ?? {})
-        const toolMask = subagentContext?.toolMask ?? callToolMask
+        const nextVars = Object.assign({}, arg.variables ?? {})
+        const toolMask = ctx.toolMask
 
         const chatHistory = this.historyMemory
             .chatHistory as KoishiChatMessageHistory
         const preset = this.preset.value
-        const ctx = {
-            kind: subagentContext ? 'subagent' : 'main',
-            agentId: conversationId,
-            agentName: preset.triggerKeyword[0] ?? conversationId,
-            conversationId,
-            parentConversationId: subagentContext?.parentConversationId,
-            requestId,
-            source: 'chatluna',
-            userId: session.userId,
-            guildId: session.guildId,
-            channelId: session.channelId,
-            toolMask,
-            subagentContext
-        } satisfies AgentRunContext
-
         const messages = await chatHistory.getMessages()
         const history =
             this.agentMode === 'react'
@@ -217,32 +202,34 @@ export class ChatLunaPluginChain
                 : messages
 
         requests['chat_history'] = [...history]
-        requests['id'] = conversationId
+        requests['id'] = ctx.conversationId
         requests['variables'] = Object.assign(nextVars, {
-            prompt: getMessageContent(message.content)
+            prompt: getMessageContent(arg.message.content)
         })
         requests['variables']['built'] = {
-            conversationId,
-            requestId,
-            userId: session.userId,
-            guildId: session.guildId,
-            channelId: session.channelId,
-            chatPlatform: session.platform
+            conversationId: ctx.conversationId,
+            requestId: ctx.requestId,
+            userId: ctx.userId,
+            guildId: ctx.guildId,
+            channelId: ctx.channelId,
+            chatPlatform: arg.session.platform
         }
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {
-            session,
-            conversationId,
-            toolMask,
+            session: arg.session,
             agentContext: ctx
         }
 
-        this._toolsRef.update(session, messages.concat(message), toolMask)
+        this._toolsRef.update(
+            arg.session,
+            messages.concat(arg.message),
+            toolMask
+        )
 
         const runner = this.runner.value.withConfig({
             configurable: {
-                messageQueue,
-                onAgentEvent,
+                messageQueue: arg.messageQueue,
+                onAgentEvent: arg.onAgentEvent,
                 agentContext: ctx
             }
         })
@@ -253,7 +240,8 @@ export class ChatLunaPluginChain
 
         const request = () => {
             const manager =
-                CallbackManager.configure(callbacks) ?? new CallbackManager()
+                CallbackManager.configure(arg.callbacks) ??
+                new CallbackManager()
 
             manager.addHandler(
                 CallbackManager.fromHandlers({
@@ -262,7 +250,7 @@ export class ChatLunaPluginChain
                             out.llmOutput?.usage_metadata?.total_tokens ?? 0
                     },
                     async handleAgentAction(action: AgentAction) {
-                        await events?.['llm-call-tool']?.(
+                        await arg.events?.['llm-call-tool']?.(
                             action.tool,
                             action.toolInput,
                             action.content,
@@ -273,11 +261,11 @@ export class ChatLunaPluginChain
                         logger.debug('Tool end:', sanitizeToolLogValue(out))
                     },
                     async handleLLMNewToken(token) {
-                        await events?.['llm-new-token']?.(token)
+                        await arg.events?.['llm-new-token']?.(token)
                     },
                     async handleCustomEvent(name, data) {
                         if (name === 'LLMNewChunk') {
-                            await events?.['llm-new-chunk']?.(data)
+                            await arg.events?.['llm-new-chunk']?.(data)
                         }
                     }
                 }).handlers[0]
@@ -286,19 +274,17 @@ export class ChatLunaPluginChain
             return runner.invoke(
                 {
                     ...requests,
-                    maxTokens: maxToken
+                    maxTokens: arg.maxToken,
+                    maxTokenLimit: arg.maxTokenLimit
                 },
                 {
-                    signal,
+                    signal: arg.signal,
                     callbacks: manager,
                     metadata: { chatlunaAgent: ctx },
                     configurable: {
-                        session,
+                        session: arg.session,
                         model: this.llm,
-                        conversationId,
                         preset: preset.triggerKeyword[0],
-                        userId: session.userId,
-                        toolMask,
                         agentContext: ctx
                     }
                 }
@@ -306,9 +292,9 @@ export class ChatLunaPluginChain
         }
 
         for (let i = 0; i < 3; i++) {
-            if (signal?.aborted) {
+            if (arg.signal?.aborted) {
                 throw (
-                    signal.reason ??
+                    arg.signal.reason ??
                     new ChatLunaError(ChatLunaErrorCode.ABORTED)
                 )
             }
@@ -333,7 +319,7 @@ export class ChatLunaPluginChain
             }
         }
 
-        await events?.['llm-used-token-count']?.(usedToken)
+        await arg.events?.['llm-used-token-count']?.(usedToken)
 
         if (error != null && response == null) {
             if (error instanceof ChatLunaError) {

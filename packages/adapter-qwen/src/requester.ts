@@ -22,6 +22,7 @@ import {
     buildChatCompletionParams,
     createEmbeddings,
     createRequestContext,
+    createRequestSignal,
     processStreamResponse
 } from '@chatluna/v1-shared-adapter'
 
@@ -85,23 +86,34 @@ export class QWenRequester
             baseRequest.enable_search = this._pluginConfig.enableSearch
         }
 
+        const requestSignal = createRequestSignal(params)
+
         try {
             const response = await this.post('chat/completions', baseRequest, {
-                signal: params.signal
+                signal: requestSignal.signal
             })
+            requestSignal.clearTimeout()
 
-            const iterator = sseIterable(response)
+            const iterator = sseIterable(response, {
+                timeout: params.timeout,
+                signal: requestSignal.signal
+            })
             const streamChunks = processStreamResponse(requestContext, iterator)
 
             for await (const chunk of streamChunks) {
                 yield chunk
             }
         } catch (e) {
+            if (requestSignal.signal?.aborted) {
+                throw requestSignal.signal.reason ?? e
+            }
             if (e instanceof ChatLunaError) {
                 throw e
             } else {
                 throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
+        } finally {
+            requestSignal.dispose()
         }
     }
 

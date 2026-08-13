@@ -1,6 +1,8 @@
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    createAbortError,
+    createTimeoutError
 } from 'koishi-plugin-chatluna/utils/error'
 import * as fetchType from 'undici/types/fetch'
 
@@ -155,42 +157,36 @@ export async function checkResponse(
 }
 
 // eslint-disable-next-line generator-star-spacing
-async function* readSSE(reader: ReadableStreamDefaultReader) {
+async function* readSSE(
+    reader: ReadableStreamDefaultReader,
+    signal?: AbortSignal
+) {
     const decoder = new TextDecoder('utf-8')
-
+    const abort = () => {
+        // eslint-disable-next-line no-void
+        void reader.cancel(signal?.reason ?? createAbortError()).catch(() => {})
+    }
+    signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) abort()
     try {
         while (true) {
             const { value, done } = await reader.read()
-
-            if (done) {
-                return
-            }
-
-            const decodeValue = decoder.decode(value, { stream: true })
-
-            yield decodeValue
+            if (signal?.aborted) throw signal.reason ?? createAbortError()
+            if (done) return
+            yield decoder.decode(value, { stream: true })
         }
     } finally {
+        signal?.removeEventListener('abort', abort)
+        await reader.cancel().catch(() => {})
         reader.releaseLock()
-    }
-}
-
-export async function sse(
-    response: fetchType.Response | ReadableStreamDefaultReader<string>,
-    onEvent: (
-        rawData: string
-    ) => Promise<string | boolean | void> = async () => {},
-    cacheCount: number = 0
-) {
-    for await (const rawChunk of rawSeeAsIterable(response, cacheCount)) {
-        await onEvent(rawChunk)
     }
 }
 
 // eslint-disable-next-line generator-star-spacing
 export async function* rawSeeAsIterable(
     response: fetchType.Response | ReadableStreamDefaultReader<string>,
-    cacheCount: number = 0
+    cacheCount: number = 0,
+    signal?: AbortSignal
 ) {
     await checkResponse(response)
 
@@ -203,7 +199,7 @@ export async function* rawSeeAsIterable(
 
     let tempCount = 0
 
-    for await (const rawChunk of readSSE(reader)) {
+    for await (const rawChunk of readSSE(reader, signal)) {
         bufferString += rawChunk
         tempCount++
 
@@ -222,14 +218,45 @@ export async function* rawSeeAsIterable(
 
 // eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(
-    response: fetchType.Response | ReadableStreamDefaultReader<string>
+    response: fetchType.Response | ReadableStreamDefaultReader<string>,
+    params: { timeout?: number; signal?: AbortSignal } = {}
 ) {
+    const idleTimeout = params.timeout
     const parser = createParser()
+    const controller = new AbortController()
+    let timer: NodeJS.Timeout | undefined
+    const abort = () => controller.abort(params.signal?.reason)
 
-    for await (const rawChunk of rawSeeAsIterable(response)) {
-        for (const event of parser(rawChunk)) {
-            yield event
+    const reset = () => {
+        if (idleTimeout == null || controller.signal.aborted) return
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(
+            () => controller.abort(createTimeoutError()),
+            idleTimeout
+        )
+    }
+
+    if (params.signal) {
+        params.signal.addEventListener('abort', abort, { once: true })
+        if (params.signal.aborted) abort()
+    }
+
+    reset()
+
+    try {
+        for await (const rawChunk of rawSeeAsIterable(
+            response,
+            0,
+            controller.signal
+        )) {
+            reset()
+            for (const event of parser(rawChunk)) {
+                yield event
+            }
         }
+    } finally {
+        if (timer) clearTimeout(timer)
+        params.signal?.removeEventListener('abort', abort)
     }
 
     return '[DONE]'

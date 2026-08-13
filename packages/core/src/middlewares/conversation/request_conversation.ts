@@ -136,6 +136,10 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                 postHandler,
                                 requestId: context.options.messageId,
                                 toolMask: invocation?.toolMask,
+                                source:
+                                    invocation?.source.kind === 'character'
+                                        ? 'character'
+                                        : 'chatluna',
                                 signal: invocation?.signal,
                                 persist: invocation?.persist !== false
                             }

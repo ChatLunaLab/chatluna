@@ -59,7 +59,7 @@ export function applyLoopGuidance(
 
     const tool = action.tool?.toLowerCase() ?? ''
     const text = toOutput(observation)
-    const failure = failed || isFailureObservation(text)
+    const failure = failed
     const hints: string[] = []
 
     if (failure) {
@@ -318,18 +318,6 @@ function appendObservation(observation: AgentObservation, text: string) {
     }
 
     return observation
-}
-
-function isFailureObservation(text: string) {
-    const value = text.slice(0, 800).toLowerCase()
-    return (
-        value.startsWith('error') ||
-        value.includes('"error"') ||
-        value.includes('failed') ||
-        value.includes('exception') ||
-        value.includes('permission denied') ||
-        value.includes('not found')
-    )
 }
 
 function isNoProgressTool(tool: string) {

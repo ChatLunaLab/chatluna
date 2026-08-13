@@ -11,7 +11,8 @@ import {
 } from 'koishi-plugin-chatluna/llm-core/platform/api'
 import {
     ChatLunaError,
-    ChatLunaErrorCode
+    ChatLunaErrorCode,
+    createTimeoutError
 } from 'koishi-plugin-chatluna/utils/error'
 import { logger } from 'koishi-plugin-chatluna'
 import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
@@ -125,10 +126,8 @@ export class ChatLunaReranker extends BaseDocumentCompressor {
     private async _rerankWithRetry(
         request: RerankerRequestParams
     ): ReturnType<RerankerRequester['rerank']> {
-        const timeoutError = new ChatLunaError(
-            ChatLunaErrorCode.API_REQUEST_TIMEOUT,
-            new Error(`timeout when calling ${request.model} reranker`),
-            true
+        const timeoutError = createTimeoutError(
+            new Error(`timeout when calling ${request.model} reranker`)
         )
 
         const makeRequest = async () => {

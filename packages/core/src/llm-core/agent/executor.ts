@@ -54,6 +54,15 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
     ): AsyncGenerator<AgentRunnerOutput> {
         const configurable = (config?.configurable ??
             {}) as AgentRuntimeConfigurable
+        const agentConfig = {
+            ...config,
+            ...(input['maxTokens'] == null
+                ? {}
+                : { maxTokens: input['maxTokens'] }),
+            ...(input['maxTokenLimit'] == null
+                ? {}
+                : { maxTokenLimit: input['maxTokenLimit'] })
+        }
 
         for await (const event of runAgent({
             agent: this.agent,
@@ -63,7 +72,7 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
             maxIterations: this.maxIterations,
             handleParsingErrors: this.handleParsingErrors,
             handleToolRuntimeErrors: this.handleToolRuntimeErrors,
-            config
+            config: agentConfig
         })) {
             if (event.type === 'tool-call') {
                 for (const action of event.actions) {

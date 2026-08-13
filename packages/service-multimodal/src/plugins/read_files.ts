@@ -90,7 +90,8 @@ export class ReadFilesTool extends StructuredTool {
     ) {
         const files = input.files
         const model = runConfig?.configurable?.model
-        const conversationId = runConfig?.configurable?.conversationId
+        const conversationId =
+            runConfig?.configurable?.agentContext?.conversationId
         const fileConfig = model?.fileHandlingConfig
         const maxTotal =
             fileConfig?.maxTotalSizeBytes ?? DEFAULT_MAX_TOTAL_SIZE_BYTES

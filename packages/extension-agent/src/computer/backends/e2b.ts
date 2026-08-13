@@ -35,6 +35,7 @@ import {
     TerminalHandle,
     TerminalOptions
 } from '../types'
+import { replaceFileContent } from '../file_changes'
 
 interface SandboxWrapper {
     sandboxId: string
@@ -262,13 +263,17 @@ export class E2BComputerSession implements ComputerSessionApi {
             const target = this.resolvePath(filePath)
             const sandbox = await this.ensureSandbox()
             if (typeof content === 'string') {
+                const before = (await sandbox.files.exists(target))
+                    ? await sandbox.files.read(target)
+                    : ''
                 await sandbox.files.write(target, content)
-                return
+                return { type: 'text' as const, before, after: content }
             }
 
             const data = new ArrayBuffer(content.byteLength)
             new Uint8Array(data).set(content)
             await sandbox.files.write(target, data)
+            return { type: 'binary' as const }
         } catch (err) {
             logger.error(err)
             throw new Error(
@@ -313,48 +318,17 @@ export class E2BComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        const content = await this.readFile(filePath)
-        if (!content.includes(oldString)) {
-            return { success: false, context: '', replacements: 0 }
-        }
+        const result = replaceFileContent(
+            await this.readFile(filePath),
+            oldString,
+            newString,
+            replaceCount
+        )
+        if (!result.success) return result
+        if (result.before === result.after) return result
 
-        if (replaceCount === 1) {
-            const firstIdx = content.indexOf(oldString)
-            if (content.indexOf(oldString, firstIdx + 1) !== -1) {
-                throw new Error(
-                    `Found multiple matches for oldString in ${filePath}. ` +
-                        'Provide more surrounding lines in oldString to identify the correct match, or set replaceAll to change every instance.'
-                )
-            }
-        }
-
-        let replacements = 0
-        const next = content.replaceAll(oldString, (match) => {
-            if (replaceCount != null && replacements >= replaceCount) {
-                return match
-            }
-
-            replacements += 1
-            return newString
-        })
-
-        await this.writeFile(filePath, next)
-        const lines = next.split('\n')
-        const row = lines.findIndex((line) => line.includes(newString))
-        const start = Math.max(0, row - 10)
-        const end = Math.min(lines.length, row + 11)
-
-        return {
-            success: true,
-            replacements,
-            context: lines
-                .slice(start, end)
-                .map(
-                    (line, idx) =>
-                        `${start + idx + 1 === row + 1 ? '>' : ' '} ${start + idx + 1}: ${line}`
-                )
-                .join('\n')
-        }
+        await this.writeFile(filePath, result.after)
+        return result
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
@@ -396,11 +370,16 @@ export class E2BComputerSession implements ComputerSessionApi {
         const cwd = options.workdir
             ? this.resolvePath(options.workdir)
             : this._cwd
-        const result = await this.run(command, {
-            cwd,
-            timeoutMs: options.timeout,
-            envs: options.env
-        } as CommandStartOpts)
+        const result = await this.run(
+            command,
+            {
+                cwd,
+                timeoutMs: options.timeout,
+                envs: options.env
+            } as CommandStartOpts,
+            undefined,
+            options.signal
+        )
         this._cwd = cwd
         return result
     }
@@ -542,7 +521,7 @@ export class E2BComputerSession implements ComputerSessionApi {
         return undefined
     }
 
-    isInScope() {
+    async isInScope() {
         return true
     }
 
@@ -573,7 +552,8 @@ export class E2BComputerSession implements ComputerSessionApi {
     private async run(
         command: string,
         options?: CommandStartOpts,
-        sandbox?: SandboxWrapper
+        sandbox?: SandboxWrapper,
+        signal?: AbortSignal
     ): Promise<ExecuteResult> {
         const current = sandbox ?? (await this.ensureSandbox())
         let handle: CommandHandle | undefined
@@ -582,11 +562,36 @@ export class E2BComputerSession implements ComputerSessionApi {
         let timedOut = false
 
         try {
+            if (signal?.aborted) {
+                throw signal.reason ?? new Error('Aborted')
+            }
             handle = (await current.commands.run(command, {
                 ...options,
                 background: true
             })) as CommandHandle
-            result = await handle.wait()
+
+            if (signal) {
+                let onAbort: (() => void) | undefined
+                const abortPromise = new Promise<never>((_resolve, reject) => {
+                    onAbort = () =>
+                        reject(signal.reason ?? new Error('Aborted'))
+                    signal.addEventListener('abort', onAbort, { once: true })
+                    if (signal.aborted) onAbort()
+                })
+                try {
+                    result = await Promise.race([handle.wait(), abortPromise])
+                } catch (err) {
+                    if (signal.aborted) {
+                        await handle.kill().catch(() => undefined)
+                        throw signal.reason ?? err
+                    }
+                    throw err
+                } finally {
+                    signal.removeEventListener('abort', onAbort)
+                }
+            } else {
+                result = await handle.wait()
+            }
         } catch (err) {
             if (err instanceof CommandExitError) {
                 result = err

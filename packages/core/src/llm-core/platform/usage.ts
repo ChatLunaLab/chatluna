@@ -105,6 +105,8 @@ export interface ModelUsagePayload {
     platform: string
     model: string
     usageMetadata: UsageMetadata
+    localInputTokens?: number
+    localOutputTokens?: number
     estimated: boolean
     success: boolean
     createdAt: Date

@@ -15,6 +15,19 @@ export interface ChatLunaInvocationMetrics {
 }
 
 const chatlunaMetricsKey = 'chatluna_invocation_metrics'
+/**
+ * Numeric metadata keys that must be pulled out of each streamed chunk before
+ * concat: AIMessageChunk.concat() would otherwise accumulate/array-ify these
+ * values across the aggregated message. They are collected here and merged back
+ * onto the trailing chunk by StreamMetricsTracker.attachTo.
+ */
+const STREAM_METADATA_SNAPSHOTS = [
+    'reasoning_time',
+    'output_tokens',
+    'total_tokens',
+    'totalMs',
+    'tps'
+] as const
 
 type MetricsCarrier = { [chatlunaMetricsKey]?: ChatLunaInvocationMetrics }
 
@@ -90,6 +103,29 @@ function hasResponseChunk(chunk: ChatGenerationChunk) {
 }
 
 /**
+ * Pull the numeric snapshot keys out of a metadata object into `out`, returning
+ * a shallow copy without them. MUTATES nothing on `target` (it copies first),
+ * but the caller then replaces the message's original field with the returned
+ * copy.
+ */
+function takeMetaKeys(
+    target: Record<string, unknown> | null | undefined,
+    out: Record<string, unknown>
+): Record<string, unknown> | undefined {
+    if (target == null) return undefined
+    const keys = STREAM_METADATA_SNAPSHOTS.filter((key) =>
+        Object.hasOwn(target, key)
+    )
+    if (keys.length === 0) return undefined
+    const copy = { ...target }
+    for (const key of keys) {
+        out[key] = copy[key]
+        delete copy[key]
+    }
+    return copy
+}
+
+/**
  * Collects timing + usage across a streaming completion and attaches a single
  * ChatLunaInvocationMetrics payload to the trailing chunk. Encapsulates the
  * mutable state and BaseMessage->AIMessageChunk casts out of completionStream.
@@ -98,18 +134,41 @@ export class StreamMetricsTracker {
     private readonly start = Date.now()
     private firstAt?: number
     private usage?: UsageMetadata
+    private readonly kwargs: Record<string, unknown> = {}
+    private readonly metadata: Record<string, unknown> = {}
+    private readonly info: Record<string, unknown> = {}
 
     observe(chunk: ChatGenerationChunk): void {
-        const message = chunk.message as AIMessageChunk | undefined
-        if (message?.usage_metadata != null) {
+        const message = chunk.message as AIMessageChunk
+        if (message.usage_metadata != null) {
             this.usage = message.usage_metadata
         }
+        // These assignments MUTATE the incoming chunk: the snapshot keys are
+        // removed from its metadata fields and stashed here for attachTo.
+        const kwargs = takeMetaKeys(message.additional_kwargs, this.kwargs)
+        if (kwargs) message.additional_kwargs = kwargs
+        const metadata = takeMetaKeys(message.response_metadata, this.metadata)
+        if (metadata) message.response_metadata = metadata
+        const info = takeMetaKeys(chunk.generationInfo, this.info)
+        if (info) chunk.generationInfo = info
         if (this.firstAt == null && hasResponseChunk(chunk)) {
             this.firstAt = Date.now()
         }
     }
 
     attachTo(chunk: ChatGenerationChunk): ChatGenerationChunk {
+        chunk.message.additional_kwargs = {
+            ...chunk.message.additional_kwargs,
+            ...this.kwargs
+        }
+        chunk.message.response_metadata = {
+            ...chunk.message.response_metadata,
+            ...this.metadata
+        }
+        chunk.generationInfo = {
+            ...chunk.generationInfo,
+            ...this.info
+        }
         attachInvocationMetrics(chunk, {
             usageMetadata: this.usage,
             timing: createModelUsageTiming(this.start, this.firstAt, this.usage)

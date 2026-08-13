@@ -47,6 +47,50 @@ import {
     supportAudioInput,
     supportImageInput
 } from './client'
+import {
+    EmbeddingsRequestParams,
+    ModelRequestParams,
+    RerankerRequestParams
+} from 'koishi-plugin-chatluna/llm-core/platform/api'
+import { createTimeoutError } from 'koishi-plugin-chatluna/utils/error'
+
+export function createRequestSignal(
+    params:
+        EmbeddingsRequestParams | ModelRequestParams | RerankerRequestParams,
+    timeout = params.timeout
+) {
+    if (timeout == null) {
+        return {
+            signal: params.signal,
+            clearTimeout() {},
+            dispose() {}
+        }
+    }
+
+    const controller = new AbortController()
+    const onAbort = () => controller.abort(params.signal?.reason)
+    if (params.signal?.aborted) {
+        onAbort()
+    } else {
+        params.signal?.addEventListener('abort', onAbort, { once: true })
+    }
+
+    const timer = setTimeout(
+        () => controller.abort(createTimeoutError()),
+        timeout
+    )
+
+    return {
+        signal: controller.signal,
+        clearTimeout() {
+            clearTimeout(timer)
+        },
+        dispose() {
+            clearTimeout(timer)
+            params.signal?.removeEventListener('abort', onAbort)
+        }
+    }
+}
 
 export class ReasoningState<T = unknown> {
     content = ''

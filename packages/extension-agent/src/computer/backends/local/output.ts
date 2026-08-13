@@ -7,6 +7,7 @@ import type { TextOutput } from '../../types'
 import { logger } from '../../..'
 
 const OUTPUT_FILE_PREFIX = '.tmp-chatluna-'
+const SESSION_TMP_PREFIX = 'chatluna-agent-'
 
 export class LocalOutputCollector {
     private _text = ''
@@ -27,6 +28,7 @@ export class LocalOutputCollector {
 
     constructor(
         private readonly _name: string,
+        private readonly _tmp: string,
         private readonly _limit = 8000
     ) {}
 
@@ -46,7 +48,7 @@ export class LocalOutputCollector {
 
             if (!this._stream) {
                 this._path = path.join(
-                    os.tmpdir(),
+                    this._tmp,
                     `${OUTPUT_FILE_PREFIX}${this._name}-${Date.now()}-${randomUUID()}.txt`
                 )
                 this._stream = createWriteStream(this._path, {
@@ -137,17 +139,20 @@ export async function cleanupExpiredOutputs(maxAgeMs: number) {
     const cutoff = Date.now() - maxAgeMs
     await Promise.all(
         entries
-            .filter((name) => name.startsWith(OUTPUT_FILE_PREFIX))
+            .filter((name) => name.startsWith(SESSION_TMP_PREFIX))
             .map(async (name) => {
-                const file = path.join(dir, name)
+                const sessionDir = path.join(dir, name)
                 try {
-                    const stat = await fs.stat(file)
+                    const stat = await fs.stat(sessionDir)
                     if (stat.mtimeMs < cutoff) {
-                        await fs.rm(file, { force: true })
+                        await fs.rm(sessionDir, {
+                            recursive: true,
+                            force: true
+                        })
                     }
                 } catch (err) {
                     logger.warn(
-                        `Failed to clean up temporary output ${file}: ${err}`
+                        `Failed to clean up session temp directory ${sessionDir}: ${err}`
                     )
                 }
             })

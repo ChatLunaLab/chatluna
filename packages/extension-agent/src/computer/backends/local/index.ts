@@ -19,6 +19,7 @@ import { buildPosixBackgroundCommand } from '../types'
 import { FileStore } from './store'
 import { LocalOutputCollector } from './output'
 import {
+    getPosixShellArgs,
     ResolvedShellCommand,
     resolveInteractiveShellCommand,
     resolveShellCommand
@@ -46,15 +47,23 @@ export class LocalComputerSession implements ComputerSessionApi {
 
     private _connected = false
     private _cwd: string
-    private _store: FileStore
+    private _tmp = ''
+    private _store: FileStore | undefined
+    private _children = new Map<ReturnType<typeof spawn>, Promise<void>>()
 
     constructor(
         private _cfg: LocalBackendConfig,
         id = randomUUID()
     ) {
         this.sessionId = id
-        this._cwd = _cfg.scopePath || process.cwd()
-        this._store = new FileStore(_cfg)
+        this._cwd = path.resolve(_cfg.scopePath || process.cwd())
+    }
+
+    private get store(): FileStore {
+        if (!this._connected || !this._store) {
+            throw new Error('Local computer session is disconnected')
+        }
+        return this._store
     }
 
     get cwd() {
@@ -62,12 +71,26 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async connect() {
-        await fs.mkdir(os.tmpdir(), { recursive: true })
+        this._cwd = await fs.realpath(this._cwd)
+        this._tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'chatluna-agent-'))
+        await fs.chmod(this._tmp, 0o700)
+        this._store = new FileStore(this._cfg, this._tmp)
         this._connected = true
     }
 
     async disconnect() {
         this._connected = false
+        this._store = undefined
+        await Promise.allSettled(
+            Array.from(this._children, async ([child, settled]) => {
+                await killLocalChild(child)
+                await settled
+            })
+        )
+        if (this._tmp) {
+            await fs.rm(this._tmp, { recursive: true, force: true })
+            this._tmp = ''
+        }
     }
 
     isConnected() {
@@ -75,13 +98,11 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
-        ensureLocalPathAccess(filePath, this._cfg, 'read')
-        return this._store.readFile(filePath, offset, limit)
+        return this.store.readFile(filePath, offset, limit)
     }
 
     async writeFile(filePath: string, content: FileContent) {
-        ensureLocalPathAccess(filePath, this._cfg, 'write')
-        await this._store.writeFile(filePath, content)
+        return await this.store.writeFile(filePath, content)
     }
 
     async editFile(
@@ -90,42 +111,41 @@ export class LocalComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        ensureLocalPathAccess(filePath, this._cfg, 'write')
-        return this._store.editFile(
-            filePath,
-            oldString,
-            newString,
-            replaceCount
-        )
+        return this.store.editFile(filePath, oldString, newString, replaceCount)
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        if (searchPath) {
-            ensureLocalPathAccess(searchPath, this._cfg, 'read')
-        }
-        return this._store.grep(pattern, searchPath, include)
+        return this.store.grep(pattern, searchPath, include)
     }
 
     async glob(pattern: string, searchPath?: string) {
-        if (searchPath) {
-            ensureLocalPathAccess(searchPath, this._cfg, 'read')
-        }
-        return this._store.glob(pattern, searchPath)
+        return this.store.glob(pattern, searchPath)
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
+        if (!this._connected) {
+            throw new Error('Local computer session is disconnected')
+        }
+        if (options.signal?.aborted) {
+            throw options.signal.reason ?? new Error('Aborted')
+        }
+
         ensureCommandAllowed(command, this._cfg)
 
-        const tmp = os.tmpdir()
-        const workdir = options.workdir || this._cfg.scopePath || process.cwd()
+        const tmp = this._tmp
+        const workdir = await fs.realpath(
+            path.resolve(
+                options.workdir || this._cfg.scopePath || process.cwd()
+            )
+        )
 
-        ensureLocalCommandAccess(command, workdir, this._cfg)
+        await ensureLocalCommandAccess(command, workdir, this._cfg)
         await confirmHighRiskCommand(command, this._cfg, options.session)
 
-        await fs.mkdir(tmp, { recursive: true })
+        await fs.mkdir(this._tmp, { recursive: true, mode: 0o700 })
 
         const shell = await resolveShellCommand(
-            wrapCommandWithSandbox(command, workdir, this._cfg, tmp),
+            await wrapCommandWithSandbox(command, workdir, this._cfg, tmp),
             this._cfg
         )
 
@@ -133,8 +153,19 @@ export class LocalComputerSession implements ComputerSessionApi {
         return await runChildProcess(
             shell,
             workdir,
-            { ...shell.env, TMP: tmp, TEMP: tmp, TMPDIR: tmp, ...options.env },
-            options.timeout ?? this._cfg.commandTimeoutMs
+            {
+                ...shell.env,
+                ...options.env,
+                PATH: options.env?.PATH ?? process.env.PATH,
+                TMP: this._tmp,
+                TEMP: this._tmp,
+                TMPDIR: this._tmp,
+                TMPPREFIX: path.join(this._tmp, 'zsh')
+            },
+            options.timeout ?? this._cfg.commandTimeoutMs,
+            this._tmp,
+            options.signal,
+            this._children
         )
     }
 
@@ -143,18 +174,30 @@ export class LocalComputerSession implements ComputerSessionApi {
         marker: string,
         options: ExecuteOptions = {}
     ) {
+        if (!this._connected) {
+            throw new Error('Local computer session is disconnected')
+        }
         ensureCommandAllowed(command, this._cfg)
 
-        const tmp = os.tmpdir()
-        const workdir = options.workdir || this._cfg.scopePath || process.cwd()
+        const tmp = this._tmp
+        const workdir = await fs.realpath(
+            path.resolve(
+                options.workdir || this._cfg.scopePath || process.cwd()
+            )
+        )
 
-        ensureLocalCommandAccess(command, workdir, this._cfg)
+        await ensureLocalCommandAccess(command, workdir, this._cfg)
         await confirmHighRiskCommand(command, this._cfg, options.session)
 
-        await fs.mkdir(tmp, { recursive: true })
+        await fs.mkdir(tmp, { recursive: true, mode: 0o700 })
 
         const shell = await resolveInteractiveShellCommand(this._cfg)
-        const wrapped = wrapCommandWithSandbox(command, workdir, this._cfg, tmp)
+        const wrapped = await wrapCommandWithSandbox(
+            command,
+            workdir,
+            this._cfg,
+            tmp
+        )
         this._cwd = path.resolve(workdir)
 
         if (process.platform !== 'win32') {
@@ -188,12 +231,12 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async readAsset(filePath: string) {
-        ensureLocalPathAccess(filePath, this._cfg, 'read')
+        await ensureLocalPathAccess(filePath, this._cfg, 'read', this._tmp)
         return (await fs.readFile(filePath)).toString('base64')
     }
 
     async openAsset(filePath: string) {
-        ensureLocalPathAccess(filePath, this._cfg, 'read')
+        await ensureLocalPathAccess(filePath, this._cfg, 'read', this._tmp)
         const info = await fs.stat(filePath)
         const mimeType = mimeTypes.lookup(filePath)
         return {
@@ -204,30 +247,54 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async getTempDir() {
-        return os.tmpdir()
+        return this._tmp
     }
 
-    isInScope(filePath: string) {
-        return this._store.isInScope(filePath)
+    async isInScope(filePath: string) {
+        return this.store.isInScope(filePath)
     }
 
     getScopePath() {
-        return this._store.scope
+        return this.store.scope
     }
 
     async createTerminal(
         options: { cwd?: string; cols?: number; rows?: number } = {}
     ) {
-        const tmp = os.tmpdir()
-        const cwd = options.cwd || this._cwd
+        const cwd = await fs.realpath(path.resolve(options.cwd || this._cwd))
+        await ensureLocalCommandAccess('', cwd, this._cfg)
+        await fs.mkdir(this._tmp, { recursive: true, mode: 0o700 })
         const shell = await resolveInteractiveShellCommand(this._cfg)
-        this._cwd = path.resolve(cwd)
-        return createLocalTerminal(shell, cwd, {
-            ...shell.env,
-            TMP: tmp,
-            TEMP: tmp,
-            TMPDIR: tmp
-        })
+        const wrapped =
+            process.platform !== 'win32' &&
+            !this._cfg.dangerouslySkipPermissions
+                ? await wrapCommandWithSandbox(
+                      '',
+                      cwd,
+                      this._cfg,
+                      this._tmp,
+                      true
+                  )
+                : undefined
+        this._cwd = cwd
+        return createLocalTerminal(
+            wrapped
+                ? {
+                      file: shell.file,
+                      args: getPosixShellArgs(shell.file, `exec ${wrapped}`),
+                      env: shell.env
+                  }
+                : shell,
+            cwd,
+            {
+                ...shell.env,
+                PATH: process.env.PATH,
+                TMP: this._tmp,
+                TEMP: this._tmp,
+                TMPDIR: this._tmp,
+                TMPPREFIX: path.join(this._tmp, 'zsh')
+            }
+        )
     }
 }
 
@@ -235,10 +302,18 @@ async function runChildProcess(
     shell: ResolvedShellCommand,
     cwd: string,
     env: NodeJS.ProcessEnv,
-    timeout: number
+    timeout: number,
+    tmp: string,
+    signal: AbortSignal | undefined,
+    children: Map<ReturnType<typeof spawn>, Promise<void>>
 ): Promise<ExecuteResult> {
     return await new Promise<ExecuteResult>((resolve, reject) => {
-        const output = new LocalOutputCollector('bash')
+        if (signal?.aborted) {
+            reject(signal.reason ?? new Error('Aborted'))
+            return
+        }
+
+        const output = new LocalOutputCollector('bash', tmp)
         const child = spawn(shell.file, shell.args, {
             cwd,
             env,
@@ -246,9 +321,26 @@ async function runChildProcess(
             windowsHide: true,
             detached: process.platform !== 'win32'
         })
+        const closed = new Promise<void>((resolve) => {
+            child.once('close', () => resolve())
+        })
+        let settle!: () => void
+        children.set(
+            child,
+            new Promise((resolve) => {
+                settle = resolve
+            })
+        )
 
         let done = false
         let timedOut = false
+        const timer =
+            timeout > 0
+                ? setTimeout(() => {
+                      timedOut = true
+                      killLocalChild(child).catch(() => undefined)
+                  }, timeout)
+                : undefined
         let hasOutput = false
         let hasStderr = false
         const stdout = { text: '', truncated: false }
@@ -278,10 +370,20 @@ async function runChildProcess(
             if (done) return
 
             done = true
-            clearTimeout(timer)
+            if (timer) clearTimeout(timer)
+            signal?.removeEventListener('abort', abort)
             try {
                 await Promise.all(pending)
                 const value = await output.finish()
+                const hint = /operation not permitted|permission denied/i.test(
+                    value.text
+                )
+                    ? '\nSandbox note: system temp paths are read-only. ' +
+                      'Use $TMPDIR for scratch files; it points to the ' +
+                      'session-scoped writable temporary directory.'
+                    : ''
+                children.delete(child)
+                settle()
                 resolve({
                     ...result,
                     stdout: stdout.truncated
@@ -292,28 +394,50 @@ async function runChildProcess(
                         : stderr.text,
                     output: {
                         ...value,
-                        text: value.text || '(no output)'
+                        text: value.text
+                            ? value.text + hint
+                            : hint || '(no output)'
                     }
                 })
             } catch (err) {
-                await output.dispose()
+                try {
+                    await output.dispose()
+                } finally {
+                    children.delete(child)
+                    settle()
+                }
                 reject(err)
             }
         }
         const fail = async (err: unknown) => {
             if (done) return
             done = true
-            clearTimeout(timer)
-            await output.dispose()
+            if (timer) clearTimeout(timer)
+            signal?.removeEventListener('abort', abort)
+            child.stdout.removeAllListeners('data')
+            child.stderr.removeAllListeners('data')
+            child.stdout.destroy()
+            child.stderr.destroy()
+            await closed
+            try {
+                await output.dispose()
+            } finally {
+                children.delete(child)
+                settle()
+            }
             reject(err)
         }
-        const timer =
-            timeout > 0
-                ? setTimeout(() => {
-                      timedOut = true
-                      killLocalChild(child).catch(() => undefined)
-                  }, timeout)
-                : undefined
+        const abort = () => {
+            // eslint-disable-next-line no-void
+            void killLocalChild(child).catch(() => undefined)
+            fail(signal?.reason ?? new Error('Aborted')).catch(reject)
+        }
+
+        signal?.addEventListener('abort', abort, { once: true })
+        if (signal?.aborted) {
+            abort()
+            return
+        }
 
         child.stdout.setEncoding('utf8')
         child.stderr.setEncoding('utf8')
@@ -341,7 +465,7 @@ async function runChildProcess(
 
         child.on('close', (code, signal) => {
             finish({
-                exitCode: timedOut ? 1 : (code ?? 0),
+                exitCode: timedOut ? 1 : (code ?? 1),
                 stdout: stdout.text,
                 stderr: stderr.text,
                 signal: signal ?? undefined,

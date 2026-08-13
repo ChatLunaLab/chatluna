@@ -119,9 +119,7 @@ export async function runRoomToConversationMigration(
 // flags indicate it IS complete — so the two paths are mutually exclusive.
 export async function ensureMigrationValidated(ctx: Context, config: Config) {
     const hasSentinel = existsSync(getLegacySchemaSentinel(ctx.baseDir))
-    const hasLegacyData = hasSentinel
-        ? await hasLegacyMigrationData(ctx)
-        : false
+    const hasLegacyData = await hasLegacyMigrationData(ctx)
 
     if (hasSentinel && hasLegacyData) {
         ctx.logger.warn(
@@ -221,6 +219,16 @@ export async function ensureMigrationValidated(ctx: Context, config: Config) {
         roomDone !== true ||
         messageDone !== true
     ) {
+        if (!hasLegacyData) {
+            ctx.logger.info('No legacy ChatHub data found; skipping migration.')
+            const validated = createPassedValidationResult()
+            await writeMetaValue(ctx, 'schema_version', BUILTIN_SCHEMA_VERSION)
+            await writeMetaValue(ctx, 'validation_result', validated)
+            await writeMigrationDone(ctx)
+            await writeMigrationFinished(ctx)
+            return validated
+        }
+
         // Migration is genuinely incomplete; restart it.
         // runRoomToConversationMigration will NOT call back into ensureMigrationValidated
         // because it only does so when all done-flags are true, which they are not here.

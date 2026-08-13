@@ -14,7 +14,6 @@
         "build": "yarn process-dynamic-import --lint && yarn fast-build shared-prompt-renderer && yarn fast-build core && yarn fast-build",
         "bump": "yakumo version",
         "dep": "yakumo upgrade",
-        "test": "cross-env TS_NODE_PROJECT=packages/core/tests/tsconfig.json yakumo mocha -r tsconfig-paths/register -r esbuild-register -r yml-register --exit",
         "pub": "yakumo publish --tag latest",
         "pub:next": "yakumo publish --tag next",
         "lint": "yarn eslint packages --cache --ext=ts",

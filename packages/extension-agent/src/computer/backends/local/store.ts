@@ -1,7 +1,7 @@
 /** @module computer/backends/local/store */
 
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
-import { createReadStream } from 'node:fs'
+import { createReadStream, realpathSync } from 'node:fs'
 import fs from 'fs/promises'
 import path from 'path'
 import { createInterface } from 'node:readline'
@@ -9,22 +9,38 @@ import type { Readable } from 'node:stream'
 import micromatch from 'micromatch'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
-import type { FileContent, TextOutput } from '../../types'
+import type {
+    EditResult,
+    FileContent,
+    TextOutput,
+    WriteResult
+} from '../../types'
+import { replaceFileContent } from '../../file_changes'
 import { LocalOutputCollector } from './output'
 import { logger } from '../../..'
+import { ensureLocalPathAccess, isInsideRootAsync } from './sandbox'
 
 const rg = which.sync('rg', { nothrow: true })
 const INTERNAL_IGNORES = ['**/.tmp-chatluna-*']
 
+function resolveReal(value: string) {
+    const resolved = path.resolve(value)
+    try {
+        return realpathSync.native(resolved)
+    } catch {
+        return resolved
+    }
+}
+
 export interface BaseFileStore {
     readFile(filePath: string, offset?: number, limit?: number): Promise<string>
-    writeFile(writePath: string, contents: FileContent): Promise<void>
+    writeFile(writePath: string, contents: FileContent): Promise<WriteResult>
     editFile(
         filePath: string,
         oldString: string,
         newString: string,
         replaceCount?: number
-    ): Promise<{ success: boolean; context: string; replacements: number }>
+    ): Promise<EditResult>
     grep(
         pattern: string,
         searchPath?: string,
@@ -32,34 +48,63 @@ export interface BaseFileStore {
     ): Promise<string[] | TextOutput>
     glob(pattern: string, searchPath?: string): Promise<string[] | TextOutput>
     readonly scope: string
-    isInScope(filePath: string): boolean
+    isInScope(filePath: string): Promise<boolean>
 }
 
 export class FileStore implements BaseFileStore {
-    constructor(private _cfg: LocalBackendConfig) {}
+    readonly scope: string
+    private _allow: string[]
+    private _deny: string[]
 
-    get scope() {
-        return this._cfg.scopePath
+    constructor(
+        private _cfg: LocalBackendConfig,
+        private _tmp: string
+    ) {
+        const value = path.resolve(this._cfg.scopePath || process.cwd())
+        try {
+            this.scope = realpathSync.native(value)
+        } catch {
+            this.scope = value
+        }
+        this._allow = [this.scope, ...this._cfg.readOnlyRoots, this._tmp].map(
+            (item) => resolveReal(item)
+        )
+        this._deny = this._cfg.denyRoots.map((item) => resolveReal(item))
     }
 
-    isInScope(filePath: string) {
-        return true
+    async isInScope(filePath: string) {
+        if (this._cfg.dangerouslySkipPermissions) return true
+        return isInsideRootAsync(filePath, this.scope)
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
+        await ensureLocalPathAccess(filePath, this._cfg, 'read', this._tmp)
         const stat = await fs.stat(filePath)
         if (stat.isDirectory()) {
-            return (await fs.readdir(filePath, { withFileTypes: true }))
-                .filter(
-                    (entry) =>
-                        !this._shouldIgnore(path.join(filePath, entry.name))
-                )
-                .map((entry) =>
-                    entry.isDirectory()
-                        ? `${path.join(filePath, entry.name)}/`
-                        : path.join(filePath, entry.name)
-                )
-                .join('\n')
+            const result: string[] = []
+            for (const entry of await fs.readdir(filePath, {
+                withFileTypes: true
+            })) {
+                const item = path.join(filePath, entry.name)
+                if (this._shouldIgnore(item)) continue
+                if (!this._isAllowed(item)) continue
+
+                if (entry.isDirectory()) {
+                    result.push(`${item}/`)
+                    continue
+                }
+
+                if (entry.isFile()) {
+                    result.push(item)
+                    continue
+                }
+
+                if (!entry.isSymbolicLink()) continue
+                try {
+                    if ((await fs.stat(item)).isFile()) result.push(item)
+                } catch {}
+            }
+            return result.join('\n')
         }
 
         const lines = (await fs.readFile(filePath, 'utf-8')).split('\n')
@@ -80,9 +125,31 @@ export class FileStore implements BaseFileStore {
         return `${result}\n\n(Showing lines ${start + 1}-${end} of ${lines.length}. Use offset=${end + 1} to continue.)`
     }
 
-    async writeFile(writePath: string, contents: FileContent) {
+    async writeFile(
+        writePath: string,
+        contents: FileContent
+    ): Promise<WriteResult> {
+        await ensureLocalPathAccess(writePath, this._cfg, 'write', this._tmp)
+        if (typeof contents === 'string') {
+            const before = await fs
+                .readFile(writePath, 'utf-8')
+                .catch((err) => {
+                    if ((err as NodeJS.ErrnoException).code === 'ENOENT')
+                        return ''
+                    throw err
+                })
+            if (before === contents) {
+                return { type: 'text', before, after: contents }
+            }
+
+            await fs.mkdir(path.dirname(writePath), { recursive: true })
+            await fs.writeFile(writePath, contents)
+            return { type: 'text', before, after: contents }
+        }
+
         await fs.mkdir(path.dirname(writePath), { recursive: true })
         await fs.writeFile(writePath, contents)
+        return { type: 'binary' }
     }
 
     async editFile(
@@ -91,28 +158,24 @@ export class FileStore implements BaseFileStore {
         newString: string,
         replaceCount?: number
     ) {
-        const next = replaceSubstring(
+        await ensureLocalPathAccess(filePath, this._cfg, 'write', this._tmp)
+        const result = replaceFileContent(
             await fs.readFile(filePath, 'utf-8'),
             oldString,
             newString,
             replaceCount
         )
 
-        if (next.count < 1) {
-            return { success: false, context: '', replacements: 0 }
-        }
+        if (!result.success) return result
+        if (result.before === result.after) return result
 
-        await fs.writeFile(filePath, next.result)
-
-        return {
-            success: true,
-            context: buildEditContext(next.result, oldString, newString),
-            replacements: next.count
-        }
+        await fs.writeFile(filePath, result.after)
+        return result
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        const dir = searchPath || this._cfg.scopePath || process.cwd()
+        const dir = searchPath || this.scope
+        await ensureLocalPathAccess(dir, this._cfg, 'read', this._tmp)
 
         const stat = await fs.stat(dir).catch(() => null)
         if (!stat) {
@@ -125,7 +188,6 @@ export class FileStore implements BaseFileStore {
                 '-n',
                 '--hidden',
                 '--no-ignore',
-                '--follow',
                 '--color',
                 'never',
                 '--engine',
@@ -142,7 +204,7 @@ export class FileStore implements BaseFileStore {
 
             args.push('-e', pattern, '.')
 
-            const output = new LocalOutputCollector('grep')
+            const output = new LocalOutputCollector('grep', this._tmp)
             try {
                 const found = await this._runRg(args, dir, async (stdout) => {
                     for await (const line of createInterface({
@@ -159,6 +221,7 @@ export class FileStore implements BaseFileStore {
                         if (this._shouldIgnore(file)) continue
                         if (include && !this._matchPattern(file, include))
                             continue
+                        if (!this._isAllowed(file)) continue
 
                         const text = (
                             (item.data.lines.text as string | undefined) || ''
@@ -213,7 +276,8 @@ export class FileStore implements BaseFileStore {
     }
 
     async glob(pattern: string, searchPath?: string) {
-        const dir = searchPath || this._cfg.scopePath || process.cwd()
+        const dir = searchPath || this.scope
+        await ensureLocalPathAccess(dir, this._cfg, 'read', this._tmp)
 
         const stat = await fs.stat(dir).catch(() => null)
         if (!stat) {
@@ -225,13 +289,7 @@ export class FileStore implements BaseFileStore {
         }
 
         if (rg) {
-            const args = [
-                '--files',
-                '--hidden',
-                '--no-ignore',
-                '--follow',
-                '-0'
-            ]
+            const args = ['--files', '--hidden', '--no-ignore', '-0']
 
             args.push('-g', pattern)
             for (const item of [...this._cfg.ignores, ...INTERNAL_IGNORES]) {
@@ -240,7 +298,7 @@ export class FileStore implements BaseFileStore {
 
             args.push('.')
 
-            const output = new LocalOutputCollector('glob')
+            const output = new LocalOutputCollector('glob', this._tmp)
             try {
                 const found = await this._runRg(args, dir, async (stdout) => {
                     let rest = ''
@@ -251,6 +309,7 @@ export class FileStore implements BaseFileStore {
                             const file = path.resolve(dir, raw)
                             if (this._shouldIgnore(file)) continue
                             if (!this._matchPattern(file, pattern)) continue
+                            if (!this._isAllowed(file)) continue
                             await output.appendLine(file)
                         }
                     }
@@ -351,7 +410,7 @@ export class FileStore implements BaseFileStore {
         files: AsyncIterable<string> | Iterable<string>,
         collect: (output: LocalOutputCollector, file: string) => Promise<void>
     ): Promise<TextOutput> {
-        const output = new LocalOutputCollector(name)
+        const output = new LocalOutputCollector(name, this._tmp)
         try {
             for await (const file of files) {
                 if (this._shouldIgnore(file)) continue
@@ -390,12 +449,9 @@ export class FileStore implements BaseFileStore {
 
                 try {
                     const stat = await fs.stat(fullPath)
-                    if (stat.isDirectory()) {
-                        yield* this._walk(fullPath, seen)
-                        continue
-                    }
-
-                    if (stat.isFile()) yield fullPath
+                    if (!stat.isFile()) continue
+                    if (!this._isAllowed(fullPath)) continue
+                    yield fullPath
                 } catch (err) {
                     if (process.env['CHATLUNA_AGENT_DEBUG']) {
                         console.debug(err)
@@ -409,10 +465,22 @@ export class FileStore implements BaseFileStore {
         }
     }
 
+    private _isAllowed(filePath: string) {
+        const resolved = path.resolve(filePath)
+        return (
+            this._allow.some(
+                (root) =>
+                    resolved === root || resolved.startsWith(root + path.sep)
+            ) &&
+            !this._deny.some(
+                (root) =>
+                    resolved === root || resolved.startsWith(root + path.sep)
+            )
+        )
+    }
+
     private _matchPattern(filePath: string, pattern: string) {
-        const rel = path
-            .relative(this._cfg.scopePath || process.cwd(), filePath)
-            .replaceAll('\\', '/')
+        const rel = path.relative(this.scope, filePath).replaceAll('\\', '/')
         return micromatch.some(
             [rel, filePath.replaceAll('\\', '/'), path.basename(filePath)],
             pattern,
@@ -422,68 +490,9 @@ export class FileStore implements BaseFileStore {
 
     private _shouldIgnore(filePath: string) {
         return micromatch.isMatch(
-            path
-                .relative(this._cfg.scopePath || process.cwd(), filePath)
-                .replace(/\\/g, '/'),
+            path.relative(this.scope, filePath).replace(/\\/g, '/'),
             [...this._cfg.ignores, ...INTERNAL_IGNORES],
             { dot: true }
         )
     }
-}
-
-function replaceSubstring(
-    content: string,
-    oldString: string,
-    newString: string,
-    replaceCount?: number
-) {
-    if (!content.includes(oldString)) {
-        return { result: content, count: 0 }
-    }
-
-    if (replaceCount === 1) {
-        if (
-            content.indexOf(
-                oldString,
-                content.indexOf(oldString) + oldString.length
-            ) !== -1
-        ) {
-            throw new Error(
-                'Found multiple matches for oldString. Provide more surrounding ' +
-                    'lines in oldString to identify the correct match, or set ' +
-                    'replaceAll to change every instance.'
-            )
-        }
-    }
-
-    let count = 0
-    const result = content.replaceAll(oldString, (item) => {
-        if (replaceCount != null && count >= replaceCount) {
-            return item
-        }
-
-        count += 1
-        return newString
-    })
-
-    return { result, count }
-}
-
-function buildEditContext(
-    content: string,
-    oldString: string,
-    newString: string
-): string {
-    const lines = content.split('\n')
-    const row = lines.findIndex((line) => line.includes(newString || oldString))
-    const start = Math.max(0, row - 10)
-    const end = Math.min(lines.length, row + 11)
-
-    return lines
-        .slice(start, end)
-        .map(
-            (line, idx) =>
-                `${start + idx + 1 === row + 1 ? '>' : ' '} ${start + idx + 1}: ${line}`
-        )
-        .join('\n')
 }

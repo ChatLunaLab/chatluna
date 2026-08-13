@@ -3,7 +3,6 @@
 import { writeFile } from 'fs/promises'
 import { SystemMessage } from '@langchain/core/messages'
 import type {} from 'koishi-plugin-chatluna/llm-core/chat/app'
-import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     countMessageTokens,
     PromptContextRuntime
@@ -262,20 +261,20 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async activateSkill(name: string, runConfig?: ChatLunaToolRunnable) {
         const skill = this.getVisibleSkillByName(name)
-        const conversationId = runConfig?.configurable?.conversationId
-        const sub = runConfig?.configurable?.agentContext?.subagentContext
+        const agentContext = runConfig!.configurable.agentContext
+
+        const conversationId = agentContext.conversationId
+        const sub = agentContext.kind === 'subagent'
         const session = runConfig?.configurable?.session
-        const source =
-            (runConfig?.configurable as { source?: 'chatluna' | 'character' })
-                ?.source ?? 'chatluna'
+        const source = agentContext.source
 
         if (sub) {
             const agent = this.ctx.chatluna_agent?.subAgent
                 .getCatalogSync()
-                .find((item) => item.id === sub.agentId)
+                .find((item) => item.id === agentContext.agentId)
 
             if (!agent) {
-                throw new Error(`Sub-agent not found: ${sub.agentId}`)
+                throw new Error(`Sub-agent not found: ${agentContext.agentId}`)
             }
 
             const names = this.permission
@@ -489,26 +488,13 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
         this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
             'after_system_prompts',
             async (runtime: PromptContextRuntime, next) => {
-                const conversationId = runtime.configurable?.conversationId
-                if (!conversationId) return next()
+                const agentContext = runtime.configurable?.agentContext
+                if (!agentContext) return next()
 
-                const sub =
-                    (
-                        runtime.configurable?.agentContext as {
-                            subagentContext?: ChatLunaToolRunnable['configurable']['agentContext'] extends infer T
-                                ? T extends { subagentContext?: infer U }
-                                    ? U
-                                    : never
-                                : never
-                        }
-                    )?.subagentContext ?? runtime.configurable?.subagentContext
+                const conversationId = agentContext.conversationId
+                const sub = agentContext.kind === 'subagent'
                 const session = runtime.configurable?.session
-                const source =
-                    (
-                        runtime.configurable as {
-                            source?: 'chatluna' | 'character'
-                        }
-                    )?.source ?? 'chatluna'
+                const source = agentContext.source
                 const cwd =
                     this.ctx.chatluna_agent?.computer.getPromptWorkdir(
                         conversationId
@@ -516,8 +502,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 const status = this.ctx.chatluna_agent?.computer.getStatus()
                 const remote =
                     status != null && status.defaultProvider !== 'local'
-                const mask = (runtime.configurable as { toolMask?: ToolMask })
-                    ?.toolMask
+                const mask = agentContext.toolMask
                 const hasTool =
                     mask == null ||
                     this.ctx.chatluna.platform
@@ -529,7 +514,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
                 const agent = sub
                     ? this.ctx.chatluna_agent?.subAgent
                           .getCatalogSync()
-                          .find((item) => item.id === sub.agentId)
+                          .find((item) => item.id === agentContext.agentId)
                     : undefined
                 const full = sub
                     ? agent

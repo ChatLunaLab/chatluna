@@ -22,7 +22,7 @@ export interface ComputerSessionApi {
     isConnected(): boolean
 
     readFile(path: string, offset?: number, limit?: number): Promise<string>
-    writeFile(path: string, content: FileContent): Promise<void>
+    writeFile(path: string, content: FileContent): Promise<WriteResult>
     hashFiles?(paths: string[]): Promise<Map<string, string>>
     editFile(
         path: string,
@@ -52,7 +52,7 @@ export interface ComputerSessionApi {
     desktopAction?(action: DesktopAction): Promise<void>
     getDesktopStream?(): Promise<StreamHandle | undefined>
 
-    isInScope(path: string): boolean
+    isInScope(path: string): Promise<boolean>
     getScopePath(): string
 }
 
@@ -61,6 +61,7 @@ export interface ExecuteOptions {
     timeout?: number
     env?: Record<string, string>
     session?: Session
+    signal?: AbortSignal
 }
 
 /** @module computer/types */
@@ -74,11 +75,17 @@ export interface ExecuteResult {
     output?: TextOutput
 }
 
-export interface EditResult {
-    success: boolean
-    context: string
-    replacements: number
-}
+export type WriteResult =
+    { type: 'text'; before: string; after: string } | { type: 'binary' }
+
+export type EditResult =
+    | {
+          success: true
+          before: string
+          after: string
+          replacements: number
+      }
+    | { success: false; replacements: 0 }
 
 export interface TerminalOptions {
     cols?: number

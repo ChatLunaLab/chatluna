@@ -1,6 +1,5 @@
 import { SystemMessage } from '@langchain/core/messages'
 import { type Context } from 'koishi'
-import type { ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import {
     countMessageTokens,
     PromptContextRuntime
@@ -176,12 +175,11 @@ export class ChatLunaAgentTriggerService {
             this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
                 'after_system_prompts',
                 async (runtime: PromptContextRuntime, next) => {
-                    if (!runtime.configurable?.conversationId) return next()
-                    if (runtime.configurable?.subagentContext) return next()
+                    const agentContext = runtime.configurable?.agentContext
+                    if (!agentContext?.conversationId) return next()
+                    if (agentContext.kind === 'subagent') return next()
 
-                    const mask = (
-                        runtime.configurable as { toolMask?: ToolMask }
-                    ).toolMask
+                    const mask = agentContext.toolMask
                     if (
                         mask != null &&
                         !this.ctx.chatluna.platform

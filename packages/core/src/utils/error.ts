@@ -40,6 +40,41 @@ export class ChatLunaError extends Error {
     }
 }
 
+export function isAbortError(e: unknown): boolean {
+    return e instanceof Error && e.name === 'AbortError'
+}
+
+export function isErrorWithCode(
+    e: unknown,
+    codes: ChatLunaErrorCode[]
+): boolean {
+    return e instanceof ChatLunaError && codes.includes(e.errorCode)
+}
+
+export function isRequestFailure(e: unknown): boolean {
+    return (
+        isErrorWithCode(e, [
+            ChatLunaErrorCode.NETWORK_ERROR,
+            ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+            ChatLunaErrorCode.API_REQUEST_FAILED,
+            ChatLunaErrorCode.API_REQUEST_TOKEN_LIMIT,
+            ChatLunaErrorCode.ABORTED
+        ]) || isAbortError(e)
+    )
+}
+
+export function createTimeoutError(originError?: Error): ChatLunaError {
+    return new ChatLunaError(
+        ChatLunaErrorCode.API_REQUEST_TIMEOUT,
+        originError,
+        true
+    )
+}
+
+export function createAbortError(): ChatLunaError {
+    return new ChatLunaError(ChatLunaErrorCode.ABORTED, undefined, true)
+}
+
 export enum ChatLunaErrorCode {
     NETWORK_ERROR = 1,
     UNSUPPORTED_PROXY_PROTOCOL = 2,
@@ -56,6 +91,7 @@ export enum ChatLunaErrorCode {
     API_REQUEST_TIMEOUT = 102,
     API_REQUEST_FAILED = 103,
     API_UNSAFE_CONTENT = 104,
+    API_REQUEST_TOKEN_LIMIT = 105,
     MODEL_ADAPTER_NOT_FOUND = 300,
     MODEL_NOT_FOUND = 301,
     PRESET_NOT_FOUND = 302,

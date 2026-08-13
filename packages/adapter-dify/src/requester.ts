@@ -31,6 +31,7 @@ import {
     isMessageContentText
 } from 'koishi-plugin-chatluna/utils/string'
 import { File, FormData } from 'undici'
+import { createRequestSignal } from '@chatluna/v1-shared-adapter'
 import {
     mapMimeToFileType,
     resolveFilePayload,
@@ -162,73 +163,94 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             requestBody.files = files
         }
 
-        const response = await this._post(
-            '/chat-messages',
-            requestBody,
-            config.apiKey,
-            {
-                signal: params.signal
-            }
-        )
+        const requestSignal = createRequestSignal(params)
 
-        const iterator = sseIterable(response)
-        let updatedDifyConversationId: string | undefined
+        try {
+            const response = await this._post(
+                '/chat-messages',
+                requestBody,
+                config.apiKey,
+                {
+                    signal: requestSignal.signal
+                }
+            )
+            requestSignal.clearTimeout()
 
-        for await (const event of iterator) {
-            const chunk = event.data
+            const iterator = sseIterable(response, {
+                timeout: params.timeout,
+                signal: requestSignal.signal
+            })
+            let updatedDifyConversationId: string | undefined
 
-            if (chunk == null) {
-                continue
-            }
+            for await (const event of iterator) {
+                const chunk = event.data
 
-            let data: AssistantStreamResponse
+                if (chunk == null) {
+                    continue
+                }
 
-            try {
-                data = JSON.parse(chunk)
-            } catch (err) {
-                this.ctx.logger.error(
-                    'error when parsing dify stream response, Result:' + chunk
-                )
-                throw new ChatLunaError(
-                    ChatLunaErrorCode.API_REQUEST_FAILED,
-                    new Error(
-                        'error when calling dify completion, Result: ' + chunk
+                let data: AssistantStreamResponse
+
+                try {
+                    data = JSON.parse(chunk)
+                } catch (err) {
+                    this.ctx.logger.error(
+                        'error when parsing dify stream response, Result:' +
+                            chunk
                     )
-                )
-            }
-
-            if (data.event === 'error') {
-                throw new ChatLunaError(
-                    ChatLunaErrorCode.API_REQUEST_FAILED,
-                    new Error(
-                        'error when calling dify completion, Result:' + chunk
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(
+                            'error when calling dify completion, Result: ' +
+                                chunk
+                        )
                     )
-                )
+                }
+
+                if (data.event === 'error') {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(
+                            'error when calling dify completion, Result:' +
+                                chunk
+                        )
+                    )
+                }
+
+                const content = data.answer
+
+                if (content != null) {
+                    const messageChunk = new AIMessageChunk({ content })
+                    const generationChunk = new ChatGenerationChunk({
+                        message: messageChunk,
+                        text: content
+                    })
+
+                    yield generationChunk
+                }
+
+                updatedDifyConversationId = data.conversation_id
+
+                if (data.event === 'message_end') {
+                    await this.updateDifyConversationId(
+                        conversationId,
+                        config.workflowName,
+                        updatedDifyConversationId,
+                        difyUser
+                    )
+                    break
+                }
             }
-
-            const content = data.answer
-
-            if (content != null) {
-                const messageChunk = new AIMessageChunk({ content })
-                const generationChunk = new ChatGenerationChunk({
-                    message: messageChunk,
-                    text: content
-                })
-
-                yield generationChunk
+        } catch (e) {
+            if (requestSignal.signal?.aborted) {
+                throw requestSignal.signal.reason ?? e
             }
-
-            updatedDifyConversationId = data.conversation_id
-
-            if (data.event === 'message_end') {
-                await this.updateDifyConversationId(
-                    conversationId,
-                    config.workflowName,
-                    updatedDifyConversationId,
-                    difyUser
-                )
-                break
+            if (e instanceof ChatLunaError) {
+                throw e
             }
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        } finally {
+            requestSignal.dispose()
         }
     }
 
@@ -267,60 +289,81 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             requestBody.files = files
         }
 
-        const response = await this._post(
-            '/workflows/run',
-            requestBody,
-            config.apiKey,
-            {
-                signal: params.signal
-            }
-        )
+        const requestSignal = createRequestSignal(params)
 
-        const iterator = sseIterable(response)
+        try {
+            const response = await this._post(
+                '/workflows/run',
+                requestBody,
+                config.apiKey,
+                {
+                    signal: requestSignal.signal
+                }
+            )
+            requestSignal.clearTimeout()
 
-        for await (const event of iterator) {
-            const chunk = event.data
+            const iterator = sseIterable(response, {
+                timeout: params.timeout,
+                signal: requestSignal.signal
+            })
 
-            if (chunk == null) {
-                continue
-            }
+            for await (const event of iterator) {
+                const chunk = event.data
 
-            let data: AssistantStreamResponse
+                if (chunk == null) {
+                    continue
+                }
 
-            try {
-                data = JSON.parse(chunk)
-            } catch (err) {
-                this.ctx.logger.error(
-                    'error when parsing dify stream response, Result:' + chunk
-                )
-                throw new ChatLunaError(
-                    ChatLunaErrorCode.API_REQUEST_FAILED,
-                    new Error(
-                        'error when calling dify completion, Result: ' + chunk
+                let data: AssistantStreamResponse
+
+                try {
+                    data = JSON.parse(chunk)
+                } catch (err) {
+                    this.ctx.logger.error(
+                        'error when parsing dify stream response, Result:' +
+                            chunk
                     )
-                )
-            }
-
-            if (data.event === 'error') {
-                throw new ChatLunaError(
-                    ChatLunaErrorCode.API_REQUEST_FAILED,
-                    new Error(
-                        'error when calling dify completion, Result:' + chunk
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(
+                            'error when calling dify completion, Result: ' +
+                                chunk
+                        )
                     )
-                )
+                }
+
+                if (data.event === 'error') {
+                    throw new ChatLunaError(
+                        ChatLunaErrorCode.API_REQUEST_FAILED,
+                        new Error(
+                            'error when calling dify completion, Result:' +
+                                chunk
+                        )
+                    )
+                }
+
+                const content = data.answer
+
+                if (content != null) {
+                    const messageChunk = new AIMessageChunk({ content })
+                    const generationChunk = new ChatGenerationChunk({
+                        message: messageChunk,
+                        text: content
+                    })
+
+                    yield generationChunk
+                }
             }
-
-            const content = data.answer
-
-            if (content != null) {
-                const messageChunk = new AIMessageChunk({ content })
-                const generationChunk = new ChatGenerationChunk({
-                    message: messageChunk,
-                    text: content
-                })
-
-                yield generationChunk
+        } catch (e) {
+            if (requestSignal.signal?.aborted) {
+                throw requestSignal.signal.reason ?? e
             }
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        } finally {
+            requestSignal.dispose()
         }
     }
 

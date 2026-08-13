@@ -193,16 +193,9 @@ export function createTaskTool(
         },
         async runTask(input, runConfig) {
             const action = input.action ?? 'run'
-            const parent =
-                runConfig?.configurable?.agentContext?.subagentContext
+            const parent = runConfig?.configurable?.agentContext
             const session = runConfig?.configurable?.session
-            const conversationId = runConfig?.configurable?.conversationId
-            const source =
-                (
-                    runConfig?.configurable as {
-                        source?: 'chatluna' | 'character'
-                    }
-                )?.source ?? 'chatluna'
+            const conversationId = parent?.conversationId
 
             if (action === 'list' || action === 'list_all') {
                 if (!conversationId && action === 'list')
@@ -280,11 +273,14 @@ export function createTaskTool(
                 ].join('\n')
             }
 
-            if (parent && parent.depth >= parent.maxDepth) {
-                return `Cannot delegate: maximum nesting depth (${parent.maxDepth}) reached.`
+            if (
+                parent?.subagentContext &&
+                parent.subagentContext.depth >= parent.subagentContext.maxDepth
+            ) {
+                return `Cannot delegate: maximum nesting depth (${parent.subagentContext.maxDepth}) reached.`
             }
 
-            if (!session || !conversationId)
+            if (!session || !conversationId || !parent)
                 return 'Task invocation is missing session context.'
 
             const raw = input.prompt?.trim() ?? ''
@@ -292,9 +288,7 @@ export function createTaskTool(
             const agentName = name ?? task?.agentName
             const ctx = {
                 session,
-                source,
-                conversationId,
-                parent,
+                agentContext: parent,
                 runConfig
             }
             let target
@@ -377,11 +371,8 @@ export function createTaskTool(
                     target,
                     prompt,
                     session,
-                    conversationId,
-                    source,
-                    parent,
-                    signal: runConfig?.signal,
-                    runConfig
+                    parentContext: parent,
+                    signal: runConfig?.signal
                 })
             } catch (err) {
                 const run = getLatestTaskRun(runs, next.id)

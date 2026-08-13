@@ -18,6 +18,7 @@ import {
 } from 'koishi-plugin-chatluna/utils/error'
 import { ComputedRef } from '@vue/reactivity'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import type { AgentRunContext } from '../agent'
 
 export interface ChatLunaChatChainInput {
     botName: string
@@ -103,9 +104,11 @@ export class ChatLunaChatChain
         session,
         conversationId,
         requestId,
+        source,
         variables,
         signal,
         maxToken,
+        maxTokenLimit,
         callbacks
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
@@ -127,9 +130,20 @@ export class ChatLunaChatChain
             chatPlatform: session.platform
         }
         requests['variables_hide'] = requests['variables']
+        const agentContext = {
+            kind: 'main' as const,
+            agentId: conversationId,
+            agentName: this.botName,
+            conversationId,
+            requestId,
+            source: source ?? 'chatluna',
+            userId: session.userId,
+            guildId: session.guildId,
+            channelId: session.channelId
+        } satisfies AgentRunContext
         requests['configurable'] = {
             session,
-            conversationId
+            agentContext
         }
         requests['id'] = conversationId
 
@@ -139,6 +153,7 @@ export class ChatLunaChatChain
                 ...requests,
                 stream,
                 maxTokens: maxToken,
+                maxTokenLimit,
                 signal
             },
             events,

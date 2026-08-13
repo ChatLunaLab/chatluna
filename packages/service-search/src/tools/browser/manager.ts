@@ -388,7 +388,12 @@ export class BrowserManager {
 }
 
 function getSessionKey(runConfig?: ChatLunaToolRunnable) {
-    const cfg = runConfig?.configurable
+    const cfg = runConfig?.configurable as
+        | (ChatLunaToolRunnable['configurable'] & {
+              conversationId?: string
+          })
+        | undefined
+    if (cfg?.agentContext) return cfg.agentContext.conversationId
     return String(
         cfg?.conversationId ??
             cfg?.session?.channelId ??

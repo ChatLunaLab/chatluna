@@ -1,6 +1,7 @@
 /** @module sub-agent/task_attach */
 
 import { Context, Session } from 'koishi'
+import { randomUUID } from 'crypto'
 import type { ConversationRecord } from 'koishi-plugin-chatluna/services/chat'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import { logger } from '..'
@@ -54,8 +55,6 @@ export class ChatLunaAgentTaskAttachService {
                     session.content,
                     {
                         session,
-                        conversationId: item.parentConversationId,
-                        source: 'chatluna',
                         runConfig: await this.runConfig(session, conversation)
                     }
                 )
@@ -141,10 +140,18 @@ export class ChatLunaAgentTaskAttachService {
             configurable: {
                 model: model.value,
                 session,
-                conversationId: conversation.id,
                 preset: conversation.preset,
-                userId: session.userId,
-                source: 'chatluna'
+                agentContext: {
+                    kind: 'main',
+                    agentId: conversation.id,
+                    agentName: conversation.preset,
+                    conversationId: conversation.id,
+                    requestId: randomUUID(),
+                    source: 'chatluna',
+                    userId: session.userId,
+                    guildId: session.guildId,
+                    channelId: session.channelId
+                }
             }
         } as ChatLunaToolRunnable
     }

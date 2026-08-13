@@ -170,7 +170,7 @@ export class HunyuanRequester
 
             yield* processStreamResponse(
                 requestContext,
-                validateHunyuanStream(sseIterable(response))
+                validateHunyuanStream(sseIterable(response, params))
             )
         } catch (e) {
             if (e instanceof ChatLunaError) {

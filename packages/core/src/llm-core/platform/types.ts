@@ -8,7 +8,7 @@ import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import { ChatLunaSaveableVectorStore } from 'koishi-plugin-chatluna/llm-core/vectorstores'
 import { BasePlatformClient } from 'koishi-plugin-chatluna/llm-core/platform/client'
 import { ComputedRef } from '@vue/reactivity'
-import { AgentRunContext, ToolMask } from '../agent'
+import { AgentRunContext } from '../agent'
 
 export interface ChatLunaChainInfo {
     name: string
@@ -152,12 +152,8 @@ export type ChatLunaToolRunnable = ToolRunnableConfig & {
     configurable: {
         model: ChatLunaChatModel
         session: Session
-        conversationId?: string
         preset?: string
-        userId?: string
-        toolMask?: ToolMask
-        source?: 'chatluna' | 'character'
-        agentContext?: AgentRunContext
+        agentContext: AgentRunContext
     }
 }
 

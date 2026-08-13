@@ -21,7 +21,7 @@ import {
 } from '@langchain/core/messages'
 import {
     AgentAction,
-    SubagentContext,
+    AgentRunContext,
     ToolMask
 } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatInterface } from '../llm-core/chat/app'
@@ -217,10 +217,7 @@ declare module 'koishi' {
 declare module '@chatluna/shared-prompt-renderer' {
     export interface RenderConfigurable {
         session?: Session
-        conversationId?: string
-        subagentContext?: SubagentContext
-        toolMask?: ToolMask
-        source?: string
+        agentContext?: AgentRunContext
     }
 }
 

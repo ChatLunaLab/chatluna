@@ -1,13 +1,12 @@
 /** @module computer/backends/local/sandbox */
 
-import { spawnSync } from 'node:child_process'
-import path from 'path'
-import which from 'which'
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { LocalBackendConfig } from '../../../types'
-import { getPosixShell, getPosixShellArgs } from './shell'
+import { buildDarwinSandbox } from './sandbox_darwin'
+import { buildLinuxSandbox } from './sandbox_linux'
 
 const PROTECTED_NAMES = ['.git', '.chatluna', '.agents', '.codex', '.claude']
-const BWRAP_PROBE_CACHE = new Set<string>()
 
 const WRITE_COMMAND_PATTERNS = [
     />/,
@@ -28,10 +27,11 @@ const WRITE_COMMAND_PATTERNS = [
     /\bgit\s+clean\b/
 ]
 
-export function ensureLocalPathAccess(
+export async function ensureLocalPathAccess(
     filePath: string,
     cfg: LocalBackendConfig,
-    mode: 'read' | 'write'
+    mode: 'read' | 'write',
+    tmp?: string
 ) {
     if (cfg.dangerouslySkipPermissions) {
         return
@@ -39,8 +39,10 @@ export function ensureLocalPathAccess(
 
     const resolved = path.resolve(filePath)
 
-    if (cfg.denyRoots.some((root) => isInsideRoot(resolved, root))) {
-        throw new Error(`Path "${filePath}" is denied by configuration.`)
+    for (const root of cfg.denyRoots) {
+        if (await isInsideRootAsync(resolved, root)) {
+            throw new Error(`Path "${filePath}" is denied by configuration.`)
+        }
     }
 
     if (
@@ -59,15 +61,32 @@ export function ensureLocalPathAccess(
         throw new Error('Local backend is running in read-only mode.')
     }
 
-    if (
-        mode === 'write' &&
-        cfg.readOnlyRoots.some((root) => isInsideRoot(resolved, root))
-    ) {
-        throw new Error(`Path "${filePath}" is read-only by configuration.`)
+    if (mode === 'write') {
+        for (const root of cfg.readOnlyRoots) {
+            if (await isInsideRootAsync(resolved, root)) {
+                throw new Error(
+                    `Path "${filePath}" is read-only by configuration.`
+                )
+            }
+        }
+    }
+
+    const roots = [
+        cfg.scopePath || process.cwd(),
+        ...(mode === 'read' ? cfg.readOnlyRoots : []),
+        ...(tmp ? [tmp] : [])
+    ]
+    const inside = (
+        await Promise.all(
+            roots.map((root) => isInsideRootAsync(resolved, root))
+        )
+    ).some(Boolean)
+    if (!inside) {
+        throw new Error(`Path "${filePath}" is outside the local scope.`)
     }
 }
 
-export function ensureLocalCommandAccess(
+export async function ensureLocalCommandAccess(
     command: string,
     workdir: string,
     cfg: LocalBackendConfig
@@ -92,99 +111,72 @@ export function ensureLocalCommandAccess(
         throw new Error('Command references a protected path.')
     }
 
-    if (cfg.denyRoots.some((root) => isInsideRoot(workdir, root))) {
-        throw new Error(
-            `Working directory "${workdir}" is denied by configuration.`
-        )
-    }
-}
-
-export function wrapCommandWithSandbox(
-    command: string,
-    workdir: string,
-    cfg: LocalBackendConfig,
-    tmp: string
-) {
-    if (process.platform === 'win32' || cfg.dangerouslySkipPermissions) {
-        return command
-    }
-
-    const bwrap = which.sync('bwrap', { nothrow: true })
-    if (!bwrap) {
-        throw new Error(
-            'Local backend sandbox requires bubblewrap (`bwrap`), but it is not installed.'
-        )
-    }
-
-    if (!BWRAP_PROBE_CACHE.has(bwrap)) {
-        const shell = getPosixShell()
-        const result = spawnSync(
-            bwrap,
-            [
-                '--ro-bind',
-                '/',
-                '/',
-                '--bind',
-                tmp,
-                '/tmp',
-                '--dev',
-                '/dev',
-                '--proc',
-                '/proc',
-                shell,
-                ...getPosixShellArgs(shell, 'true')
-            ],
-            { encoding: 'utf8' }
-        )
-
-        if (result.status === 0) {
-            BWRAP_PROBE_CACHE.add(bwrap)
-        } else {
-            const err =
-                result.stderr?.trim() ||
-                result.error?.message ||
-                'bubblewrap startup probe failed.'
+    for (const root of cfg.denyRoots) {
+        if (await isInsideRootAsync(workdir, root)) {
             throw new Error(
-                `Local backend sandbox requires bubblewrap, but the startup probe failed: ${err}`
+                `Working directory "${workdir}" is denied by configuration.`
             )
         }
     }
 
-    const shell = getPosixShell()
-    const args = [
-        quote(bwrap),
-        '--ro-bind / /',
-        cfg.sandboxMode === 'workspace-write'
-            ? `--bind ${quote(cfg.scopePath || workdir)} ${quote(cfg.scopePath || workdir)}`
-            : undefined,
-        cfg.sandboxMode === 'workspace-write' &&
-        path.resolve(workdir) !== path.resolve(cfg.scopePath || workdir)
-            ? `--bind ${quote(workdir)} ${quote(workdir)}`
-            : undefined,
-        cfg.sandboxMode === 'read-only'
-            ? `--ro-bind ${quote(tmp)} /tmp`
-            : `--bind ${quote(tmp)} /tmp`,
-        ...cfg.readOnlyRoots.map(
-            (root) => `--ro-bind ${quote(root)} ${quote(root)}`
-        ),
-        ...cfg.denyRoots.map((root) => `--tmpfs ${quote(root)}`),
-        '--dev /dev',
-        '--proc /proc',
-        '--die-with-parent',
-        ...(cfg.networkPolicy === 'block' ? ['--unshare-net'] : []),
-        quote(shell),
-        ...getPosixShellArgs(shell, command).map((arg) => quote(arg))
-    ].filter((arg): arg is string => arg != null)
-
-    return args.join(' ')
+    if (!(await isInsideRootAsync(workdir, cfg.scopePath || process.cwd()))) {
+        throw new Error(
+            `Working directory "${workdir}" is outside the local scope.`
+        )
+    }
 }
 
-function isInsideRoot(target: string, root: string) {
-    const t = path.resolve(target)
+export async function wrapCommandWithSandbox(
+    command: string,
+    workdir: string,
+    cfg: LocalBackendConfig,
+    tmp: string,
+    interactive = false
+) {
+    if (!tmp) {
+        throw new Error('Local computer session is disconnected')
+    }
+
+    if (process.platform === 'win32' || cfg.dangerouslySkipPermissions) {
+        return command
+    }
+
+    if (process.platform === 'darwin') {
+        return await buildDarwinSandbox(command, workdir, cfg, tmp, interactive)
+    }
+
+    return buildLinuxSandbox(command, workdir, cfg, tmp, interactive)
+}
+
+export async function isInsideRootAsync(target: string, root: string) {
+    let t = path.resolve(target)
     const r = path.resolve(root)
-    return t === r || t.startsWith(r + path.sep)
-}
+    try {
+        t = await fs.realpath(t)
+    } catch {
+        let current = t
+        while (current !== path.dirname(current)) {
+            try {
+                if ((await fs.lstat(current)).isSymbolicLink()) return false
+            } catch {}
+            current = path.dirname(current)
+            try {
+                t = path.join(
+                    await fs.realpath(current),
+                    path.relative(current, t)
+                )
+                break
+            } catch {}
+        }
+    }
 
-function quote(v: string) {
-    return `'${v.replaceAll("'", `'\\''`)}'`
+    let r2 = r
+    try {
+        r2 = await fs.realpath(r)
+    } catch {
+        try {
+            if ((await fs.lstat(r)).isSymbolicLink()) return false
+        } catch {}
+    }
+    return t === r2 || t.startsWith(r2 + path.sep)
 }

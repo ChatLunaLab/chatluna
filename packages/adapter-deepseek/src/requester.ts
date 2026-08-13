@@ -18,6 +18,7 @@ import {
     completionStream,
     createEmbeddings,
     createRequestContext,
+    createRequestSignal,
     parseOpenAIModelNameWithReasoningEffort,
     processStreamResponse
 } from '@chatluna/v1-shared-adapter'
@@ -87,17 +88,31 @@ export class DeepseekRequester
             delete request.top_p
         }
 
+        const requestSignal = createRequestSignal(params)
+
         try {
             const response = await this.post('chat/completions', request, {
-                signal: params.signal
+                signal: requestSignal.signal
             })
+            requestSignal.clearTimeout()
 
-            yield* processStreamResponse(requestContext, sseIterable(response))
+            yield* processStreamResponse(
+                requestContext,
+                sseIterable(response, {
+                    timeout: params.timeout,
+                    signal: requestSignal.signal
+                })
+            )
         } catch (e) {
+            if (requestSignal.signal?.aborted) {
+                throw requestSignal.signal.reason ?? e
+            }
             if (e instanceof ChatLunaError) {
                 throw e
             }
             throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+        } finally {
+            requestSignal.dispose()
         }
     }
 

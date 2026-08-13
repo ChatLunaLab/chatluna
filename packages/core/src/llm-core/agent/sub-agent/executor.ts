@@ -12,8 +12,13 @@ import type { ChatEvents } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import { observationToMessageContent } from '../legacy-executor'
 import { MessageQueue } from '../types'
-import type { AgentEvent, AgentStep, SubagentContext, ToolMask } from '../types'
-import type { ChatLunaToolRunnable } from '../../platform/types'
+import type {
+    AgentEvent,
+    AgentRunContext,
+    AgentStep,
+    SubagentContext,
+    ToolMask
+} from '../types'
 import type { ChatLunaAgent } from '../agent'
 import type {
     ActiveAgentTaskRun,
@@ -45,30 +50,27 @@ export async function runAgentTask(options: {
     target: AgentTaskTarget
     prompt: string
     session: Session
-    conversationId: string
-    source: 'chatluna' | 'character'
-    parent?: SubagentContext
+    parentContext: AgentRunContext
     signal?: AbortSignal
-    runConfig?: ChatLunaToolRunnable
 }) {
     const runId = randomUUID()
     const toolMask: ToolMask = options.target.toolMask ??
-        options.parent?.toolMask ??
-        (options.runConfig?.configurable as { toolMask?: ToolMask })
-            ?.toolMask ?? { mode: 'all' as const, allow: [], deny: [] }
+        options.parentContext.toolMask ?? {
+            mode: 'all' as const,
+            allow: [],
+            deny: []
+        }
 
     const subCtx: SubagentContext = {
-        agentId: options.target.agent.id,
-        agentName: options.target.agent.name,
         parentConversationId: options.task.parentConversationId,
         depth: options.task.depth,
         maxDepth: options.task.maxDepth,
-        toolMask,
         disableHandoff: options.task.depth >= options.task.maxDepth,
         traceInfo: {
             runId,
             parentAgent: options.task.parentAgent,
-            startedAt: Date.now()
+            startedAt: Date.now(),
+            parentRequestId: options.parentContext.requestId
         }
     }
 
@@ -101,8 +103,7 @@ export async function runAgentTask(options: {
           }
         : undefined
 
-    const requestId =
-        options.runConfig?.configurable?.agentContext?.requestId ?? runId
+    const requestId = runId
 
     // The sub-agent must not inherit the parent agent's callbacks, otherwise
     // its intermediate tokens and tool calls would bubble up and be streamed
@@ -113,7 +114,7 @@ export async function runAgentTask(options: {
         : await options.session.app.chatluna.resolveCallbacks({
               session: options.session,
               conversation: {
-                  id: options.conversationId
+                  id: options.task.conversationId
               } as ConversationRecord,
               message: { content: options.prompt } as Message,
               event: {} as ChatEvents,
@@ -160,7 +161,10 @@ export async function runAgentTask(options: {
                 prompt: options.prompt,
                 session: options.session,
                 conversationId: options.task.conversationId,
-                requestId,
+                requestId: runId,
+                source: options.parentContext.source,
+                toolMask,
+                subagentContext: subCtx,
                 history: [...options.task.messages],
                 signal,
                 messageQueue: queue,
@@ -180,9 +184,6 @@ export async function runAgentTask(options: {
                         })
                     }
                 },
-                toolMask,
-                subagentContext: subCtx,
-                source: options.source,
                 callbacks,
                 onStep: async (event) => {
                     await onTaskEvent(options.task, run, saveUser, event)
@@ -260,7 +261,7 @@ async function notifyFinished(
         active: Map<string, ActiveAgentTaskRun>
         task: AgentTaskSession
         target: AgentTaskTarget
-        source: 'chatluna' | 'character'
+        parentContext: AgentRunContext
     },
     run: AgentTaskRun,
     snapshot?: AgentTaskSessionSnapshot
@@ -277,7 +278,7 @@ async function notifyFinished(
         const item = task?.activeRunId
             ? options.active.get(task.activeRunId)
             : undefined
-        if (item) {
+        if (item?.queue) {
             item.queue.push(message)
             return
         }
@@ -292,7 +293,7 @@ async function notifyFinished(
             agentId: options.target.agent.id,
             agentName: options.target.agent.name,
             parentConversationId: parentId,
-            source: options.source,
+            source: options.parentContext.source,
             snapshot
         })
     } catch (err) {
@@ -370,7 +371,10 @@ async function onTaskEvent(
         }
     }
 
-    if (event.type === 'round-decision') {
+    if (
+        event.type === 'round-decision' &&
+        typeof event.canContinue === 'boolean'
+    ) {
         run.turnCount += 1
     }
 
@@ -393,13 +397,13 @@ export function createTaskSession(
     agent: ChatLunaAgent,
     parentConversationId: string,
     session: Session,
-    parent?: SubagentContext,
+    parent?: AgentRunContext,
     maxDepth = 1,
     promptContent?: string
 ): AgentTaskSession {
     const id = randomUUID()
-    const depth = (parent?.depth ?? 0) + 1
-    const limit = parent?.maxDepth ?? maxDepth
+    const depth = (parent?.subagentContext?.depth ?? 0) + 1
+    const limit = parent?.subagentContext?.maxDepth ?? maxDepth
     if (parent && depth > limit) {
         throw new Error(`Maximum sub-agent depth ${limit} reached`)
     }

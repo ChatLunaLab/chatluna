@@ -1,4 +1,5 @@
 /* eslint-disable max-len */
+import { randomUUID } from 'crypto'
 import { Embeddings } from '@langchain/core/embeddings'
 import {
     AIMessage,
@@ -27,7 +28,11 @@ import {
     ChatLunaTool,
     ChatLunaToolRunnable
 } from 'koishi-plugin-chatluna/llm-core/platform/types'
-import { applyToolMask, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
+import {
+    AgentRunContext,
+    applyToolMask,
+    ToolMask
+} from 'koishi-plugin-chatluna/llm-core/agent'
 import { Session } from 'koishi'
 import { SearchAction, SummaryType } from '../types'
 import { parseSearchAction } from '../utils/parse'
@@ -399,13 +404,10 @@ export class ChatLunaBrowsingChain
             Promise.allSettled(
                 questions.map(async (question) => {
                     const raw = await tool
-                        .invoke(question, {
-                            configurable: {
-                                model: this.model,
-                                session,
-                                conversationId
-                            }
-                        })
+                        .invoke(
+                            question,
+                            this.buildRunConfig(session, conversationId, signal)
+                        )
                         .then((text) => text as string)
                     const parsed = JSON.parse(raw) as SearchResultLike[]
 
@@ -426,6 +428,32 @@ export class ChatLunaBrowsingChain
         )
     }
 
+    private buildRunConfig(
+        session: Session,
+        conversationId: string,
+        signal: AbortSignal
+    ): ChatLunaToolRunnable {
+        const agentContext = {
+            kind: 'main',
+            agentId: 'browsing-chain',
+            agentName: this.botName,
+            conversationId,
+            requestId: randomUUID(),
+            source: 'chatluna',
+            userId: session.userId,
+            guildId: session.guildId,
+            channelId: session.channelId
+        } satisfies AgentRunContext
+        return {
+            signal,
+            configurable: {
+                model: this.model,
+                session,
+                agentContext
+            }
+        }
+    }
+
     private async _browseUrls(
         urls: string[],
         session: Session,
@@ -434,20 +462,12 @@ export class ChatLunaBrowsingChain
     ) {
         if (!this.browserManager) return []
 
-        const runConfig = {
-            configurable: {
-                model: this.model,
-                session,
-                conversationId
-            }
-        } as ChatLunaToolRunnable
-
         const results = await raceAbort(
             Promise.allSettled(
                 urls.map(async (url) => {
                     const text = await this.browserManager.readText(
                         { url },
-                        runConfig
+                        this.buildRunConfig(session, conversationId, signal)
                     )
 
                     if (this.thoughtMessage) {

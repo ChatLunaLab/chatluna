@@ -332,12 +332,5 @@ async function listRemoteFiles(session: ComputerSessionApi, root: string) {
 }
 
 function getRuntimeKey(context: AgentRunContext) {
-    return [
-        context.requestId ??
-            context.conversationId ??
-            context.parentConversationId ??
-            'runtime',
-        context.kind,
-        context.agentId ?? 'main'
-    ].join(':')
+    return [context.requestId, context.kind, context.agentId].join(':')
 }

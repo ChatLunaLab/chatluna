@@ -1,14 +1,10 @@
 /** @module service/computer */
 
 import { randomUUID } from 'node:crypto'
-import os from 'node:os'
 import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import which from 'which'
-import type {
-    AgentRunContext,
-    ToolMask
-} from 'koishi-plugin-chatluna/llm-core/agent'
+import type { AgentRunContext } from 'koishi-plugin-chatluna/llm-core/agent'
 import type { ChatLunaToolRunnable } from 'koishi-plugin-chatluna/llm-core/platform/types'
 import {
     countMessageTokens,
@@ -172,7 +168,12 @@ export class ChatLunaAgentComputerService {
         }
 
         if (type === 'local') {
-            return os.tmpdir()
+            if (!conversationId) return undefined
+            const session = await this.getOrCreateSession({
+                backend: 'local',
+                conversationId
+            })
+            return await session.getTempDir()
         }
 
         return '/tmp'
@@ -946,12 +947,14 @@ export class ChatLunaAgentComputerService {
         runConfig?: ChatLunaToolRunnable,
         backend?: ComputerBackendType
     ) {
-        const sub = runConfig?.configurable?.agentContext?.subagentContext
-        const info = sub
-            ? this.ctx.chatluna_agent?.subAgent
-                  .getCatalogSync()
-                  .find((item) => item.id === sub.agentId)
-            : undefined
+        const context = runConfig!.configurable.agentContext
+
+        const info =
+            context.kind === 'subagent'
+                ? this.ctx.chatluna_agent?.subAgent
+                      .getCatalogSync()
+                      .find((item) => item.id === context.agentId)
+                : undefined
         return {
             backend,
             allowedBackends: info
@@ -960,13 +963,8 @@ export class ChatLunaAgentComputerService {
                       COMPUTER_BACKENDS
                   )
                 : undefined,
-            conversationId:
-                sub?.parentConversationId ??
-                runConfig?.configurable?.agentContext?.conversationId ??
-                runConfig?.configurable?.conversationId,
-            userId:
-                runConfig?.configurable?.userId ??
-                runConfig?.configurable?.session?.userId
+            conversationId: context.conversationId,
+            userId: context.userId
         }
     }
 
@@ -974,12 +972,12 @@ export class ChatLunaAgentComputerService {
         context: AgentRunContext,
         backend?: ComputerBackendType
     ) {
-        const sub = context.subagentContext
-        const info = sub
-            ? this.ctx.chatluna_agent?.subAgent
-                  .getCatalogSync()
-                  .find((item) => item.id === sub.agentId)
-            : undefined
+        const info =
+            context.kind === 'subagent'
+                ? this.ctx.chatluna_agent?.subAgent
+                      .getCatalogSync()
+                      .find((item) => item.id === context.agentId)
+                : undefined
 
         return {
             backend,
@@ -989,7 +987,7 @@ export class ChatLunaAgentComputerService {
                       COMPUTER_BACKENDS
                   )
                 : undefined,
-            conversationId: sub?.parentConversationId ?? context.conversationId,
+            conversationId: context.conversationId,
             userId: context.userId
         }
     }
@@ -1166,8 +1164,10 @@ export class ChatLunaAgentComputerService {
         this._promptDispose = this.ctx.chatluna.contextManager.pipeline(
             'after_system_prompts',
             async (runtime: PromptContextRuntime, next) => {
-                const mask = (runtime.configurable as { toolMask?: ToolMask })
-                    ?.toolMask
+                const agentContext = runtime.configurable?.agentContext
+                if (!agentContext) return next()
+
+                const mask = agentContext.toolMask
                 const registry = this.ctx.chatluna.platform.getToolRegistry()
                 const capabilities = (
                     mask != null
@@ -1180,17 +1180,7 @@ export class ChatLunaAgentComputerService {
                     return next()
                 }
 
-                const agentContext = runtime.configurable?.agentContext as {
-                    conversationId?: string
-                    subagentContext?: { parentConversationId?: string }
-                }
-                const sub =
-                    agentContext?.subagentContext ??
-                    runtime.configurable?.subagentContext
-                const conversationId =
-                    sub?.parentConversationId ??
-                    agentContext?.conversationId ??
-                    runtime.configurable?.conversationId
+                const conversationId = agentContext.conversationId
                 const type =
                     this.resolveProvider() ??
                     this.config.computer.defaultProvider
