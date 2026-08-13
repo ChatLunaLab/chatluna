@@ -406,7 +406,7 @@ export class ChatLunaBrowsingChain
                     const raw = await tool
                         .invoke(
                             question,
-                            this.buildRunConfig(session, conversationId)
+                            this.buildRunConfig(session, conversationId, signal)
                         )
                         .then((text) => text as string)
                     const parsed = JSON.parse(raw) as SearchResultLike[]
@@ -430,12 +430,13 @@ export class ChatLunaBrowsingChain
 
     private buildRunConfig(
         session: Session,
-        conversationId: string
+        conversationId: string,
+        signal: AbortSignal
     ): ChatLunaToolRunnable {
         const agentContext = {
             kind: 'main',
-            agentId: conversationId,
-            agentName: conversationId,
+            agentId: 'browsing-chain',
+            agentName: this.botName,
             conversationId,
             requestId: randomUUID(),
             source: 'chatluna',
@@ -444,6 +445,7 @@ export class ChatLunaBrowsingChain
             channelId: session.channelId
         } satisfies AgentRunContext
         return {
+            signal,
             configurable: {
                 model: this.model,
                 session,
@@ -460,14 +462,12 @@ export class ChatLunaBrowsingChain
     ) {
         if (!this.browserManager) return []
 
-        const runConfig = this.buildRunConfig(session, conversationId)
-
         const results = await raceAbort(
             Promise.allSettled(
                 urls.map(async (url) => {
                     const text = await this.browserManager.readText(
                         { url },
-                        runConfig
+                        this.buildRunConfig(session, conversationId, signal)
                     )
 
                     if (this.thoughtMessage) {
