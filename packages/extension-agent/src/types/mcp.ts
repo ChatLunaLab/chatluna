@@ -1,8 +1,11 @@
 /** @module types/mcp */
 
+export type McpToolMode = 'eager' | 'catalog'
+
 export interface McpConfig {
     mcpServers: Record<string, McpServerConfig>
     tools: Record<string, McpToolConfig>
+    mcpToolMode?: McpToolMode
 }
 
 export interface McpIcon {
@@ -44,7 +47,6 @@ export interface McpStatus {
 export interface McpServerStatus {
     name: string
     state: McpServerState
-    stateText: string
     connected: boolean
     updating: boolean
     error?: string

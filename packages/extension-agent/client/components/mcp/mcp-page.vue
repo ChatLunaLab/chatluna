@@ -16,6 +16,14 @@
                 </div>
 
                 <div class="actions-section">
+                    <el-select
+                        size="small"
+                        :model-value="config?.mcpToolMode ?? 'eager'"
+                        @change="saveMode"
+                    >
+                        <el-option value="eager" label="全量模式" />
+                        <el-option value="catalog" label="目录懒加载" />
+                    </el-select>
                     <el-button
                         size="small"
                         class="hidden-mobile"
@@ -79,7 +87,7 @@ import { ref } from 'vue'
 import { useCompactMode, useHideDesc } from '../shared/use-hide-desc'
 import McpServersView from './mcp-servers-view.vue'
 import McpJsonView from './mcp-json-view.vue'
-import type { McpConfig, McpStatus } from '../../../src/types'
+import type { McpConfig, McpStatus, McpToolMode } from '../../../src/types'
 
 const props = withDefaults(
     defineProps<{
@@ -101,7 +109,7 @@ const props = withDefaults(
     }
 )
 
-defineEmits<{
+const emit = defineEmits<{
     refresh: []
     save: [value: McpConfig]
 }>()
@@ -109,6 +117,14 @@ defineEmits<{
 const currentTab = ref('servers')
 const compactMode = useCompactMode('mcp')
 const hideDesc = useHideDesc('mcp')
+
+const saveMode = (mode: McpToolMode) => {
+    emit('save', {
+        mcpServers: props.config.mcpServers,
+        tools: props.config.tools,
+        mcpToolMode: mode
+    })
+}
 </script>
 
 <style scoped>

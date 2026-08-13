@@ -8,7 +8,6 @@ import { RunnableConfig } from '@langchain/core/runnables'
 import { tool } from '@langchain/core/tools'
 import { z } from 'zod'
 import { applyToolMask, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 import {
@@ -32,158 +31,112 @@ import {
     validateMcpArguments
 } from '../mcp/catalog'
 import { ToolException } from '../mcp/types'
-import { type Config, logger } from '..'
+import { logger } from '..'
 
 export class ChatLunaAgentMcpService {
-    private _tools: Record<string, ToolInfo> = {}
-    private _definitions = new Map<string, ToolInfo>()
-    private _disposers = new Map<string, () => void>()
     private _servers = new Map<string, ServerInfo>()
     private _gatewayDisposers: (() => void)[] = []
     private _validator = new AjvJsonSchemaValidator()
-    private _serverOperations = new Map<string, Promise<void>>()
-    private _activeCalls = new Map<string, number>()
-    private _activeCallWaiters = new Map<string, Set<() => void>>()
     private _stopped = false
-    private _indexing = false
+    private _indexed = false
     private _indexingPromise?: Promise<void>
 
     constructor(
         public ctx: Context,
         public config: AgentConfig,
-        public plugin: ChatLunaPlugin<ClientConfig, Config>
+        public plugin: ChatLunaPlugin
     ) {}
 
-    /**
-     * Start the MCP service. In catalog mode, initializes server records without connecting.
-     * In eager mode, connects to all configured servers immediately.
-     */
     async start() {
         this._stopped = false
         logger.info('Starting MCP service')
 
-        if (
-            !this.config.mcp.mcpServers ||
-            Object.keys(this.config.mcp.mcpServers).length === 0
-        ) {
+        const servers = Object.entries(this.config.mcp.mcpServers)
+        if (servers.length === 0) {
             logger.warn('No MCP servers available')
             this.ctx.chatluna_agent?.refreshConsoleData()
             return
         }
+        for (const [name] of servers) {
+            this._servers.set(name, {
+                state: 'idle',
+                attempts: 0,
+                tools: new Map()
+            })
+        }
 
-        // catalog 模式：仅初始化服务器状态，不连接
-        if (this.plugin.config.mcpToolMode === 'catalog') {
-            for (const name of Object.keys(this.config.mcp.mcpServers)) {
-                this._servers.set(name, {
-                    state: 'idle',
-                    attempts: 0
-                })
-            }
+        if ((this.config.mcp.mcpToolMode ?? 'eager') === 'catalog') {
             this._registerGateways()
             logger.info(
-                `MCP catalog mode initialized with ${this._servers.size} server(s). ` +
-                    `Servers will be indexed on first search.`
+                `MCP catalog mode initialized with ${servers.length} server(s)`
             )
-            this.ctx.chatluna_agent?.refreshConsoleData()
-            return
-        }
-
-        // eager 模式：启动时连接所有服务器
-        const tasks = Object.entries(this.config.mcp.mcpServers).map(
-            ([name, cfg]) => {
-                this._servers.set(name, {
-                    state: 'idle',
-                    attempts: 0
-                })
-                return this._enqueueServerOperation(name, () =>
-                    this._connect(name, cfg)
+        } else {
+            Promise.allSettled(
+                servers.map(([name, cfg]) => this._connect(name, cfg))
+            ).then(() => {
+                if (this._stopped) return
+                logger.info(
+                    `MCP startup finished with ${this._toolCount()} tool(s)`
                 )
-            }
-        )
-
-        this._runInBackground(tasks, 'MCP startup')
+                this.ctx.chatluna_agent?.refreshConsoleData()
+            })
+        }
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
-    /**
-     * Stop the MCP service, waiting for active calls to complete and closing all connections.
-     */
     async stop() {
         this._stopped = true
-        this._indexing = false
-        const names = Array.from(this._servers.keys())
-
-        await Promise.allSettled(this._serverOperations.values())
-        await Promise.all(names.map((name) => this._waitForActiveCalls(name)))
-
         for (const srv of this._servers.values()) {
-            srv.reconnectDispose?.()
-            srv.connectTask = undefined
-            const client = srv.client
-            srv.client = undefined
-            if (client) {
-                client.onclose = undefined
-                client.onerror = undefined
-                await client.close().catch(() => {})
+            await this._closeClient(srv)
+            for (const t of srv.tools.values()) t.dispose?.()
+        }
+        for (const dispose of this._gatewayDisposers) dispose()
+        this._gatewayDisposers = []
+        this._servers.clear()
+        this._indexingPromise = undefined
+        this._indexed = false
+    }
+
+    async reload() {
+        await this.stop()
+        await this.start()
+    }
+
+    async sync(prev: McpConfig, next: McpConfig) {
+        for (const name of Object.keys(prev.mcpServers)) {
+            if (!next.mcpServers[name]) {
+                await this._remove(name)
             }
         }
 
-        for (const dispose of this._disposers.values()) {
-            dispose()
-        }
-        this._disposeGateways()
-
-        this._servers.clear()
-        this._disposers.clear()
-        this._definitions.clear()
-        this._serverOperations.clear()
-        this._activeCalls.clear()
-        for (const waiters of this._activeCallWaiters.values()) {
-            for (const resolve of waiters) resolve()
-        }
-        this._activeCallWaiters.clear()
-        this._tools = {}
-        this._indexingPromise = undefined
-    }
-
-    /**
-     * Reload the MCP service, removing deleted servers and reconnecting to existing/new ones.
-     */
-    async reload() {
-        await Promise.all(
-            Array.from(this._servers.keys())
-                .filter((name) => !this.config.mcp.mcpServers[name])
-                .map((name) => this._remove(name))
-        )
-
-        const names = Object.keys(this.config.mcp.mcpServers)
-        if (names.length === 0) {
-            this._disposeGateways()
-            this.ctx.chatluna_agent?.refreshConsoleData()
-            return
+        for (const [name, cfg] of Object.entries(next.tools)) {
+            if (
+                JSON.stringify(prev.tools[name] ?? null) === JSON.stringify(cfg)
+            ) {
+                continue
+            }
+            for (const [serverName, srv] of this._servers) {
+                if (!srv.tools.has(name)) continue
+                const serverCfg = next.mcpServers[serverName]
+                if (srv.client && srv.state === 'connected' && serverCfg) {
+                    await this._registerTools(srv.client, serverName, serverCfg)
+                }
+            }
         }
 
-        if (this.plugin.config.mcpToolMode === 'catalog') {
-            this._registerGateways()
+        for (const [name, cfg] of Object.entries(next.mcpServers)) {
+            if (
+                JSON.stringify(prev.mcpServers[name] ?? null) ===
+                JSON.stringify(cfg)
+            ) {
+                continue
+            }
+            await this.reconnect(name)
         }
-        this._runInBackground(
-            names.map((name) => this.reconnect(name)),
-            'MCP reload'
-        )
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
-    /**
-     * Reconnect to a specific MCP server, resetting retry attempts and error state.
-     * @param name - The server name to reconnect
-     */
     async reconnect(name: string) {
-        return await this._enqueueServerOperation(name, () =>
-            this._reconnectNow(name)
-        )
-    }
-
-    private async _reconnectNow(name: string) {
         const cfg = this.config.mcp.mcpServers[name]
         if (!cfg) {
             throw new Error(`Server not found: ${name}`)
@@ -198,29 +151,16 @@ export class ChatLunaAgentMcpService {
         } else {
             this._servers.set(name, {
                 state: 'reconnecting',
-                attempts: 0
+                attempts: 0,
+                tools: new Map()
             })
         }
 
         this.ctx.chatluna_agent?.refreshConsoleData()
-        await this._drop(name, false)
+        await this._drop(name)
         await this._connect(name, cfg, true)
     }
 
-    /**
-     * Sync MCP configuration changes by stopping and restarting the service.
-     * @param _prev - Previous configuration (unused)
-     * @param _next - Next configuration (unused)
-     */
-    async sync(_prev: McpConfig, _next: McpConfig) {
-        await this.stop()
-        await this.start()
-    }
-
-    /**
-     * Get the current status of all MCP servers and tools.
-     * @returns Status object containing server states and tool information
-     */
     getStatus(): McpStatus {
         const servers: Record<string, McpServerStatus> = {}
         const tools: Record<string, McpToolInfo> = {}
@@ -233,17 +173,10 @@ export class ChatLunaAgentMcpService {
             servers[name] = {
                 name,
                 state,
-                stateText: stateText(
-                    state,
-                    srv?.error,
-                    !!srv?.reconnectDispose
-                ),
                 connected: state === 'connected' && !srv?.error,
                 updating: state === 'connecting' || state === 'reconnecting',
                 error: srv?.error,
-                toolCount: Object.values(this._tools).filter(
-                    (t) => t.server === name
-                ).length,
+                toolCount: srv?.tools.size ?? 0,
                 attempts: srv?.attempts ?? 0,
                 maxAttempts: 5,
                 pendingReconnect: !!srv?.reconnectDispose,
@@ -256,19 +189,20 @@ export class ChatLunaAgentMcpService {
             }
         }
 
-        for (const [name, t] of Object.entries(this._tools)) {
-            if (!this.config.mcp.mcpServers[t.server]) continue
-
-            tools[name] = {
-                name,
-                description: t.description,
-                enabled: t.enabled,
-                updating: servers[t.server]?.updating ?? false,
-                server: t.server,
-                timeout: Math.round(t.timeout / 1000),
-                selector: t.selector,
-                title: t.title,
-                icon: t.icon
+        for (const [serverName, srv] of this._servers) {
+            if (!this.config.mcp.mcpServers[serverName]) continue
+            for (const t of srv.tools.values()) {
+                tools[t.name] = {
+                    name: t.name,
+                    description: t.description,
+                    enabled: t.enabled,
+                    updating: servers[serverName]?.updating ?? false,
+                    server: serverName,
+                    timeout: Math.round(t.timeout / 1000),
+                    selector: t.selector,
+                    title: t.title,
+                    icon: t.icon
+                }
             }
         }
 
@@ -279,13 +213,12 @@ export class ChatLunaAgentMcpService {
         }
     }
 
-    /**
-     * List all available MCP tools from connected servers.
-     * @returns Array of tool information objects
-     */
     listTools() {
-        return Object.values(this._tools).filter(
-            (t) => this.config.mcp.mcpServers[t.server]
+        return Array.from(this._servers.entries()).flatMap(
+            ([serverName, srv]) =>
+                this.config.mcp.mcpServers[serverName]
+                    ? Array.from(srv.tools.values())
+                    : []
         )
     }
 
@@ -295,12 +228,8 @@ export class ChatLunaAgentMcpService {
         reconnecting = false
     ) {
         const srv = this._servers.get(name)
-        if (srv?.connectTask) {
-            return srv.connectTask
-        }
-        if (!srv || this._stopped) {
-            return false
-        }
+        if (!srv || this._stopped) return false
+        if (srv.connectTask) return srv.connectTask
 
         srv.state = reconnecting ? 'reconnecting' : 'connecting'
         srv.error = undefined
@@ -312,11 +241,11 @@ export class ChatLunaAgentMcpService {
             title: 'ChatLuna ModelContext Protocol Client'
         })
         srv.client = client
+        this._setupHandlers(client, name, cfg)
 
         const task = (async () => {
             logger.debug(`Connecting to server ${name}`)
             const startupTimeout = calcStartupTimeout(cfg)
-            this._setupHandlers(client, name, cfg)
             let clearTimer: (() => void) | undefined
             const timeout = new Promise<never>((_resolve, reject) => {
                 clearTimer = this.ctx.setTimeout(() => {
@@ -382,66 +311,33 @@ export class ChatLunaAgentMcpService {
         })()
 
         srv.connectTask = task
-
         try {
             return await task
         } finally {
-            const current = this._servers.get(name)
-            if (current?.connectTask === task) {
-                current.connectTask = undefined
+            if (this._servers.get(name)?.connectTask === task) {
+                this._servers.get(name)!.connectTask = undefined
             }
         }
     }
 
     private _setupHandlers(client: Client, name: string, cfg: McpServerConfig) {
-        client.onerror = (error) => {
+        const handleError = (error: string, reason: string) => {
             if (this._isCurrent(name, client)) {
-                this._fail(name, cfg, error.message, client).catch((error) => {
-                    logger.error(
-                        `Failed to handle MCP error for ${name}`,
-                        error
-                    )
-                })
+                this._fail(name, cfg, error, client).catch((e) =>
+                    logger.error(`Failed to handle ${reason} for ${name}`, e)
+                )
             }
         }
-
-        client.onclose = () => {
-            if (this._isCurrent(name, client)) {
-                logger.debug(`Client closed: ${name}`)
-                this._fail(name, cfg, '连接已断开', client).catch((error) => {
-                    logger.error(
-                        `Failed to handle MCP close for ${name}`,
-                        error
-                    )
-                })
-            }
-        }
+        client.onerror = (error) => handleError(error.message, 'MCP error')
+        client.onclose = () => handleError('连接已断开', 'MCP close')
 
         client.setNotificationHandler(
             ToolListChangedNotificationSchema,
             async () => {
                 logger.info(`Tool list changed for server: ${name}`)
                 try {
-                    const toolCount = await this._enqueueServerOperation(
-                        name,
-                        async () => {
-                            if (!this._isCurrent(name, client)) return
-                            return await this._registerTools(client, name, cfg)
-                        }
-                    )
-                    if (toolCount == null) {
-                        return
-                    }
-                    if (toolCount === 0) {
-                        await this._fail(
-                            name,
-                            cfg,
-                            '工具列表为空，等待重连',
-                            client
-                        )
-                        return
-                    }
-
+                    const count = await this._registerTools(client, name, cfg)
+                    if (count == null) return
                     const srv = this._servers.get(name)
                     if (srv?.client === client) {
                         srv.error = undefined
@@ -474,13 +370,11 @@ export class ChatLunaAgentMcpService {
         if (this._stopped) return
 
         const srv = this._servers.get(name)
-        if (srv?.client !== client) {
-            return
-        }
+        if (srv?.client !== client) return
         srv.error = error
         srv.state = 'error'
 
-        await this._drop(name, false)
+        await this._drop(name)
         this.ctx.chatluna_agent?.refreshConsoleData()
 
         if (this._stopped || !this.config.mcp.mcpServers[name]) return
@@ -497,20 +391,16 @@ export class ChatLunaAgentMcpService {
             `Scheduling reconnect in ${delay}ms (attempt ${attempts + 1}/5)`
         )
 
-        const dispose = this.ctx.setTimeout(async () => {
-            const srv = this._servers.get(name)
-            if (srv) {
-                srv.reconnectDispose = undefined
-                srv.attempts = attempts + 1
+        srv.reconnectDispose = this.ctx.setTimeout(async () => {
+            const current = this._servers.get(name)
+            if (current) {
+                current.reconnectDispose = undefined
+                current.attempts = attempts + 1
             }
-            await this._enqueueServerOperation(name, async () => {
-                const current = this.config.mcp.mcpServers[name]
-                if (!current || this._stopped) return false
-                return await this._connect(name, current, true)
-            })
+            const currentCfg = this.config.mcp.mcpServers[name]
+            if (!currentCfg || this._stopped) return false
+            await this._connect(name, currentCfg, true)
         }, delay)
-
-        srv.reconnectDispose = dispose
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
@@ -522,34 +412,25 @@ export class ChatLunaAgentMcpService {
         const mcpTools = await client.listTools(undefined, {
             timeout: calcStartupTimeout(cfg)
         })
-        if (!this._isCurrent(serverName, client)) {
-            return
-        }
+        if (!this._isCurrent(serverName, client)) return
         const serverCfg = this.config.mcp.mcpServers[serverName]
         if (!serverCfg) return
 
+        const srv = this._servers.get(serverName)
+        if (!srv) return
+
         this.ctx.chatluna_agent?.permission.invalidateCache()
         this._disposeTools(serverName)
-        for (const [id, t] of this._definitions) {
-            if (t.server === serverName) {
-                this._definitions.delete(id)
-            }
-        }
-
-        const names = new Set<string>()
-        const registered: string[] = []
-        const disabled: string[] = []
 
         for (const mcpTool of mcpTools.tools) {
-            names.add(mcpTool.name)
             const toolCfg = this.config.mcp.tools?.[mcpTool.name]
 
             const t: ToolInfo = {
                 name: mcpTool.name,
-                server: serverName,
                 enabled: toolCfg?.enabled ?? true,
                 selector: toolCfg?.selector ?? [],
-                timeout: calcTimeout(toolCfg?.timeout, serverCfg.timeout),
+                timeout:
+                    ((toolCfg?.timeout ?? 0) || serverCfg.timeout || 60) * 1000,
                 description: mcpTool.description ?? '',
                 title: mcpTool.title,
                 icon: selectIcon(mcpTool.icons),
@@ -561,15 +442,11 @@ export class ChatLunaAgentMcpService {
                 })
             }
 
-            this._tools[mcpTool.name] = t
-            this._definitions.set(toolId(serverName, mcpTool.name), t)
-            if (!t.enabled) {
-                disabled.push(mcpTool.name)
-                continue
-            }
-
-            if (this.plugin.config.mcpToolMode === 'catalog') {
-                registered.push(mcpTool.name)
+            srv.tools.set(mcpTool.name, t)
+            if (
+                !t.enabled ||
+                (this.config.mcp.mcpToolMode ?? 'eager') === 'catalog'
+            ) {
                 continue
             }
 
@@ -596,21 +473,20 @@ export class ChatLunaAgentMcpService {
                 }
             )
 
-            this._disposers.set(
-                toolId(serverName, mcpTool.name),
-                this.ctx.chatluna.platform.registerTool(langChainTool.name, {
+            t.dispose = this.ctx.chatluna.platform.registerTool(
+                langChainTool.name,
+                {
                     description: mcpTool.description,
                     createTool: () => langChainTool,
-                    selector: (history) => {
-                        if (t.selector.length === 0) return true
-                        return history.some((message) =>
+                    selector: (history) =>
+                        t.selector.length === 0 ||
+                        history.some((message) =>
                             t.selector.some((selector) =>
                                 getMessageContent(message.content).includes(
                                     selector
                                 )
                             )
-                        )
-                    },
+                        ),
                     meta: {
                         source: 'mcp',
                         group: 'mcp',
@@ -624,31 +500,12 @@ export class ChatLunaAgentMcpService {
                             characterScope: 'all'
                         }
                     }
-                })
+                }
             )
-
-            registered.push(mcpTool.name)
         }
 
-        if (this.plugin.config.mcpToolMode === 'catalog') {
+        if ((this.config.mcp.mcpToolMode ?? 'eager') === 'catalog') {
             this._registerGateways()
-        }
-
-        if (registered.length > 0) {
-            logger.debug(
-                `MCP tools registered for ${serverName}: ${registered.join(', ')}`
-            )
-        }
-        if (disabled.length > 0) {
-            logger.debug(
-                `MCP tools disabled for ${serverName}: ${disabled.join(', ')}`
-            )
-        }
-
-        for (const [toolName, toolCfg] of Object.entries(this._tools)) {
-            if (toolCfg.server === serverName && !names.has(toolName)) {
-                delete this._tools[toolName]
-            }
         }
 
         this.ctx.chatluna_agent?.permission.invalidateCache()
@@ -657,7 +514,7 @@ export class ChatLunaAgentMcpService {
 
     private _registerGateways() {
         if (
-            this.plugin.config.mcpToolMode !== 'catalog' ||
+            (this.config.mcp.mcpToolMode ?? 'eager') !== 'catalog' ||
             this._gatewayDisposers.length > 0 ||
             Object.keys(this.config.mcp.mcpServers).length === 0
         ) {
@@ -668,17 +525,8 @@ export class ChatLunaAgentMcpService {
             async (input: McpSearchInput, config?: RunnableConfig) => {
                 const mask = getRequiredToolCallMask(config)
 
-                // 首次搜索时：触发后台索引
-                if (this._definitions.size === 0 && !this._indexing) {
-                    logger.info(
-                        'First search detected, indexing all MCP servers in background...'
-                    )
-                    this._ensureIndexing()
-                }
-
-                // 等待索引完成（如果正在进行）
-                if (this._indexingPromise) {
-                    await this._indexingPromise
+                if (!this._indexed) {
+                    await this._ensureIndexing()
                 }
 
                 if (input.action === 'schema') {
@@ -688,9 +536,9 @@ export class ChatLunaAgentMcpService {
                         )
                     }
 
-                    const t = this._definitions.get(
-                        toolId(input.server, input.tool)
-                    )
+                    const t = this._servers
+                        .get(input.server)
+                        ?.tools.get(input.tool)
                     if (
                         !this.config.mcp.mcpServers[input.server] ||
                         !t?.enabled ||
@@ -717,17 +565,23 @@ export class ChatLunaAgentMcpService {
                     )
                 }
 
-                const results = Array.from(this._definitions.values())
+                const results = Array.from(this._servers.entries())
+                    .flatMap(([serverName, srv]) =>
+                        Array.from(srv.tools.values()).map((t) => ({
+                            server: serverName,
+                            t
+                        }))
+                    )
                     .filter(
-                        (t) =>
+                        ({ server, t }) =>
                             t.enabled &&
-                            this.config.mcp.mcpServers[t.server] &&
+                            this.config.mcp.mcpServers[server] &&
                             applyToolMask(t.name, mask)
                     )
-                    .map((t) => ({
-                        server: t.server,
+                    .map(({ server, t }) => ({
+                        server,
                         item: t.catalog,
-                        score: scoreMcpCatalogTool(query, t.server, t.catalog)
+                        score: scoreMcpCatalogTool(query, server, t.catalog)
                     }))
                     .filter((item) => item.score > 0)
                     .sort(
@@ -751,10 +605,8 @@ export class ChatLunaAgentMcpService {
             {
                 name: 'search_mcp_tools',
                 description:
-                    'Discover MCP tools in two stages. First use action="search" ' +
-                    'to get compact candidates without schemas. Then use ' +
-                    'action="schema" with one exact server and tool to load its ' +
-                    'inputSchema. Always load the schema before invoke_mcp_tool.',
+                    'Discover MCP tools in two stages: action="search" returns compact candidates, ' +
+                    'action="schema" loads one exact server/tool inputSchema. Load the schema before invoke_mcp_tool.',
                 responseFormat: 'content_and_artifact',
                 schema: mcpSearchSchema
             }
@@ -770,10 +622,8 @@ export class ChatLunaAgentMcpService {
             {
                 name: 'invoke_mcp_tool',
                 description:
-                    'Invoke one MCP tool after loading its exact inputSchema with ' +
-                    'search_mcp_tools action="schema". Copy the exact server and ' +
-                    'tool name and construct arguments from that schema. ' +
-                    'Validation errors are returned as structured JSON.',
+                    'Invoke one MCP tool after loading its inputSchema with search_mcp_tools ' +
+                    'action="schema". Validation errors are returned as structured JSON.',
                 responseFormat: 'content_and_artifact',
                 schema: mcpInvokeSchema
             }
@@ -789,6 +639,7 @@ export class ChatLunaAgentMcpService {
                         source: 'mcp',
                         group: 'mcp',
                         tags: ['mcp', 'gateway'],
+                        isMcp: true,
                         defaultAvailability: {
                             enabled: true,
                             main: true,
@@ -814,142 +665,78 @@ export class ChatLunaAgentMcpService {
             )
         }
 
-        const prepared = await this._enqueueServerOperation(
-            serverName,
-            async () => {
-                const cfg = this.config.mcp.mcpServers[serverName]
-                if (!cfg) {
-                    throw new ToolException(
-                        `MCP server not found: ${serverName}`
-                    )
-                }
+        const cfg = this.config.mcp.mcpServers[serverName]
+        if (!cfg) {
+            throw new ToolException(`MCP server not found: ${serverName}`)
+        }
 
-                let srv = this._servers.get(serverName)
-                let t = this._definitions.get(toolId(serverName, toolName))
-                if (!t?.enabled) {
-                    throw new ToolException(
-                        `MCP tool is unavailable: ${serverName}/${toolName}`
-                    )
-                }
+        let t = this._servers.get(serverName)?.tools.get(toolName)
+        if (!t?.enabled) {
+            throw new ToolException(
+                `MCP tool is unavailable: ${serverName}/${toolName}`
+            )
+        }
 
-                if (!srv?.client || srv.state !== 'connected') {
-                    await this._reconnectNow(serverName)
-                    srv = this._servers.get(serverName)
-                    t = this._definitions.get(toolId(serverName, toolName))
-                }
-
-                if (!srv?.client || srv.state !== 'connected') {
-                    throw new ToolException(
-                        `MCP server is unavailable: ${serverName}`
-                    )
-                }
-                if (!t?.enabled) {
-                    throw new ToolException(
-                        `MCP tool is unavailable: ${serverName}/${toolName}`
-                    )
-                }
-
-                const validation = validateMcpArguments(
-                    this._validator,
-                    t.catalog.inputSchema,
-                    args
+        let srv = this._servers.get(serverName)
+        if (!srv?.client || srv.state !== 'connected') {
+            if ((srv?.attempts ?? 0) >= 5) {
+                throw new ToolException(
+                    `MCP server is unavailable: ${serverName}`
                 )
-                if (validation.valid === false) {
-                    return {
-                        response: structuredGatewayResponse({
-                            ok: false,
-                            error: validation.error,
-                            server: serverName,
-                            tool: toolName,
-                            message: validation.message,
-                            inputSchema: t.catalog.inputSchema
-                        })
-                    }
-                }
-
-                this._beginActiveCall(serverName)
-                return {
-                    client: srv.client,
-                    timeout: t.timeout,
-                    data: validation.data
-                }
             }
-        )
-
-        if ('response' in prepared) {
-            return prepared.response
-        }
-
-        try {
-            return await callTool(
-                serverName,
-                toolName,
-                prepared.client,
-                prepared.data,
-                { ...config, timeout: prepared.timeout },
-                undefined,
-                this.ctx,
-                logger
-            )
-        } finally {
-            this._endActiveCall(serverName)
-        }
-    }
-
-    private _enqueueServerOperation<T>(
-        name: string,
-        operation: () => Promise<T>
-    ): Promise<T> {
-        const previous = this._serverOperations.get(name) ?? Promise.resolve()
-        const task = previous.then(operation)
-        const tail = task.then(
-            () => undefined,
-            () => undefined
-        )
-        this._serverOperations.set(name, tail)
-        tail.then(() => {
-            if (this._serverOperations.get(name) === tail) {
-                this._serverOperations.delete(name)
+            if (!srv) {
+                this._servers.set(serverName, {
+                    state: 'idle',
+                    attempts: 0,
+                    tools: new Map()
+                })
             }
-        })
-        return task
-    }
-
-    private _beginActiveCall(name: string) {
-        this._activeCalls.set(name, (this._activeCalls.get(name) ?? 0) + 1)
-    }
-
-    private _endActiveCall(name: string) {
-        const remaining = Math.max(0, (this._activeCalls.get(name) ?? 1) - 1)
-        if (remaining > 0) {
-            this._activeCalls.set(name, remaining)
-            return
+            await this._connect(serverName, cfg)
+            srv = this._servers.get(serverName)
+            t = srv?.tools.get(toolName)
+        }
+        if (!srv?.client || srv.state !== 'connected') {
+            throw new ToolException(`MCP server is unavailable: ${serverName}`)
+        }
+        if (!t?.enabled) {
+            throw new ToolException(
+                `MCP tool is unavailable: ${serverName}/${toolName}`
+            )
         }
 
-        this._activeCalls.delete(name)
-        const waiters = this._activeCallWaiters.get(name)
-        this._activeCallWaiters.delete(name)
-        for (const resolve of waiters ?? []) resolve()
+        const validation = validateMcpArguments(
+            this._validator,
+            t.catalog.inputSchema,
+            args
+        )
+        if (validation.valid === false) {
+            return structuredGatewayResponse({
+                ok: false,
+                error: validation.error,
+                server: serverName,
+                tool: toolName,
+                message: validation.message,
+                inputSchema: t.catalog.inputSchema
+            })
+        }
+
+        return await callTool(
+            serverName,
+            toolName,
+            srv.client,
+            validation.data,
+            { ...config, timeout: t.timeout },
+            undefined,
+            this.ctx,
+            logger
+        )
     }
 
-    private async _waitForActiveCalls(name: string) {
-        if ((this._activeCalls.get(name) ?? 0) === 0) return
-
-        await new Promise<void>((resolve) => {
-            const waiters = this._activeCallWaiters.get(name) ?? new Set()
-            waiters.add(resolve)
-            this._activeCallWaiters.set(name, waiters)
-        })
-    }
-
-    private _runInBackground(tasks: Promise<unknown>[], reason: string) {
-        Promise.allSettled(tasks).then(() => {
-            if (this._stopped) return
-            logger.info(
-                `${reason} finished with ${this._disposers.size} tool(s)`
-            )
-            this.ctx.chatluna_agent?.refreshConsoleData()
-        })
+    private _toolCount() {
+        return Array.from(this._servers.values()).reduce(
+            (n, srv) => n + srv.tools.size,
+            0
+        )
     }
 
     private _isCurrent(name: string, client: Client) {
@@ -957,96 +744,62 @@ export class ChatLunaAgentMcpService {
         return !this._stopped && srv?.client === client
     }
 
-    private async _drop(name: string, clearTools = true) {
-        await this._waitForActiveCalls(name)
+    private async _closeClient(srv: ServerInfo) {
+        srv.reconnectDispose?.()
+        srv.reconnectDispose = undefined
+        srv.connectTask = undefined
+        const client = srv.client
+        srv.client = undefined
+        if (client) {
+            client.onclose = undefined
+            client.onerror = undefined
+            await client.close().catch(() => {})
+        }
+    }
+
+    private async _drop(name: string) {
         const srv = this._servers.get(name)
         if (srv) {
-            srv.reconnectDispose?.()
-            srv.reconnectDispose = undefined
-            srv.connectTask = undefined
-            const client = srv.client
-            srv.client = undefined
-            if (client) {
-                client.onclose = undefined
-                client.onerror = undefined
-                await client.close().catch(() => {})
-            }
+            await this._closeClient(srv)
         }
 
-        if (clearTools || this.plugin.config.mcpToolMode !== 'catalog') {
+        if ((this.config.mcp.mcpToolMode ?? 'eager') !== 'catalog') {
             this._disposeTools(name)
-        }
-
-        if (clearTools) {
-            for (const [toolName, t] of Object.entries(this._tools)) {
-                if (t.server === name) {
-                    delete this._tools[toolName]
-                }
-            }
-            for (const [id, t] of this._definitions) {
-                if (t.server === name) {
-                    this._definitions.delete(id)
-                }
-            }
         }
 
         this.ctx.chatluna_agent?.permission.invalidateCache()
     }
 
     private async _remove(name: string) {
-        return await this._enqueueServerOperation(name, () =>
-            this._removeNow(name)
-        )
-    }
-
-    private async _removeNow(name: string) {
         await this._drop(name)
         this._servers.delete(name)
         if (Object.keys(this.config.mcp.mcpServers).length === 0) {
-            this._disposeGateways()
-        } else {
-            this._registerGateways()
+            for (const dispose of this._gatewayDisposers) dispose()
+            this._gatewayDisposers = []
         }
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
 
-    private _disposeGateways() {
-        for (const dispose of this._gatewayDisposers) {
-            dispose()
-        }
-        this._gatewayDisposers = []
-    }
-
     private _disposeTools(name: string) {
-        const prefix = `${name}/`
-        for (const id of Array.from(this._disposers.keys())) {
-            if (!id.startsWith(prefix)) continue
-            this._disposeTool(name, id.slice(prefix.length))
+        const srv = this._servers.get(name)
+        if (!srv) return
+        for (const [toolName, t] of srv.tools) {
+            const current =
+                this.ctx.chatluna.platform.getToolRegistry()[toolName]
+            if (!current || current.meta?.serverName === name) {
+                t.dispose?.()
+            }
+            t.dispose = undefined
         }
-    }
-
-    private _disposeTool(server: string, name: string) {
-        const id = toolId(server, name)
-        const dispose = this._disposers.get(id)
-        if (!dispose) return
-
-        const current = this.ctx.chatluna.platform.getToolRegistry()[name]
-        if (!current || current.meta?.serverName === server) {
-            dispose()
-        }
-        this._disposers.delete(id)
+        srv.tools.clear()
     }
 
     private _ensureIndexing() {
-        if (this._indexing || this._indexingPromise) {
-            return this._indexingPromise
+        if (!this._indexingPromise) {
+            this._indexingPromise = this._indexAllServers().finally(() => {
+                this._indexingPromise = undefined
+            })
         }
-
-        this._indexing = true
-        this._indexingPromise = this._indexAllServers()
-        this._indexingPromise.finally(() => {
-            this._indexing = false
-        })
         return this._indexingPromise
     }
 
@@ -1058,28 +811,16 @@ export class ChatLunaAgentMcpService {
 
         const tasks = Object.entries(this.config.mcp.mcpServers).map(
             ([name, cfg]) =>
-                this._enqueueServerOperation(name, async () => {
-                    if (this._stopped) return
-                    try {
-                        const success = await this._connect(name, cfg)
-                        if (success) {
-                            logger.debug(`Indexed MCP server: ${name}`)
-                        }
-                    } catch (error) {
-                        logger.warn(
-                            `Failed to index MCP server ${name}:`,
-                            error
-                        )
-                    }
+                this._connect(name, cfg).then((success) => {
+                    if (success) logger.debug(`Indexed MCP server: ${name}`)
                 })
         )
 
         await Promise.allSettled(tasks)
+        this._indexed = this._toolCount() > 0
 
-        const elapsed = Date.now() - startTime
-        const toolCount = this._definitions.size
         logger.info(
-            `MCP indexing complete: ${toolCount} tool(s) from ${this._servers.size} server(s) in ${elapsed}ms`
+            `MCP indexing complete: ${this._toolCount()} tool(s) from ${this._servers.size} server(s) in ${Date.now() - startTime}ms`
         )
         this.ctx.chatluna_agent?.refreshConsoleData()
     }
@@ -1088,7 +829,7 @@ export class ChatLunaAgentMcpService {
 const mcpSearchSchema = z.object({
     action: z
         .enum(['search', 'schema'])
-        .describe('Use search for discovery, then schema for one exact tool.'),
+        .describe('search for discovery, schema for one exact tool'),
     query: z
         .string()
         .default('')
@@ -1117,7 +858,6 @@ type McpInvokeInput = z.infer<typeof mcpInvokeSchema>
 
 type ToolInfo = {
     name: string
-    server: string
     enabled: boolean
     description: string
     timeout: number
@@ -1125,6 +865,7 @@ type ToolInfo = {
     title?: string
     icon?: McpIcon
     catalog: McpCatalogTool
+    dispose?: () => void
 }
 
 type ServerInfo = {
@@ -1137,20 +878,16 @@ type ServerInfo = {
     title?: string
     version?: string
     icon?: McpIcon
+    tools: Map<string, ToolInfo>
 }
 
 function getRequiredToolCallMask(config?: RunnableConfig) {
     const mask = (config?.configurable?.['toolMask'] ??
-        config?.configurable?.['agentContext']?.['toolMask'] ??
-        config?.configurable?.['subagentContext']?.['toolMask']) as
+        config?.configurable?.['agentContext']?.['toolMask']) as
         ToolMask | undefined
     const callMask = mask?.toolCallMask ?? mask
     if (!callMask) {
-        logger.warn(
-            'MCP tool permission context is unavailable, falling back to allow-all mode. ' +
-                'This may indicate the permission service is not initialized.'
-        )
-        return { mode: 'all' as const, tools: [], allow: [], deny: [] }
+        throw new ToolException('MCP tool permission context is unavailable')
     }
     return callMask
 }
@@ -1159,35 +896,10 @@ function structuredGatewayResponse(payload: Record<string, unknown>) {
     return [JSON.stringify(payload, null, 2), []] as [string, []]
 }
 
-function toolId(server: string, name: string) {
-    return `${server}/${name}`
-}
-
 function selectIcon<T extends { theme?: string }>(icons?: T[]) {
     return icons?.find((i) => i.theme !== 'dark') ?? icons?.[0]
 }
 
-function calcTimeout(
-    toolTimeout: number | undefined,
-    serverTimeout: number | undefined
-) {
-    return ((toolTimeout ?? 0) || serverTimeout || 60) * 1000
-}
-
 function calcStartupTimeout(server: McpServerConfig) {
     return Math.max(1, server.startupTimeout ?? 20) * 1000
-}
-
-function stateText(
-    state: McpServerState,
-    error: string | undefined,
-    pending: boolean
-) {
-    if (state === 'connected') return '连接正常'
-    if (state === 'connecting') return '正在建立连接'
-    if (state === 'reconnecting')
-        return pending ? '等待自动重连' : '正在重新连接'
-    if (state === 'error')
-        return error ? `连接失败：${error}` : '连接失败，等待处理'
-    return '尚未启动连接'
 }

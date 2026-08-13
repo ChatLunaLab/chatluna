@@ -5,9 +5,8 @@ import { mkdir, rm, stat, writeFile } from 'fs/promises'
 import os from 'node:os'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
-import { ClientConfig } from 'koishi-plugin-chatluna/llm-core/platform/config'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
-import { type Config, logger } from '..'
+import { logger } from '..'
 import { truncateOutput } from '../computer/backends/types'
 import type { ComputerSessionApi } from '../computer/types'
 import { createSubAgentItemConfig } from '../config/defaults'
@@ -63,7 +62,7 @@ export class ChatLunaAgentService extends Service {
         public ctx: Context,
         public args: {
             config: AgentConfig
-            plugin: ChatLunaPlugin<ClientConfig, Config>
+            plugin: ChatLunaPlugin
         }
     ) {
         super(ctx, 'chatluna_agent')
@@ -231,7 +230,8 @@ export class ChatLunaAgentService extends Service {
         const prev = this.args.config.mcp
         const mcp = {
             mcpServers: { ...this.args.config.mcp.mcpServers },
-            tools: { ...this.args.config.mcp.tools }
+            tools: { ...this.args.config.mcp.tools },
+            mcpToolMode: this.args.config.mcp.mcpToolMode
         }
 
         if (input.oldName && input.oldName !== input.name) {
@@ -248,7 +248,8 @@ export class ChatLunaAgentService extends Service {
         const prev = this.args.config.mcp
         const mcp = {
             mcpServers: { ...this.args.config.mcp.mcpServers },
-            tools: { ...this.args.config.mcp.tools }
+            tools: { ...this.args.config.mcp.tools },
+            mcpToolMode: this.args.config.mcp.mcpToolMode
         }
         delete mcp.mcpServers[name]
         await this.updateConfig('mcp', mcp, async (cfg) => {
@@ -260,7 +261,8 @@ export class ChatLunaAgentService extends Service {
         const prev = this.args.config.mcp
         const mcp = {
             mcpServers: { ...this.args.config.mcp.mcpServers },
-            tools: { ...this.args.config.mcp.tools }
+            tools: { ...this.args.config.mcp.tools },
+            mcpToolMode: this.args.config.mcp.mcpToolMode
         }
         mcp.tools[tool.name] = {
             name: tool.name,

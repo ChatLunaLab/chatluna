@@ -26,9 +26,9 @@ ctx.chatluna_agent.mcp.listTools()
 
 配置文件位于 `data/chatluna/agents/config.json`。
 
-插件全局配置 `mcpToolMode` 默认为 `eager`（暴露全部 MCP 工具）。
-设为 `catalog` 时，模型只会收到固定的搜索和调用网关工具，
-真实 MCP 工具的契约在需要时才加载。
+MCP 工具披露模式可在 WebUI 的 MCP 页面切换：`eager`（默认，暴露全部
+MCP 工具）或 `catalog`（模型只会收到固定的搜索和调用网关工具，
+真实 MCP 工具的契约在需要时才加载）。
 
 ## License
 

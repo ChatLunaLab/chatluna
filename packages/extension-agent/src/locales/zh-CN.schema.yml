@@ -1,10 +1,2 @@
 name: ChatLuna Agent 框架
 description: 提供 MCP、Skills、Scheduler、Tool 和 Sub-Agent 支持
-$inner:
-    - {}
-    - $desc: MCP 工具加载
-      mcpToolMode:
-          $desc: MCP 工具向模型的披露方式。
-          $inner:
-              - 全量模式。将所有已启用 MCP 工具的完整 Schema 发送给模型。
-              - 目录懒加载模式。模型只常驻搜索和调用两个网关工具，按需检索真实工具契约。

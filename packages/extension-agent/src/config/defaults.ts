@@ -355,7 +355,8 @@ export function getDefaultConfig(): AgentConfig {
         version: 4,
         mcp: {
             mcpServers: {},
-            tools: {}
+            tools: {},
+            mcpToolMode: 'eager'
         },
         skills: {
             dirs: [...DEFAULT_SKILL_DIRS],
