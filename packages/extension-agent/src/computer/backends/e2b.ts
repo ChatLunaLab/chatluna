@@ -370,11 +370,16 @@ export class E2BComputerSession implements ComputerSessionApi {
         const cwd = options.workdir
             ? this.resolvePath(options.workdir)
             : this._cwd
-        const result = await this.run(command, {
-            cwd,
-            timeoutMs: options.timeout,
-            envs: options.env
-        } as CommandStartOpts)
+        const result = await this.run(
+            command,
+            {
+                cwd,
+                timeoutMs: options.timeout,
+                envs: options.env
+            } as CommandStartOpts,
+            undefined,
+            options.signal
+        )
         this._cwd = cwd
         return result
     }
@@ -547,7 +552,8 @@ export class E2BComputerSession implements ComputerSessionApi {
     private async run(
         command: string,
         options?: CommandStartOpts,
-        sandbox?: SandboxWrapper
+        sandbox?: SandboxWrapper,
+        signal?: AbortSignal
     ): Promise<ExecuteResult> {
         const current = sandbox ?? (await this.ensureSandbox())
         let handle: CommandHandle | undefined
@@ -556,11 +562,36 @@ export class E2BComputerSession implements ComputerSessionApi {
         let timedOut = false
 
         try {
+            if (signal?.aborted) {
+                throw signal.reason ?? new Error('Aborted')
+            }
             handle = (await current.commands.run(command, {
                 ...options,
                 background: true
             })) as CommandHandle
-            result = await handle.wait()
+
+            if (signal) {
+                let onAbort: (() => void) | undefined
+                const abortPromise = new Promise<never>((_resolve, reject) => {
+                    onAbort = () =>
+                        reject(signal.reason ?? new Error('Aborted'))
+                    signal.addEventListener('abort', onAbort, { once: true })
+                    if (signal.aborted) onAbort()
+                })
+                try {
+                    result = await Promise.race([handle.wait(), abortPromise])
+                } catch (err) {
+                    if (signal.aborted) {
+                        await handle.kill().catch(() => undefined)
+                        throw signal.reason ?? err
+                    }
+                    throw err
+                } finally {
+                    signal.removeEventListener('abort', onAbort)
+                }
+            } else {
+                result = await handle.wait()
+            }
         } catch (err) {
             if (err instanceof CommandExitError) {
                 result = err

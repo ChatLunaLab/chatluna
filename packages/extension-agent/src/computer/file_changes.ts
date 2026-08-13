@@ -10,6 +10,10 @@ export function replaceFileContent(
     newString: string,
     count?: number
 ): EditResult {
+    if (!oldString) {
+        throw new Error('oldString must not be empty')
+    }
+
     if (!content.includes(oldString)) {
         return { success: false, replacements: 0 }
     }

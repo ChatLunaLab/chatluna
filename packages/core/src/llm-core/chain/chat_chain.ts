@@ -104,9 +104,11 @@ export class ChatLunaChatChain
         session,
         conversationId,
         requestId,
+        source,
         variables,
         signal,
         maxToken,
+        maxTokenLimit,
         callbacks
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
@@ -134,7 +136,7 @@ export class ChatLunaChatChain
             agentName: this.botName,
             conversationId,
             requestId,
-            source: 'chatluna' as const,
+            source: source ?? 'chatluna',
             userId: session.userId,
             guildId: session.guildId,
             channelId: session.channelId
@@ -151,6 +153,7 @@ export class ChatLunaChatChain
                 ...requests,
                 stream,
                 maxTokens: maxToken,
+                maxTokenLimit,
                 signal
             },
             events,

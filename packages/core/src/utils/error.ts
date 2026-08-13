@@ -57,6 +57,7 @@ export function isRequestFailure(e: unknown): boolean {
             ChatLunaErrorCode.NETWORK_ERROR,
             ChatLunaErrorCode.API_REQUEST_TIMEOUT,
             ChatLunaErrorCode.API_REQUEST_FAILED,
+            ChatLunaErrorCode.API_REQUEST_TOKEN_LIMIT,
             ChatLunaErrorCode.ABORTED
         ]) || isAbortError(e)
     )
@@ -90,6 +91,7 @@ export enum ChatLunaErrorCode {
     API_REQUEST_TIMEOUT = 102,
     API_REQUEST_FAILED = 103,
     API_UNSAFE_CONTENT = 104,
+    API_REQUEST_TOKEN_LIMIT = 105,
     MODEL_ADAPTER_NOT_FOUND = 300,
     MODEL_NOT_FOUND = 301,
     PRESET_NOT_FOUND = 302,

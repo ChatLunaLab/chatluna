@@ -48,7 +48,7 @@ export class LocalComputerSession implements ComputerSessionApi {
     private _connected = false
     private _cwd: string
     private _tmp = ''
-    private _store: FileStore
+    private _store: FileStore | undefined
     private _children = new Map<ReturnType<typeof spawn>, Promise<void>>()
 
     constructor(
@@ -57,6 +57,13 @@ export class LocalComputerSession implements ComputerSessionApi {
     ) {
         this.sessionId = id
         this._cwd = path.resolve(_cfg.scopePath || process.cwd())
+    }
+
+    private get store(): FileStore {
+        if (!this._connected || !this._store) {
+            throw new Error('Local computer session is disconnected')
+        }
+        return this._store
     }
 
     get cwd() {
@@ -73,6 +80,7 @@ export class LocalComputerSession implements ComputerSessionApi {
 
     async disconnect() {
         this._connected = false
+        this._store = undefined
         await Promise.allSettled(
             Array.from(this._children, async ([child, settled]) => {
                 await killLocalChild(child)
@@ -90,11 +98,11 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
-        return this._store.readFile(filePath, offset, limit)
+        return this.store.readFile(filePath, offset, limit)
     }
 
     async writeFile(filePath: string, content: FileContent) {
-        return await this._store.writeFile(filePath, content)
+        return await this.store.writeFile(filePath, content)
     }
 
     async editFile(
@@ -103,23 +111,21 @@ export class LocalComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        return this._store.editFile(
-            filePath,
-            oldString,
-            newString,
-            replaceCount
-        )
+        return this.store.editFile(filePath, oldString, newString, replaceCount)
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        return this._store.grep(pattern, searchPath, include)
+        return this.store.grep(pattern, searchPath, include)
     }
 
     async glob(pattern: string, searchPath?: string) {
-        return this._store.glob(pattern, searchPath)
+        return this.store.glob(pattern, searchPath)
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
+        if (!this._connected) {
+            throw new Error('Local computer session is disconnected')
+        }
         if (options.signal?.aborted) {
             throw options.signal.reason ?? new Error('Aborted')
         }
@@ -136,7 +142,7 @@ export class LocalComputerSession implements ComputerSessionApi {
         await ensureLocalCommandAccess(command, workdir, this._cfg)
         await confirmHighRiskCommand(command, this._cfg, options.session)
 
-        await fs.mkdir(this._tmp, { recursive: true })
+        await fs.mkdir(this._tmp, { recursive: true, mode: 0o700 })
 
         const shell = await resolveShellCommand(
             await wrapCommandWithSandbox(command, workdir, this._cfg, tmp),
@@ -144,9 +150,6 @@ export class LocalComputerSession implements ComputerSessionApi {
         )
 
         this._cwd = path.resolve(workdir)
-        if (!this._connected) {
-            throw new Error('Local computer session is disconnected')
-        }
         return await runChildProcess(
             shell,
             workdir,
@@ -171,6 +174,9 @@ export class LocalComputerSession implements ComputerSessionApi {
         marker: string,
         options: ExecuteOptions = {}
     ) {
+        if (!this._connected) {
+            throw new Error('Local computer session is disconnected')
+        }
         ensureCommandAllowed(command, this._cfg)
 
         const tmp = this._tmp
@@ -183,7 +189,7 @@ export class LocalComputerSession implements ComputerSessionApi {
         await ensureLocalCommandAccess(command, workdir, this._cfg)
         await confirmHighRiskCommand(command, this._cfg, options.session)
 
-        await fs.mkdir(tmp, { recursive: true })
+        await fs.mkdir(tmp, { recursive: true, mode: 0o700 })
 
         const shell = await resolveInteractiveShellCommand(this._cfg)
         const wrapped = await wrapCommandWithSandbox(
@@ -245,11 +251,11 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async isInScope(filePath: string) {
-        return this._store.isInScope(filePath)
+        return this.store.isInScope(filePath)
     }
 
     getScopePath() {
-        return this._store.scope
+        return this.store.scope
     }
 
     async createTerminal(
@@ -257,7 +263,7 @@ export class LocalComputerSession implements ComputerSessionApi {
     ) {
         const cwd = await fs.realpath(path.resolve(options.cwd || this._cwd))
         await ensureLocalCommandAccess('', cwd, this._cfg)
-        await fs.mkdir(this._tmp, { recursive: true })
+        await fs.mkdir(this._tmp, { recursive: true, mode: 0o700 })
         const shell = await resolveInteractiveShellCommand(this._cfg)
         const wrapped =
             process.platform !== 'win32' &&

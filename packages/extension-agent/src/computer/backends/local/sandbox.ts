@@ -133,6 +133,10 @@ export async function wrapCommandWithSandbox(
     tmp: string,
     interactive = false
 ) {
+    if (!tmp) {
+        throw new Error('Local computer session is disconnected')
+    }
+
     if (process.platform === 'win32' || cfg.dangerouslySkipPermissions) {
         return command
     }

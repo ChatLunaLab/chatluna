@@ -104,21 +104,27 @@ export class GeminiRequester
             modelConfig,
             this._pluginConfig
         )
+        const timeout =
+            params.timeout == null
+                ? undefined
+                : Math.min(params.timeout, 60_000)
+        const requestSignal = createRequestSignal(params, timeout)
         try {
             const response = await this._post(
                 `models/${modelConfig.model}:streamGenerateContent?alt=sse`,
                 chatGenerationParams,
                 {
-                    signal: params.signal
+                    signal: requestSignal.signal
                 }
             )
+            requestSignal.clearTimeout()
 
             await checkResponse(response)
 
             yield* this._processResponseStream(
                 response,
-                params.timeout,
-                params.signal
+                timeout,
+                requestSignal.signal
             )
         } catch (e) {
             if (this.ctx.chatluna.currentConfig.isLog) {
@@ -129,11 +135,16 @@ export class GeminiRequester
                     'warn'
                 )
             }
+            if (requestSignal.signal?.aborted) {
+                throw requestSignal.signal.reason ?? e
+            }
             if (e instanceof ChatLunaError) {
                 throw e
             } else {
                 throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
             }
+        } finally {
+            requestSignal.dispose()
         }
     }
 

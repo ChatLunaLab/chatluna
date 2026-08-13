@@ -406,6 +406,9 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
     }
 
     async execute(command: string, options: ExecuteOptions = {}) {
+        if (options.signal?.aborted) {
+            throw options.signal.reason ?? new Error('Aborted')
+        }
         const cwd = this.resolvePath(options.workdir || this._cwd)
         const timeout = options.timeout ?? 120000
         const result: ExecuteResult = {
@@ -415,29 +418,44 @@ export class OpenTerminalComputerSession implements ComputerSessionApi {
             timedOut: false
         }
         const start = Date.now()
-        let data = await this.postExecute(command, cwd, options, timeout)
+        let data = await this.postExecute(
+            command,
+            cwd,
+            options,
+            timeout,
+            options.signal
+        )
         let offset = collectOpenTerminalOutput(data, result)
         let left = timeout <= 0 ? 300000 : timeout - (Date.now() - start)
 
         while (data.id && data.status === 'running' && left > 0) {
-            data = await this.getExecuteStatus(data.id, offset, left)
+            if (options.signal?.aborted) {
+                await this.forceDeleteExecute(data.id).catch(() => undefined)
+                throw options.signal.reason ?? new Error('Aborted')
+            }
+            try {
+                data = await this.getExecuteStatus(
+                    data.id,
+                    offset,
+                    left,
+                    options.signal
+                )
+            } catch (e) {
+                if (options.signal?.aborted) {
+                    await this.forceDeleteExecute(data.id).catch(
+                        () => undefined
+                    )
+                    throw options.signal.reason ?? e
+                }
+                throw e
+            }
             offset = collectOpenTerminalOutput(data, result)
             left = timeout <= 0 ? 300000 : timeout - (Date.now() - start)
         }
 
         if (data.id && data.status === 'running') {
             result.timedOut = true
-            await this.ctx.http
-                .delete(
-                    this.url(
-                        `/execute/${encodeURIComponent(data.id)}?force=true`
-                    ),
-                    {
-                        proxyAgent: '',
-                        headers: this.headers()
-                    }
-                )
-                .catch(() => undefined)
+            await this.forceDeleteExecute(data.id).catch(() => undefined)
         }
 
         result.exitCode = data.exit_code ?? (result.timedOut ? 1 : 0)
@@ -595,7 +613,8 @@ exit
         command: string,
         cwd: string,
         options: ExecuteOptions,
-        timeout: number
+        timeout: number,
+        signal?: AbortSignal
     ) {
         const query = new URLSearchParams({
             wait: String(Math.min(Math.max(timeout, 0), 300000) / 1000)
@@ -610,6 +629,7 @@ exit
                 },
                 {
                     proxyAgent: '',
+                    signal,
                     headers: {
                         ...this.headers(),
                         'content-type': 'application/json'
@@ -622,7 +642,8 @@ exit
     private async getExecuteStatus(
         id: string,
         offset: number,
-        timeout: number
+        timeout: number,
+        signal?: AbortSignal
     ) {
         const query = new URLSearchParams({
             wait: String(Math.min(Math.max(timeout, 0), 300000) / 1000),
@@ -636,9 +657,20 @@ exit
                 {
                     method: 'GET',
                     proxyAgent: '',
+                    signal,
                     headers: this.headers()
                 }
             )
+        )
+    }
+
+    private async forceDeleteExecute(id: string) {
+        await this.ctx.http.delete(
+            this.url(`/execute/${encodeURIComponent(id)}?force=true`),
+            {
+                proxyAgent: '',
+                headers: this.headers()
+            }
         )
     }
 

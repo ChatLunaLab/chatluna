@@ -52,6 +52,7 @@ export interface BaseFileStore {
 }
 
 export class FileStore implements BaseFileStore {
+    readonly scope: string
     private _allow: string[]
     private _deny: string[]
 
@@ -59,19 +60,16 @@ export class FileStore implements BaseFileStore {
         private _cfg: LocalBackendConfig,
         private _tmp: string
     ) {
+        const value = path.resolve(this._cfg.scopePath || process.cwd())
+        try {
+            this.scope = realpathSync.native(value)
+        } catch {
+            this.scope = value
+        }
         this._allow = [this.scope, ...this._cfg.readOnlyRoots, this._tmp].map(
             (item) => resolveReal(item)
         )
         this._deny = this._cfg.denyRoots.map((item) => resolveReal(item))
-    }
-
-    get scope() {
-        const value = path.resolve(this._cfg.scopePath || process.cwd())
-        try {
-            return realpathSync.native(value)
-        } catch {
-            return value
-        }
     }
 
     async isInScope(filePath: string) {
