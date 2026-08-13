@@ -1,11 +1,11 @@
 /** @module computer/backends/local/store */
 
-import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
-import { createReadStream, realpathSync } from 'fs'
+import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
+import { createReadStream, realpathSync } from 'node:fs'
 import fs from 'fs/promises'
 import path from 'path'
-import { createInterface } from 'readline'
-import type { Readable } from 'stream'
+import { createInterface } from 'node:readline'
+import type { Readable } from 'node:stream'
 import micromatch from 'micromatch'
 import which from 'which'
 import { LocalBackendConfig } from '../../../types'
@@ -18,10 +18,19 @@ import type {
 import { replaceFileContent } from '../../file_changes'
 import { LocalOutputCollector } from './output'
 import { logger } from '../../..'
-import { ensureLocalPathAccess, isInsideRoot } from './sandbox'
+import { ensureLocalPathAccess, isInsideRootAsync } from './sandbox'
 
 const rg = which.sync('rg', { nothrow: true })
 const INTERNAL_IGNORES = ['**/.tmp-chatluna-*']
+
+function resolveReal(value: string) {
+    const resolved = path.resolve(value)
+    try {
+        return realpathSync.native(resolved)
+    } catch {
+        return resolved
+    }
+}
 
 export interface BaseFileStore {
     readFile(filePath: string, offset?: number, limit?: number): Promise<string>
@@ -39,14 +48,22 @@ export interface BaseFileStore {
     ): Promise<string[] | TextOutput>
     glob(pattern: string, searchPath?: string): Promise<string[] | TextOutput>
     readonly scope: string
-    isInScope(filePath: string): boolean
+    isInScope(filePath: string): Promise<boolean>
 }
 
 export class FileStore implements BaseFileStore {
+    private _allow: string[]
+    private _deny: string[]
+
     constructor(
         private _cfg: LocalBackendConfig,
         private _tmp: string
-    ) {}
+    ) {
+        this._allow = [this.scope, ...this._cfg.readOnlyRoots, this._tmp].map(
+            (item) => resolveReal(item)
+        )
+        this._deny = this._cfg.denyRoots.map((item) => resolveReal(item))
+    }
 
     get scope() {
         const value = path.resolve(this._cfg.scopePath || process.cwd())
@@ -57,9 +74,9 @@ export class FileStore implements BaseFileStore {
         }
     }
 
-    isInScope(filePath: string) {
+    async isInScope(filePath: string) {
         if (this._cfg.dangerouslySkipPermissions) return true
-        return isInsideRoot(filePath, this.scope)
+        return isInsideRootAsync(filePath, this.scope)
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
@@ -72,16 +89,7 @@ export class FileStore implements BaseFileStore {
             })) {
                 const item = path.join(filePath, entry.name)
                 if (this._shouldIgnore(item)) continue
-                try {
-                    await ensureLocalPathAccess(
-                        item,
-                        this._cfg,
-                        'read',
-                        this._tmp
-                    )
-                } catch {
-                    continue
-                }
+                if (!this._isAllowed(item)) continue
 
                 if (entry.isDirectory()) {
                     result.push(`${item}/`)
@@ -215,16 +223,7 @@ export class FileStore implements BaseFileStore {
                         if (this._shouldIgnore(file)) continue
                         if (include && !this._matchPattern(file, include))
                             continue
-                        try {
-                            await ensureLocalPathAccess(
-                                file,
-                                this._cfg,
-                                'read',
-                                this._tmp
-                            )
-                        } catch {
-                            continue
-                        }
+                        if (!this._isAllowed(file)) continue
 
                         const text = (
                             (item.data.lines.text as string | undefined) || ''
@@ -312,16 +311,7 @@ export class FileStore implements BaseFileStore {
                             const file = path.resolve(dir, raw)
                             if (this._shouldIgnore(file)) continue
                             if (!this._matchPattern(file, pattern)) continue
-                            try {
-                                await ensureLocalPathAccess(
-                                    file,
-                                    this._cfg,
-                                    'read',
-                                    this._tmp
-                                )
-                            } catch {
-                                continue
-                            }
+                            if (!this._isAllowed(file)) continue
                             await output.appendLine(file)
                         }
                     }
@@ -462,12 +452,7 @@ export class FileStore implements BaseFileStore {
                 try {
                     const stat = await fs.stat(fullPath)
                     if (!stat.isFile()) continue
-                    await ensureLocalPathAccess(
-                        fullPath,
-                        this._cfg,
-                        'read',
-                        this._tmp
-                    )
+                    if (!this._isAllowed(fullPath)) continue
                     yield fullPath
                 } catch (err) {
                     if (process.env['CHATLUNA_AGENT_DEBUG']) {
@@ -480,6 +465,20 @@ export class FileStore implements BaseFileStore {
                 console.debug(err)
             }
         }
+    }
+
+    private _isAllowed(filePath: string) {
+        const resolved = path.resolve(filePath)
+        return (
+            this._allow.some(
+                (root) =>
+                    resolved === root || resolved.startsWith(root + path.sep)
+            ) &&
+            !this._deny.some(
+                (root) =>
+                    resolved === root || resolved.startsWith(root + path.sep)
+            )
+        )
     }
 
     private _matchPattern(filePath: string, pattern: string) {

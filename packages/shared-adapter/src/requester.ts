@@ -97,16 +97,6 @@ function throwIfBadCode(code: string | undefined | null, detail: string): void {
             new Error('Unsafe content detected, please try again.' + detail)
         )
     }
-    if (
-        code === 'length' ||
-        code === 'max_tokens' ||
-        code === 'max_output_tokens'
-    ) {
-        throw new ChatLunaError(
-            ChatLunaErrorCode.API_REQUEST_FAILED,
-            new Error('Model output reached its token limit. ' + detail)
-        )
-    }
 }
 
 function throwIfUnsafeBody(body: string): void {
@@ -788,7 +778,10 @@ export async function* completionStream<
         )
         requestSignal.clearTimeout()
 
-        const iterator = sseIterable(response, timeout, requestSignal.signal)
+        const iterator = sseIterable(response, {
+            timeout,
+            signal: requestSignal.signal
+        })
         yield* processStreamResponse(requestContext, iterator)
     } catch (e) {
         if (requestContext.ctx.chatluna.currentConfig.isLog) {
@@ -911,7 +904,10 @@ export async function* responseApiCompletionStream<
 
         yield* processResponseApiStream(
             requestContext,
-            sseIterable(response, timeout, requestSignal.signal),
+            sseIterable(response, {
+                timeout,
+                signal: requestSignal.signal
+            }),
             imageProvider
         )
     } catch (e) {

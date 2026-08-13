@@ -15,6 +15,12 @@ export interface ChatLunaInvocationMetrics {
 }
 
 const chatlunaMetricsKey = 'chatluna_invocation_metrics'
+/**
+ * Numeric metadata keys that must be pulled out of each streamed chunk before
+ * concat: AIMessageChunk.concat() would otherwise accumulate/array-ify these
+ * values across the aggregated message. They are collected here and merged back
+ * onto the trailing chunk by StreamMetricsTracker.attachTo.
+ */
 const STREAM_METADATA_SNAPSHOTS = [
     'reasoning_time',
     'output_tokens',
@@ -96,7 +102,13 @@ function hasResponseChunk(chunk: ChatGenerationChunk) {
     )
 }
 
-function snapshotKeys(
+/**
+ * Pull the numeric snapshot keys out of a metadata object into `out`, returning
+ * a shallow copy without them. MUTATES nothing on `target` (it copies first),
+ * but the caller then replaces the message's original field with the returned
+ * copy.
+ */
+function takeMetaKeys(
     target: Record<string, unknown> | null | undefined,
     out: Record<string, unknown>
 ): Record<string, unknown> | undefined {
@@ -131,11 +143,13 @@ export class StreamMetricsTracker {
         if (message.usage_metadata != null) {
             this.usage = message.usage_metadata
         }
-        const kwargs = snapshotKeys(message.additional_kwargs, this.kwargs)
+        // These assignments MUTATE the incoming chunk: the snapshot keys are
+        // removed from its metadata fields and stashed here for attachTo.
+        const kwargs = takeMetaKeys(message.additional_kwargs, this.kwargs)
         if (kwargs) message.additional_kwargs = kwargs
-        const metadata = snapshotKeys(message.response_metadata, this.metadata)
+        const metadata = takeMetaKeys(message.response_metadata, this.metadata)
         if (metadata) message.response_metadata = metadata
-        const info = snapshotKeys(chunk.generationInfo, this.info)
+        const info = takeMetaKeys(chunk.generationInfo, this.info)
         if (info) chunk.generationInfo = info
         if (this.firstAt == null && hasResponseChunk(chunk)) {
             this.firstAt = Date.now()

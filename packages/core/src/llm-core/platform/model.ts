@@ -263,22 +263,9 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             let hasResponse = false
             let hasToolCallChunk = false
             let response: ChatGenerationChunk | undefined
-            const controller = new AbortController()
-            const onAbort = () => controller.abort(streamParams.signal?.reason)
-
-            if (streamParams.signal?.aborted) {
-                onAbort()
-            } else {
-                streamParams.signal?.addEventListener('abort', onAbort, {
-                    once: true
-                })
-            }
 
             try {
-                stream = this._createStream({
-                    ...streamParams,
-                    signal: controller.signal
-                })
+                stream = this._createStream(streamParams)
 
                 for await (const chunk of stream) {
                     const hasTool = this._handleStreamChunk(
@@ -331,16 +318,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             } catch (error) {
                 await this._closeStream(stream)
 
-                const metrics = readInvocationMetrics(response)
-                await this._reportFailedUsage(
-                    options,
-                    promptTokens,
-                    response == null
-                        ? 0
-                        : await this.countMessageTokens(response.message),
-                    metrics.timing
-                )
-
                 if (streamParams.signal?.aborted) {
                     throw streamParams.signal.reason ?? error
                 }
@@ -359,6 +336,19 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                             error
                         )
                     }
+                    if (reportUsage) {
+                        const metrics = readInvocationMetrics(response)
+                        await this._reportFailedUsage(
+                            options,
+                            promptTokens,
+                            response == null
+                                ? 0
+                                : await this.countMessageTokens(
+                                      response.message
+                                  ),
+                            metrics.timing
+                        )
+                    }
                     throw error
                 }
 
@@ -367,8 +357,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     error
                 )
                 await sleep(2000 * 2 ** attempt)
-            } finally {
-                streamParams.signal?.removeEventListener('abort', onAbort)
             }
         }
     }
@@ -477,27 +465,14 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             ? await this.countMessageTokens(response.message)
             : 0
 
-        if (metrics.usageMetadata != null) {
-            await this._reportUsage(
+        if (metrics.usageMetadata != null || usage.total_tokens > 0) {
+            await this._reportUsage({
                 usage,
-                false,
+                estimated: false,
                 options,
-                metrics.timing,
-                promptTokens,
-                outputTokens
-            )
-            return
-        }
-
-        if (usage.total_tokens > 0) {
-            await this._reportUsage(
-                usage,
-                false,
-                options,
-                metrics.timing,
-                promptTokens,
-                outputTokens
-            )
+                timing: metrics.timing,
+                local: { input: promptTokens, output: outputTokens }
+            })
             return
         }
 
@@ -511,18 +486,17 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                         : (outputTokens * 1000) / timing.totalMs
             }
         }
-        await this._reportUsage(
-            {
+        await this._reportUsage({
+            usage: {
                 input_tokens: promptTokens,
                 output_tokens: outputTokens,
                 total_tokens: promptTokens + outputTokens
             },
-            true,
+            estimated: true,
             options,
             timing,
-            promptTokens,
-            outputTokens
-        )
+            local: { input: promptTokens, output: outputTokens }
+        })
     }
 
     private async _closeStream(
@@ -587,13 +561,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             promptTokens
         )
 
-        if (response == null) {
-            if (!options.stream) {
-                await this._reportFailedUsage(options, promptTokens)
-            }
-            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED)
-        }
-
         const metrics = readInvocationMetrics(response)
         const providerUsage = metrics.usageMetadata
         const completionTokens = await this.countMessageTokens(response.message)
@@ -613,14 +580,13 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 providerUsage
         }
 
-        await this._reportUsage(
-            reportUsage,
-            providerUsage == null,
+        await this._reportUsage({
+            usage: reportUsage,
+            estimated: providerUsage == null,
             options,
-            metrics.timing,
-            promptTokens,
-            completionTokens
-        )
+            timing: metrics.timing,
+            local: { input: promptTokens, output: completionTokens }
+        })
 
         const llmOutput = {
             ...response.generationInfo,
@@ -633,22 +599,27 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         }
     }
 
-    private async _reportUsage(
-        usage: UsageMetadata,
-        estimated: boolean,
-        options: this['ParsedCallOptions'],
-        timing?: ModelUsageTiming,
-        localInputTokens?: number,
-        localOutputTokens?: number
-    ) {
+    private async _reportUsage({
+        usage,
+        estimated,
+        options,
+        timing,
+        local
+    }: {
+        usage: UsageMetadata
+        estimated: boolean
+        options: ChatLunaModelCallOptions
+        timing?: ModelUsageTiming
+        local: { input?: number; output?: number }
+    }) {
         if (this._report == null) return
 
         try {
             await this._report({
                 callType: 'llm',
                 usageMetadata: usage,
-                localInputTokens,
-                localOutputTokens,
+                localInputTokens: local.input,
+                localOutputTokens: local.output,
                 estimated,
                 success: true,
                 timing,
@@ -747,7 +718,15 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
 
                     return response
                 } catch (error) {
-                    if (!options.stream) {
+                    if (options.signal?.aborted) {
+                        throw options.signal.reason ?? error
+                    }
+
+                    if (
+                        options.stream ||
+                        this._isNonRetryableError(error) ||
+                        attempt === maxAttempts - 1
+                    ) {
                         const metrics = readInvocationMetrics(response)
                         await this._reportFailedUsage(
                             options,
@@ -759,17 +738,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                                   ),
                             metrics.timing
                         )
-                    }
-
-                    if (options.signal?.aborted) {
-                        throw options.signal.reason ?? error
-                    }
-
-                    if (
-                        options.stream ||
-                        this._isNonRetryableError(error) ||
-                        attempt === maxAttempts - 1
-                    ) {
                         throw error
                     }
 

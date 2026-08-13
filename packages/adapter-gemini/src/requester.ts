@@ -445,11 +445,10 @@ export class GeminiRequester
                     return
                 }
 
-                for await (const chunk of sseIterable(
-                    response,
+                for await (const chunk of sseIterable(response, {
                     timeout,
                     signal
-                )) {
+                })) {
                     controller.enqueue(chunk.data)
                 }
                 controller.close()

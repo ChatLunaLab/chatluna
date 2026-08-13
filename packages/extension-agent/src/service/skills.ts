@@ -261,10 +261,7 @@ export class ChatLunaAgentSkillsService implements SkillToolService {
 
     async activateSkill(name: string, runConfig?: ChatLunaToolRunnable) {
         const skill = this.getVisibleSkillByName(name)
-        const agentContext = runConfig?.configurable?.agentContext
-        if (!agentContext) {
-            throw new Error('Agent execution context is required')
-        }
+        const agentContext = runConfig!.configurable.agentContext
 
         const conversationId = agentContext.conversationId
         const sub = agentContext.kind === 'subagent'

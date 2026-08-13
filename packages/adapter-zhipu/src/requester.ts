@@ -102,7 +102,7 @@ export class ZhipuRequester
 
             yield* processStreamResponse(
                 requestContext,
-                sseIterable(response, params.timeout, params.signal)
+                sseIterable(response, params)
             )
         } catch (e) {
             if (e instanceof ChatLunaError) {

@@ -88,27 +88,22 @@ export function formatFileDiff(before: string, after: string) {
     const marker = '[diff truncated]'
     let chars = lines[0].length
     let truncated = false
-    let idx = 0
 
     for (const value of [...changes, ...context]) {
-        if (lines.length >= MAX_DIFF_LINES - 1) {
-            truncated = true
-            break
-        }
-
         const line = value.slice(0, MAX_DIFF_LINE_CHARS)
-        if (line.length < value.length) truncated = true
-        if (chars + line.length + 1 > MAX_DIFF_CHARS - marker.length - 1) {
+        if (
+            lines.length >= MAX_DIFF_LINES - 1 ||
+            chars + line.length + 1 > MAX_DIFF_CHARS - marker.length - 1
+        ) {
             truncated = true
             break
         }
 
+        if (line.length < value.length) truncated = true
         lines.push(line)
         chars += line.length + 1
-        idx += 1
     }
 
-    if (idx < changes.length + context.length) truncated = true
     if (truncated) lines.push(marker)
     return lines.join('\n')
 }

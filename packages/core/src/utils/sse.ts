@@ -162,48 +162,21 @@ async function* readSSE(
     signal?: AbortSignal
 ) {
     const decoder = new TextDecoder('utf-8')
-
+    const abort = () => {
+        // eslint-disable-next-line no-void
+        void reader.cancel(signal?.reason ?? createAbortError()).catch(() => {})
+    }
+    signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) abort()
     try {
         while (true) {
-            if (signal?.aborted) {
-                const error = signal.reason ?? createAbortError()
-                // eslint-disable-next-line no-void
-                void reader.cancel(error).catch(() => {})
-                throw error
-            }
-
-            let abort: (() => void) | undefined
-            const pending = [reader.read()]
-
-            if (signal) {
-                pending.push(
-                    // eslint-disable-next-line promise/param-names
-                    new Promise<never>((_, reject) => {
-                        abort = () => {
-                            const error = signal.reason ?? createAbortError()
-                            reject(error)
-                            // eslint-disable-next-line no-void
-                            void reader.cancel(error).catch(() => {})
-                        }
-                        signal.addEventListener('abort', abort, { once: true })
-                        if (signal.aborted) abort()
-                    })
-                )
-            }
-
-            const { value, done } = await Promise.race(pending).finally(() => {
-                if (abort) signal?.removeEventListener('abort', abort)
-            })
-
-            if (done) {
-                return
-            }
-
-            const decodeValue = decoder.decode(value, { stream: true })
-
-            yield decodeValue
+            const { value, done } = await reader.read()
+            if (signal?.aborted) throw signal.reason ?? createAbortError()
+            if (done) return
+            yield decoder.decode(value, { stream: true })
         }
     } finally {
+        signal?.removeEventListener('abort', abort)
         await reader.cancel().catch(() => {})
         reader.releaseLock()
     }
@@ -246,14 +219,14 @@ export async function* rawSeeAsIterable(
 // eslint-disable-next-line generator-star-spacing
 export async function* sseIterable(
     response: fetchType.Response | ReadableStreamDefaultReader<string>,
-    timeout?: number,
-    signal?: AbortSignal
+    params: { timeout?: number; signal?: AbortSignal } = {}
 ) {
-    const idleTimeout = timeout == null ? undefined : Math.min(timeout, 60_000)
+    const idleTimeout =
+        params.timeout == null ? undefined : Math.min(params.timeout, 60_000)
     const parser = createParser()
     const controller = new AbortController()
     let timer: NodeJS.Timeout | undefined
-    const abort = () => controller.abort(signal?.reason)
+    const abort = () => controller.abort(params.signal?.reason)
 
     const reset = () => {
         if (idleTimeout == null || controller.signal.aborted) return
@@ -264,9 +237,9 @@ export async function* sseIterable(
         )
     }
 
-    if (signal) {
-        signal.addEventListener('abort', abort, { once: true })
-        if (signal.aborted) abort()
+    if (params.signal) {
+        params.signal.addEventListener('abort', abort, { once: true })
+        if (params.signal.aborted) abort()
     }
 
     reset()
@@ -286,7 +259,7 @@ export async function* sseIterable(
         }
     } finally {
         if (timer) clearTimeout(timer)
-        signal?.removeEventListener('abort', abort)
+        params.signal?.removeEventListener('abort', abort)
     }
 
     return '[DONE]'

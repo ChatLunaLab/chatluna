@@ -227,7 +227,7 @@ When to use:
 
             this.log(computer, output)
 
-            return this.withBackend(computer, `${status}\n${output}`)
+            return this.withBackend(computer, output)
         } catch (err) {
             if (toolConfig.signal?.aborted) {
                 throw toolConfig.signal.reason ?? err

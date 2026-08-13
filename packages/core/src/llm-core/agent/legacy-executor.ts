@@ -326,7 +326,6 @@ export async function* runAgent(
                 output = [toParsingErrorAction(handleParsingErrors, e)]
             } else if (
                 runtime.agentContext?.kind === 'subagent' &&
-                loopState.changed &&
                 !signal?.aborted &&
                 isRequestFailure(e)
             ) {
@@ -338,8 +337,8 @@ export async function* runAgent(
                 yield {
                     type: 'done',
                     output:
-                        'Workspace changes were applied but final model ' +
-                        'response failed.',
+                        'Subtask execution was interrupted; the workspace ' +
+                        'may have been modified.',
                     log: e instanceof Error ? e.message : String(e),
                     steps
                 }
@@ -404,27 +403,6 @@ export async function* runAgent(
 
         steps.push(...newSteps)
         scratchpad.push(...newSteps)
-
-        for (const step of newSteps) {
-            const name = step.action.tool?.toLowerCase()
-            const input = step.action.toolInput
-            const path =
-                typeof input === 'object' && input != null
-                    ? input['filePath']
-                    : undefined
-            const text = toOutput(step.observation)
-            if (
-                typeof path === 'string' &&
-                !/(?:^|[/\\])(?:[^/\\]*[-_.])?(?:scratch|check|tests?|verif(?:y|ication)|tmp|temp)(?:[-_.][^/\\]*)?$/i.test(
-                    path
-                ) &&
-                ((name === 'file_write' && /\bWrote /.test(text)) ||
-                    (name === 'file_edit' &&
-                        /\bReplaced \d+ occurrence/.test(text)))
-            ) {
-                loopState.changed = true
-            }
-        }
 
         if (newSteps.length > 0) {
             yield {
@@ -529,7 +507,7 @@ async function compressScratchpad(
             ? invocation.maxTokenLimit
             : model.getModelMaxContextSize()
 
-    if (!limit || limit <= 0 || inputTokens < limit) return
+    if (!limit || limit <= 0 || inputTokens < limit * 0.85) return
 
     const keepIndex = scratchpad
         .map(

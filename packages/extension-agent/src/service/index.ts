@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'crypto'
 import { mkdir, rm, stat, writeFile } from 'fs/promises'
-import os from 'os'
+import os from 'node:os'
 import { dirname, join, resolve } from 'path'
 import { Context, Service } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'

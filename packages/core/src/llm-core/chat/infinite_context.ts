@@ -85,7 +85,7 @@ export async function compressIfNeeded(
             Math.min(usableLimit, hardContext * (opts.threshold ?? 0.85))
         )
 
-        if (inputTokens + presetTokens < threshold) return noCompressResult()
+        if (inputTokens + presetTokens <= threshold) return noCompressResult()
 
         logger.info(
             '[InfiniteContext] Start compression: history=%d tokens, total=%d, threshold=%d',

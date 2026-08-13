@@ -153,7 +153,7 @@ export type ChatLunaToolRunnable = ToolRunnableConfig & {
         model: ChatLunaChatModel
         session: Session
         preset?: string
-        agentContext?: AgentRunContext
+        agentContext: AgentRunContext
     }
 }
 

@@ -1,8 +1,8 @@
 /** @module computer/backends/e2b */
 
 import { createHash, randomUUID } from 'crypto'
-import { Buffer } from 'buffer'
-import { Readable } from 'stream'
+import { Buffer } from 'node:buffer'
+import { Readable } from 'node:stream'
 import {
     CommandExitError,
     CommandHandle,
@@ -516,7 +516,7 @@ export class E2BComputerSession implements ComputerSessionApi {
         return undefined
     }
 
-    isInScope() {
+    async isInScope() {
         return true
     }
 

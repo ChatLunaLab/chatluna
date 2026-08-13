@@ -171,7 +171,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             }
         )
 
-        const iterator = sseIterable(response, params.timeout, params.signal)
+        const iterator = sseIterable(response, params)
         let updatedDifyConversationId: string | undefined
 
         for await (const event of iterator) {
@@ -276,7 +276,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             }
         )
 
-        const iterator = sseIterable(response, params.timeout, params.signal)
+        const iterator = sseIterable(response, params)
 
         for await (const event of iterator) {
             const chunk = event.data

@@ -136,7 +136,7 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                 userId: input.session?.userId,
                 guildId: input.session?.guildId,
                 channelId: input.session?.channelId,
-                toolMask: options.toolMask ?? input.toolMask,
+                toolMask: input.toolMask ?? options.toolMask,
                 subagentContext: input.subagentContext
             } satisfies AgentRunContext
             const maxTokens =
@@ -314,8 +314,7 @@ class AgentTool extends StructuredTool {
         _: unknown,
         runConfig?: ChatLunaToolRunnable
     ) {
-        const parent = runConfig?.configurable?.agentContext
-        if (!parent) throw new Error('Agent execution context is required')
+        const parent = runConfig!.configurable.agentContext
         const runId = randomUUID()
         const parentSub = parent.subagentContext
         const depth = (parentSub?.depth ?? 0) + 1

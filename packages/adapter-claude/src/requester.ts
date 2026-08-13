@@ -142,7 +142,7 @@ export class ClaudeRequester extends ModelRequester<ClientConfig> {
                     : undefined
         })
 
-        const iterator = sseIterable(response, params.timeout, params.signal)
+        const iterator = sseIterable(response, params)
         const reasoningState = new ReasoningState<ClaudeReasoningBlockParam>()
 
         for await (const event of iterator) {

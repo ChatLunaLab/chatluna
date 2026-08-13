@@ -16,7 +16,6 @@ export interface AgentLoopState {
     failures: Map<string, number>
     results: Map<string, { hash: string; count: number }>
     busy: Map<string, number>
-    changed: boolean
 }
 
 export function createAgentLoopState(): AgentLoopState {
@@ -24,8 +23,7 @@ export function createAgentLoopState(): AgentLoopState {
         calls: new Map(),
         failures: new Map(),
         results: new Map(),
-        busy: new Map(),
-        changed: false
+        busy: new Map()
     }
 }
 

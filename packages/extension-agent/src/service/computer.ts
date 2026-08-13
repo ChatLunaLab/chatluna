@@ -1,7 +1,7 @@
 /** @module service/computer */
 
-import { randomUUID } from 'crypto'
-import path from 'path'
+import { randomUUID } from 'node:crypto'
+import path from 'node:path'
 import { SystemMessage } from '@langchain/core/messages'
 import which from 'which'
 import type { AgentRunContext } from 'koishi-plugin-chatluna/llm-core/agent'
@@ -947,10 +947,7 @@ export class ChatLunaAgentComputerService {
         runConfig?: ChatLunaToolRunnable,
         backend?: ComputerBackendType
     ) {
-        const context = runConfig?.configurable?.agentContext
-        if (!context) {
-            throw new Error('Agent execution context is required')
-        }
+        const context = runConfig!.configurable.agentContext
 
         const info =
             context.kind === 'subagent'

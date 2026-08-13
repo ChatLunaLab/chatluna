@@ -1,6 +1,6 @@
 /** @module utils/runtime_sync */
 
-import { Buffer } from 'buffer'
+import { Buffer } from 'node:buffer'
 import { createHash } from 'crypto'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname, join, posix } from 'path'
@@ -332,12 +332,5 @@ async function listRemoteFiles(session: ComputerSessionApi, root: string) {
 }
 
 function getRuntimeKey(context: AgentRunContext) {
-    return [
-        context.requestId ??
-            context.conversationId ??
-            context.subagentContext?.parentConversationId ??
-            'runtime',
-        context.kind,
-        context.agentId ?? 'main'
-    ].join(':')
+    return [context.requestId, context.kind, context.agentId].join(':')
 }

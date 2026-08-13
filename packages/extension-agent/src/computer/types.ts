@@ -1,4 +1,4 @@
-import type { Readable } from 'stream'
+import type { Readable } from 'node:stream'
 import { Session } from 'koishi'
 import { ComputerBackendType, ComputerCapability } from '../types'
 
@@ -52,7 +52,7 @@ export interface ComputerSessionApi {
     desktopAction?(action: DesktopAction): Promise<void>
     getDesktopStream?(): Promise<StreamHandle | undefined>
 
-    isInScope(path: string): boolean
+    isInScope(path: string): Promise<boolean>
     getScopePath(): string
 }
 

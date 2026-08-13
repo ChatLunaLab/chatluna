@@ -1,9 +1,9 @@
 /** @module computer/backends/open_terminal */
 
 import { createHash, randomUUID } from 'crypto'
-import { Buffer } from 'buffer'
+import { Buffer } from 'node:buffer'
 import { posix } from 'path'
-import { Readable } from 'stream'
+import { Readable } from 'node:stream'
 import { Context } from 'koishi'
 import type {} from '@koishijs/plugin-proxy-agent'
 import mimeTypes from 'mime-types'
@@ -583,7 +583,7 @@ exit
         return undefined
     }
 
-    isInScope() {
+    async isInScope() {
         return true
     }
 

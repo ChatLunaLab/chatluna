@@ -1,9 +1,9 @@
 /** @module computer/backends/local/index */
 
-import { spawn } from 'child_process'
-import { createReadStream } from 'fs'
-import fs from 'fs/promises'
-import os from 'os'
+import { spawn } from 'node:child_process'
+import { createReadStream } from 'node:fs'
+import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import mimeTypes from 'mime-types'
@@ -90,12 +90,10 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async readFile(filePath: string, offset?: number, limit?: number) {
-        await ensureLocalPathAccess(filePath, this._cfg, 'read', this._tmp)
         return this._store.readFile(filePath, offset, limit)
     }
 
     async writeFile(filePath: string, content: FileContent) {
-        await ensureLocalPathAccess(filePath, this._cfg, 'write', this._tmp)
         return await this._store.writeFile(filePath, content)
     }
 
@@ -105,7 +103,6 @@ export class LocalComputerSession implements ComputerSessionApi {
         newString: string,
         replaceCount?: number
     ) {
-        await ensureLocalPathAccess(filePath, this._cfg, 'write', this._tmp)
         return this._store.editFile(
             filePath,
             oldString,
@@ -115,22 +112,10 @@ export class LocalComputerSession implements ComputerSessionApi {
     }
 
     async grep(pattern: string, searchPath?: string, include?: string) {
-        await ensureLocalPathAccess(
-            searchPath || this._store.scope,
-            this._cfg,
-            'read',
-            this._tmp
-        )
         return this._store.grep(pattern, searchPath, include)
     }
 
     async glob(pattern: string, searchPath?: string) {
-        await ensureLocalPathAccess(
-            searchPath || this._store.scope,
-            this._cfg,
-            'read',
-            this._tmp
-        )
         return this._store.glob(pattern, searchPath)
     }
 
@@ -168,10 +153,7 @@ export class LocalComputerSession implements ComputerSessionApi {
             {
                 ...shell.env,
                 ...options.env,
-                PATH: (options.env?.PATH ?? process.env.PATH)
-                    ?.split(path.delimiter)
-                    .filter((item) => !item.includes('/xfs-'))
-                    .join(path.delimiter),
+                PATH: options.env?.PATH ?? process.env.PATH,
                 TMP: this._tmp,
                 TEMP: this._tmp,
                 TMPDIR: this._tmp,
@@ -262,7 +244,7 @@ export class LocalComputerSession implements ComputerSessionApi {
         return this._tmp
     }
 
-    isInScope(filePath: string) {
+    async isInScope(filePath: string) {
         return this._store.isInScope(filePath)
     }
 
@@ -300,9 +282,7 @@ export class LocalComputerSession implements ComputerSessionApi {
             cwd,
             {
                 ...shell.env,
-                PATH: process.env.PATH?.split(path.delimiter)
-                    .filter((item) => !item.includes('/xfs-'))
-                    .join(path.delimiter),
+                PATH: process.env.PATH,
                 TMP: this._tmp,
                 TEMP: this._tmp,
                 TMPDIR: this._tmp,
