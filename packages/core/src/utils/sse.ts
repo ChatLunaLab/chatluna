@@ -249,10 +249,8 @@ export async function* sseIterable(
             0,
             controller.signal
         )) {
+            reset()
             for (const event of parser(rawChunk)) {
-                if (Object.keys(event).some((key) => key !== 'comments')) {
-                    reset()
-                }
                 yield event
             }
         }

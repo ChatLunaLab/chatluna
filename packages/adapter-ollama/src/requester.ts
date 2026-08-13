@@ -140,7 +140,11 @@ export class OllamaRequester
 
             let buffer = ''
 
-            for await (const rawData of rawSeeAsIterable(response, 0)) {
+            for await (const rawData of rawSeeAsIterable(
+                response,
+                0,
+                params.signal
+            )) {
                 buffer += rawData
 
                 const parts = buffer.split('\n')
