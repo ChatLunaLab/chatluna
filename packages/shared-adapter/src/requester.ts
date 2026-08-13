@@ -757,9 +757,7 @@ export async function* completionStream<
         enableGoogleSearch ?? false,
         supportImageInput ?? true
     )
-    const timeout =
-        params.timeout == null ? undefined : Math.min(params.timeout, 60_000)
-    const requestSignal = createRequestSignal(params, timeout)
+    const requestSignal = createRequestSignal(params)
 
     try {
         if (requestSignal.signal?.aborted) {
@@ -779,7 +777,7 @@ export async function* completionStream<
         requestSignal.clearTimeout()
 
         const iterator = sseIterable(response, {
-            timeout,
+            timeout: params.timeout,
             signal: requestSignal.signal
         })
         yield* processStreamResponse(requestContext, iterator)
@@ -885,9 +883,7 @@ export async function* responseApiCompletionStream<
         opts,
         supportImageInput ?? true
     )
-    const timeout =
-        params.timeout == null ? undefined : Math.min(params.timeout, 60_000)
-    const requestSignal = createRequestSignal(params, timeout)
+    const requestSignal = createRequestSignal(params)
 
     try {
         if (requestSignal.signal?.aborted) {
@@ -905,7 +901,7 @@ export async function* responseApiCompletionStream<
         yield* processResponseApiStream(
             requestContext,
             sseIterable(response, {
-                timeout,
+                timeout: params.timeout,
                 signal: requestSignal.signal
             }),
             imageProvider

@@ -163,11 +163,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             requestBody.files = files
         }
 
-        const timeout =
-            params.timeout == null
-                ? undefined
-                : Math.min(params.timeout, 60_000)
-        const requestSignal = createRequestSignal(params, timeout)
+        const requestSignal = createRequestSignal(params)
 
         try {
             const response = await this._post(
@@ -181,7 +177,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             requestSignal.clearTimeout()
 
             const iterator = sseIterable(response, {
-                timeout,
+                timeout: params.timeout,
                 signal: requestSignal.signal
             })
             let updatedDifyConversationId: string | undefined
@@ -245,6 +241,14 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                     break
                 }
             }
+        } catch (e) {
+            if (requestSignal.signal?.aborted) {
+                throw requestSignal.signal.reason ?? e
+            }
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         } finally {
             requestSignal.dispose()
         }
@@ -285,11 +289,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             requestBody.files = files
         }
 
-        const timeout =
-            params.timeout == null
-                ? undefined
-                : Math.min(params.timeout, 60_000)
-        const requestSignal = createRequestSignal(params, timeout)
+        const requestSignal = createRequestSignal(params)
 
         try {
             const response = await this._post(
@@ -303,7 +303,7 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
             requestSignal.clearTimeout()
 
             const iterator = sseIterable(response, {
-                timeout,
+                timeout: params.timeout,
                 signal: requestSignal.signal
             })
 
@@ -354,6 +354,14 @@ export class DifyRequester extends ModelRequester<DifyClientConfig> {
                     yield generationChunk
                 }
             }
+        } catch (e) {
+            if (requestSignal.signal?.aborted) {
+                throw requestSignal.signal.reason ?? e
+            }
+            if (e instanceof ChatLunaError) {
+                throw e
+            }
+            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
         } finally {
             requestSignal.dispose()
         }

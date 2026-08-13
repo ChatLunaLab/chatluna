@@ -86,11 +86,7 @@ export class QWenRequester
             baseRequest.enable_search = this._pluginConfig.enableSearch
         }
 
-        const timeout =
-            params.timeout == null
-                ? undefined
-                : Math.min(params.timeout, 60_000)
-        const requestSignal = createRequestSignal(params, timeout)
+        const requestSignal = createRequestSignal(params)
 
         try {
             const response = await this.post('chat/completions', baseRequest, {
@@ -99,7 +95,7 @@ export class QWenRequester
             requestSignal.clearTimeout()
 
             const iterator = sseIterable(response, {
-                timeout,
+                timeout: params.timeout,
                 signal: requestSignal.signal
             })
             const streamChunks = processStreamResponse(requestContext, iterator)

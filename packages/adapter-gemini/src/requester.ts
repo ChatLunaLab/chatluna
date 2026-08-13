@@ -104,11 +104,7 @@ export class GeminiRequester
             modelConfig,
             this._pluginConfig
         )
-        const timeout =
-            params.timeout == null
-                ? undefined
-                : Math.min(params.timeout, 60_000)
-        const requestSignal = createRequestSignal(params, timeout)
+        const requestSignal = createRequestSignal(params)
         try {
             const response = await this._post(
                 `models/${modelConfig.model}:streamGenerateContent?alt=sse`,
@@ -123,7 +119,7 @@ export class GeminiRequester
 
             yield* this._processResponseStream(
                 response,
-                timeout,
+                params.timeout,
                 requestSignal.signal
             )
         } catch (e) {

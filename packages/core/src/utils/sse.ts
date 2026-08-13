@@ -221,8 +221,7 @@ export async function* sseIterable(
     response: fetchType.Response | ReadableStreamDefaultReader<string>,
     params: { timeout?: number; signal?: AbortSignal } = {}
 ) {
-    const idleTimeout =
-        params.timeout == null ? undefined : Math.min(params.timeout, 60_000)
+    const idleTimeout = params.timeout
     const parser = createParser()
     const controller = new AbortController()
     let timer: NodeJS.Timeout | undefined
