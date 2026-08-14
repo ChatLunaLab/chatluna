@@ -28,7 +28,6 @@ export class ChatLunaAgentMcpService {
     private _servers = new Map<string, ServerInfo>()
     private _validator = new AjvJsonSchemaValidator()
     private _stopped = false
-    private _indexed = false
     private _indexingPromise?: Promise<void>
     private _gateway: McpGateway
 
@@ -40,9 +39,6 @@ export class ChatLunaAgentMcpService {
         this._gateway = new McpGateway({
             ctx: this.ctx,
             getConfig: () => this.config.mcp,
-            get indexed() {
-                return this._indexed
-            },
             ensureIndexing: () => this._ensureIndexing(),
             getTool: (server, name) =>
                 this._servers.get(server)?.tools.get(name),
@@ -142,7 +138,6 @@ export class ChatLunaAgentMcpService {
         this._gateway.dispose()
         this._servers.clear()
         this._indexingPromise = undefined
-        this._indexed = false
     }
 
     async reload() {
@@ -162,6 +157,7 @@ export class ChatLunaAgentMcpService {
             }
         }
 
+        const refresh = new Set<string>()
         for (const [name, cfg] of Object.entries(next.tools)) {
             if (
                 JSON.stringify(prev.tools[name] ?? null) === JSON.stringify(cfg)
@@ -173,13 +169,20 @@ export class ChatLunaAgentMcpService {
                 if (!t) continue
                 const serverCfg = next.mcpServers[serverName]
                 if (srv.client && srv.state === 'connected' && serverCfg) {
-                    await this._registerTools(srv.client, serverName, serverCfg)
+                    refresh.add(serverName)
                     continue
                 }
                 t.enabled = cfg.enabled ?? true
                 t.selector = cfg.selector ?? []
                 t.timeout =
                     ((cfg.timeout ?? 0) || serverCfg?.timeout || 60) * 1000
+            }
+        }
+        for (const name of refresh) {
+            const srv = this._servers.get(name)
+            const cfg = next.mcpServers[name]
+            if (srv?.client && srv.state === 'connected' && cfg) {
+                await this._registerTools(srv.client, name, cfg)
             }
         }
 
@@ -587,7 +590,9 @@ export class ChatLunaAgentMcpService {
     }
 
     private _ensureIndexing() {
-        this._indexingPromise ??= this._indexAllServers()
+        this._indexingPromise ??= this._indexAllServers().finally(() => {
+            if (this._toolCount() === 0) this._indexingPromise = undefined
+        })
         return this._indexingPromise
     }
 
@@ -605,7 +610,6 @@ export class ChatLunaAgentMcpService {
         )
 
         await Promise.allSettled(tasks)
-        this._indexed = true
 
         logger.info(
             `MCP indexing complete: ${this._toolCount()} tool(s) from ${this._servers.size} server(s) in ${Date.now() - startTime}ms`

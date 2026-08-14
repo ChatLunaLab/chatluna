@@ -129,13 +129,13 @@ export function createMcpLangChainTool(
     ctx: Context
 ) {
     const langChainTool = tool(
-        async (input: unknown) => {
+        async (input: unknown, config?: RunnableConfig) => {
             return await callTool(
                 serverName,
                 mcpTool.name,
                 client,
                 input as Record<string, unknown>,
-                { timeout: t.timeout },
+                { ...config, timeout: t.timeout },
                 undefined,
                 ctx,
                 logger
@@ -178,7 +178,6 @@ export function createMcpLangChainTool(
 export interface McpGatewayHost {
     ctx: Context
     getConfig(): McpConfig
-    indexed: boolean
     ensureIndexing(): Promise<void>
     getTool(server: string, name: string): ToolInfo | undefined
     allTools(): { server: string; tool: ToolInfo }[]
@@ -203,9 +202,7 @@ export class McpGateway {
         const search = tool(
             async (input: McpSearchInput, config?: RunnableConfig) => {
                 const mask = getRequiredToolCallMask(config)
-                if (!this.host.indexed) {
-                    await this.host.ensureIndexing()
-                }
+                await this.host.ensureIndexing()
 
                 if (input.action === 'schema') {
                     if (!input.server || !input.tool) {
@@ -412,9 +409,9 @@ type McpSearchInput = z.infer<typeof mcpSearchSchema>
 type McpInvokeInput = z.infer<typeof mcpInvokeSchema>
 
 function getRequiredToolCallMask(config?: RunnableConfig) {
-    const mask = (config?.configurable?.['toolMask'] ??
-        config?.configurable?.['agentContext']?.['toolMask']) as
-        ToolMask | undefined
+    const mask: ToolMask | undefined =
+        config?.configurable?.['toolMask'] ??
+        config?.configurable?.['agentContext']?.['toolMask']
     const callMask = mask?.toolCallMask ?? mask
     if (!callMask) {
         throw new ToolException('MCP tool permission context is unavailable')
