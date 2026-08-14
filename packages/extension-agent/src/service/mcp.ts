@@ -291,6 +291,7 @@ export class ChatLunaAgentMcpService {
         if (!srv || this._stopped) return false
         if (srv.connectTask) return srv.connectTask
         if (srv.client && srv.state === 'connected') return true
+        if (srv.reconnectDispose) return false
 
         srv.state = reconnecting ? 'reconnecting' : 'connecting'
         srv.error = undefined
