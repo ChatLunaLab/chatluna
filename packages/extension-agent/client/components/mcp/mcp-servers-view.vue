@@ -1,5 +1,26 @@
 <template>
     <div class="servers-view">
+        <div class="mode-section">
+            <div class="mode-item">
+                <div class="mode-copy">
+                    <div class="row-title">工具加载模式</div>
+                    <div v-if="!props.hideDesc" class="row-description">
+                        全量模式会将所有工具发送给模型，懒加载模式让模型自行搜索调用的 MCP 工具。
+                    </div>
+                </div>
+                <div class="mode-value">
+                    <el-select
+                        class="mode-select"
+                        :model-value="config?.mcpToolMode ?? 'eager'"
+                        @change="saveMode"
+                    >
+                        <el-option value="eager" label="全量模式（eager）" />
+                        <el-option value="catalog" label="目录懒加载（catalog）" />
+                    </el-select>
+                </div>
+            </div>
+        </div>
+
         <div class="catalog-section">
             <div class="catalog-controls">
                 <div class="section-title">服务器</div>
@@ -606,7 +627,8 @@ import type {
     McpServerState,
     McpStatus,
     McpToolConfig,
-    McpToolInfo
+    McpToolInfo,
+    McpToolMode
 } from '../../../src/types'
 import CodeEditor from '../shared/code-editor.vue'
 
@@ -1186,6 +1208,18 @@ async function reloadMcp() {
     }
 }
 
+async function saveMode(mode: McpToolMode) {
+    try {
+        await send('chatluna-agent/saveMcp', {
+            ...props.config,
+            mcpToolMode: mode
+        })
+        ElMessage.success('工具模式已切换。')
+    } catch {
+        ElMessage.error('切换失败，请稍后重试。')
+    }
+}
+
 async function reconnect(name: string) {
     try {
         serverBusy.value[name] = true
@@ -1345,6 +1379,51 @@ async function saveTool() {
 
 .catalog-section {
     min-width: 0;
+}
+
+.mode-section {
+    margin-bottom: 18px;
+}
+
+.mode-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid
+        color-mix(in srgb, var(--k-color-divider), transparent 18%);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--k-side-bg), var(--k-page-bg) 18%);
+    box-sizing: border-box;
+}
+
+.mode-copy {
+    min-width: 0;
+}
+
+.mode-value {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-self: end;
+}
+
+.mode-select {
+    width: 220px;
+}
+
+.mode-item .row-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--k-text-dark);
+}
+
+.mode-item .row-description {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--k-text-light);
 }
 
 .catalog-controls {

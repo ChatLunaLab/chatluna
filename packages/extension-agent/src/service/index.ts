@@ -60,7 +60,10 @@ export class ChatLunaAgentService extends Service {
 
     constructor(
         public ctx: Context,
-        public args: { config: AgentConfig; plugin: ChatLunaPlugin }
+        public args: {
+            config: AgentConfig
+            plugin: ChatLunaPlugin
+        }
     ) {
         super(ctx, 'chatluna_agent')
 
@@ -227,7 +230,8 @@ export class ChatLunaAgentService extends Service {
         const prev = this.args.config.mcp
         const mcp = {
             mcpServers: { ...this.args.config.mcp.mcpServers },
-            tools: { ...this.args.config.mcp.tools }
+            tools: { ...this.args.config.mcp.tools },
+            mcpToolMode: this.args.config.mcp.mcpToolMode
         }
 
         if (input.oldName && input.oldName !== input.name) {
@@ -244,7 +248,8 @@ export class ChatLunaAgentService extends Service {
         const prev = this.args.config.mcp
         const mcp = {
             mcpServers: { ...this.args.config.mcp.mcpServers },
-            tools: { ...this.args.config.mcp.tools }
+            tools: { ...this.args.config.mcp.tools },
+            mcpToolMode: this.args.config.mcp.mcpToolMode
         }
         delete mcp.mcpServers[name]
         await this.updateConfig('mcp', mcp, async (cfg) => {
@@ -256,7 +261,8 @@ export class ChatLunaAgentService extends Service {
         const prev = this.args.config.mcp
         const mcp = {
             mcpServers: { ...this.args.config.mcp.mcpServers },
-            tools: { ...this.args.config.mcp.tools }
+            tools: { ...this.args.config.mcp.tools },
+            mcpToolMode: this.args.config.mcp.mcpToolMode
         }
         mcp.tools[tool.name] = {
             name: tool.name,

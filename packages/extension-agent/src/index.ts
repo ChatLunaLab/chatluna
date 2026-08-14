@@ -43,7 +43,9 @@ export async function apply(ctx: Context, config: Config) {
     ctx.plugin(taskCommands)
 }
 
-export const Config: Schema<Config> = Schema.intersect([ChatLunaPlugin.Config])
+export const Config: Schema<Config> = Schema.intersect([
+    ChatLunaPlugin.Config
+]) as Schema<Config>
 
 export interface Config extends ChatLunaPlugin.Config {}
 
