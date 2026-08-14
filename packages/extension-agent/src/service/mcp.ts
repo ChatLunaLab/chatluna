@@ -157,7 +157,7 @@ export class ChatLunaAgentMcpService {
             }
         }
 
-        const refresh = new Set<string>()
+        const refresh = new Map<string, [Client, McpServerConfig]>()
         for (const [name, cfg] of Object.entries(next.tools)) {
             if (
                 JSON.stringify(prev.tools[name] ?? null) === JSON.stringify(cfg)
@@ -169,7 +169,7 @@ export class ChatLunaAgentMcpService {
                 if (!t) continue
                 const serverCfg = next.mcpServers[serverName]
                 if (srv.client && srv.state === 'connected' && serverCfg) {
-                    refresh.add(serverName)
+                    refresh.set(serverName, [srv.client, serverCfg])
                     continue
                 }
                 t.enabled = cfg.enabled ?? true
@@ -178,13 +178,11 @@ export class ChatLunaAgentMcpService {
                     ((cfg.timeout ?? 0) || serverCfg?.timeout || 60) * 1000
             }
         }
-        for (const name of refresh) {
-            const srv = this._servers.get(name)
-            const cfg = next.mcpServers[name]
-            if (srv?.client && srv.state === 'connected' && cfg) {
-                await this._registerTools(srv.client, name, cfg)
-            }
-        }
+        await Promise.all(
+            Array.from(refresh, ([name, [client, cfg]]) =>
+                this._registerTools(client, name, cfg)
+            )
+        )
 
         for (const [name, cfg] of Object.entries(next.mcpServers)) {
             if (
@@ -590,10 +588,14 @@ export class ChatLunaAgentMcpService {
     }
 
     private _ensureIndexing() {
-        this._indexingPromise ??= this._indexAllServers().finally(() => {
-            if (this._toolCount() === 0) this._indexingPromise = undefined
+        if (this._indexingPromise) return this._indexingPromise
+        const task = this._indexAllServers().finally(() => {
+            if (this._toolCount() === 0 && this._indexingPromise === task) {
+                this._indexingPromise = undefined
+            }
         })
-        return this._indexingPromise
+        this._indexingPromise = task
+        return task
     }
 
     private async _indexAllServers() {
