@@ -1,4 +1,4 @@
-import { h, type Session, type Universal } from 'koishi'
+import { h, type Session, type Universal, type User } from 'koishi'
 import { transformMessageContentToElements } from 'koishi-plugin-chatluna/utils/koishi'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
 
@@ -46,5 +46,15 @@ export async function buildVirtualSession(
         }
     }
 
-    return bot.session(event)
+    const session = bot.session(event)
+    const userFields = new Set<User.Field>([
+        'id',
+        'flag',
+        'authority',
+        'permissions',
+        'locales'
+    ])
+    bot.ctx.emit('before-attach-user', session, userFields)
+    await session.observeUser(userFields)
+    return session
 }
