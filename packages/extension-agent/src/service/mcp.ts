@@ -151,19 +151,17 @@ export class ChatLunaAgentMcpService {
             return
         }
 
-        for (const name of Object.keys(prev.mcpServers)) {
-            if (!next.mcpServers[name]) {
-                await this._remove(name)
-            }
+        for (const name of Object.keys(prev.mcpServers).filter(
+            (name) => !next.mcpServers[name]
+        )) {
+            await this._remove(name)
         }
 
         const refresh = new Map<string, [Client, McpServerConfig]>()
-        for (const [name, cfg] of Object.entries(next.tools)) {
-            if (
-                JSON.stringify(prev.tools[name] ?? null) === JSON.stringify(cfg)
-            ) {
-                continue
-            }
+        for (const [name, cfg] of Object.entries(next.tools).filter(
+            ([name, cfg]) =>
+                JSON.stringify(prev.tools[name] ?? null) !== JSON.stringify(cfg)
+        )) {
             for (const [serverName, srv] of this._servers) {
                 const t = srv.tools.get(name)
                 if (!t) continue
@@ -184,13 +182,11 @@ export class ChatLunaAgentMcpService {
             )
         )
 
-        for (const [name, cfg] of Object.entries(next.mcpServers)) {
-            if (
-                JSON.stringify(prev.mcpServers[name] ?? null) ===
+        for (const [name] of Object.entries(next.mcpServers).filter(
+            ([name, cfg]) =>
+                JSON.stringify(prev.mcpServers[name] ?? null) !==
                 JSON.stringify(cfg)
-            ) {
-                continue
-            }
+        )) {
             await this.reconnect(name)
         }
         this.ctx.chatluna_agent?.refreshConsoleData()

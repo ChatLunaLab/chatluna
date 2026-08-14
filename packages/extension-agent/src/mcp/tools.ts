@@ -6,9 +6,9 @@ import { JsonSchemaType } from '@modelcontextprotocol/sdk/validation'
 import { RunnableConfig } from '@langchain/core/runnables'
 import { StructuredTool, tool } from '@langchain/core/tools'
 import { z } from 'zod'
+import { Context } from 'koishi'
 import { applyToolMask, ToolMask } from 'koishi-plugin-chatluna/llm-core/agent'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { Context } from 'koishi'
 import { McpConfig, McpIcon } from '../types'
 import { callTool } from './tool_call'
 import { ToolException } from './types'
@@ -331,6 +331,7 @@ export class McpGateway {
         if (!this.host.getConfig().mcpServers[serverName]) {
             throw new ToolException(`MCP server not found: ${serverName}`)
         }
+        await this.host.ensureIndexing()
 
         let t = this.host.getTool(serverName, toolName)
         if (!t?.enabled) {
