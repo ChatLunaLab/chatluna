@@ -129,6 +129,7 @@ export function getModelMaxContextSizeByName(name: string): number {
         'gemini-2.0': 2097152,
         deepseek: 1_000_000,
         'grok-4.5': 500_000,
+        'grok-4.6': 500_000,
         'grok-4.3': 1_000_000,
         'llama3.1': 128000,
         'glm-5.2': 1_000_000,
@@ -180,6 +181,12 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'qwen*-vl',
     'qwen-3.5',
     'qwen3.5',
+    'qwen-3.6',
+    'qwen3.6',
+    'qwen-3.7',
+    'qwen3.7',
+    'qwen-3.8',
+    'qwen3.8',
     'qvq',
     'o1',
     'o3',
@@ -190,6 +197,10 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'kimi-k2.*',
     'step3',
     'grok-4',
+    'grok-4.1',
+    'grok-4.5',
+    'grok-4.6',
+    'agnes',
     'ocr'
 ].map(createGlobMatcher)
 
