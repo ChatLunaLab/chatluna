@@ -115,11 +115,11 @@ export const usage = `
 
 **如果你没有可用的 OpenAI 格式 API，请前往以下地址注册：**
 
-[https://api.bltcy.ai/register](https://api.bltcy.ai/register?aff=ec5e312997)
+[https://moyuu.cc/register?aff=vhqh](https://moyuu.cc/register?aff=vhqh)
 
 完成后记得填写：
 - API Key：从注册的账号中复制
-- API 请求地址：\`https://api.bltcy.ai/v1\`
+- API 请求地址：\`https://moyuu.cc/v1\`
 `
 
 export const inject = {
