@@ -207,7 +207,8 @@ export class ConversationService {
             fixedModel: firstDefined(constraints, 'fixedModel'),
             fixedPreset: firstDefined(constraints, 'fixedPreset'),
             fixedChatMode: firstDefined(constraints, 'fixedChatMode'),
-            autoUpdateModel: firstDefined(constraints, 'autoUpdateModel'),
+            autoUpdateModel:
+                firstDefined(constraints, 'autoUpdateModel') ?? true,
             lockConversation: firstBoolean(
                 constraints,
                 'lockConversation',
@@ -1666,6 +1667,7 @@ export class ConversationService {
         session: Session,
         options: ResolveConversationOptions & {
             model?: string
+            auto?: boolean
             preset?: string
             chatMode?: string
         }
@@ -1712,6 +1714,25 @@ export class ConversationService {
 
         this.checkChatMode(options.chatMode)
 
+        if (options.auto === true) {
+            await this.updateManagedConstraintByBindingKey(
+                session,
+                conversation.bindingKey,
+                { autoUpdateModel: true }
+            )
+        } else if (options.model != null) {
+            await this.updateManagedConstraintByBindingKey(
+                session,
+                conversation.bindingKey,
+                { autoUpdateModel: false }
+            )
+        }
+
+        const autoModel =
+            options.auto === true
+                ? this.pickModel(resolved.constraint, null)
+                : undefined
+
         const updated = await this.runtime.withConversationLock(
             conversation.id,
             async () => {
@@ -1720,7 +1741,10 @@ export class ConversationService {
 
                 await this.runtime.clearConversationInterfaceLocked(current)
                 return this.touchConversation(conversation.id, {
-                    model: options.model?.trim(),
+                    ...(autoModel != null ? { model: autoModel } : {}),
+                    ...(options.model != null
+                        ? { model: options.model.trim() }
+                        : {}),
                     preset: options.preset,
                     chatMode: options.chatMode
                 })
@@ -1842,27 +1866,66 @@ export class ConversationService {
         session: Session,
         patch: Partial<ConstraintRecord>
     ) {
+        return this.updateManagedConstraintFor(
+            session,
+            session,
+            buildManagedConstraintName(session),
+            patch
+        )
+    }
+
+    async updateManagedConstraintByBindingKey(
+        session: Session,
+        bindingKey: string,
+        patch: Partial<ConstraintRecord>
+    ) {
+        const name = managedNameFromBindingKey(bindingKey)
+        if (name == null) {
+            return undefined
+        }
+
+        const parts = getBaseBindingKey(bindingKey).split(':')
+        const direct = parts[0] === 'personal' && parts[3] === 'direct'
+        const target = {
+            ...session,
+            platform: parts[1] as string,
+            selfId: parts[2] as string,
+            isDirect: direct,
+            userId: direct ? (parts[4] as string) : session.userId,
+            guildId: direct ? undefined : (parts[3] as string),
+            channelId: undefined
+        } as Session
+
+        return this.updateManagedConstraintFor(session, target, name, patch)
+    }
+
+    private async updateManagedConstraintFor(
+        session: Session,
+        target: Session,
+        name: string,
+        patch: Partial<ConstraintRecord>
+    ) {
         this.checkChatMode(patch.defaultChatMode)
         this.checkChatMode(patch.fixedChatMode)
 
-        const current = await this.getManagedConstraint(session)
+        const current = await this.firstRow('chatluna_constraint', { name })
         const now = new Date()
-        const guildId = session.isDirect
+        const guildId = target.isDirect
             ? null
-            : (session.guildId ?? session.channelId ?? null)
+            : (target.guildId ?? target.channelId ?? null)
         const record: ConstraintRecord = {
             id: current?.id,
-            name: buildManagedConstraintName(session),
+            name,
             enabled: true,
             priority: 1000,
             createdBy: session.userId,
             createdAt: now,
-            platform: session.platform,
-            selfId: session.selfId,
+            platform: target.platform,
+            selfId: target.selfId,
             guildId,
             channelId: null,
-            direct: session.isDirect,
-            users: session.isDirect ? JSON.stringify([session.userId]) : null,
+            direct: target.isDirect,
+            users: target.isDirect ? JSON.stringify([target.userId]) : null,
             excludeUsers: null,
             routeMode: null,
             routeKey: null,
@@ -1888,7 +1951,7 @@ export class ConversationService {
         await this.ctx.root.parallel('chatluna/after-constraint-update', {
             constraint: record
         })
-        return (await this.getManagedConstraint(session)) ?? record
+        return (await this.firstRow('chatluna_constraint', { name })) ?? record
     }
 
     pickModel(

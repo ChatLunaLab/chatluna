@@ -381,7 +381,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                             conversationId: resolvedConversationId(context),
                             presetLane:
                                 context.options.conversation_manage?.presetLane,
-                            [field]: context.options.conversation_use?.[field]
+                            [field]: context.options.conversation_use?.[field],
+                            ...(field === 'model'
+                                ? {
+                                      auto: context.options.conversation_use
+                                          ?.auto
+                                  }
+                                : {})
                         }
                     )
 

@@ -93,6 +93,10 @@ commands:
                     model: 目标模型名称。
                 options:
                     preset: 预设分流。
+                    auto: 恢复当前会话跟随默认模型。
+                messages:
+                    model_required: 请指定目标模型，或使用 `-a` 恢复跟随默认模型。
+                    auto_with_model: 不能同时指定模型和使用 `-a`。
             preset:
                 description: 切换当前会话使用的预设。
                 arguments:
@@ -147,6 +151,7 @@ commands:
                     message: 要发送的消息内容。
                 messages:
                     invalid-render-type: 渲染类型无效。请使用有效的渲染类型，目前支持的类有 `text` 和 `voice`。
+                    message_required: 请输入要发送的消息内容。用法：`chatluna chat 你好，世界！`
             rollback:
                 description: 重新生成上一次的对话内容。
                 options:
@@ -238,6 +243,7 @@ commands:
                     model: 模型名称（如 openai/gpt-3.5-turbo）或平台名称（如 openai）。
                 usage: 'chatluna model test openai/gpt-3.5-turbo'
                 messages:
+                    model_required: 未指定模型且未设置全局默认模型。用法：`chatluna model test openai/gpt-3.5-turbo`。
                     platform_not_found: '未找到平台 {0}，请检查平台名称或确认平台适配器已安装。'
                     platform_unavailable: '平台 {0} 不可用，请检查配置或等待平台加载。'
                     model_not_found: '未找到模型 {0}，请检查模型名称是否正确。'

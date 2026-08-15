@@ -93,6 +93,10 @@ commands:
                     model: Target model name.
                 options:
                     preset: Preset lane.
+                    auto: Resume following the default model.
+                messages:
+                    model_required: Specify a target model, or use `-a` to resume following the default model.
+                    auto_with_model: Cannot specify a model together with `-a`.
             preset:
                 description: Switch the conversation preset.
                 arguments:
@@ -147,6 +151,7 @@ commands:
                     message: Message content to send.
                 messages:
                     invalid-render-type: 'Invalid rendering type. Supported types: `text` and `voice`.'
+                    message_required: 'Please enter a message to send. Usage: `chatluna chat Hello, world!`'
             rollback:
                 description: Regenerate last conversation content.
                 options:
@@ -238,6 +243,7 @@ commands:
                     model: Model name (e.g., openai/gpt-3.5-turbo) or platform name (e.g., openai).
                 usage: 'chatluna model test openai/gpt-3.5-turbo'
                 messages:
+                    model_required: 'No model specified and no global default model set. Usage: `chatluna model test openai/gpt-3.5-turbo`.'
                     platform_not_found: 'Platform {0} not found. Please check the platform name or ensure the adapter is installed.'
                     platform_unavailable: 'Platform {0} is unavailable. Please check the configuration or wait for the platform to load.'
                     model_not_found: 'Model {0} not found. Please verify the model name is correct.'

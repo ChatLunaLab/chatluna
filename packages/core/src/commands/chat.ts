@@ -13,11 +13,15 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
     hideSlashGroups(root)
 
-    ctx.command('chatluna.chat <message:text>')
+    ctx.command('chatluna.chat [message:text]')
         .option('conversation', '-c <conversation:string>')
         .option('preset', '-p <preset:string>')
         .option('type', '-t <type: string>')
         .action(async ({ options, session }, message) => {
+            if (message == null || message.trim().length === 0) {
+                return session.text('.messages.message_required')
+            }
+
             const renderType = options.type ?? config.outputMode
             const presetLane = options.preset?.trim() || undefined
             const allPresetLanes = presetLane == null

@@ -259,11 +259,23 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
             )
         })
 
-    ctx.command('chatluna.use.model <model:string>', {
+    ctx.command('chatluna.use.model [model:string]', {
         authority: 1
     })
         .option('preset', '-p <preset:string>')
+        .option('auto', '-a')
         .action(async ({ options, session }, model) => {
+            const value = model?.trim() || undefined
+            if (options.auto && value != null) {
+                return session.text(
+                    'commands.chatluna.use.model.messages.auto_with_model'
+                )
+            }
+            if (!options.auto && value == null) {
+                return session.text(
+                    'commands.chatluna.use.model.messages.model_required'
+                )
+            }
             await chain.receiveCommand(
                 session,
                 'conversation_use_model',
@@ -272,7 +284,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                         presetLane: options.preset?.trim() || undefined
                     },
                     conversation_use: {
-                        model: model?.trim() || undefined
+                        model: value,
+                        auto: options.auto || undefined
                     }
                 },
                 ctx
@@ -435,6 +448,7 @@ declare module '../chains/chain' {
         }
         conversation_use?: {
             model?: string
+            auto?: boolean
             preset?: string
             chatMode?: string
         }
