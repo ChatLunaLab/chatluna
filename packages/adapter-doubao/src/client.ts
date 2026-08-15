@@ -47,6 +47,8 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             ['doubao-seed-2-0-lite-260428', 256000],
             ['doubao-seed-2-0-mini-260428', 256000],
             ['doubao-seed-2-0-pro-260215', 256000],
+            ['doubao-seed-2-1-pro', 256000],
+            ['doubao-seed-2-1-turbo', 256000],
             ['doubao-seed-2-0-lite-260215', 256000],
             ['doubao-seed-2-0-mini-260215', 256000],
             ['doubao-seed-2-0-code-preview-260215', 256000],
@@ -99,7 +101,8 @@ export class DouBaoClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             'doubao-seed-1-6',
             'vision',
             'doubao-seed-1-8',
-            'doubao-seed-2-0'
+            'doubao-seed-2-0',
+            'doubao-seed-2-1'
         ]
 
         const expandedModels = rawModels.flatMap(([model, token]) => {

@@ -53,6 +53,14 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen-max-latest', 131_072],
             ['qwen3.5-plus', 1_000_000],
             ['qwen3.5-plus-2026-02-15', 1_000_000],
+            ['qwen3.8-max-preview', 1_000_000],
+            ['qwen3.8-plus', 1_000_000],
+            ['qwen3.7-max', 1_000_000],
+            ['qwen3.7-max-2026-05-20', 1_000_000],
+            ['qwen3.7-plus', 1_000_000],
+            ['qwen3.7-plus-2026-05-26', 1_000_000],
+            ['qwen3.6-max-preview', 262_144],
+            ['qwen3.6-plus', 1_000_000],
             ['qwen3-max', 262_144],
             ['qwen3-max-2026-01-23-thinking', 262_144],
             ['qwen3-max-2026-01-23-non-thinking', 262_144],
@@ -182,9 +190,14 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
                                 model.includes('Kimi-K2') ||
                                 model.includes('deepseek')) &&
                             ModelCapabilities.ToolCall,
-                        imageInputSupportModels.some((pattern) =>
+                        (imageInputSupportModels.some((pattern) =>
                             model.includes(pattern)
-                        ) && ModelCapabilities.ImageInput
+                        ) ||
+                            (['qwen3.6', 'qwen3.7', 'qwen3.8'].some((pattern) =>
+                                model.includes(pattern)
+                            ) &&
+                                !model.includes('-max'))) &&
+                            ModelCapabilities.ImageInput
                     ].filter(Boolean)
                 } as ModelInfo
             })

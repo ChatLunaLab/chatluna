@@ -129,6 +129,7 @@ export function getModelMaxContextSizeByName(name: string): number {
         'gemini-2.0': 2097152,
         deepseek: 1_000_000,
         'grok-4.5': 500_000,
+        'grok-4.6': 500_000,
         'grok-4.3': 1_000_000,
         'llama3.1': 128000,
         'glm-5.2': 1_000_000,
@@ -190,11 +191,18 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'kimi-k2.*',
     'step3',
     'grok-4',
+    'grok-4.1',
+    'grok-4.5',
+    'grok-4.6',
+    'agnes',
     'ocr'
 ].map(createGlobMatcher)
 
 // mimo-v2.5 supports image/audio; mimo-v2.5-pro does NOT (text only).
 imageModelMatchers.push(createRegexMatcher(/mimo-v2\.5(?!-pro)/))
+
+// qwen3.6/3.7/3.8 plus/flash are multimodal; the -max snapshots are text-only.
+imageModelMatchers.push(createRegexMatcher(/qwen[-.]?3\.[678](?!-max)/))
 
 export function supportImageInput(modelName: string) {
     const lowerModel = normalizeOpenAIModelName(modelName).toLowerCase()
