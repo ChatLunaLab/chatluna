@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import { watch } from 'fs'
 import { Context, Logger, Schema } from 'koishi'
 import {
+    EMPTY_PRESET,
     loadPreset,
     PresetTemplate
 } from 'koishi-plugin-chatluna/llm-core/prompt'
@@ -64,6 +65,10 @@ export class PresetService {
         try {
             const rawText = await fs.readFile(filePath, 'utf-8')
             const preset = loadPreset(rawText)
+            if (preset === EMPTY_PRESET) {
+                logger.warn(`Preset ${filePath} is empty, skip`)
+                return null
+            }
             preset.path = filePath
             return preset
         } catch (e) {
