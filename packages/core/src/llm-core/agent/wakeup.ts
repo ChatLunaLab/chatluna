@@ -50,7 +50,11 @@ export function applyAgentTaskWakeup(ctx: Context, config: Config) {
             routing,
             message: content,
             messageName: 'task',
-            conversation: { type: 'existing', id: conversation.id },
+            conversation: {
+                type: 'existing',
+                id: conversation.id,
+                bindingKey: conversation.bindingKey
+            },
             delivery: 'channel',
             source: {
                 kind: 'agent-task',

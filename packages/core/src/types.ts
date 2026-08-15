@@ -21,7 +21,7 @@ export type ChatInvocationTarget =
     | { type: 'route' }
     | { type: 'task'; key: string }
     | { type: 'fresh' }
-    | { type: 'existing'; id: string }
+    | { type: 'existing'; id: string; bindingKey?: string }
     | { type: 'ephemeral' }
 
 export interface ChatInvocationInput {

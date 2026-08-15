@@ -596,7 +596,7 @@ export class ConversationService {
                 await this.requireActiveTarget(
                     session,
                     input.target.id,
-                    undefined
+                    input.target.bindingKey
                 ),
                 input
             )
