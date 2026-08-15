@@ -1888,6 +1888,8 @@ export class ConversationService {
         const direct = parts[0] === 'personal' && parts[3] === 'direct'
         const target = {
             ...session,
+            platform: parts[1] as string,
+            selfId: parts[2] as string,
             isDirect: direct,
             userId: direct ? (parts[4] as string) : session.userId,
             guildId: direct ? undefined : (parts[3] as string),
