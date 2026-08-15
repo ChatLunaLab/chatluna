@@ -21,13 +21,19 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             let platformName: string
             let modelName: string
+            const target = model?.trim() || config.defaultModel
+
+            if (!target || target === '无' || target === 'empty') {
+                context.message = session.text('.model_required')
+                return ChainMiddlewareRunStatus.STOP
+            }
 
             try {
                 // Check if the input contains '/'
-                if (!model.includes('/')) {
+                if (!target.includes('/')) {
                     // Get all models from the specified platform
                     const platformModels = services.listPlatformModels(
-                        model,
+                        target,
                         ModelType.llm
                     )
 
@@ -36,7 +42,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         platformModels.value.length === 0
                     ) {
                         context.message = session.text('.platform_not_found', [
-                            model
+                            target
                         ])
                         return ChainMiddlewareRunStatus.STOP
                     }
@@ -46,17 +52,17 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         Math.random() * platformModels.value.length
                     )
                     const selectedModel = platformModels.value[randomIndex]
-                    platformName = model
+                    platformName = target
                     modelName = selectedModel.name
                 } else {
                     // Parse the full model name
-                    ;[platformName, modelName] = parseRawModelName(model)
+                    ;[platformName, modelName] = parseRawModelName(target)
 
                     // Validate that parsing succeeded
                     if (!platformName || !modelName) {
                         context.message = session.text(
                             '.invalid_model_format',
-                            [model]
+                            [target]
                         )
                         return ChainMiddlewareRunStatus.STOP
                     }
