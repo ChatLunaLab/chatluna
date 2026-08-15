@@ -21,7 +21,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
             let platformName: string
             let modelName: string
-            const target = model?.trim() || config.defaultModel
+            const target = model?.trim() ?? config.defaultModel.trim()
 
             if (!target || target === '无' || target === 'empty') {
                 context.message = session.text('.model_required')
