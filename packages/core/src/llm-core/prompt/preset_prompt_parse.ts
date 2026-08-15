@@ -57,6 +57,10 @@ function createMessage(
 function loadYamlPreset(rawText: string): PresetTemplate {
     const rawJson = load(rawText) as RawPreset
 
+    if (!rawJson) {
+        return EMPTY_PRESET
+    }
+
     let loreBooks: PresetTemplate['loreBooks'] | undefined = {
         items: []
     }
