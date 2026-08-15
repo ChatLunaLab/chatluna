@@ -171,8 +171,11 @@ export class PresetService {
                     if (preset) {
                         this._updatePreset(preset)
                         logger.debug(`Updated/Added preset: ${filename}`)
-                        this._updateSchema()
+                    } else {
+                        this._removePreset(filePath)
+                        logger.debug(`Removed preset: ${filename}`)
                     }
+                    this._updateSchema()
                 } catch (e) {
                     if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
                         this._removePreset(filePath)
