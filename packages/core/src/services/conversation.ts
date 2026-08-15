@@ -1667,6 +1667,7 @@ export class ConversationService {
         session: Session,
         options: ResolveConversationOptions & {
             model?: string
+            auto?: boolean
             preset?: string
             chatMode?: string
         }
@@ -1713,6 +1714,16 @@ export class ConversationService {
 
         this.checkChatMode(options.chatMode)
 
+        if (options.auto === true) {
+            await this.updateManagedConstraint(session, {
+                autoUpdateModel: true
+            })
+        } else if (options.model != null) {
+            await this.updateManagedConstraint(session, {
+                autoUpdateModel: false
+            })
+        }
+
         const updated = await this.runtime.withConversationLock(
             conversation.id,
             async () => {
@@ -1721,7 +1732,10 @@ export class ConversationService {
 
                 await this.runtime.clearConversationInterfaceLocked(current)
                 return this.touchConversation(conversation.id, {
-                    model: options.model?.trim(),
+                    model:
+                        options.auto === true
+                            ? this.pickModel(resolved.constraint, null)
+                            : options.model?.trim(),
                     preset: options.preset,
                     chatMode: options.chatMode
                 })

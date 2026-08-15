@@ -93,6 +93,10 @@ commands:
                     model: 目标模型名称。
                 options:
                     preset: 预设分流。
+                    auto: 恢复当前会话跟随默认模型。
+                messages:
+                    model_required: 请指定目标模型，或使用 `-a` 恢复跟随默认模型。
+                    auto_with_model: 不能同时指定模型和使用 `-a`。
             preset:
                 description: 切换当前会话使用的预设。
                 arguments:

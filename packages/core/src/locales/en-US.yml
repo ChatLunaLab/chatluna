@@ -93,6 +93,10 @@ commands:
                     model: Target model name.
                 options:
                     preset: Preset lane.
+                    auto: Resume following the default model.
+                messages:
+                    model_required: Specify a target model, or use `-a` to resume following the default model.
+                    auto_with_model: Cannot specify a model together with `-a`.
             preset:
                 description: Switch the conversation preset.
                 arguments:
