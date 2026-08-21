@@ -34,7 +34,8 @@ import { logger } from 'koishi-plugin-chatluna'
 import {
     getImageMimeType,
     getMimeTypeFromSource,
-    isMessageContentImageUrl
+    isMessageContentImageUrl,
+    isMessageContentText
 } from 'koishi-plugin-chatluna/utils/string'
 import {
     isChatLunaUserMessage,
@@ -447,6 +448,9 @@ export async function langchainMessageToOpenAIMessage(
                 supportImageInputType === true
             const mappedContent = await Promise.all(
                 msg.content.map(async (content) => {
+                    if (isMessageContentText(content)) {
+                        return content.text.length > 0 ? content : null
+                    }
                     if (isMessageContentImageUrl(content)) {
                         if (!supportsImage) {
                             logger.warn(
