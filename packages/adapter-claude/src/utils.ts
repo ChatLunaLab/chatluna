@@ -320,10 +320,12 @@ async function processMessageContent(
         await Promise.all(
             content.map(async (message) => {
                 if (message.type === 'text') {
-                    return {
-                        type: 'text',
-                        text: message.text as string
-                    } as const
+                    return message.text.length > 0
+                        ? {
+                              type: 'text',
+                              text: message.text as string
+                          }
+                        : null
                 }
 
                 if (isMessageContentImageUrl(message)) {

@@ -87,7 +87,9 @@ export async function langchainMessageToGeminiMessage(
             message.additional_kwargs['thought_data'] ?? {}
         const parts =
             typeof message.content === 'string'
-                ? [{ text: message.content }]
+                ? message.content.length > 0
+                    ? [{ text: message.content }]
+                    : []
                 : await processGeminiContentParts(plugin, message.content)
 
         item.parts = [...getContextParts(thoughtData), ...parts]
@@ -359,7 +361,7 @@ async function processGeminiContentParts(
     const mappedParts = await Promise.all(
         content.map(async (part) => {
             if (isMessageContentText(part)) {
-                return { text: part.text }
+                return part.text.length > 0 ? { text: part.text } : null
             }
             if (isMessageContentImageUrl(part)) {
                 return await processGeminiImageContent(plugin, part)
