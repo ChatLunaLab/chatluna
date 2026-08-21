@@ -1,5 +1,7 @@
 /** @module service/mcp */
 
+import { setTimeout as wait } from 'node:timers/promises'
+
 import { Context } from 'koishi'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
@@ -541,9 +543,7 @@ export class ChatLunaAgentMcpService {
             client.onerror = undefined
             await Promise.race([
                 client.close().catch(() => {}),
-                new Promise<void>((resolve) =>
-                    this.ctx.setTimeout(resolve, 5000)
-                )
+                wait(5000, undefined, { ref: false })
             ])
         }
     }
