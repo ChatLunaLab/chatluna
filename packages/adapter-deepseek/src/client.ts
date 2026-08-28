@@ -18,7 +18,9 @@ import {
 import { DeepseekRequester } from './requester'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { Config, logger as pluginLogger } from '.'
+import { supportImageInput } from '@chatluna/v1-shared-adapter'
 import { RunnableConfig } from '@langchain/core/runnables'
+import { deepseekFileHandlingConfig } from './utils'
 
 import type { ModelUsageReporter } from 'koishi-plugin-chatluna/llm-core/platform/usage'
 
@@ -83,7 +85,12 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                         maxTokens: 1_000_000,
                         capabilities:
                             type === ModelType.llm
-                                ? [ModelCapabilities.ToolCall]
+                                ? [
+                                      ModelCapabilities.ToolCall,
+                                      supportImageInput(model)
+                                          ? ModelCapabilities.ImageInput
+                                          : null
+                                  ].filter(Boolean)
                                 : []
                     } as ModelInfo
                 })
@@ -125,6 +132,9 @@ export class DeepseekClient extends PlatformModelAndEmbeddingsClient<ClientConfi
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,
                 llmType: 'deepseek',
+                fileHandlingConfig: supportImageInput(model)
+                    ? deepseekFileHandlingConfig
+                    : undefined,
                 isThinkModel:
                     model.includes('reasoner') ||
                     model.includes('thinking') ||
