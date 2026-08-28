@@ -981,7 +981,14 @@ export function convertDeltaToMessageChunk(
         function_call?: any
         reasoning_content?: string
     } = {}
-    if (delta.function_call) {
+    // Some proxies (e.g. DeepSeek V4 relays) emit an empty function_call
+    // object ({ arguments: '', name: '' }) on the final tool_calls chunk.
+    // Ignore it so the agent does not see a phantom empty tool call.
+    if (
+        delta.function_call &&
+        ((delta.function_call.name?.length ?? 0) > 0 ||
+            (delta.function_call.arguments?.length ?? 0) > 0)
+    ) {
         additionalKwargs.function_call = delta.function_call
     }
 
