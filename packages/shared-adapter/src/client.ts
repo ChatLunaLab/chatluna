@@ -201,8 +201,11 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
 // mimo-v2.5 supports image/audio; mimo-v2.5-pro does NOT (text only).
 imageModelMatchers.push(createRegexMatcher(/mimo-v2\.5(?!-pro)/))
 
-// qwen3.6/3.7/3.8 plus/flash are multimodal; the -max snapshots are text-only.
-imageModelMatchers.push(createRegexMatcher(/qwen[-.]?3\.[678](?!-max)/))
+// qwen3.6/3.7 plus/flash are multimodal; the -max snapshots are text-only.
+imageModelMatchers.push(createRegexMatcher(/qwen[-.]?3\.[67](?!-max)/))
+
+// qwen3.8 flash/max are multimodal image+text models.
+imageModelMatchers.push(createRegexMatcher(/qwen[-.]?3\.8/))
 
 export function supportImageInput(modelName: string) {
     const lowerModel = normalizeOpenAIModelName(modelName).toLowerCase()

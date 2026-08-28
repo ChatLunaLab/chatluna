@@ -53,6 +53,8 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen-max-latest', 131_072],
             ['qwen3.5-plus', 1_000_000],
             ['qwen3.5-plus-2026-02-15', 1_000_000],
+            ['qwen3.8-flash', 1_000_000],
+            ['qwen3.8-max', 1_000_000],
             ['qwen3.8-max-preview', 1_000_000],
             ['qwen3.8-plus', 1_000_000],
             ['qwen3.7-max', 1_000_000],
@@ -193,11 +195,14 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
                         (imageInputSupportModels.some((pattern) =>
                             model.includes(pattern)
                         ) ||
-                            (['qwen3.6', 'qwen3.7', 'qwen3.8'].some((pattern) =>
+                            (['qwen3.6', 'qwen3.7'].some((pattern) =>
                                 model.includes(pattern)
                             ) &&
-                                !model.includes('-max'))) &&
-                            ModelCapabilities.ImageInput
+                                !model.includes('-max')) ||
+                            model.includes('qwen3.8')) &&
+                            ModelCapabilities.ImageInput,
+                        model.includes('qwen3.8') &&
+                            ModelCapabilities.VideoInput
                     ].filter(Boolean)
                 } as ModelInfo
             })
