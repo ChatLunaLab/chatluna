@@ -67,7 +67,7 @@ function loadYamlPreset(rawText: string): PresetTemplate {
 
     let authorsNote: PresetTemplate['authorsNote'] | undefined
 
-    if (rawJson.world_lores) {
+    if (rawJson.world_lores && Array.isArray(rawJson.world_lores)) {
         const config = rawJson.world_lores.find(
             isRoleBookConfig
         ) as RoleBookConfig
