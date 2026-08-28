@@ -53,14 +53,28 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
             ['qwen-max-latest', 131_072],
             ['qwen3.5-plus', 1_000_000],
             ['qwen3.5-plus-2026-02-15', 1_000_000],
-            ['qwen3.8-max-preview', 1_000_000],
-            ['qwen3.8-plus', 1_000_000],
-            ['qwen3.7-max', 1_000_000],
-            ['qwen3.7-max-2026-05-20', 1_000_000],
-            ['qwen3.7-plus', 1_000_000],
-            ['qwen3.7-plus-2026-05-26', 1_000_000],
+            ['qwen3.6-27b', 262_144],
+            ['qwen3.6-35b-a3b', 262_144],
+            ['qwen3.6-flash', 1_000_000],
+            ['qwen3.6-flash-2026-04-16', 1_000_000],
             ['qwen3.6-max-preview', 262_144],
             ['qwen3.6-plus', 1_000_000],
+            ['qwen3.6-plus-2026-04-02', 1_000_000],
+            ['qwen3.7-flash', 1_000_000],
+            ['qwen3.7-flash-2026-07-15', 1_000_000],
+            ['qwen3.7-max', 1_000_000],
+            ['qwen3.7-max-2026-05-17', 1_000_000],
+            ['qwen3.7-max-2026-05-20', 1_000_000],
+            ['qwen3.7-max-2026-06-08', 1_000_000],
+            ['qwen3.7-max-preview', 1_000_000],
+            ['qwen3.7-plus', 1_000_000],
+            ['qwen3.7-plus-2026-05-26', 1_000_000],
+            ['qwen3.8-2.4t-a95b', 1_000_000],
+            ['qwen3.8-27b', 1_000_000],
+            ['qwen3.8-flash', 1_000_000],
+            ['qwen3.8-max', 1_000_000],
+            ['qwen3.8-max-preview', 1_000_000],
+            ['qwen3.8-plus', 1_000_000],
             ['qwen3-max', 262_144],
             ['qwen3-max-2026-01-23-thinking', 262_144],
             ['qwen3-max-2026-01-23-non-thinking', 262_144],
@@ -193,11 +207,14 @@ export class QWenClient extends PlatformModelAndEmbeddingsClient {
                         (imageInputSupportModels.some((pattern) =>
                             model.includes(pattern)
                         ) ||
-                            (['qwen3.6', 'qwen3.7', 'qwen3.8'].some((pattern) =>
-                                model.includes(pattern)
-                            ) &&
-                                !model.includes('-max'))) &&
-                            ModelCapabilities.ImageInput
+                            (model.includes('qwen3.6') &&
+                                !model.includes('-max')) ||
+                            model.includes('qwen3.7') ||
+                            model.includes('qwen3.8')) &&
+                            ModelCapabilities.ImageInput,
+                        (model.includes('qwen3.7') ||
+                            model.includes('qwen3.8')) &&
+                            ModelCapabilities.VideoInput
                     ].filter(Boolean)
                 } as ModelInfo
             })
