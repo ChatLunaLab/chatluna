@@ -31,6 +31,11 @@ $inner:
               - Cookie 名称
               - Cookie 值
           $desc: 设置额外的 Cookie。
+      additionHeaders:
+          $inner:
+              - Header 名称
+              - Header 值
+          $desc: 设置额外的请求头。
 
     - $desc: 模型设置
       maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。

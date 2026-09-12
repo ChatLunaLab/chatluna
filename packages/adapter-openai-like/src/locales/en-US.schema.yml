@@ -31,6 +31,11 @@ $inner:
               - 'Cookie name'
               - 'Cookie value'
           $desc: 'Additional cookies'
+      additionHeaders:
+          $inner:
+              - 'Header name'
+              - 'Header value'
+          $desc: 'Additional request headers'
 
     - $desc: 'Model Parameters'
       maxContextRatio: 'Maximum context usage ratio (0-1). Controls the maximum percentage of model context window available for use. For example, 0.35 means at most 35% of the model context can be used.'

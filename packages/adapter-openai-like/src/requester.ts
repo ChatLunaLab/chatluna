@@ -272,18 +272,19 @@ export class OpenAIRequester
     }
 
     public buildHeaders() {
-        const result = {
-            Authorization: `Bearer ${this._config.value.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://github.com/ChatLunaLab/chatluna', // Optional. Site URL for rankings on openrouter.ai.
-            'X-Title': 'ChatLuna' // Optional. Site title for rankings on openrouter.ai.
-        }
+        const result = Object.assign(
+            Object.fromEntries(this._pluginConfig.additionHeaders),
+            {
+                Authorization: `Bearer ${this._config.value.apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://github.com/ChatLunaLab/chatluna', // Optional. Site URL for rankings on openrouter.ai.
+                'X-Title': 'ChatLuna' // Optional. Site title for rankings on openrouter.ai.
+            }
+        )
 
-        if (Object.keys(this._pluginConfig.additionCookies).length > 0) {
-            result['Cookie'] = Object.keys(this._pluginConfig.additionCookies)
-                .map((key) => {
-                    return `${key}=${this._pluginConfig.additionCookies[key]}`
-                })
+        if (this._pluginConfig.additionCookies.length > 0) {
+            result.Cookie = this._pluginConfig.additionCookies
+                .map(([key, value]) => `${key}=${value}`)
                 .join('; ')
         }
 
