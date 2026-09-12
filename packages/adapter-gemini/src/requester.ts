@@ -26,21 +26,17 @@ import { readableStreamToAsyncIterable } from 'koishi-plugin-chatluna/utils/stre
 import * as fetchType from 'undici/types/fetch'
 import { Config, logger } from '.'
 import {
-    ChatFunctionCallingPart,
-    ChatInlineDataPart,
-    ChatMessagePart,
     ChatPart,
     ChatResponse,
-    ChatUsageMetadataPart,
+    ChatThoughtData,
     CreateEmbeddingResponse,
     GeminiModelInfo
 } from './types'
 import {
     createChatGenerationParams,
     getUsage,
-    isChatResponse,
-    partAsType,
-    partAsTypeCheck,
+    isMediaProcessingPart,
+    isToolContext,
     prepareModelConfig
 } from './utils'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
@@ -88,8 +84,7 @@ export class GeminiRequester
 
             yield new ChatGenerationChunk({
                 generationInfo: generation.generationInfo,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                message: generation.message as any as BaseMessageChunk,
+                message: generation.message as BaseMessageChunk,
                 text: generation.text
             })
 
@@ -446,7 +441,7 @@ export class GeminiRequester
 
         const readableStream = new ReadableStream<string | ChatResponse>({
             async start(controller) {
-                if (isChatResponse(response)) {
+                if ('candidates' in response) {
                     controller.enqueue(response)
                     controller.close()
                     return
@@ -545,38 +540,32 @@ export class GeminiRequester
     }
 
     private async *_processChunks(iterable: AsyncIterable<ChatPart>) {
-        let reasoningContent = ''
-
-        let errorCount = 0
-
-        let functionIndex = 0
+        let reasoning = ''
+        let errors = 0
+        let index = 0
 
         for await (const chunk of iterable) {
-            let parsedChunk: ChatUsageMetadataPart | undefined
-            if (
-                (parsedChunk = partAsTypeCheck<ChatUsageMetadataPart>(
-                    chunk,
-                    (chunk) => chunk['usage'] != null
-                ))
-            ) {
-                const usageMetadata = createUsageMetadata({
-                    inputTokens: parsedChunk.usage.promptTokens,
-                    outputTokens: parsedChunk.usage.completionTokens,
-                    totalTokens: parsedChunk.usage.totalTokens,
-                    inputImageTokens: parsedChunk.usage.inputImageTokens,
-                    outputImageTokens: parsedChunk.usage.outputImageTokens,
-                    inputAudioTokens: parsedChunk.usage.inputAudioTokens,
-                    outputAudioTokens: parsedChunk.usage.outputAudioTokens,
-                    cacheReadTokens: parsedChunk.usage.cacheReadTokens,
-                    reasoningTokens: parsedChunk.usage.reasoningTokens
-                })
+            if (isMediaProcessingPart(chunk)) continue
 
+            if ('usage' in chunk) {
                 yield {
                     type: 'generation',
                     generation: new ChatGenerationChunk({
                         message: new AIMessageChunk({
                             content: '',
-                            usage_metadata: usageMetadata
+                            usage_metadata: createUsageMetadata({
+                                inputTokens: chunk.usage.promptTokens,
+                                outputTokens: chunk.usage.completionTokens,
+                                totalTokens: chunk.usage.totalTokens,
+                                inputImageTokens: chunk.usage.inputImageTokens,
+                                outputImageTokens:
+                                    chunk.usage.outputImageTokens,
+                                inputAudioTokens: chunk.usage.inputAudioTokens,
+                                outputAudioTokens:
+                                    chunk.usage.outputAudioTokens,
+                                cacheReadTokens: chunk.usage.cacheReadTokens,
+                                reasoningTokens: chunk.usage.reasoningTokens
+                            })
                         }),
                         text: ''
                     })
@@ -585,144 +574,91 @@ export class GeminiRequester
             }
 
             try {
-                const part = Object.assign({}, chunk)
-                const { updatedContent, updatedReasoning, updatedToolCalling } =
-                    await this._processChunk(
-                        part,
-                        reasoningContent,
-                        functionIndex
-                    )
-
-                if (updatedReasoning !== reasoningContent) {
-                    reasoningContent = updatedReasoning
-                    yield { type: 'reasoning', content: reasoningContent }
-                    continue
-                }
-
-                if (
-                    updatedContent ||
-                    updatedToolCalling ||
-                    chunk['thoughtSignature'] != null
-                ) {
-                    const messageChunk = this._createMessageChunk(
-                        updatedContent,
-                        updatedToolCalling,
-                        chunk
-                    )
-
-                    const generationChunk = new ChatGenerationChunk({
-                        message: messageChunk,
-                        text: getMessageContent(messageChunk.content) ?? ''
-                    })
-
-                    yield { type: 'generation', generation: generationChunk }
-                }
-
-                if (updatedToolCalling) {
-                    const fc = chunk['functionCall']
-                    if (fc?.name && fc.name.length > 0) {
-                        functionIndex++
+                let content: MessageContent
+                if ('text' in chunk && chunk.text) {
+                    if (chunk.thought) {
+                        reasoning += chunk.text
+                        yield { type: 'reasoning', content: reasoning }
+                        continue
+                    }
+                    content = chunk.text
+                } else if ('inlineData' in chunk && !chunk.thought) {
+                    const image = chunk.inlineData
+                    const storage = this.ctx.chatluna_storage
+                    if (storage == null) {
+                        content = `![image](data:${image.mimeType ?? 'image/png'};base64,${image.data})`
+                    } else {
+                        const hash = await hashString(image.data, 8)
+                        const type = (image.mimeType ?? 'image/png').split(
+                            '/'
+                        )[1]
+                        const file = await storage.createTempFile(
+                            Buffer.from(image.data, 'base64'),
+                            `${hash}.${type}`
+                        )
+                        content = [{ type: 'image_url', image_url: file.url }]
                     }
                 }
-            } catch (e) {
-                if (errorCount > 5) {
+
+                const fn =
+                    'functionCall' in chunk ? chunk.functionCall : undefined
+                let call: ToolCallChunk
+                if (fn) {
+                    const fresh = fn.name?.length > 0
+                    call = {
+                        name: fresh ? fn.name : undefined,
+                        args:
+                            Object.keys(fn.args ?? {}).length > 0
+                                ? JSON.stringify(fn.args)
+                                : undefined,
+                        id: fresh
+                            ? (fn.id ?? `function_call_${index}`)
+                            : undefined,
+                        index: fresh ? index : index - 1
+                    }
+                }
+
+                const sig = chunk.thoughtSignature
+                let thought: ChatThoughtData | undefined
+                if (isToolContext(chunk)) {
+                    thought = { parts: [chunk] }
+                } else if (sig != null) {
+                    const id = call?.id ?? fn?.id
+                    thought =
+                        id != null
+                            ? { [id]: { thoughtSignature: sig } }
+                            : { parts: [{ thoughtSignature: sig }] }
+                }
+
+                if (content || call || thought) {
+                    const msg = new AIMessageChunk({
+                        content: content ?? '',
+                        tool_call_chunks: call ? [call] : [],
+                        additional_kwargs: { thought_data: thought }
+                    })
+                    yield {
+                        type: 'generation',
+                        generation: new ChatGenerationChunk({
+                            message: msg,
+                            text: getMessageContent(msg.content) ?? ''
+                        })
+                    }
+                }
+
+                if (call && fn.name?.length > 0) {
+                    index++
+                }
+            } catch (err) {
+                if (errors > 5) {
                     logger.error('error with chunk', chunk)
                     throw new ChatLunaError(
                         ChatLunaErrorCode.API_REQUEST_FAILED,
-                        e
+                        err
                     )
-                } else {
-                    errorCount++
-                    continue
                 }
+                errors++
             }
         }
-    }
-
-    private async _processChunk(
-        chunk: ChatPart,
-        reasoningContent: string,
-        functionIndex: number
-    ) {
-        const messagePart = partAsType<ChatMessagePart>(chunk)
-        const chatFunctionCallingPart =
-            partAsType<ChatFunctionCallingPart>(chunk)
-        const imagePart = partAsTypeCheck<ChatInlineDataPart>(
-            chunk,
-            (part) => part['inlineData'] != null
-        )
-
-        let messageContent: MessageContent
-
-        if (messagePart.text) {
-            if (messagePart.thought) {
-                return {
-                    updatedContent: messageContent,
-                    updatedReasoning: reasoningContent + messagePart.text
-                }
-            }
-            messageContent = messagePart.text
-        } else if (imagePart && !messagePart.thought) {
-            const storageService = this.ctx.chatluna_storage
-            if (!storageService) {
-                messagePart.text = `![image](data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data})`
-                messageContent = messagePart.text
-            } else {
-                const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
-
-                const hash = await hashString(imagePart.inlineData.data, 8)
-                const type = (
-                    imagePart.inlineData.mimeType ?? 'image/png'
-                ).split('/')[1]
-                const file = await storageService.createTempFile(
-                    buffer,
-                    `${hash}.${type}`
-                )
-
-                messagePart.text = `[image:${file.url}]`
-                messageContent = [
-                    {
-                        type: 'image_url',
-                        image_url: file.url
-                    }
-                ]
-            }
-        }
-
-        const deltaFunctionCall = chatFunctionCallingPart?.functionCall
-        let updatedToolCalling: ToolCallChunk
-        if (deltaFunctionCall) {
-            const isNew = deltaFunctionCall.name?.length > 0
-            updatedToolCalling = this._createToolCallChunk(
-                deltaFunctionCall,
-                isNew ? functionIndex : functionIndex - 1
-            )
-        }
-
-        return {
-            updatedContent: messageContent,
-            updatedReasoning: reasoningContent,
-            updatedToolCalling
-        }
-    }
-
-    private _createToolCallChunk(
-        deltaFunctionCall: ChatFunctionCallingPart['functionCall'],
-        index: number
-    ) {
-        const isNew = deltaFunctionCall.name?.length > 0
-        const args =
-            Object.keys(deltaFunctionCall.args ?? {}).length > 0
-                ? JSON.stringify(deltaFunctionCall.args)
-                : undefined
-        return {
-            name: isNew ? deltaFunctionCall.name : undefined,
-            args,
-            id: isNew
-                ? (deltaFunctionCall.id ?? `function_call_${index}`)
-                : undefined,
-            index
-        } satisfies ToolCallChunk
     }
 
     private _handleFinalContent(
@@ -750,67 +686,11 @@ export class GeminiRequester
         }
     }
 
-    private _createMessageChunk(
-        content: MessageContent,
-        functionCall: ToolCallChunk | undefined,
-        chunk: ChatPart
+    private _post(
+        url: string,
+        data: Record<string, unknown>,
+        params: fetchType.RequestInit = {}
     ) {
-        const imagePart =
-            this.ctx.chatluna_storage != null
-                ? undefined
-                : partAsTypeCheck<ChatInlineDataPart>(
-                      chunk,
-                      (part) => part['inlineData'] != null
-                  )
-        const messageChunk = new AIMessageChunk({
-            content: content ?? '',
-            tool_call_chunks: [functionCall].filter(Boolean)
-        })
-        const sig = chunk['thoughtSignature']
-        let thoughtData: Record<string, unknown> | undefined
-        if (sig != null) {
-            const id = functionCall?.id ?? chunk['functionCall']?.id
-            if (id != null) {
-                thoughtData = {
-                    [id]: {
-                        thoughtSignature: sig
-                    }
-                }
-            } else {
-                const part = {
-                    thoughtSignature: sig,
-                    toolCall: chunk['toolCall'],
-                    toolResponse: chunk['toolResponse'],
-                    executableCode: chunk['executableCode'],
-                    codeExecutionResult: chunk['codeExecutionResult']
-                }
-                const contextId =
-                    chunk['toolCall']?.id ??
-                    chunk['toolResponse']?.id ??
-                    chunk['executableCode']?.id ??
-                    chunk['codeExecutionResult']?.id
-
-                thoughtData =
-                    contextId != null
-                        ? { [contextId]: [part] }
-                        : { parts: [part] }
-            }
-        }
-
-        messageChunk.additional_kwargs = {
-            images: imagePart
-                ? [
-                      `data:${imagePart.inlineData.mimeType ?? 'image/png'};base64,${imagePart.inlineData.data}`
-                  ]
-                : undefined,
-            thought_data: thoughtData
-        }
-
-        return messageChunk
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private _post(url: string, data: any, params: fetchType.RequestInit = {}) {
         const requestUrl = this._concatUrl(url)
 
         for (const key in data) {
