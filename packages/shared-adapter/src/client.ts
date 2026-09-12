@@ -195,7 +195,10 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'grok-4.5',
     'grok-4.6',
     'agnes',
-    'ocr'
+    'ocr',
+    // deepseek-flash and glm-5.3-flash support image input.
+    'deepseek-flash',
+    'glm-5.3-flash'
 ].map(createGlobMatcher)
 
 // mimo-v2.5 supports image/audio; mimo-v2.5-pro does NOT (text only).
