@@ -53,6 +53,7 @@ export interface Config extends ChatLunaPlugin.Config {
     codeExecution: boolean
     urlContext: boolean
     imageGeneration: boolean
+    agenticVideo: boolean
     imageModelSearch: boolean
     thinkingBudget: number
     includeThoughts: boolean
@@ -123,6 +124,7 @@ export const Config: Schema<Config> = Schema.intersect([
         imageModelSearch: Schema.boolean().default(false),
         groundingContentDisplay: Schema.boolean().default(false),
         imageGeneration: Schema.boolean().default(false),
+        agenticVideo: Schema.boolean().default(false),
         useCamelCaseSystemInstruction: Schema.boolean().default(false),
         useCamelCaseMediaFields: Schema.boolean().default(false),
         nonStreaming: Schema.boolean().default(false)
@@ -130,8 +132,7 @@ export const Config: Schema<Config> = Schema.intersect([
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}) as any
+}) as Schema<Config>
 
 export const usage = `
 ## Gemini 适配器说明

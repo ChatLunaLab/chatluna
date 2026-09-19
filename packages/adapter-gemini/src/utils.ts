@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     AIMessage,
     BaseMessage,
@@ -12,10 +11,12 @@ import {
     ChatCompletionFunction,
     ChatCompletionResponseMessage,
     ChatCompletionResponseMessageRoleEnum,
-    ChatFunctionCallingPart,
     ChatFunctionResponsePart,
     ChatPart,
     ChatResponse,
+    ChatThoughtData,
+    ChatThoughtPart,
+    ChatTool,
     GeminiUsageMetadata
 } from './types'
 import { Config, logger } from '.'
@@ -41,69 +42,196 @@ export async function langchainMessageToGeminiMessage(
     plugin: ChatLunaPlugin<ClientConfig, Config>,
     model?: string
 ): Promise<ChatCompletionResponseMessage[]> {
+    const cfg = plugin.config
+    const agentic =
+        cfg.agenticVideo &&
+        AGENTIC_VIDEO_MODELS.some((name) => model?.includes(name))
+
+    async function convert(
+        content: MessageContentComplex[]
+    ): Promise<ChatPart[]> {
+        const parts = await Promise.all(
+            content.map(async (part): Promise<ChatPart | null> => {
+                if (isMessageContentText(part)) {
+                    return part.text.length > 0 ? { text: part.text } : null
+                }
+                const image = isMessageContentImageUrl(part)
+                if (!image && !isGeminiFileLikeContent(part)) {
+                    return part as unknown as ChatPart
+                }
+
+                const media = await readMedia(plugin, part)
+                if (media == null) return null
+                const mode =
+                    agentic && !image && media.mimeType.startsWith('video/')
+                        ? 'AGENTIC'
+                        : undefined
+                return cfg.useCamelCaseMediaFields
+                    ? { inlineData: media, mediaProcessing: mode }
+                    : {
+                          inline_data: {
+                              data: media.data,
+                              mime_type: media.mimeType
+                          },
+                          media_processing: mode
+                      }
+            })
+        )
+        return parts.filter((part) => part != null)
+    }
+
     const result: ChatCompletionResponseMessage[] = []
     for (let i = 0; i < messages.length; i++) {
-        const message = messages[i]
-        const role = messageTypeToGeminiRole(message.getType())
-        const hasFunctionCall =
-            (message as AIMessage).tool_calls != null &&
-            (message as AIMessage).tool_calls.length > 0
+        const msg = messages[i]
+        const role = messageTypeToGeminiRole(msg.getType())
 
         if (role === 'function') {
-            const parts: ChatPart[] = []
-            let j = i
-            while (j < messages.length) {
-                const msg = messages[j]
-                if (messageTypeToGeminiRole(msg.getType()) !== 'function') break
-                parts.push(
-                    ...(
-                        await processFunctionMessage(
-                            plugin,
-                            msg,
-                            plugin.config.useCamelCaseSystemInstruction
-                        )
-                    ).parts
-                )
-                j++
+            const response: ChatFunctionResponsePart['functionResponse'] = {
+                name: msg.name,
+                id: (msg as ToolMessage).tool_call_id || undefined,
+                response: {}
             }
-            i = j - 1
-            result.push({ role: 'user', parts })
-            continue
-        }
-
-        if (hasFunctionCall) {
-            result.push(
-                await processFunctionMessage(
-                    plugin,
-                    message,
-                    plugin.config.useCamelCaseSystemInstruction
+            const parts: ChatPart[] = [{ functionResponse: response }]
+            if (typeof msg.content === 'string') {
+                response.response = parseJsonArgs(msg.content)
+            } else {
+                const texts = msg.content.filter(isMessageContentText)
+                if (texts.length > 0) {
+                    response.response = parseJsonArgs(
+                        texts.map((part) => part.text).join('')
+                    )
+                }
+                const media = await convert(
+                    msg.content.filter(
+                        (part) =>
+                            isMessageContentImageUrl(part) ||
+                            isGeminiFileLikeContent(part)
+                    )
                 )
-            )
+                for (const part of media) {
+                    // Gemini requires agentic videos beside the function response.
+                    if (
+                        ('inlineData' in part && part.mediaProcessing) ||
+                        ('inline_data' in part && part.media_processing)
+                    ) {
+                        parts.push(part)
+                        continue
+                    }
+                    if ('inlineData' in part) {
+                        response.parts ??= []
+                        response.parts.push({ inlineData: part.inlineData })
+                    } else if ('inline_data' in part) {
+                        response.parts ??= []
+                        response.parts.push({ inline_data: part.inline_data })
+                    }
+                }
+            }
+
+            // Consecutive tool results form one user turn.
+            if (i > 0 && messages[i - 1].getType() === 'tool') {
+                result[result.length - 1].parts.push(...parts)
+            } else {
+                result.push({ role: 'user', parts })
+            }
             continue
         }
 
-        const item: ChatCompletionResponseMessage = { role, parts: [] }
-        const thoughtData: Record<string, any> =
-            message.additional_kwargs['thought_data'] ?? {}
+        if ((msg as AIMessage).tool_calls?.length > 0) {
+            const text =
+                typeof msg.content === 'string'
+                    ? msg.content.length > 0
+                        ? [{ text: msg.content }]
+                        : []
+                    : await convert(msg.content)
+            result.push({
+                role: 'model',
+                parts: [...text, ...convertCalls(msg as AIMessage)]
+            })
+            continue
+        }
+
+        const data = (msg.additional_kwargs.thought_data ??
+            {}) as ChatThoughtData
+
         const parts =
-            typeof message.content === 'string'
-                ? message.content.length > 0
-                    ? [{ text: message.content }]
+            typeof msg.content === 'string'
+                ? msg.content.length > 0
+                    ? [{ text: msg.content }]
                     : []
-                : await processGeminiContentParts(plugin, message.content)
+                : await convert(msg.content)
+        result.push({
+            role,
+            parts: [
+                ...getContextParts([data, ...Object.values(data)]),
+                ...parts
+            ]
+        })
 
-        item.parts = [...getContextParts(thoughtData), ...parts]
-
-        if (message.additional_kwargs.images != null) {
+        if (msg.additional_kwargs.images != null) {
             logger.warn(
                 'Deprecated: `additional_kwargs.images` is no longer supported. Use `image_url` content parts instead.'
             )
         }
-
-        result.push(item)
     }
 
     return result
+}
+
+async function readMedia(
+    plugin: ChatLunaPlugin<ClientConfig, Config>,
+    part: MessageContentImageUrl | Parameters<typeof fetchFileLikeUrl>[1]
+) {
+    try {
+        if (isMessageContentImageUrl(part)) {
+            const url = await fetchImageUrl(plugin, part)
+            return {
+                data: url.replace(/^data:image\/\w+;base64,/, ''),
+                mimeType:
+                    url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
+            }
+        }
+        const file = await fetchFileLikeUrl(plugin, part)
+        return { data: file.buffer.toString('base64'), mimeType: file.mimeType }
+    } catch (err) {
+        logger.warn(`Failed to fetch ${part.type}`, err)
+        return null
+    }
+}
+
+function convertCalls(msg: AIMessage): ChatPart[] {
+    const calls = msg.tool_calls
+    const data = (msg.additional_kwargs.thought_data ?? {}) as ChatThoughtData
+    // Replay shared context once; call-specific context stays with its call.
+    const shared = { ...data }
+    for (const call of calls) {
+        if (call.id != null) delete shared[call.id]
+    }
+    const parts: ChatPart[] = getContextParts([
+        shared,
+        ...Object.values(shared)
+    ])
+    for (const call of calls) {
+        if (call.id != null) {
+            parts.push(...getContextParts([data[call.id]]))
+        }
+        const context = data[call.id] ?? data
+        const sig = Array.isArray(context)
+            ? context.find((part) => typeof part?.thoughtSignature === 'string')
+                  ?.thoughtSignature
+            : typeof context === 'object'
+              ? context.thoughtSignature
+              : undefined
+        parts.push({
+            functionCall: {
+                name: call.name,
+                args: call.args,
+                id: call.id || undefined
+            },
+            ...(typeof sig === 'string' ? { thoughtSignature: sig } : {})
+        })
+    }
+
+    return parts
 }
 
 export function extractSystemMessages(
@@ -164,156 +292,39 @@ function parseJsonArgs(args: string): Record<string, unknown> {
     }
 }
 
-function isContextPart(part: any): part is ChatPart {
+export function isMediaProcessingPart(part: ChatThoughtPart): boolean {
+    const tool = part.toolCall ?? part.toolResponse
+    // Agentic media steps can omit toolType and cannot be replayed by Gemini.
+    return (
+        tool != null &&
+        (tool.toolType == null || tool.toolType === 'MEDIA_PROCESSING')
+    )
+}
+
+export function isToolContext(part: unknown): part is ChatThoughtPart {
     return (
         typeof part === 'object' &&
         part != null &&
-        (part['toolCall'] != null ||
-            part['toolResponse'] != null ||
-            part['executableCode'] != null ||
-            part['codeExecutionResult'] != null)
+        (('toolCall' in part && part.toolCall != null) ||
+            ('toolResponse' in part && part.toolResponse != null) ||
+            ('executableCode' in part && part.executableCode != null) ||
+            ('codeExecutionResult' in part && part.codeExecutionResult != null))
     )
 }
 
-function getContextParts(data: Record<string, any>, id?: string) {
-    const parts = data['parts'] ?? [data, ...Object.values(data)]
-    const raw = id != null ? data[id] : parts
-    if (raw == null) return []
-
-    return (Array.isArray(raw) ? raw : [raw]).filter(isContextPart)
-}
-
-async function processFunctionMessage(
-    plugin: ChatLunaPlugin<ClientConfig, Config>,
-    message: AIMessage | ToolMessage,
-    removeId: boolean
-): Promise<ChatCompletionResponseMessage> {
-    const thoughtData: Record<string, any> =
-        message.additional_kwargs['thought_data'] ?? {}
-
-    if (message['tool_calls']) {
-        message = message as AIMessage
-        const toolCalls = message.tool_calls
-        const parts: ChatPart[] = []
-
-        for (const toolCall of toolCalls) {
-            // tool context: replay context tied to this tool call first.
-            parts.push(...getContextParts(thoughtData, toolCall.id))
-
-            const functionCall: ChatFunctionCallingPart['functionCall'] = {
-                name: toolCall.name,
-                args: toolCall.args
-            }
-            if (!removeId || toolCall.id) {
-                functionCall.id = toolCall.id
-            }
-            const data = thoughtData[toolCall.id] ?? thoughtData
-            const sig = Array.isArray(data)
-                ? data.find(
-                      (item) => typeof item?.thoughtSignature === 'string'
-                  )?.thoughtSignature
-                : data.thoughtSignature
-
-            // tool calls: reattach custom tool calls with their thought signatures.
-            parts.push({
-                functionCall,
-                ...(typeof sig === 'string' ? { thoughtSignature: sig } : {})
-            })
-        }
-
-        return {
-            role: 'model',
-            parts
-        }
-    }
-
-    const finalMessage = message as ToolMessage
-
-    const functionResponse: ChatFunctionResponsePart['functionResponse'] = {
-        name: message.name,
-        response: {}
-    }
-
-    if (Array.isArray(message.content)) {
-        const texts = message.content.flatMap((part) => {
-            if (isMessageContentText(part)) return [part.text]
-            return []
-        })
-
-        if (texts.length > 0) {
-            functionResponse.response = parseJsonArgs(texts.join(''))
-        }
-
-        const parts = await processGeminiContentParts(
-            plugin,
-            message.content.filter(
-                (part) =>
-                    isMessageContentImageUrl(part) ||
-                    isGeminiFileLikeContent(part)
-            )
+function getContextParts(parts: ChatThoughtData[string][]): ChatThoughtPart[] {
+    // Old histories also store context directly or under individual call IDs.
+    return parts
+        .flat()
+        .filter(
+            (part): part is ChatThoughtPart =>
+                isToolContext(part) && !isMediaProcessingPart(part)
         )
-        if (parts.length > 0) {
-            functionResponse.parts = parts
-        }
-    } else {
-        functionResponse.response = parseJsonArgs(message.content as string)
-    }
-
-    if (!removeId || finalMessage.tool_call_id) {
-        functionResponse.id = finalMessage.tool_call_id
-    }
-
-    return {
-        role: 'user',
-        parts: [
-            {
-                functionResponse
-            }
-        ]
-    }
 }
-
-async function processGeminiImageContent(
-    plugin: ChatLunaPlugin<ClientConfig, Config>,
-    part: MessageContentImageUrl
-) {
-    let url: string
-    try {
-        url = await fetchImageUrl(plugin, part)
-    } catch (e) {
-        const rawUrl =
-            typeof part.image_url === 'string'
-                ? part.image_url
-                : part.image_url.url
-        logger.warn(`Failed to fetch image url: ${rawUrl}`, e)
-        return null
-    }
-
-    const mineType = url.match(/^data:([^;]+);base64,/)?.[1] ?? 'image/jpeg'
-    const data = url.replace(/^data:image\/\w+;base64,/, '')
-
-    return createGeminiInlineDataPart(plugin, data, mineType)
-}
-
-type GeminiFileLikeContent = MessageContentComplex &
-    (
-        | {
-              type: 'file_url'
-              file_url: string | { url: string; mimeType?: string }
-          }
-        | {
-              type: 'audio_url'
-              audio_url: string | { url: string; mimeType?: string }
-          }
-        | {
-              type: 'video_url'
-              video_url: string | { url: string; mimeType?: string }
-          }
-    )
 
 function isGeminiFileLikeContent(
     part: MessageContentComplex
-): part is GeminiFileLikeContent {
+): part is Parameters<typeof fetchFileLikeUrl>[1] {
     return (
         part != null &&
         typeof part === 'object' &&
@@ -321,76 +332,17 @@ function isGeminiFileLikeContent(
     )
 }
 
-function createGeminiInlineDataPart(
-    plugin: ChatLunaPlugin<ClientConfig, Config>,
-    data: string,
-    mimeType: string
-) {
-    if (plugin.config.useCamelCaseMediaFields) {
-        return {
-            inlineData: { data, mimeType }
-        }
-    }
-
-    return {
-        inline_data: { data, mime_type: mimeType }
-    }
-}
-
-async function processGeminiFileLikeContent(
-    plugin: ChatLunaPlugin<ClientConfig, Config>,
-    part: GeminiFileLikeContent
-) {
-    try {
-        const { buffer, mimeType } = await fetchFileLikeUrl(plugin, part)
-        return createGeminiInlineDataPart(
-            plugin,
-            buffer.toString('base64'),
-            mimeType
-        )
-    } catch (e) {
-        logger.warn(`Failed to fetch ${part.type}`, e)
-        return null
-    }
-}
-
-async function processGeminiContentParts(
-    plugin: ChatLunaPlugin<ClientConfig, Config>,
-    content: MessageContentComplex[]
-) {
-    const mappedParts = await Promise.all(
-        content.map(async (part) => {
-            if (isMessageContentText(part)) {
-                return part.text.length > 0 ? { text: part.text } : null
-            }
-            if (isMessageContentImageUrl(part)) {
-                return await processGeminiImageContent(plugin, part)
-            }
-            if (isGeminiFileLikeContent(part)) {
-                return await processGeminiFileLikeContent(plugin, part)
-            }
-            return part as any
-        })
-    )
-
-    return mappedParts.filter((part) => part != null)
-}
-
-export function partAsType<T extends ChatPart>(part: ChatPart): T {
-    return part as T
-}
-
-export function partAsTypeCheck<T extends ChatPart>(
-    part: ChatPart,
-    check: (part: ChatPart & unknown) => boolean
-): T | undefined {
-    return check(part) ? (part as T) : undefined
-}
-
 // 不支持 googleSearch / codeExecution / urlContext 的模型列表
 const CUSTOM_TOOLS_UNSUPPORTED_MODELS = [
     'gemini-2.0-flash-lite',
     'gemini-2.0-flash-exp'
+]
+
+const AGENTIC_VIDEO_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3.7-flash',
+    'gemini-3.8-flash'
 ]
 
 // 启用 imageGeneration 时同样不支持上述自定义工具的模型列表
@@ -438,7 +390,7 @@ function isImageSearchSupported(model: string): boolean {
  * - 其余模型使用标准的新版 google_search: {} 格式
  */
 function appendBuiltinTools(
-    result: Record<string, any>[],
+    result: ChatTool[],
     googleSearch: boolean,
     codeExecution: boolean,
     urlContext: boolean,
@@ -472,7 +424,7 @@ export function formatToolsToGeminiAITools(
     tools: StructuredTool[],
     config: Config,
     model: string
-): Record<string, any> {
+): ChatTool[] | undefined {
     // 没有任何工具需要注册时直接返回
     if (
         tools.length < 1 &&
@@ -484,7 +436,7 @@ export function formatToolsToGeminiAITools(
     }
 
     const functions = tools.map(formatToolToGeminiAITool)
-    const result: Record<string, any>[] = []
+    const result: ChatTool[] = []
 
     // --- 处理内置工具（googleSearch / codeExecution / urlContext）---
     let { googleSearch, codeExecution, urlContext } = config
@@ -537,8 +489,7 @@ export function formatToolToGeminiAITool(
     return {
         name: tool.name,
         description: tool.description,
-        // any?
-        parameters
+        parameters: parameters as ChatCompletionFunction['parameters']
     }
 }
 
@@ -569,15 +520,15 @@ const GEMINI_SCHEMA_KEYS = new Set([
     'anyOf'
 ])
 
-function sanitizeGeminiSchema(schema: any): any {
+function sanitizeGeminiSchema(schema: unknown): unknown {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
         return schema
     }
 
-    const result: Record<string, any> = {}
+    const result: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(schema)) {
         if (key === 'oneOf' || key === 'anyOf') {
-            result['anyOf'] = (value as any[]).map(sanitizeGeminiSchema)
+            result['anyOf'] = (value as unknown[]).map(sanitizeGeminiSchema)
             continue
         }
         if (!GEMINI_SCHEMA_KEYS.has(key)) continue
@@ -587,10 +538,9 @@ function sanitizeGeminiSchema(schema: any): any {
         }
         if (key === 'properties') {
             result['properties'] = Object.fromEntries(
-                Object.entries(value).map(([name, sub]) => [
-                    name,
-                    sanitizeGeminiSchema(sub)
-                ])
+                Object.entries(value as Record<string, unknown>).map(
+                    ([name, sub]) => [name, sanitizeGeminiSchema(sub)]
+                )
             )
             continue
         }
@@ -841,10 +791,6 @@ export async function createChatGenerationParams(
                   }
                 : undefined
     }
-}
-
-export function isChatResponse(response: any): response is ChatResponse {
-    return 'candidates' in response
 }
 
 // #region refreshModels helpers

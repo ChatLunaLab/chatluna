@@ -5,21 +5,23 @@ export interface ChatCompletionResponseMessage {
 
 export type BaseChatPart = {
     thoughtSignature?: string
+    thought?: boolean
 }
 
-export type ChatPart =
-    | (ChatMessagePart & BaseChatPart)
-    | ChatInlineDataPart
-    | (ChatFunctionCallingPart & BaseChatPart)
-    | ChatFunctionResponsePart
-    | (ChatToolContextPart & BaseChatPart)
-    | ChatUploadDataPart
-    // Only used for token
-    | ChatUsageMetadataPart
+export type ChatPart = BaseChatPart &
+    (
+        | ChatMessagePart
+        | (ChatInlineDataPart & { mediaProcessing?: 'AGENTIC' })
+        | ChatFunctionCallingPart
+        | ChatFunctionResponsePart
+        | ChatToolContextPart
+        | (ChatUploadDataPart & { media_processing?: 'AGENTIC' })
+        // Only used for token
+        | ChatUsageMetadataPart
+    )
 
 export type ChatMessagePart = {
     text: string
-    thought?: boolean
 }
 
 export type ChatUsageMetadataPart = {
@@ -72,8 +74,7 @@ export type ChatUploadDataPart = {
 export type ChatFunctionCallingPart = {
     functionCall: {
         name: string
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        args?: any
+        args?: Record<string, unknown>
         id?: string
     }
 }
@@ -87,15 +88,30 @@ export type ChatFunctionResponsePart = {
     }
 }
 
+export type ChatToolCall = {
+    id?: string
+    toolType?: string
+    [key: string]: unknown
+}
+
 export type ChatToolContextPart = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    toolCall?: Record<string, any>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    toolResponse?: Record<string, any>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    executableCode?: Record<string, any>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    codeExecutionResult?: Record<string, any>
+    toolCall?: ChatToolCall
+    toolResponse?: ChatToolCall
+    executableCode?: Record<string, unknown>
+    codeExecutionResult?: Record<string, unknown>
+}
+
+export type ChatThoughtPart = BaseChatPart & ChatToolContextPart
+
+// Current histories use parts and call IDs; older ones also store a part directly.
+export type ChatThoughtData = ChatThoughtPart & {
+    parts?: ChatThoughtPart[]
+    [key: string]:
+        | string
+        | boolean
+        | ChatThoughtPart
+        | ChatThoughtPart[]
+        | Record<string, unknown>
 }
 
 export interface ChatResponse {
@@ -141,14 +157,24 @@ export interface ChatResponse {
 export interface ChatCompletionFunction {
     name: string
     description?: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    parameters?: { [key: string]: any }
+    parameters?: Record<string, unknown>
+}
+
+export interface ChatTool {
+    functionDeclarations?: ChatCompletionFunction[]
+    google_search?: {
+        searchTypes?: {
+            webSearch: Record<string, never>
+            imageSearch: Record<string, never>
+        }
+    }
+    code_execution?: Record<string, never>
+    urlContext?: Record<string, never>
 }
 
 export interface ChatCompletionMessageFunctionCall {
     name: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    args?: any
+    args?: Record<string, unknown>
 }
 
 export interface CreateEmbeddingResponse {
