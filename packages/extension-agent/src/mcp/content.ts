@@ -86,7 +86,9 @@ async function convertImageBlock(
     content: Extract<CallToolResult['content'][0], { type: 'image' }>,
     useStandardContentBlocks: boolean | undefined,
     ctx: Context
-): Promise<(StandardImageBlock | MessageContentImageUrl)[]> {
+): Promise<
+    (StandardImageBlock | MessageContentImageUrl | MessageContentText)[]
+> {
     if (useStandardContentBlocks) {
         return [
             {
@@ -109,7 +111,11 @@ async function convertImageBlock(
             {
                 type: 'image_url',
                 image_url: file.url
-            } as MessageContentImageUrl
+            } as MessageContentImageUrl,
+            {
+                type: 'text',
+                text: `The ${file.name} has been uploaded. Url: ${file.url}`
+            } as MessageContentText
         ]
     }
 
