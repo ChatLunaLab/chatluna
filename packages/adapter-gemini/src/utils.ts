@@ -899,14 +899,13 @@ export function getModelVariantSuffixes(
         return name.includes('-thinking') ? [] : ['-non-thinking', '-thinking']
     }
 
-    if (!/gemini-3(-pro|-flash|\.5-flash|\.1-pro)/.test(name)) return []
+    // gemini-3 全系支持 thinking 等级；gemini-3-pro 无 medium，3.7 / 3.8 flash 无 minimal
+    if (!/gemini-3(\.\d+)?-(pro|flash)/.test(name)) return []
 
-    // gemini-3-pro（不含 3.1）不提供 medium 等级
-    return (
-        /(^|\/)gemini-3-pro/.test(name)
-            ? ['low', 'high', 'minimal']
-            : ['low', 'high', 'minimal', 'medium']
-    ).map((level) => `-${level}-thinking`)
+    return ['low', 'high', 'minimal', 'medium']
+        .filter((level) => level !== 'minimal' || !/gemini-3\.[78]-/.test(name))
+        .filter((level) => level !== 'medium' || !/gemini-3-pro/.test(name))
+        .map((level) => `-${level}-thinking`)
 }
 
 // #endregion
