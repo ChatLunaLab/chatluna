@@ -264,8 +264,8 @@ export class ChatInterface {
             autoSummarizeTitle(
                 this.chatluna,
                 arg.conversationId,
-                wrapper,
-                arg.message,
+                (arg.variables?.['prompt'] as string) ??
+                    getMessageContent(arg.message.content),
                 displayResponse as AIMessage
             ).catch((e) => logger.error('autoSummarizeTitle error:', e))
         }
@@ -474,8 +474,7 @@ export class ChatInterface {
 async function autoSummarizeTitle(
     chatluna: ChatLunaService,
     conversationId: string,
-    wrapper: ChatLunaLLMChainWrapper,
-    humanMsg: HumanMessage,
+    humanContent: string,
     aiMsg: AIMessage
 ) {
     const claimed = await chatluna.conversation.claimAutoTitle(conversationId)
@@ -483,8 +482,19 @@ async function autoSummarizeTitle(
         return
     }
 
-    const humanContent = getMessageContent(humanMsg.content)
-    const aiContent = getMessageContent(aiMsg.content)
+    const localTitle = humanContent.replace(/\s+/g, ' ').trim().slice(0, 20)
+
+    const titleModel = chatluna.config.autoTitleModel
+
+    // Without a dedicated title model only the first message is used, so no
+    // extra model request is spent on every new conversation.
+    if (titleModel == null || titleModel.length < 1 || titleModel === '无') {
+        await chatluna.conversation.touchConversation(conversationId, {
+            title: localTitle,
+            autoTitle: localTitle.length < 1
+        })
+        return
+    }
 
     const prompt =
         `Generate a concise title for the following conversation.\n` +
@@ -492,15 +502,17 @@ async function autoSummarizeTitle(
         `- Length: 5 to 20 characters\n` +
         `- Use the same language as the user's message\n` +
         `- Output ONLY the title, no punctuation, no quotes, no explanation\n\n` +
-        `User: ${humanContent}\n` +
-        `Assistant: ${aiContent}`
+        `User: ${humanContent.slice(0, 200)}\n` +
+        `Assistant: ${getMessageContent(aiMsg.content).slice(0, 200)}`
 
     try {
-        const result = await wrapper.model.invoke([new HumanMessage(prompt)], {
+        const model = (await chatluna.createChatModel(titleModel)).value
+        const result = await model.invoke([new HumanMessage(prompt)], {
             configurable: {
                 id: conversationId
             },
             id: conversationId,
+            maxTokens: 64,
             variables_hide: {
                 built: {
                     conversationId
@@ -509,20 +521,16 @@ async function autoSummarizeTitle(
         })
         const title = getMessageContent(result.content).trim().slice(0, 20)
 
-        if (!title) {
-            return
-        }
-
         await chatluna.conversation.touchConversation(conversationId, {
-            title,
+            title: title.length > 0 ? title : localTitle,
             autoTitle: false
         })
     } catch (error) {
         logger.error(error)
         await chatluna.conversation.touchConversation(conversationId, {
-            autoTitle: true
+            title: localTitle,
+            autoTitle: false
         })
-        throw error
     }
 }
 

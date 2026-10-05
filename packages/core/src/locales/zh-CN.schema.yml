@@ -67,6 +67,7 @@ $inner:
               - 成员独立会话
       defaultChatMode: 设置默认的聊天模式。
       defaultModel: 设置默认使用的聊天模型。
+      autoTitleModel: 设置生成会话标题使用的模型。留空时直接使用首条用户消息，不会额外请求模型。
       defaultPreset: 设置默认使用的聊天预设。
       enablePresetKeywordTrigger: 是否允许通过预设关键词切换预设。
 

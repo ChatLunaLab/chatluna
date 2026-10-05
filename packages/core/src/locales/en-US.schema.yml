@@ -67,6 +67,7 @@ $inner:
               - Personal conversation per member
       defaultChatMode: Set default chat mode.
       defaultModel: Set default chat model.
+      autoTitleModel: Model used to generate conversation titles. When empty, the first user message is used and no extra model request is sent.
       defaultPreset: Set default chat preset.
       enablePresetKeywordTrigger: Allow switching presets via preset keywords.
 
