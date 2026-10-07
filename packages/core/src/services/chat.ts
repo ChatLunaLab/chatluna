@@ -467,7 +467,7 @@ export class ChatLunaService extends Service<Config> {
                 preset,
                 tokenCounter: (text) => model.getNumTokens(text),
                 sendTokenLimit:
-                    model.invocationParams().maxTokenLimit ??
+                    model.invocationParams().maxContextWindow ??
                     model.getModelMaxContextSize(),
                 contextManager: this._contextManager,
                 promptRenderService: this._promptRenderer
@@ -483,6 +483,7 @@ export class ChatLunaService extends Service<Config> {
             prompt,
             mode: options.mode,
             maxSteps: options.maxSteps,
+            autoCompactWindow: this.config.autoCompactWindow,
             handleParsingErrors: options.handleParsingErrors,
             instructions,
             returnIntermediateSteps: options.returnIntermediateSteps,

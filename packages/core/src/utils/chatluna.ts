@@ -40,7 +40,7 @@ export function createChatPrompt(
         preset,
         tokenCounter: (text) => llm.getNumTokens(text),
         sendTokenLimit:
-            llm.invocationParams().maxTokenLimit ??
+            llm.invocationParams().maxContextWindow ??
             llm.getModelMaxContextSize(),
         contextManager: ctx.chatluna.contextManager,
         promptRenderService: ctx.chatluna.promptRenderer

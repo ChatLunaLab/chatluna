@@ -79,7 +79,7 @@ export class ChatLunaChatChain
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
             sendTokenLimit:
-                llm.invocationParams().maxTokenLimit ??
+                llm.invocationParams().maxContextWindow ??
                 llm.getModelMaxContextSize(),
             promptRenderService: variableService,
             contextManager
@@ -108,8 +108,11 @@ export class ChatLunaChatChain
         variables,
         signal,
         maxToken,
-        maxTokenLimit,
-        callbacks
+        maxContextWindow: window,
+        callbacks,
+        context,
+        autoCompactWindow: threshold,
+        onCompact
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         const requests: ChainValues = {
             input: message
@@ -117,7 +120,12 @@ export class ChatLunaChatChain
         const chatHistory =
             await this.historyMemory.loadMemoryVariables(requests)
 
-        requests['chat_history'] = chatHistory[this.historyMemory.memoryKey]
+        const state = context ?? {
+            history: [...chatHistory[this.historyMemory.memoryKey]],
+            autoCompactWindow: threshold,
+            onCompact
+        }
+        requests['chat_history'] = state.history
         requests['variables'] = Object.assign(variables ?? {}, {
             prompt: getMessageContent(message.content)
         })
@@ -143,7 +151,8 @@ export class ChatLunaChatChain
         } satisfies AgentRunContext
         requests['configurable'] = {
             session,
-            agentContext
+            agentContext,
+            context: state
         }
         requests['id'] = conversationId
 
@@ -153,7 +162,7 @@ export class ChatLunaChatChain
                 ...requests,
                 stream,
                 maxTokens: maxToken,
-                maxTokenLimit,
+                maxContextWindow: window,
                 signal
             },
             events,
