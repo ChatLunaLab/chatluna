@@ -1299,7 +1299,10 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
                 if (e instanceof ChatLunaError) {
                     throw e
                 }
-                throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+                throw new ChatLunaError(
+                    ChatLunaErrorCode.API_REQUEST_FAILED,
+                    e instanceof Error ? e : new Error(String(e))
+                )
             } finally {
                 clearTimeout(timeoutId)
             }
@@ -1308,7 +1311,10 @@ export class ChatLunaEmbeddings extends ChatLunaBaseEmbeddings {
         try {
             return await this.caller.call(makeRequest)
         } catch (e) {
-            throw new ChatLunaError(ChatLunaErrorCode.API_REQUEST_FAILED, e)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.API_REQUEST_FAILED,
+                e instanceof Error ? e : new Error(String(e))
+            )
         }
     }
 }

@@ -321,7 +321,7 @@ export class ChatInterface {
             }
             throw new ChatLunaError(
                 ChatLunaErrorCode.EMBEDDINGS_INIT_ERROR,
-                error
+                error instanceof Error ? error : new Error(String(error))
             )
         }
 
@@ -335,7 +335,10 @@ export class ChatInterface {
             if (error instanceof ChatLunaError) {
                 throw error
             }
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, error)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_INIT_ERROR,
+                error instanceof Error ? error : new Error(String(error))
+            )
         }
 
         try {
@@ -346,7 +349,7 @@ export class ChatInterface {
             }
             throw new ChatLunaError(
                 ChatLunaErrorCode.CHAT_HISTORY_INIT_ERROR,
-                error
+                error instanceof Error ? error : new Error(String(error))
             )
         }
 
@@ -356,7 +359,10 @@ export class ChatInterface {
             if (error instanceof ChatLunaError) {
                 throw error
             }
-            throw new ChatLunaError(ChatLunaErrorCode.UNKNOWN_ERROR, error)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.UNKNOWN_ERROR,
+                error instanceof Error ? error : new Error(String(error))
+            )
         }
 
         this._chain = computed(() => {

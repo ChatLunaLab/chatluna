@@ -327,7 +327,7 @@ export class ChatLunaPluginChain
             } else {
                 throw new ChatLunaError(
                     ChatLunaErrorCode.API_REQUEST_FAILED,
-                    error
+                    error instanceof Error ? error : new Error(String(error))
                 )
             }
         }

@@ -937,21 +937,22 @@ function formatRouteScope(bindingKey: string) {
 
 function formatConversationError(
     session: Session,
-    error: Error,
+    error: unknown,
     action?: string
 ) {
     if (!(error instanceof ChatLunaError)) {
+        const message = error instanceof Error ? error.message : String(error)
         if (action != null) {
             return session.text(
                 'chatluna.conversation.messages.action_failed',
                 [
                     session.text(`chatluna.conversation.action.${action}`),
-                    error.message,
+                    message,
                     ChatLunaErrorCode.UNKNOWN_ERROR
                 ]
             )
         }
-        return error.message
+        return message
     }
 
     const code = error.errorCode
