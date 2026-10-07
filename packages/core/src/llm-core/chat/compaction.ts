@@ -24,7 +24,7 @@ export interface CompactionOptions {
     model: ChatLunaChatModel
     conversationId?: string
     maxContextWindow?: number
-    autoCompactWindow?: number | 'auto'
+    autoCompactWindow?: number | `${number}%`
     maxTokens?: number
     reservedTokens?: number
     force?: boolean
@@ -56,27 +56,23 @@ export function contextBudget(
     const invocation = model.invocationParams()
     const capacity = model.getModelMaxContextSize()
     const configured = opts.maxContextWindow ?? invocation.maxContextWindow
-    const limit = Math.floor(
-        configured > 0 ? Math.min(configured, capacity) : capacity
-    )
+    const limit = Math.floor(Math.min(configured ?? capacity, capacity))
     if (!Number.isFinite(limit) || limit <= 0) {
         throw new Error('Model context window is unavailable')
     }
-    const configuredOutput = opts.maxTokens ?? invocation.maxTokens
-    const automaticReserve = Math.min(
-        Math.floor(limit / 2),
-        Math.max(Math.floor(limit * 0.15), 16384)
-    )
-    const output =
-        configuredOutput > 0 ? Math.ceil(configuredOutput) : automaticReserve
+    const maxTokens = opts.maxTokens ?? invocation.maxTokens
+    const output = maxTokens > 0 ? Math.ceil(maxTokens) : 0
     const usable = limit - output
     if (usable <= 0)
         throw new Error('Output reserve exhausts the context window')
-    const configuredThreshold = opts.autoCompactWindow
+    const window = opts.autoCompactWindow ?? '90%'
     const threshold = Math.floor(
-        typeof configuredThreshold === 'number' && configuredThreshold > 0
-            ? Math.min(configuredThreshold, usable)
-            : Math.min(usable, limit - automaticReserve)
+        Math.min(
+            typeof window === 'number'
+                ? window
+                : (limit * Number.parseFloat(window)) / 100,
+            usable
+        )
     )
     return { limit, threshold, target: Math.floor(threshold * 0.8), output }
 }
@@ -119,7 +115,7 @@ export async function compactContext(
     if (
         !opts.force &&
         conversionIndex < 0 &&
-        inputTokens + reserved <= budget.threshold
+        inputTokens + reserved < budget.threshold
     ) {
         return unchanged
     }

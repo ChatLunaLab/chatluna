@@ -33,7 +33,7 @@ export interface Config {
     messageQueue: boolean
     messageQueueDelay: number
     agentTaskAutoWakeup: boolean
-    autoCompactWindow: number | 'auto'
+    autoCompactWindow: number | `${number}%`
     rawOnCensor: boolean
     defaultGroupRouteMode: 'shared' | 'personal'
 
@@ -148,9 +148,9 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         autoCompactWindow: Schema.union([
-            Schema.const('auto'),
+            Schema.string().pattern(/^(?:[1-9]\d?|100)%$/),
             Schema.number().min(1).step(1)
-        ]).default('auto'),
+        ]).default('90%'),
         autoArchive: Schema.boolean().default(false),
         autoArchiveTimeout: Schema.number()
             .default((Time.day * 10) / Time.second)

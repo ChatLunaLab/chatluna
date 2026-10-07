@@ -48,7 +48,7 @@ $inner:
       blackList: Configure blacklist. Use cautiously to avoid unintended blocking. The number 1 indicates enabled blacklist. Set to zero value to unenable blacklist.
 
     - $desc: History Management
-      autoCompactWindow: 'Token threshold for automatic context compaction. Set auto to derive it from the model context window and output reserve, or enter a positive token count. Older messages are compacted without deleting the original conversation history.'
+      autoCompactWindow: 'Maximum context before automatic compaction. Use an integer percentage from 1% to 100% of the model capacity supplied by the adapter (default 90%, leaving 10% headroom for compaction), or a positive token count. An explicit maximum output token count can require earlier compaction to fit the hard context limit. Original conversation history is preserved.'
       autoArchive: Enable automatic archiving of inactive conversations instead of keeping legacy room state alive.
       autoArchiveTimeout: Set inactivity threshold for conversation archiving in seconds.
       autoPurgeArchive: Enable automatic deletion of archived conversations after the purge timeout.

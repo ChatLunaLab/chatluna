@@ -17,7 +17,7 @@ import {
 
 export interface ContextState {
     history: BaseMessage[]
-    autoCompactWindow?: number | 'auto'
+    autoCompactWindow?: number | `${number}%`
     onCompact?: (result: CompactionResult) => Promise<void>
     usage?: { fingerprint: string; count: number; tokens: number }
 }
@@ -111,7 +111,7 @@ export async function prepareContext(
             autoCompactWindow: state.autoCompactWindow,
             maxTokens: opts.maxTokens,
             reservedTokens: reserved,
-            force: force || estimate > budget.threshold,
+            force: force || estimate >= budget.threshold,
             signal: opts.signal
         })
         if (result.compressed) {
