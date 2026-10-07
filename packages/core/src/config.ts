@@ -33,8 +33,7 @@ export interface Config {
     messageQueue: boolean
     messageQueueDelay: number
     agentTaskAutoWakeup: boolean
-    infiniteContext: boolean
-    infiniteContextThreshold: number
+    autoCompactWindow: number | 'auto'
     rawOnCensor: boolean
     defaultGroupRouteMode: 'shared' | 'personal'
 
@@ -148,12 +147,10 @@ export const Config: Schema<Config> = Schema.intersect([
     }),
 
     Schema.object({
-        infiniteContext: Schema.boolean().default(true),
-        infiniteContextThreshold: Schema.percent()
-            .min(0.5)
-            .max(0.95)
-            .step(0.01)
-            .default(0.85),
+        autoCompactWindow: Schema.union([
+            Schema.const('auto'),
+            Schema.number().min(1).step(1)
+        ]).default('auto'),
         autoArchive: Schema.boolean().default(false),
         autoArchiveTimeout: Schema.number()
             .default((Time.day * 10) / Time.second)
@@ -200,4 +197,4 @@ export const Config: Schema<Config> = Schema.intersect([
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema'),
     'en-US': require('./locales/en-US.schema')
-}) as Schema<Config>
+}) as unknown as Schema<Config>

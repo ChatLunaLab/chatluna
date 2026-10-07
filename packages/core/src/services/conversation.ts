@@ -68,6 +68,7 @@ import {
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import type { PresetService } from 'koishi-plugin-chatluna/preset'
+import type { CompactionResult } from '../llm-core/chat/compaction'
 
 const EMPTY_MODEL_NAMES = new Set(['', '无', 'empty'])
 
@@ -1791,18 +1792,7 @@ export class ConversationService {
         )
     }
 
-    async recordCompression(
-        conversationId: string,
-        result: {
-            compressed: boolean
-            inputTokens: number
-            outputTokens: number
-            reducedTokens: number
-            reducedPercent: number
-            originalMessageCount: number
-            remainingMessageCount: number
-        }
-    ) {
+    async recordCompression(conversationId: string, result: CompactionResult) {
         const conversation = await this.getConversation(conversationId)
         if (!result.compressed) {
             return conversation
@@ -1814,13 +1804,12 @@ export class ConversationService {
         const current = JSON.parse(
             conversation.compression ?? 'null'
         ) as ConversationCompressionRecord
-        const [summaryMessage] = await this.ctx.database.get(
-            'chatluna_message',
-            { conversationId, name: 'infinite_context' },
-            { limit: 1, sort: { createdAt: 'desc' } }
-        )
+        const compaction = result.summary?.response_metadata?.compaction
         const summary =
-            summaryMessage == null ? undefined : await readText(summaryMessage)
+            compaction?.source ??
+            (result.summary
+                ? getMessageContent(result.summary.content)
+                : undefined)
 
         const updated = await this.touchConversation(conversationId, {
             compression: JSON.stringify({
@@ -1828,6 +1817,7 @@ export class ConversationService {
                 count: (current?.count ?? 0) + 1,
                 compressedAt: new Date().toISOString(),
                 summary: summary ?? current?.summary,
+                mode: compaction?.mode,
                 originalMessageCount: result.originalMessageCount,
                 remainingMessageCount: result.remainingMessageCount,
                 tokenUsage: result.outputTokens,
@@ -2352,18 +2342,6 @@ async function hasConversationPermission(
                     item.principalId === id
             )
     )
-}
-
-async function readText(message: MessageRecord) {
-    const content = JSON.parse(await gzipDecode(message.content))
-
-    if (content == null) {
-        return message.text ?? ''
-    }
-    if (typeof content === 'string') {
-        return content
-    }
-    return getMessageContent(content)
 }
 
 function formatUrl(url: string) {

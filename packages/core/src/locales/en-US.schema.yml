@@ -48,8 +48,7 @@ $inner:
       blackList: Configure blacklist. Use cautiously to avoid unintended blocking. The number 1 indicates enabled blacklist. Set to zero value to unenable blacklist.
 
     - $desc: History Management
-      infiniteContext: Enable automatic Infinite Context compression when history nears the model limit. Preserves critical topics and instructions while discarding noise.
-      infiniteContextThreshold: Set the threshold (percentage) for triggering Infinite Context compression. Compression will be triggered when the token count of conversation history reaches this percentage of the model's context limit.
+      autoCompactWindow: 'Token threshold for automatic context compaction. Set auto to derive it from the model context window and output reserve, or enter a positive token count. Older messages are compacted without deleting the original conversation history.'
       autoArchive: Enable automatic archiving of inactive conversations instead of keeping legacy room state alive.
       autoArchiveTimeout: Set inactivity threshold for conversation archiving in seconds.
       autoPurgeArchive: Enable automatic deletion of archived conversations after the purge timeout.

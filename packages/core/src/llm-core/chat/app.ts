@@ -1,6 +1,10 @@
 import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { Embeddings } from '@langchain/core/embeddings'
-import { AIMessage, HumanMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    HumanMessage,
+    SystemMessage
+} from '@langchain/core/messages'
 import { ChainValues } from '@langchain/core/utils/types'
 import { computed, ComputedRef } from '@vue/reactivity'
 import { Context, Session } from 'koishi'
@@ -25,9 +29,10 @@ import {
     supportChatMode
 } from './helper'
 import {
-    type CompressContextResult,
-    compressIfNeeded
-} from './infinite_context'
+    compactContext,
+    type CompactionMode,
+    type CompactionResult
+} from './compaction'
 import type {
     ArchiveRecord,
     BindingRecord,
@@ -158,45 +163,25 @@ export class ChatInterface {
             hasSavedUser = true
         }
 
-        // Compress chat history before starting
-        if (
-            persist &&
-            this.chatluna.currentConfig.infiniteContext &&
-            this._chatHistory
-        ) {
-            try {
-                const result = await compressIfNeeded({
-                    chatHistory: this._chatHistory,
-                    model: wrapper.model,
-                    conversationId: this._input.conversationId,
-                    preset: this._input.preset,
-                    threshold:
-                        this.chatluna.currentConfig.infiniteContextThreshold,
-                    signal: arg.signal
-                })
-                if (result?.messages) {
-                    await this._chatHistory.replaceMessages(result.messages)
-                }
-                if (result?.compressed) {
-                    await this.chatluna.conversation.recordCompression(
-                        this._input.conversationId,
-                        result
-                    )
-                }
-            } catch (error) {
-                logger.error('Error compressing context:', error)
-            }
-        }
-
         const response = (await wrapper.call({
             ...arg,
             maxToken: this.preset?.value?.config?.maxOutputToken,
+            autoCompactWindow: this.chatluna.currentConfig.autoCompactWindow,
+            onCompact: persist
+                ? async (result) => {
+                      await this._chatHistory.compact(result)
+                      await this.chatluna.conversation.recordCompression(
+                          this._input.conversationId,
+                          result
+                      )
+                  }
+                : undefined,
             messageQueue: arg.messageQueue,
             onAgentEvent: async (event) => {
                 if (event.type === 'tool-result') {
                     if (persist) {
                         await saveUser()
-                        await this._chatHistory.addAgentToolBatch(event.steps)
+                        await this._chatHistory.addMessages(event.messages)
                     }
                 }
 
@@ -411,8 +396,9 @@ export class ChatInterface {
 
     async compressContext(
         force = false,
-        instruction?: string
-    ): Promise<CompressContextResult> {
+        instruction?: string,
+        mode?: CompactionMode
+    ): Promise<CompactionResult> {
         const wrapper = await this.getChatLunaLLMChainWrapper()
         if (!this._chatHistory) {
             throw new ChatLunaError(
@@ -421,19 +407,46 @@ export class ChatInterface {
             )
         }
 
-        const result = await compressIfNeeded({
-            chatHistory: this._chatHistory,
+        const preset = this.preset.value
+        const variables = {
+            ...(await this._chatHistory.getAdditionalArgs()),
+            built: { conversationId: this._input.conversationId }
+        }
+        const configurable = { conversationId: this._input.conversationId }
+        const rendered =
+            await this.chatluna.promptRenderer.renderPresetTemplate(
+                preset,
+                variables,
+                { configurable }
+            )
+        let reservedTokens = 0
+        for (const message of rendered.messages) {
+            reservedTokens += await wrapper.model.countMessageTokens(message)
+        }
+        if (preset.config.reActInstruction) {
+            const instructions =
+                await this.chatluna.promptRenderer.renderTemplate(
+                    preset.config.reActInstruction,
+                    variables,
+                    { configurable }
+                )
+            reservedTokens += await wrapper.model.countMessageTokens(
+                new SystemMessage(instructions.text)
+            )
+        }
+        const result = await compactContext({
+            messages: await this._chatHistory.getMessages(),
             model: wrapper.model,
             conversationId: this._input.conversationId,
-            preset: this._input.preset,
-            threshold: this.chatluna.currentConfig.infiniteContextThreshold,
+            autoCompactWindow: this.chatluna.currentConfig.autoCompactWindow,
+            maxTokens: preset.config.maxOutputToken,
+            reservedTokens,
             force,
-            instruction
+            instruction,
+            mode
         })
-        if (result.messages) {
-            await this._chatHistory.replaceMessages(result.messages)
-        }
         if (result.compressed) {
+            await this._chatHistory.compact(result)
             await this.chatluna.conversation.recordCompression(
                 this._input.conversationId,
                 result
@@ -450,7 +463,6 @@ export class ChatInterface {
         this._chatHistory = new KoishiChatMessageHistory(
             this.ctx,
             this._input.conversationId,
-            10000,
             this.chatluna
         )
 
@@ -628,7 +640,7 @@ declare module 'koishi' {
         }) => Promise<void>
         'chatluna/conversation-compressed': (payload: {
             conversation: ConversationRecord
-            result: CompressContextResult
+            result: CompactionResult
         }) => Promise<void>
         'chatluna/after-chat-error': (
             error: Error,
