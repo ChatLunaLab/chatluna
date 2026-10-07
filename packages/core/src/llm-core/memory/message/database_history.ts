@@ -492,7 +492,8 @@ async function serializeMessage(
         parentId: parentId ?? null,
         role: message.getType(),
         name: message.name,
-        tool_calls: message instanceof AIMessage ? message.tool_calls : undefined,
+        tool_calls:
+            message instanceof AIMessage ? message.tool_calls : undefined,
         tool_call_id:
             message instanceof ToolMessage ? message.tool_call_id : undefined,
         additional_kwargs_binary:
