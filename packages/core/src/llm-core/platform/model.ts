@@ -210,7 +210,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             n: options?.n ?? this._options.n,
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: options?.maxTokens ?? this._options.maxTokens,
-            maxContextWindow: window > 0 ? Math.min(window, limit) : limit,
+            maxContextWindow: Math.min(window ?? limit, limit),
             variables:
                 options?.['variables_hide'] ?? options?.['variables'] ?? {},
             overrideRequestParams:
@@ -833,9 +833,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     }
 
     getModelMaxContextSize(modelName: string = this._modelName) {
-        return this._options.maxContextWindow > 0
-            ? this._options.maxContextWindow
-            : getModelContextSize(modelName)
+        return this._options.maxContextWindow ?? getModelContextSize(modelName)
     }
 
     async getNumTokens(text: string, modelName: string = this.modelName) {
