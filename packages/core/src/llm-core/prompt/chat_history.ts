@@ -5,22 +5,15 @@ import {
     PromptPipelineMiddleware
 } from './context_manager'
 import { countMessageTokens } from './system_prompts'
-import { logger } from 'koishi-plugin-chatluna'
-import { isChatLunaUserMessage } from 'koishi-plugin-chatluna/utils/langchain'
 
 // ---------------------------------------------------------------------------
 // chat_history pipeline middleware
 // ---------------------------------------------------------------------------
 
-/**
- * Truncates conversation history to fit within the token budget, keeping
- * the most recent complete turns.  Also accounts for input + scratchpad
- * token consumption so that downstream stages know the remaining budget.
- */
+/** Keep managed history intact; trim complete turns without compaction state. */
 export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
     return async (runtime: PromptContextRuntime, next) => {
         const chatHistory = runtime.chatHistory ?? []
-        const documents = runtime.documents ?? []
 
         // Pre-account input tokens
         if (runtime.input) {
@@ -48,104 +41,38 @@ export function createChatHistoryMiddleware(): PromptPipelineMiddleware {
             }
         }
 
-        // Build conversation rounds and truncate
-        const rounds = buildConversationRounds([...chatHistory])
-        const selectedRounds: BaseMessage[][] = []
-        const availableLimit =
-            runtime.sendTokenLimit - (documents.length > 0 ? 480 : 80)
-        const hasValidLimit = availableLimit > 0
-        let truncated = false
-        let usedTokens = runtime.usedTokens
-
-        for (let i = rounds.length - 1; i >= 0; i--) {
-            const round = rounds[i]
-            let roundTokens = 0
-            for (const msg of round) {
-                roundTokens += await countMessageTokens(
+        if (runtime.configurable?.context) {
+            for (const msg of chatHistory) {
+                runtime.usedTokens += await countMessageTokens(
                     msg,
                     runtime.tokenCounter
                 )
             }
-            const exceedsLimit = hasValidLimit
-                ? usedTokens + roundTokens > availableLimit
-                : false
+            runtime.result.push(...chatHistory)
+        } else {
+            let start = chatHistory.length
+            let tokens = 0
+            for (let idx = chatHistory.length - 1; idx >= 0; idx--) {
+                const msg = chatHistory[idx]
+                tokens += await countMessageTokens(msg, runtime.tokenCounter)
+                if (idx > 0 && msg.getType() !== 'human') continue
 
-            if (exceedsLimit && selectedRounds.length > 0) {
-                truncated = true
-                break
+                const exceeds =
+                    runtime.usedTokens + tokens > runtime.sendTokenLimit
+                if (exceeds && start < chatHistory.length) break
+
+                // Keep the latest turn even if it cannot fit; the model layer
+                // reports that overflow instead of silently losing the turn.
+                start = idx
+                runtime.usedTokens += tokens
+                tokens = 0
+                if (exceeds) break
             }
-
-            usedTokens += roundTokens
-            selectedRounds.unshift(round)
-
-            if (exceedsLimit) {
-                truncated = true
-                break
-            }
-        }
-
-        // Ensure at least one round
-        if (rounds.length > 0 && selectedRounds.length === 0) {
-            const lastRound = rounds[rounds.length - 1]
-            for (const msg of lastRound) {
-                usedTokens += await countMessageTokens(
-                    msg,
-                    runtime.tokenCounter
-                )
-            }
-            selectedRounds.unshift(lastRound)
-            truncated = hasValidLimit
-        }
-
-        // Flatten selected rounds and push
-        const historyMessages = selectedRounds.reduce<BaseMessage[]>(
-            (acc, round) => acc.concat(round),
-            []
-        )
-        runtime.result.push(...historyMessages)
-        runtime.usedTokens = usedTokens
-
-        if (truncated && hasValidLimit) {
-            logger?.warn(
-                `Exceeded token limit (${usedTokens} > ${availableLimit}) of the message placeholder; kept the most recent complete turns.`
-            )
+            runtime.result.push(...chatHistory.slice(start))
         }
 
         await next()
     }
-}
-
-/**
- * Split a flat message list into conversation rounds. Marked ChatLuna user
- * messages start rounds; old unmarked human messages still start rounds.
- */
-function buildConversationRounds(messages: BaseMessage[]): BaseMessage[][] {
-    const rounds: BaseMessage[][] = []
-    let current: BaseMessage[] = []
-
-    for (const message of messages) {
-        const isStart =
-            isChatLunaUserMessage(message) || message.getType() === 'human'
-
-        if (isStart) {
-            if (current.length > 0) {
-                rounds.push(current)
-            }
-            current = [message]
-        } else {
-            if (current.length === 0) {
-                current = [message]
-            } else {
-                current.push(message)
-            }
-        }
-    }
-
-    if (current.length > 0) {
-        rounds.push(current)
-    }
-
-    return rounds
 }
 
 /**

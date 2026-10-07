@@ -95,10 +95,7 @@ export class HunyuanClient extends PlatformModelAndEmbeddingsClient<ClientConfig
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                modelMaxContextSize: info.maxTokens,
-                maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
-                ),
+                maxContextWindow: info.maxTokens || 100_000,
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,

@@ -592,7 +592,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const newOnly = context.options.conversation_rule?.newOnly === true
 
         try {
-            const patch = clear
+            const patch: Partial<ConstraintRecord> = clear
                 ? {
                       activePresetLane: null,
                       defaultPreset: null,
@@ -796,7 +796,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await ctx.chatluna.conversationRuntime.compressConversation(
                     conversation,
                     context.options.force === true,
-                    context.options.conversation_compress?.instruction
+                    context.options.conversation_compress?.instruction,
+                    context.options.conversation_compress?.mode
                 )
 
             context.message = session.text(
@@ -937,21 +938,22 @@ function formatRouteScope(bindingKey: string) {
 
 function formatConversationError(
     session: Session,
-    error: Error,
+    error: unknown,
     action?: string
 ) {
     if (!(error instanceof ChatLunaError)) {
+        const message = error instanceof Error ? error.message : String(error)
         if (action != null) {
             return session.text(
                 'chatluna.conversation.messages.action_failed',
                 [
                     session.text(`chatluna.conversation.action.${action}`),
-                    error.message,
+                    message,
                     ChatLunaErrorCode.UNKNOWN_ERROR
                 ]
             )
         }
-        return error.message
+        return message
     }
 
     const code = error.errorCode
@@ -993,7 +995,7 @@ function formatConversationError(
         const field = error.data?.field ?? 'model'
         const value = error.data?.value ?? ''
         return session.text(
-            `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[field] ?? 'fixed_model'}`,
+            `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[field as keyof typeof FIXED_FIELD_MSG_KEY] ?? 'fixed_model'}`,
             [value, ChatLunaErrorCode.CONVERSATION_FIXED]
         )
     }

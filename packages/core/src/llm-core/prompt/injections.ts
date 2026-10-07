@@ -25,9 +25,7 @@ export function createInjectionsMiddleware(
         const injections = contextManager.collectInjections({
             variables: runtime.variables,
             configurable: runtime.configurable,
-            afterUserMessage: runtime.agentScratchpad
-                ? runtime.afterUserMessage
-                : undefined,
+            afterUserMessage: runtime.afterUserMessage,
             currentMessages: runtime.result
         })
 
@@ -38,7 +36,7 @@ export function createInjectionsMiddleware(
         )
 
         // Push user input
-        if (runtime.input) {
+        if (runtime.input != null) {
             runtime.result.push(runtime.input)
         }
 
@@ -49,8 +47,6 @@ export function createInjectionsMiddleware(
             } else {
                 runtime.result.push(runtime.agentScratchpad)
             }
-        } else if (runtime.input) {
-            // No scratchpad – input already pushed above
         }
 
         // Apply after-scratchpad injections (after_user_message, etc.)

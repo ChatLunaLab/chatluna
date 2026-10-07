@@ -6,6 +6,7 @@ import {
 } from '@langchain/core/messages'
 import { h, Session } from 'koishi'
 import type { ToolMask } from './llm-core/agent'
+import type { CompactionMode } from './llm-core/chat/compaction'
 
 export interface ChatInvocationRouting {
     platform: string
@@ -160,6 +161,7 @@ export interface ConversationCompressionRecord {
     outputTokens?: number
     reducedTokens?: number
     reducedPercent?: number
+    mode?: CompactionMode
     [key: string]: unknown
 }
 
@@ -209,6 +211,8 @@ export interface MessageRecord {
 
 export interface ChatLunaMessageMeta {
     recordId?: string
+    conversationId?: string
+    usage?: UsageMetadata
     createdAt?: string
     source?: 'user'
 }

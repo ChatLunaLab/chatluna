@@ -25,6 +25,7 @@ import { ChatGeneration, RUN_KEY } from '@langchain/core/outputs'
 import { BaseMemory } from '@langchain/core/memory'
 import type { PostHandler } from '../../utils/types'
 import type { AgentEvent, MessageQueue } from '../agent/types'
+import type { ContextState } from '../chat/context'
 
 export type SystemPrompts = BaseMessage[]
 
@@ -49,12 +50,15 @@ export interface ChatLunaLLMCallArg {
     signal?: AbortSignal
     postHandler?: PostHandler
     maxToken?: number
-    maxTokenLimit?: number
+    maxContextWindow?: number
     messageQueue?: MessageQueue
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void
     toolMask?: ToolMask
     callbacks?: Callbacks
     persist?: boolean
+    context?: ContextState
+    autoCompactWindow?: ContextState['autoCompactWindow']
+    onCompact?: ContextState['onCompact']
 }
 
 export interface ChatLunaLLMChainInput extends ChainInputs {
@@ -322,13 +326,13 @@ export class ChatLunaLLMChain<
     ): Promise<RunOutput> {
         const valuesForPrompt = { ...values }
         const valuesForLLM: this['llm']['ParsedCallOptions'] = {
-            ...this.llmKwargs
+            ...this.llmKwargs,
+            configurable: values['configurable']
         }
 
         for (const key of this.llm.callKeys) {
             if (key in values) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                valuesForLLM[key as any] = values[key]
+                Object.assign(valuesForLLM, { [key]: values[key] })
                 delete valuesForPrompt[key]
             }
         }

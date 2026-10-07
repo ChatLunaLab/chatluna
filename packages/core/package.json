@@ -263,7 +263,10 @@
     ],
     "dependencies": {
         "@chatluna/shared-prompt-renderer": "^1.0.6",
+        "@fontsource/noto-sans": "5.3.0",
+        "@fontsource/noto-sans-sc": "5.3.0",
         "@langchain/core": "^0.3.80",
+        "@takumi-rs/wasm": "2.13.4",
         "@vue/reactivity": "^3.6.0-alpha.2",
         "decimal.js": "^10.6.0",
         "he": "^1.2.0",

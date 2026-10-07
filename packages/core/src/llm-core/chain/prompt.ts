@@ -46,7 +46,7 @@ export interface ChatLunaChatPromptInput {
 }
 
 export interface ChatLunaChatPromptFormat {
-    input: BaseMessage
+    input?: BaseMessage
     chat_history: BaseMessage[] | string
     variables?: ChainValues
     agent_scratchpad?: BaseMessage[] | BaseMessage
@@ -158,6 +158,8 @@ export class ChatLunaChatPrompt
                 ? await this.partialVariables.instructions()
                 : this.partialVariables?.instructions)
 
+        if (configurable?.context) agentScratchpad = undefined
+
         // Handle scratchpad type normalisation
         if (agentScratchpad && typeof agentScratchpad === 'string') {
             agentScratchpad = new HumanMessage(agentScratchpad)
@@ -186,7 +188,14 @@ export class ChatLunaChatPrompt
             variables: variables ?? {},
             configurable,
             usedTokens: 0,
-            sendTokenLimit: this.sendTokenLimit ?? 4096,
+            sendTokenLimit:
+                (this.sendTokenLimit ?? 4096) -
+                (configurable?.context
+                    ? 0
+                    : Math.max(
+                          0,
+                          this.preset.value.config.maxOutputToken ?? 0
+                      ) + 3),
             tokenCounter: this.tokenCounter,
             promptRenderService: this.promptRenderService,
             preset: this.preset.value,
@@ -195,7 +204,7 @@ export class ChatLunaChatPrompt
             documents,
             agentScratchpad,
             instructions,
-            afterUserMessage: agentScratchpad ? afterUserMessage : undefined
+            afterUserMessage
         }
 
         // Run the full pipeline

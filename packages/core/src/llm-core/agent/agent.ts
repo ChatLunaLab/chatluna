@@ -31,6 +31,8 @@ import type {
     SubagentContext,
     ToolMask
 } from './types'
+import type { ContextState } from '../chat/context'
+import { toolHistoryToText } from './react'
 
 export interface CreateAgentOptions {
     id?: string
@@ -46,6 +48,7 @@ export interface CreateAgentOptions {
     instructions?: ComputedRef<string | undefined>
     returnIntermediateSteps?: boolean
     toolMask?: ToolMask
+    autoCompactWindow?: ContextState['autoCompactWindow']
 }
 
 export interface AgentGenerateOptions {
@@ -59,7 +62,10 @@ export interface AgentGenerateOptions {
     variables?: Record<string, any>
     signal?: AbortSignal
     maxToken?: number
-    maxTokenLimit?: number
+    maxContextWindow?: number
+    context?: ContextState
+    autoCompactWindow?: ContextState['autoCompactWindow']
+    onCompact?: ContextState['onCompact']
     messageQueue?: MessageQueue
     pauseGate?: (signal?: AbortSignal) => Promise<void>
     toolMask?: ToolMask
@@ -126,6 +132,18 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                     : input.prompt
             const text = getMessageContent(message.content)
             const history = input.history ?? []
+            const context: ContextState = input.context ?? {
+                history:
+                    mode === 'react'
+                        ? toolHistoryToText(history)
+                        : [...history],
+                autoCompactWindow:
+                    input.autoCompactWindow ?? options.autoCompactWindow,
+                onCompact: input.onCompact
+            }
+            if (input.context && mode === 'react') {
+                context.history = toolHistoryToText(context.history)
+            }
             const ctx = {
                 kind: input.subagentContext ? 'subagent' : 'main',
                 agentId: id,
@@ -173,14 +191,15 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
             return await bound.invoke(
                 {
                     input: message,
-                    chat_history: [...history],
+                    chat_history: context.history,
                     maxTokens,
-                    maxTokenLimit: input.maxTokenLimit,
+                    maxContextWindow: input.maxContextWindow,
                     variables: vars,
                     variables_hide: vars,
                     configurable: {
                         session: input.session,
-                        agentContext: ctx
+                        agentContext: ctx,
+                        context
                     }
                 },
                 {
@@ -205,7 +224,8 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                         session: input.session,
                         model: options.llm.value,
                         preset: name,
-                        agentContext: ctx
+                        agentContext: ctx,
+                        context
                     }
                 } as ChatLunaToolRunnable
             )

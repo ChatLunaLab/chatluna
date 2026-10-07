@@ -1,7 +1,13 @@
-import { AIMessage, BaseMessage, MessageType } from '@langchain/core/messages'
+import {
+    AIMessage,
+    BaseMessage,
+    MessageType,
+    ToolMessage
+} from '@langchain/core/messages'
 import { type TiktokenModel } from 'js-tiktoken/lite'
 import { encodingForModel } from './tiktoken'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
+import { imageTokens } from '../chat/snap'
 
 // https://www.npmjs.com/package/js-tiktoken
 
@@ -209,66 +215,61 @@ export function parseRawModelName(
     return [value.slice(0, index), value.slice(index + 1)]
 }
 
-// ---------------------------------------------------------------------------
-// Token counting with usage_metadata baseline optimization
-// ---------------------------------------------------------------------------
-
+/** Local estimate only; provider usage is valid only for its exact prompt. */
 export async function countMessageTokens(
     message: BaseMessage,
-    tokenCounter: (text: string) => Promise<number>
+    tokenCounter: (text: string) => Promise<number>,
+    model = ''
 ): Promise<number> {
-    let content = getMessageContent(message.content)
-
-    if (
-        content.includes('![image]') &&
-        content.includes('base64') &&
-        message.additional_kwargs?.['images']
-    ) {
-        content = content.replaceAll(/!\[.*?\]\(.*?\)/g, '')
+    let tokens = 3
+    if (typeof message.content === 'string') {
+        tokens += await tokenCounter(message.content)
+    } else {
+        for (const block of message.content) {
+            if (block.type === 'image_url') {
+                const image = block.image_url
+                const url = typeof image === 'string' ? image : image.url
+                let width = 2048
+                let height = 2048
+                if (url.startsWith('data:image/png;base64,')) {
+                    const header = Buffer.from(url.slice(22, 54), 'base64')
+                    if (header.length >= 24) {
+                        width = header.readUInt32BE(16)
+                        height = header.readUInt32BE(20)
+                    }
+                }
+                tokens += imageTokens(model, width, height)
+            } else if (block.type === 'text') {
+                tokens += await tokenCounter(block.text)
+            } else {
+                tokens += await tokenCounter(getMessageContent([block]))
+            }
+        }
     }
-
-    let tokens =
-        (await tokenCounter(content)) +
-        (await tokenCounter(messageTypeToOpenAIRole(message.getType()))) +
-        (message.name ? await tokenCounter(message.name) : 0)
-
-    // Account for tool_calls payload on AI messages
-    const toolCalls =
-        (message as AIMessage).tool_calls ??
-        (message.additional_kwargs?.tool_calls as unknown[] | undefined)
-    if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-        tokens += await tokenCounter(JSON.stringify(toolCalls))
+    tokens += await tokenCounter(messageTypeToOpenAIRole(message.getType()))
+    if (message.name) tokens += 1 + (await tokenCounter(message.name))
+    const calls = (message as AIMessage).tool_calls
+    const payload = calls?.length ? calls : message.additional_kwargs.tool_calls
+    if (payload?.length) tokens += await tokenCounter(JSON.stringify(payload))
+    if (message.additional_kwargs.function_call) {
+        tokens += await tokenCounter(
+            JSON.stringify(message.additional_kwargs.function_call)
+        )
     }
-
+    if (message.getType() === 'tool') {
+        tokens += await tokenCounter((message as ToolMessage).tool_call_id)
+    }
     return tokens
 }
 
-/**
- * Count tokens for messages. Uses the last AI message's usage_metadata as
- * baseline to skip re-counting earlier messages.
- */
 export async function countMessagesTokens(
     messages: BaseMessage[],
     tokenCounter: (text: string) => Promise<number>,
-    presetTokens = 0
+    model = ''
 ): Promise<number> {
-    // Find last AI message with usage_metadata as baseline
-    for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].getType() !== 'ai') continue
-        const usage = (messages[i] as AIMessage).usage_metadata
-        if (usage?.input_tokens > 0) {
-            let tail = 0
-            for (let j = i; j < messages.length; j++) {
-                tail += await countMessageTokens(messages[j], tokenCounter)
-            }
-            return Math.max(usage.input_tokens - presetTokens + tail, 0)
-        }
-    }
-
-    // Fallback: count all
     let total = 0
     for (const msg of messages) {
-        total += await countMessageTokens(msg, tokenCounter)
+        total += await countMessageTokens(msg, tokenCounter, model)
     }
     return total
 }

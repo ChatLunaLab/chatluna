@@ -80,7 +80,10 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
             if (e instanceof ChatLunaError) {
                 throw e
             }
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_INIT_ERROR,
+                e instanceof Error ? e : new Error(String(e))
+            )
         }
     }
 
@@ -99,17 +102,12 @@ export class OpenAIClient extends PlatformModelAndEmbeddingsClient<AzureOpenAICl
         }
 
         if (info.type === ModelType.llm) {
-            const modelMaxContextSize = getModelMaxContextSize(info)
             return new ChatLunaChatModel({
                 usageReporter: report,
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                maxTokenLimit: Math.floor(
-                    (info.maxTokens || modelMaxContextSize || 128_000) *
-                        this._config.maxContextRatio
-                ),
-                modelMaxContextSize,
+                maxContextWindow: getModelMaxContextSize(info),
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

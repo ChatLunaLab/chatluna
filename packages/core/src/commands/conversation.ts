@@ -1,6 +1,7 @@
 import { Context } from 'koishi'
 import { Config } from '../config'
 import { ChatChain } from '../chains/chain'
+import type { CompactionMode } from '../llm-core/chat/compaction'
 
 export function apply(ctx: Context, _config: Config, chain: ChatChain) {
     ctx.command('chatluna.rule', {
@@ -191,7 +192,14 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
         .option('preset', '-p <preset:string>')
         .option('archived', '-a')
         .option('all', '--all')
+        .option('mode', '--mode <mode:string>')
         .action(async ({ options, session }, instruction) => {
+            const mode = options.mode
+            if (mode != null && mode !== 'soft' && mode !== 'snap') {
+                return session.text(
+                    'commands.chatluna.compress.messages.invalid_mode'
+                )
+            }
             const presetLane = options.preset?.trim() || undefined
             const includeArchived =
                 options.archived === true || options.all === true
@@ -208,7 +216,8 @@ export function apply(ctx: Context, _config: Config, chain: ChatChain) {
                         includeArchived
                     },
                     conversation_compress: {
-                        instruction: instruction?.trim() || undefined
+                        instruction: instruction?.trim() || undefined,
+                        mode: mode as CompactionMode | undefined
                     },
                     i18n_base: 'commands.chatluna.compress.messages'
                 },
@@ -465,6 +474,7 @@ declare module '../chains/chain' {
         }
         conversation_compress?: {
             instruction?: string
+            mode?: CompactionMode
         }
         i18n_base?: string
     }

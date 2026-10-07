@@ -185,9 +185,7 @@ export class ChatLunaBrowsingChain
         const prompt = new ChatLunaChatPrompt({
             preset,
             tokenCounter: (text) => llm.getNumTokens(text),
-            sendTokenLimit:
-                llm.invocationParams().maxTokenLimit ??
-                llm.getModelMaxContextSize(),
+            sendTokenLimit: llm.getModelMaxContextSize(),
             promptRenderService: variableService,
             contextManager
         })
@@ -253,7 +251,10 @@ export class ChatLunaBrowsingChain
         variables,
         maxToken,
         signal,
-        toolMask
+        toolMask,
+        maxContextWindow: window,
+        autoCompactWindow: threshold,
+        onCompact
     }: ChatLunaLLMCallArg): Promise<ChainValues> {
         this._toolMask = toolMask
         const requests: ChainValues = {
@@ -263,6 +264,7 @@ export class ChatLunaBrowsingChain
         let chatHistory = (
             await this.historyMemory.loadMemoryVariables(requests)
         )[this.historyMemory.memoryKey] as BaseMessage[]
+        const history = [...chatHistory]
 
         chatHistory = chatHistory.slice()
 
@@ -320,9 +322,15 @@ export class ChatLunaBrowsingChain
                 stream,
                 signal,
                 configurable: {
-                    session
+                    session,
+                    context: {
+                        history,
+                        autoCompactWindow: threshold,
+                        onCompact
+                    }
                 },
-                maxTokens: maxToken
+                maxTokens: maxToken,
+                maxContextWindow: window
             },
             events
         )

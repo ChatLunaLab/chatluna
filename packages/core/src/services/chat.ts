@@ -173,15 +173,9 @@ export class ChatLunaService extends Service<Config> {
             return promise
         }
 
-        let timeoutError: Error | null = null
-
-        try {
-            throw new Error(
-                `Timeout waiting for platform ${pluginName} to load`
-            )
-        } catch (e) {
-            timeoutError = e
-        }
+        const timeoutError = new Error(
+            `Timeout waiting for platform ${pluginName} to load`
+        )
 
         // 添加超时处理
         const timeoutId = this.ctx.setTimeout(() => {
@@ -473,7 +467,7 @@ export class ChatLunaService extends Service<Config> {
                 preset,
                 tokenCounter: (text) => model.getNumTokens(text),
                 sendTokenLimit:
-                    model.invocationParams().maxTokenLimit ??
+                    model.invocationParams().maxContextWindow ??
                     model.getModelMaxContextSize(),
                 contextManager: this._contextManager,
                 promptRenderService: this._promptRenderer
@@ -489,6 +483,7 @@ export class ChatLunaService extends Service<Config> {
             prompt,
             mode: options.mode,
             maxSteps: options.maxSteps,
+            autoCompactWindow: this.config.autoCompactWindow,
             handleParsingErrors: options.handleParsingErrors,
             instructions,
             returnIntermediateSteps: options.returnIntermediateSteps,
@@ -1176,7 +1171,8 @@ export class ChatLunaPlugin<
                 result = { type: 'success', content }
             }
         } catch (e) {
-            const content = `适配器 ${this.platformName} 加载失败: ${e.message}`
+            const err = e instanceof Error ? e : new Error(String(e))
+            const content = `适配器 ${this.platformName} 加载失败: ${err.message}`
             if (notification) {
                 notification.update({ content, type: 'danger' })
             } else {
@@ -1186,7 +1182,7 @@ export class ChatLunaPlugin<
             this.ctx.chatluna.uninstallPlugin(this)
 
             // unstable code
-            this.ctx.scope.cancel(e)
+            this.ctx.scope.cancel(err)
 
             throw e
         }

@@ -27,7 +27,6 @@ $inner:
           $desc: 'Gemini 的 API Key 和请求地址列表。**Gemini API 请求地址末尾请追加 `/v1beta`**'
 
     - $desc: '模型配置'
-      maxContextRatio: 最大上下文使用比例（0~1），控制可用的模型上下文窗口大小的最大百分比。例如 0.35 表示最多使用模型上下文的 35%。
       temperature: '回复的随机性程度，数值越高，回复越随机（范围：0~2）。'
       googleSearch: '为模型启用谷歌搜索。'
       imageGeneration: '为模型启用图像生成。目前仅支持 `gemini-*-image-*` 和 `gemini-2.5-flash-image-preview` 模型。'

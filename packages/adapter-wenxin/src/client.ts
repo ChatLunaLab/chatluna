@@ -122,17 +122,12 @@ export class WenxinClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
         }
 
         if (info.type === ModelType.llm) {
-            const modelMaxContextSize = info.maxTokens
             return new ChatLunaChatModel({
                 usageReporter: report,
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                modelMaxContextSize,
-                maxTokenLimit: Math.floor(
-                    (info.maxTokens || modelMaxContextSize || 128_000) *
-                        this._config.maxContextRatio
-                ),
+                maxContextWindow: info.maxTokens || 128_000,
                 frequencyPenalty: this._config.frequencyPenalty,
                 presencePenalty: this._config.presencePenalty,
                 timeout: this._config.timeout,

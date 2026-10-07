@@ -1,21 +1,14 @@
 import { randomUUID } from 'crypto'
-import {
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    ToolMessage
-} from '@langchain/core/messages'
+import { BaseMessage, HumanMessage } from '@langchain/core/messages'
 import type { Session } from 'koishi'
 import { logger } from 'koishi-plugin-chatluna'
 import type { ConversationRecord, Message } from 'koishi-plugin-chatluna'
 import type { ChatEvents } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { observationToMessageContent } from '../legacy-executor'
 import { MessageQueue } from '../types'
 import type {
     AgentEvent,
     AgentRunContext,
-    AgentStep,
     SubagentContext,
     ToolMask
 } from '../types'
@@ -166,6 +159,10 @@ export async function runAgentTask(options: {
                 toolMask,
                 subagentContext: subCtx,
                 history: [...options.task.messages],
+                onCompact: async (result) => {
+                    options.task.messages = [...result.messages]
+                    options.task.updatedAt = Date.now()
+                },
                 signal,
                 messageQueue: queue,
                 pauseGate: async (sig) => {
@@ -341,9 +338,7 @@ async function onTaskEvent(
 
     if (event.type === 'tool-result') {
         saveUser()
-        if (event.steps.length > 0) {
-            appendTaskMessages(task, createAgentToolMessages(event.steps))
-        }
+        appendTaskMessages(task, event.messages)
         for (const step of event.steps) {
             run.trace.push({
                 id: `${run.runId}:tool-result:${step.action.toolCallId ?? run.trace.length}`,
@@ -446,34 +441,4 @@ function appendTaskMessages(task: AgentTaskSession, messages: BaseMessage[]) {
     if (messages.length < 1) return
     task.messages.push(...messages)
     task.updatedAt = Date.now()
-}
-
-function createAgentToolMessages(steps: AgentStep[]): BaseMessage[] {
-    const reasoning = steps[0]?.action.reasoningContent
-    const message = steps[0]?.action.messageLog?.[0]
-    return [
-        new AIMessage({
-            content: '',
-            additional_kwargs: {
-                ...(message?.additional_kwargs ?? {}),
-                ...(reasoning != null ? { reasoning_content: reasoning } : {})
-            },
-            tool_calls: steps.map((step) => ({
-                id: step.action.toolCallId,
-                name: step.action.tool,
-                args:
-                    typeof step.action.toolInput !== 'string'
-                        ? step.action.toolInput
-                        : { input: step.action.toolInput }
-            }))
-        }),
-        ...steps.map(
-            (step) =>
-                new ToolMessage({
-                    content: observationToMessageContent(step.observation),
-                    tool_call_id: step.action.toolCallId,
-                    name: step.action.tool
-                })
-        )
-    ]
 }

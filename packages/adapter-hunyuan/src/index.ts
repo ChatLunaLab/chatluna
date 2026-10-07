@@ -43,7 +43,6 @@ export interface Config extends ChatLunaPlugin.Config {
         modelType: string
         contextSize: number
     }[]
-    maxContextRatio: number
     temperature: number
 }
 
@@ -60,12 +59,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .role('table')
     }),
     Schema.object({
-        maxContextRatio: Schema.number()
-            .min(0)
-            .max(1)
-            .step(0.0001)
-            .role('slider')
-            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         enableSearch: Schema.boolean().default(true)
     })

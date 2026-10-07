@@ -17,7 +17,6 @@ import {
     ToolInputParsingException
 } from '@langchain/core/tools'
 import type { ChainValues } from '@langchain/core/utils/types'
-import { logger } from 'koishi-plugin-chatluna'
 import {
     BaseChain,
     ChainInputs
@@ -33,21 +32,19 @@ import {
     AgentStep,
     applyToolMask,
     CHATLUNA_AGENT_EVENT,
-    MessageQueue,
-    ScratchpadEntry
+    MessageQueue
 } from './types'
 import {
     type AgentLoopState,
     applyLoopGuidance,
     coerceToAgentObservation,
     createAgentLoopState,
-    observationToMessageContent,
     repairToolAction,
     toOutput,
     toToolInputErrorObservation
 } from './tool-observation'
-import { compressChunk } from '../chain/infinite_context_chain'
-import type { ChatLunaChatModel } from '../platform/model'
+import { _formatIntermediateSteps } from './openai'
+import type { ContextState } from '../chat/context'
 
 async function executeTools(
     actions: AgentAction[],
@@ -226,16 +223,23 @@ async function executeTools(
 async function plan(
     agent: Runnable,
     input: ChainValues,
+    message: ChainValues['input'],
     steps: AgentStep[],
-    scratchpad: ScratchpadEntry[],
+    context: ContextState,
     config: RunnableConfig | undefined,
     signal?: AbortSignal
 ) {
     const stream = await agent.stream(
         {
             ...input,
+            input: message,
+            chat_history: context.history,
             steps,
-            scratchpadEntries: scratchpad
+            configurable: {
+                ...input.configurable,
+                ...config?.configurable,
+                context
+            }
         },
         config
     )
@@ -268,14 +272,51 @@ export async function* runAgent(
     options: RunAgentOptions
 ): AsyncGenerator<AgentEvent> {
     const steps: AgentStep[] = []
-    const scratchpad: ScratchpadEntry[] = []
     const signal =
         options.signal ?? (options.config?.signal as AbortSignal | undefined)
-    const config =
-        signal == null
-            ? options.config
-            : patchConfig(options.config, { signal })
-    const runtime = (config?.configurable ?? {}) as AgentRuntimeConfigurable
+    const runtime = {
+        ...options.input.configurable,
+        ...options.config?.configurable
+    } as AgentRuntimeConfigurable
+    const context: ContextState = runtime.context ?? {
+        history: Array.isArray(options.input.chat_history)
+            ? [...options.input.chat_history]
+            : typeof options.input.chat_history === 'string'
+              ? [new HumanMessage(options.input.chat_history)]
+              : [],
+        autoCompactWindow:
+            options.input.autoCompactWindow ?? runtime.autoCompactWindow,
+        onCompact: options.input.onCompact
+    }
+    runtime.context = context
+    const config = {
+        ...patchConfig(options.config, {
+            ...(signal == null ? {} : { signal }),
+            configurable: runtime
+        }),
+        ...(options.input.maxTokens == null
+            ? {}
+            : { maxTokens: options.input.maxTokens }),
+        ...(options.input.maxContextWindow == null
+            ? {}
+            : { maxContextWindow: options.input.maxContextWindow })
+    }
+    let input = options.input.input
+    const appendHistory = (messages: BaseMessage[]) => {
+        if (input != null) {
+            context.history.push(
+                ...(Array.isArray(input)
+                    ? input
+                    : [
+                          typeof input === 'string'
+                              ? new HumanMessage(input)
+                              : input
+                      ])
+            )
+            input = undefined
+        }
+        context.history.push(...messages)
+    }
     const queue = options.messageQueue ?? runtime.messageQueue
     const toolMap = Object.fromEntries(
         options.tools.map((tool) => [tool.name.toLowerCase(), tool])
@@ -293,10 +334,7 @@ export async function* runAgent(
 
         const pending = queue?.drain() ?? []
         if (pending.length > 0) {
-            scratchpad.push({
-                type: 'human_update',
-                messages: pending
-            })
+            appendHistory(pending)
 
             yield {
                 type: 'human-update',
@@ -314,8 +352,9 @@ export async function* runAgent(
             output = await plan(
                 options.agent,
                 options.input,
+                input,
                 steps,
-                scratchpad,
+                context,
                 config,
                 signal
             )
@@ -361,6 +400,7 @@ export async function* runAgent(
 
             const pending = queue?.drain() ?? []
             if (pending.length > 0) {
+                appendHistory(pending)
                 yield {
                     type: 'human-update',
                     messages: pending
@@ -402,39 +442,24 @@ export async function* runAgent(
         )
 
         steps.push(...newSteps)
-        scratchpad.push(...newSteps)
 
         if (newSteps.length > 0) {
+            const messages = _formatIntermediateSteps(newSteps)
+            appendHistory(messages)
             yield {
                 type: 'tool-result',
-                steps: newSteps
-            }
-        }
-
-        // Compress scratchpad if input tokens are approaching context limit
-        const model = config?.configurable?.['model'] as
-            ChatLunaChatModel | undefined
-        if (model && scratchpad.length > 6) {
-            // Get input_tokens from the AI message that triggered tool calls
-            const aiMsg = output[0]?.['messageLog']?.[0] as
-                AIMessage | undefined
-            const inputTokens = (aiMsg as AIMessage)?.usage_metadata
-                ?.input_tokens
-            if (inputTokens > 0) {
-                await compressScratchpad(
-                    scratchpad,
-                    options.input,
-                    model,
-                    (config?.configurable as AgentRuntimeConfigurable)
-                        ?.agentContext?.conversationId ?? '',
-                    inputTokens,
-                    signal
-                )
+                steps: newSteps,
+                messages
             }
         }
 
         const last = newSteps[newSteps.length - 1]
         const tool = last ? toolMap[last.action.tool?.toLowerCase()] : undefined
+        const replyEmitted =
+            last?.observation != null &&
+            typeof last.observation === 'object' &&
+            'replyEmitted' in last.observation &&
+            last.observation.replyEmitted === true
 
         if (
             last != null &&
@@ -447,6 +472,7 @@ export async function* runAgent(
 
             const pending = queue?.drain() ?? []
             if (pending.length > 0) {
+                appendHistory(pending)
                 yield {
                     type: 'human-update',
                     messages: pending
@@ -457,12 +483,10 @@ export async function* runAgent(
                 type: 'done',
                 output:
                     // TODO: remove this property
-                    last.observation['replyEmitted'] === true
-                        ? ''
-                        : toOutput(last.observation),
+                    replyEmitted ? '' : toOutput(last.observation),
                 log: last.action.log,
                 steps,
-                replyEmitted: last.observation['replyEmitted'] === true
+                replyEmitted
             }
 
             return
@@ -486,111 +510,6 @@ export async function* runAgent(
         output: 'Agent stopped due to iteration limit.',
         log: '',
         steps
-    }
-}
-
-/**
- * Compress scratchpad when input tokens approach context limit.
- * Summarizes the scratchpad prefix + chat_history and keeps the latest batch.
- */
-async function compressScratchpad(
-    scratchpad: ScratchpadEntry[],
-    input: ChainValues,
-    model: ChatLunaChatModel,
-    conversationId: string,
-    inputTokens: number,
-    signal?: AbortSignal
-): Promise<void> {
-    const invocation = model.invocationParams()
-    const limit =
-        invocation.maxTokenLimit && invocation.maxTokenLimit > 0
-            ? invocation.maxTokenLimit
-            : model.getModelMaxContextSize()
-
-    if (!limit || limit <= 0 || inputTokens < limit * 0.85) return
-
-    const keepIndex = scratchpad
-        .map(
-            (entry) =>
-                !('messages' in entry) &&
-                (entry.action.messageLog?.length ?? 0) > 0
-        )
-        .lastIndexOf(true)
-    const count = keepIndex < 0 ? scratchpad.length : keepIndex
-    if (count === 0) return
-
-    logger.info(
-        '[ScratchpadCompress] %d provider input tokens reached usable limit %d, compressing',
-        inputTokens,
-        limit
-    )
-
-    const toCompress = scratchpad.slice(0, count)
-
-    const chatHistory = (input['chat_history'] ?? []) as BaseMessage[]
-    const chatPart = chatHistory
-        .map((msg) => {
-            const content =
-                typeof msg.content === 'string'
-                    ? msg.content.trim()
-                    : JSON.stringify(msg.content)
-            return `[${msg.getType().toUpperCase()}${msg.name ? ` (${msg.name})` : ''}]\n${content || '(empty)'}`
-        })
-        .join('\n\n---\n\n')
-
-    const scratchPart = toCompress
-        .map((entry) => {
-            if ('messages' in entry) {
-                return entry.messages
-                    .map((m) => {
-                        const c =
-                            typeof m.content === 'string'
-                                ? m.content.trim()
-                                : JSON.stringify(m.content)
-                        return `[HUMAN]\n${c}`
-                    })
-                    .join('\n\n---\n\n')
-            }
-            const inp =
-                typeof entry.action.toolInput === 'string'
-                    ? entry.action.toolInput
-                    : JSON.stringify(entry.action.toolInput)
-            const obs = observationToMessageContent(entry.observation)
-            return `[AI Tool Call: ${entry.action.tool}]\n${inp.slice(0, 300)}\n\n[TOOL Result]\n${obs.slice(0, 500)}`
-        })
-        .join('\n\n---\n\n')
-
-    const transcript = chatPart
-        ? `${chatPart}\n\n---\n\n${scratchPart}`
-        : scratchPart
-    if (!transcript.trim()) return
-
-    try {
-        const summary = await compressChunk(
-            model,
-            transcript,
-            conversationId,
-            signal
-        )
-        if (!summary?.text.trim()) return
-
-        input['chat_history'] = [
-            new HumanMessage({
-                content: summary.text.trim(),
-                name: 'infinite_context',
-                additional_kwargs: { source: 'scratchpad-compression' }
-            })
-        ]
-        scratchpad.splice(0, count)
-
-        logger.info(
-            '[ScratchpadCompress] Compressed %d entries, kept %d',
-            count,
-            scratchpad.length
-        )
-    } catch (e) {
-        checkAborted(signal)
-        logger.error('[ScratchpadCompress] Failed:', e)
     }
 }
 

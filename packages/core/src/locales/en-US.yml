@@ -72,11 +72,13 @@ commands:
                 preset: Preset lane.
                 archived: Include archived conversations.
                 all: Include archived conversations.
+                mode: Compression mode (soft or snap); automatic when omitted.
             messages:
                 success: 'Compressed: {0} tokens -> {1} tokens, reduced by {2} tokens ({3}%)'
                 skipped: 'Compression skipped: {0} tokens -> {1} tokens, reduced by {2} tokens ({3}%)'
                 no_conversation: 'No conversation is available to compress.'
                 failed: 'Failed to compress chat history for conversation {0} ({1}): {2}'
+                invalid_mode: 'Invalid compression mode. Use soft or snap.'
         delete:
             description: Delete the current or target conversation.
             arguments:
@@ -175,7 +177,7 @@ commands:
                     stop_failed: 'Failed to stop conversation.'
                     success: 'Conversation stopped successfully.'
             compress:
-                description: Manually compress chat history using Infinite Context.
+                description: Manually compact chat history.
                 options:
                     conversation: Target conversation by seq, ID, or title.
                 messages:

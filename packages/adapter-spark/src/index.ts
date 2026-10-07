@@ -51,7 +51,6 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     appConfigs: (Record<string, string> & { enabled?: boolean })[]
-    maxContextRatio: number
     temperature: number
 }
 
@@ -65,12 +64,6 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([{ ...defaultSparkAppConfig }])
     }),
     Schema.object({
-        maxContextRatio: Schema.number()
-            .min(0)
-            .max(1)
-            .step(0.0001)
-            .role('slider')
-            .default(0.35),
         temperature: Schema.percent().min(0.1).max(1).step(0.01).default(1)
     })
 ]).i18n({

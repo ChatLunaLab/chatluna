@@ -9,6 +9,5 @@ $inner:
           $desc: 'Hunyuan LLM API credentials'
 
     - $desc: 'Model Parameters'
-      maxContextRatio: 'Maximum context usage ratio (0-1). Controls the maximum percentage of model context window available for use. For example, 0.35 means at most 35% of the model context can be used.'
       temperature: 'Sampling temperature (higher values increase randomness)'
       enableSearch: 'Toggle model built-in search functionality'
