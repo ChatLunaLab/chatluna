@@ -63,6 +63,15 @@ Install the plugin in Koishi for basic functionality. For detailed setup, see ou
   An explicit maximum output token count may require earlier compaction so
   input plus reserved output fits the hard window. Compaction does not delete
   the original conversation history.
+- Image token estimates use known model-specific pricing rules when available;
+  otherwise they count 32px patches: `ceil(width / 32) * ceil(height / 32)`.
+  These are local estimates, not provider billing guarantees.
+- Calls without `configurable.context` retain the newest complete history turns
+  that fit the prompt budget, accounting for current input, scratchpad, and the
+  preset's output limit. Managed calls preserve full history for compaction.
+  An oversized latest turn is retained so the model reports the overflow.
+- Legacy agent loops retain the caller's input object and append the initial
+  input to history only once, including when queued messages arrive.
 
 For configurations saved before this change, remove any `maxContextWindow`
 setting and replace `autoCompactWindow: auto` with `autoCompactWindow: '90%'`.
