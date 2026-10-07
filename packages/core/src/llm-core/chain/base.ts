@@ -51,7 +51,6 @@ export interface ChatLunaLLMCallArg {
     postHandler?: PostHandler
     maxToken?: number
     maxContextWindow?: number
-    maxTokenLimit?: number
     messageQueue?: MessageQueue
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void
     toolMask?: ToolMask

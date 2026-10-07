@@ -72,7 +72,6 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
 
     /** Absolute request context window, including the reserved output. */
     maxContextWindow?: number
-    maxTokenLimit?: number
 
     /** Total probability mass of tokens to consider at each step */
     topP?: number
@@ -112,7 +111,6 @@ export interface ChatLunaModelCallOptions extends BaseChatModelCallOptions {
 
 export interface ChatLunaModelInput extends ChatLunaModelCallOptions {
     llmType?: string
-    modelMaxContextSize?: number
 
     modelInfo: ModelInfo
 
@@ -163,7 +161,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             'temperature',
             'maxTokens',
             'maxContextWindow',
-            'maxTokenLimit',
             'topP',
             'frequencyPenalty',
             'presencePenalty',
@@ -192,10 +189,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     invocationParams(
         options?: this['ParsedCallOptions']
     ): ChatLunaModelCallOptions {
-        const window =
-            options?.maxContextWindow ??
-            options?.maxTokenLimit ??
-            this._options.maxTokenLimit
+        const window = options?.maxContextWindow
         const limit = this.getModelMaxContextSize()
         const modelName = options?.model ?? this._modelName
 
@@ -217,7 +211,6 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
             logitBias: options?.logitBias ?? this._options.logitBias,
             maxTokens: options?.maxTokens ?? this._options.maxTokens,
             maxContextWindow: window > 0 ? Math.min(window, limit) : limit,
-            maxTokenLimit: window > 0 ? Math.min(window, limit) : limit,
             variables:
                 options?.['variables_hide'] ?? options?.['variables'] ?? {},
             overrideRequestParams:
@@ -842,7 +835,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
     getModelMaxContextSize(modelName: string = this._modelName) {
         return this._options.maxContextWindow > 0
             ? this._options.maxContextWindow
-            : (this._options.modelMaxContextSize ?? getModelContextSize(modelName))
+            : getModelContextSize(modelName)
     }
 
     async getNumTokens(text: string, modelName: string = this.modelName) {
