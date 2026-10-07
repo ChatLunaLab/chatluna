@@ -592,7 +592,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         const newOnly = context.options.conversation_rule?.newOnly === true
 
         try {
-            const patch = clear
+            const patch: Partial<ConstraintRecord> = clear
                 ? {
                       activePresetLane: null,
                       defaultPreset: null,
@@ -994,7 +994,7 @@ function formatConversationError(
         const field = error.data?.field ?? 'model'
         const value = error.data?.value ?? ''
         return session.text(
-            `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[field] ?? 'fixed_model'}`,
+            `chatluna.conversation.messages.${FIXED_FIELD_MSG_KEY[field as keyof typeof FIXED_FIELD_MSG_KEY] ?? 'fixed_model'}`,
             [value, ChatLunaErrorCode.CONVERSATION_FIXED]
         )
     }
