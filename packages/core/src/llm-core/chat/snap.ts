@@ -59,9 +59,8 @@ export function imageTokens(
                 (mini ? 5667 : 170)
         )
     }
-    // Unknown/aliased model accounting is not inferred from another provider.
-    // Conservative policy ceiling per bounded page; may refuse useful snaps.
-    return 32768
+    // Use 32px patches when the model's image pricing rule is unknown.
+    return Math.ceil(width / 32) * Math.ceil(height / 32)
 }
 
 export async function renderContext(
