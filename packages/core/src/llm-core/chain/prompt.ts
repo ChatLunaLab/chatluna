@@ -46,7 +46,7 @@ export interface ChatLunaChatPromptInput {
 }
 
 export interface ChatLunaChatPromptFormat {
-    input: BaseMessage
+    input?: BaseMessage
     chat_history: BaseMessage[] | string
     variables?: ChainValues
     agent_scratchpad?: BaseMessage[] | BaseMessage
@@ -158,6 +158,8 @@ export class ChatLunaChatPrompt
                 ? await this.partialVariables.instructions()
                 : this.partialVariables?.instructions)
 
+        if (configurable?.context) agentScratchpad = undefined
+
         // Handle scratchpad type normalisation
         if (agentScratchpad && typeof agentScratchpad === 'string') {
             agentScratchpad = new HumanMessage(agentScratchpad)
@@ -195,7 +197,7 @@ export class ChatLunaChatPrompt
             documents,
             agentScratchpad,
             instructions,
-            afterUserMessage: agentScratchpad ? afterUserMessage : undefined
+            afterUserMessage
         }
 
         // Run the full pipeline
