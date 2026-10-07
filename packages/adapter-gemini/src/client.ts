@@ -136,7 +136,10 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
             }
         } catch (e) {
             if (e instanceof ChatLunaError) throw e
-            throw new ChatLunaError(ChatLunaErrorCode.MODEL_INIT_ERROR, e)
+            throw new ChatLunaError(
+                ChatLunaErrorCode.MODEL_INIT_ERROR,
+                e instanceof Error ? e : new Error(String(e))
+            )
         }
 
         const items: ModelInfo[] = this._config.additionalModels.map(
@@ -235,10 +238,7 @@ export class GeminiClient extends PlatformModelAndEmbeddingsClient<ClientConfig>
                 modelInfo: info,
                 requester: this._requester,
                 model,
-                modelMaxContextSize: info.maxTokens,
-                maxTokenLimit: Math.floor(
-                    (info.maxTokens || 100_000) * this._config.maxContextRatio
-                ),
+                maxContextWindow: info.maxTokens || 100_000,
                 timeout: this._config.timeout,
                 temperature: this._config.temperature,
                 maxRetries: this._config.maxRetries,

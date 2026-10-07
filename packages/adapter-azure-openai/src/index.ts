@@ -26,13 +26,15 @@ export function apply(ctx: Context, config: Config) {
                         apiKey,
                         apiEndpoint,
                         // [{model,xx}] => Record<string(model),{}>
-                        supportModels: config.supportModels.reduce(
-                            (acc, value) => {
-                                acc[value.model] = value
-                                return acc
-                            },
-                            {}
-                        ),
+                        supportModels: config.supportModels.reduce<
+                            Record<
+                                string,
+                                (typeof config.supportModels)[number]
+                            >
+                        >((acc, value) => {
+                            acc[value.model] = value
+                            return acc
+                        }, {}),
                         platform: 'azure',
                         chatLimit: config.chatTimeLimit,
                         timeout: config.timeout,
@@ -50,7 +52,6 @@ export function apply(ctx: Context, config: Config) {
 
 export interface Config extends ChatLunaPlugin.Config {
     apiKeys: [string, string, boolean][]
-    maxContextRatio: number
     supportModels: {
         model: string
         modelType: string
@@ -96,12 +97,6 @@ export const Config: Schema<Config> = Schema.intersect([
                 contextSize: 128000
             }
         ]),
-        maxContextRatio: Schema.number()
-            .min(0)
-            .max(1)
-            .step(0.0001)
-            .role('slider')
-            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0)

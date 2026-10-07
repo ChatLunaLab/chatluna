@@ -63,7 +63,6 @@ export interface Config extends ChatLunaPlugin.Config {
     blacklistModels: string[]
     additionCookies: [string, string][]
     additionHeaders: [string, string][]
-    maxContextRatio: number
     temperature: number
     presencePenalty: number
     platform: string
@@ -129,12 +128,6 @@ export const Config: Schema<Config> = Schema.intersect([
         ).default([])
     }),
     Schema.object({
-        maxContextRatio: Schema.number()
-            .min(0)
-            .max(1)
-            .step(0.0001)
-            .role('slider')
-            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
@@ -177,7 +170,7 @@ export const Config: Schema<Config> = Schema.intersect([
 ]).i18n({
     'zh-CN': require('./locales/zh-CN.schema.yml'),
     'en-US': require('./locales/en-US.schema.yml')
-}) as Schema<Config>
+}) as unknown as Schema<Config>
 
 export const usage = `
 ## OpenAI 兼容格式适配器说明

@@ -78,21 +78,16 @@ export class SparkClient extends PlatformModelClient<SparkClientConfig> {
             throw new ChatLunaError(ChatLunaErrorCode.MODEL_NOT_FOUND)
         }
 
-        const modelMaxContextSize = info.maxTokens
         return new ChatLunaChatModel({
             usageReporter: report,
             modelInfo: info,
             requester: this._requester,
             model,
-            maxTokenLimit: Math.floor(
-                (info.maxTokens || modelMaxContextSize || 128_000) *
-                    this._config.maxContextRatio
-            ),
+            maxContextWindow: info.maxTokens || 128_000,
             timeout: this._config.timeout,
             temperature: this._config.temperature,
             maxRetries: this._config.maxRetries,
-            llmType: 'spark',
-            modelMaxContextSize
+            llmType: 'spark'
         })
     }
 }

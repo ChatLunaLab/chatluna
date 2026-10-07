@@ -53,7 +53,6 @@ export interface Config extends ChatLunaPlugin.Config {
         modelCapabilities: ModelCapabilities[]
         contextSize: number
     }[]
-    maxContextRatio: number
     temperature: number
     presencePenalty: number
     frequencyPenalty: number
@@ -98,12 +97,6 @@ export const Config: Schema<Config> = Schema.intersect([
             .role('table')
     }),
     Schema.object({
-        maxContextRatio: Schema.number()
-            .min(0)
-            .max(1)
-            .step(0.0001)
-            .role('slider')
-            .default(0.35),
         temperature: Schema.percent().min(0).max(2).step(0.1).default(1),
         presencePenalty: Schema.number().min(-2).max(2).step(0.1).default(0),
         frequencyPenalty: Schema.number().min(-2).max(2).step(0.1).default(0)

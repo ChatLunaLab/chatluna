@@ -166,17 +166,12 @@ export class ClaudeClient extends PlatformModelClient<ClientConfig> {
         report: ModelUsageReporter
     ): ChatLunaChatModel {
         const info = this._modelInfos[model]
-        const modelMaxContextSize = info.maxTokens ?? 128000
         return new ChatLunaChatModel({
             usageReporter: report,
             requester: this._requester,
             modelInfo: info,
             model,
-            maxTokenLimit: Math.floor(
-                (info.maxTokens || modelMaxContextSize) *
-                    this._config.maxContextRatio
-            ),
-            modelMaxContextSize,
+            maxContextWindow: info.maxTokens || 128_000,
             timeout: this._config.timeout,
             maxRetries: this._config.maxRetries,
             fileHandlingConfig: this.getFileHandlingConfig(),
