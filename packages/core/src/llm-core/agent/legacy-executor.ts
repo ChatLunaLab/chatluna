@@ -223,6 +223,7 @@ async function executeTools(
 async function plan(
     agent: Runnable,
     input: ChainValues,
+    message: ChainValues['input'],
     steps: AgentStep[],
     context: ContextState,
     config: RunnableConfig | undefined,
@@ -231,6 +232,7 @@ async function plan(
     const stream = await agent.stream(
         {
             ...input,
+            input: message,
             chat_history: context.history,
             steps,
             configurable: {
@@ -299,8 +301,8 @@ export async function* runAgent(
             ? {}
             : { maxContextWindow: options.input.maxContextWindow })
     }
+    let input = options.input.input
     const appendHistory = (messages: BaseMessage[]) => {
-        const input = options.input.input
         if (input != null) {
             context.history.push(
                 ...(Array.isArray(input)
@@ -311,7 +313,7 @@ export async function* runAgent(
                               : input
                       ])
             )
-            options.input.input = undefined
+            input = undefined
         }
         context.history.push(...messages)
     }
@@ -350,6 +352,7 @@ export async function* runAgent(
             output = await plan(
                 options.agent,
                 options.input,
+                input,
                 steps,
                 context,
                 config,
