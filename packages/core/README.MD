@@ -51,6 +51,22 @@ _A bot plugin for LLM chat services with multi-model integration, extensibility,
 
 Install the plugin in Koishi for basic functionality. For detailed setup, see our [docs](https://chatluna.chat/guide/getting-started.html).
 
+### Context windows
+
+- The maximum context window comes directly from the adapter's model capacity
+  in tokens. There is no separate `maxContextWindow` setting.
+- Core `autoCompactWindow`: the context threshold that triggers compaction.
+  The default `90%` leaves 10% of the model capacity as compaction headroom.
+  Integer percentages from `1%` to `100%` and positive token counts are accepted.
+  A `128000`-token window therefore defaults to a `115200`-token threshold.
+- Compaction checks the full request, including system prompts and tools.
+  An explicit maximum output token count may require earlier compaction so
+  input plus reserved output fits the hard window. Compaction does not delete
+  the original conversation history.
+
+For configurations saved before this change, remove any `maxContextWindow`
+setting and replace `autoCompactWindow: auto` with `autoCompactWindow: '90%'`.
+
 ## 🔌 Supported Models
 
 | Model/Platform | Integration | Features | Notes |
