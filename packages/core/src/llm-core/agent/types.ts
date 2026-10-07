@@ -12,6 +12,7 @@ import type {
     MessageContentVideo
 } from 'koishi-plugin-chatluna/utils/langchain'
 import type { DirectToolOutput } from '@langchain/core/messages/tool'
+import type { ContextState } from '../chat/context'
 
 export interface ChatCompletionMessageToolCall {
     /**
@@ -257,6 +258,7 @@ export type AgentEvent =
     | {
           type: 'tool-result'
           steps: AgentStep[]
+          messages: BaseMessage[]
       }
     | {
           type: 'human-update'
@@ -283,6 +285,8 @@ export interface AgentCallbackEvent {
 }
 
 export interface AgentRuntimeConfigurable {
+    context?: ContextState
+    autoCompactWindow?: number | 'auto'
     messageQueue?: MessageQueue
     pauseGate?: (signal?: AbortSignal) => Promise<void>
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void

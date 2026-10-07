@@ -1,6 +1,11 @@
 import type { StructuredTool } from '@langchain/core/tools'
 import { PromptTemplate } from '@langchain/core/prompts'
-import { BaseMessage } from '@langchain/core/messages'
+import {
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage
+} from '@langchain/core/messages'
 import {
     RunnableLambda,
     RunnablePassthrough,
@@ -116,7 +121,13 @@ export function createReactAgent({
                 agent_scratchpad: (input: {
                     steps: AgentStep[]
                     scratchpadEntries?: ScratchpadEntry[]
-                }) => formatLogToString(input.scratchpadEntries ?? input.steps)
+                    configurable?: { context?: unknown }
+                }): string | [] =>
+                    input.configurable?.context
+                        ? []
+                        : formatLogToString(
+                              input.scratchpadEntries ?? input.steps
+                          )
             }),
             prompt,
             llm,
@@ -141,6 +152,43 @@ export function createReactAgent({
         'ReactAgent'
     )
     return agent
+}
+
+export function toolHistoryToText(messages: BaseMessage[]): BaseMessage[] {
+    return messages.map((message) => {
+        const type = message.getType()
+        const toolCalls =
+            message instanceof AIMessage ? message.tool_calls : undefined
+        const nativeCalls = toolCalls?.length
+            ? toolCalls
+            : (message.additional_kwargs.tool_calls ??
+              message.additional_kwargs.function_call)
+        if (type !== 'tool' && type !== 'function' && !nativeCalls) {
+            return message
+        }
+        const additionalKwargs = { ...message.additional_kwargs }
+        delete additionalKwargs.tool_calls
+        delete additionalKwargs.function_call
+        const fields = {
+            content: `${type === 'tool' || type === 'function' ? 'Observation: ' : ''}${getMessageContent(message.content)}${nativeCalls ? `\nTool calls: ${JSON.stringify(nativeCalls)}` : ''}`,
+            id: message.id,
+            name: message.name,
+            additional_kwargs: {
+                ...additionalKwargs,
+                chatluna_tool_history: {
+                    type,
+                    additional_kwargs: message.additional_kwargs,
+                    ...(message instanceof ToolMessage
+                        ? { tool_call_id: message.tool_call_id }
+                        : {})
+                }
+            },
+            response_metadata: message.response_metadata
+        }
+        return type === 'tool' || type === 'function'
+            ? new HumanMessage(fields)
+            : new AIMessage(fields)
+    })
 }
 
 /**

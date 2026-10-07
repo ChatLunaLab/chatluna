@@ -59,9 +59,9 @@ export class AgentRunner extends Runnable<ChainValues, AgentRunnerOutput> {
             ...(input['maxTokens'] == null
                 ? {}
                 : { maxTokens: input['maxTokens'] }),
-            ...(input['maxTokenLimit'] == null
+            ...(input['maxContextWindow'] == null
                 ? {}
-                : { maxTokenLimit: input['maxTokenLimit'] })
+                : { maxContextWindow: input['maxContextWindow'] })
         }
 
         for await (const event of runAgent({

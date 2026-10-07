@@ -4,7 +4,6 @@ import {
     BaseMessage,
     FunctionMessage,
     HumanMessage,
-    MessageContentComplex,
     ToolMessage
 } from '@langchain/core/messages'
 import { BaseOutputParser } from '@langchain/core/output_parsers'
@@ -30,7 +29,7 @@ import {
 } from './output_parser'
 import { BaseChatPromptTemplate } from '@langchain/core/prompts'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { observationToMessageContent } from '../legacy-executor'
+import { observationToMessageContent } from '../tool-observation'
 
 /**
  * Checks if the given action is a FunctionsAgentAction.
@@ -91,55 +90,46 @@ function _convertAgentStepToMessages(
             )
         )
     } else {
-        return [new AIMessage(action.log)]
+        const content = observationToMessageContent(observation)
+        return [
+            new AIMessage(
+                `${action.log}\n<tool_calling>${JSON.stringify([
+                    { name: action.tool, arguments: action.toolInput }
+                ])}</tool_calling>`
+            ),
+            new HumanMessage({
+                content:
+                    typeof content === 'string'
+                        ? `Observation: ${content}`
+                        : [{ type: 'text', text: 'Observation: ' }, ...content],
+                name: action.tool
+            })
+        ]
     }
-}
-
-function mergeHumanMessages(messages: HumanMessage[]) {
-    if (messages.length === 1) {
-        return messages[0]
-    }
-
-    const base = messages[0]
-    const content: MessageContentComplex[] = []
-
-    for (const msg of messages) {
-        if (content.length > 0) {
-            content.push({ type: 'text', text: '\n' })
-        }
-
-        if (typeof msg.content === 'string') {
-            content.push({ type: 'text', text: msg.content })
-            continue
-        }
-
-        content.push(...msg.content)
-    }
-
-    return new HumanMessage({
-        content,
-        name: base.name,
-        id: base.id,
-        additional_kwargs: messages.reduce(
-            (acc, msg) => Object.assign(acc, msg.additional_kwargs),
-            Object.assign({}, base.additional_kwargs)
-        )
-    })
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export function _formatIntermediateSteps(
     intermediateSteps: ScratchpadEntry[]
 ): BaseMessage[] {
-    return intermediateSteps.flatMap((step) => {
-        if ('messages' in step) {
-            return step.messages.length > 0
-                ? [mergeHumanMessages(step.messages)]
-                : []
+    const messages: BaseMessage[] = []
+    const seen = new Set<BaseMessage>()
+    const seenIds = new Set<string>()
+    for (const step of intermediateSteps) {
+        const batch =
+            'messages' in step
+                ? step.messages
+                : _convertAgentStepToMessages(step.action, step.observation)
+        for (const message of batch) {
+            if (seen.has(message) || (message.id && seenIds.has(message.id))) {
+                continue
+            }
+            seen.add(message)
+            if (message.id) seenIds.add(message.id)
+            messages.push(message)
         }
-
-        return _convertAgentStepToMessages(step.action, step.observation)
-    })
+    }
+    return messages
 }
 
 /**
@@ -177,11 +167,13 @@ export function createOpenAIAgent({
             agent_scratchpad: (input: {
                 steps: AgentStep[]
                 scratchpadEntries?: ScratchpadEntry[]
+                configurable?: { context?: unknown }
             }) =>
-                _formatIntermediateSteps(input.scratchpadEntries ?? input.steps)
-            /* // @ts-expect-error eslint-disable-next-line @typescript-eslint/naming-convention
-            input_text: (input: { input: BaseMessage[] }) =>
-                getMessageContent(input.input[0].content) */
+                input.configurable?.context
+                    ? []
+                    : _formatIntermediateSteps(
+                          input.scratchpadEntries ?? input.steps
+                      )
         }),
         prompt,
         llmWithTools,
