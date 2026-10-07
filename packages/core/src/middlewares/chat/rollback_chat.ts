@@ -177,7 +177,15 @@ async function rollbackConversation(
         parentId = currentMessage.parentId
         messages.unshift(currentMessage)
 
-        if (currentMessage.role === 'human') {
+        const responseMetadata = currentMessage.response_metadata_binary
+            ? JSON.parse(
+                  await gzipDecode(currentMessage.response_metadata_binary)
+              )
+            : {}
+        if (
+            currentMessage.role === 'human' &&
+            responseMetadata.compaction == null
+        ) {
             humanMessage = currentMessage
             humanCount += 1
 
