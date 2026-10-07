@@ -57,7 +57,7 @@ export interface ChatLunaLLMCallArg {
     callbacks?: Callbacks
     persist?: boolean
     context?: ContextState
-    autoCompactWindow?: number | 'auto'
+    autoCompactWindow?: ContextState['autoCompactWindow']
     onCompact?: ContextState['onCompact']
 }
 

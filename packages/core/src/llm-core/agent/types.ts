@@ -286,7 +286,7 @@ export interface AgentCallbackEvent {
 
 export interface AgentRuntimeConfigurable {
     context?: ContextState
-    autoCompactWindow?: number | 'auto'
+    autoCompactWindow?: ContextState['autoCompactWindow']
     messageQueue?: MessageQueue
     pauseGate?: (signal?: AbortSignal) => Promise<void>
     onAgentEvent?: (event: AgentEvent) => Promise<void> | void

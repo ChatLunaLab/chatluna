@@ -48,7 +48,7 @@ export interface CreateAgentOptions {
     instructions?: ComputedRef<string | undefined>
     returnIntermediateSteps?: boolean
     toolMask?: ToolMask
-    autoCompactWindow?: number | 'auto'
+    autoCompactWindow?: ContextState['autoCompactWindow']
 }
 
 export interface AgentGenerateOptions {
@@ -64,7 +64,7 @@ export interface AgentGenerateOptions {
     maxToken?: number
     maxContextWindow?: number
     context?: ContextState
-    autoCompactWindow?: number | 'auto'
+    autoCompactWindow?: ContextState['autoCompactWindow']
     onCompact?: ContextState['onCompact']
     messageQueue?: MessageQueue
     pauseGate?: (signal?: AbortSignal) => Promise<void>
@@ -138,9 +138,7 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                         ? toolHistoryToText(history)
                         : [...history],
                 autoCompactWindow:
-                    input.autoCompactWindow ??
-                    options.autoCompactWindow ??
-                    'auto',
+                    input.autoCompactWindow ?? options.autoCompactWindow,
                 onCompact: input.onCompact
             }
             if (input.context && mode === 'react') {

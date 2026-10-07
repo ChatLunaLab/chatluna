@@ -283,9 +283,7 @@ export async function* runAgent(
               ? [new HumanMessage(options.input.chat_history)]
               : [],
         autoCompactWindow:
-            options.input.autoCompactWindow ??
-            runtime.autoCompactWindow ??
-            'auto',
+            options.input.autoCompactWindow ?? runtime.autoCompactWindow,
         onCompact: options.input.onCompact
     }
     runtime.context = context
