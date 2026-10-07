@@ -27,6 +27,7 @@ import {
 import type { ChatInterface } from '../llm-core/chat/app'
 import { MessageQueue } from '../llm-core/agent/types'
 import type { PostHandler } from '../utils/types'
+import type { ContextState } from '../llm-core/chat/context'
 import type {
     ToolMaskArg,
     ToolMaskResolver
@@ -218,6 +219,7 @@ declare module '@chatluna/shared-prompt-renderer' {
     export interface RenderConfigurable {
         session?: Session
         agentContext?: AgentRunContext
+        context?: ContextState
     }
 }
 
