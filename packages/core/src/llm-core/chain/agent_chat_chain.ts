@@ -36,6 +36,8 @@ import {
     sanitizeToolLogValue
 } from 'koishi-plugin-chatluna/utils/string'
 import type { ChatLunaContextManagerService } from 'koishi-plugin-chatluna/llm-core/prompt'
+import type { ContextState } from '../chat/context'
+import { toolHistoryToText } from '../agent/react'
 
 export interface ChatLunaPluginChainInput {
     prompt: ChatLunaChatPrompt
@@ -132,7 +134,7 @@ export class ChatLunaPluginChain
             promptRenderService: variableService,
             contextManager,
             sendTokenLimit:
-                llm.invocationParams().maxTokenLimit ??
+                llm.invocationParams().maxContextWindow ??
                 llm.getModelMaxContextSize()
         })
 
@@ -196,12 +198,19 @@ export class ChatLunaPluginChain
             .chatHistory as KoishiChatMessageHistory
         const preset = this.preset.value
         const messages = await chatHistory.getMessages()
-        const history =
-            this.agentMode === 'react'
-                ? await chatHistory.removeAllToolAndFunctionMessages()
-                : messages
+        const context: ContextState = arg.context ?? {
+            history:
+                this.agentMode === 'react'
+                    ? toolHistoryToText(messages)
+                    : [...messages],
+            autoCompactWindow: arg.autoCompactWindow,
+            onCompact: arg.onCompact
+        }
+        if (arg.context && this.agentMode === 'react') {
+            context.history = toolHistoryToText(context.history)
+        }
 
-        requests['chat_history'] = [...history]
+        requests['chat_history'] = context.history
         requests['id'] = ctx.conversationId
         requests['variables'] = Object.assign(nextVars, {
             prompt: getMessageContent(arg.message.content)
@@ -217,7 +226,8 @@ export class ChatLunaPluginChain
         requests['variables_hide'] = requests['variables']
         requests['configurable'] = {
             session: arg.session,
-            agentContext: ctx
+            agentContext: ctx,
+            context
         }
 
         this._toolsRef.update(
@@ -275,7 +285,7 @@ export class ChatLunaPluginChain
                 {
                     ...requests,
                     maxTokens: arg.maxToken,
-                    maxTokenLimit: arg.maxTokenLimit
+                    maxContextWindow: arg.maxContextWindow
                 },
                 {
                     signal: arg.signal,
@@ -285,38 +295,33 @@ export class ChatLunaPluginChain
                         session: arg.session,
                         model: this.llm,
                         preset: preset.triggerKeyword[0],
-                        agentContext: ctx
+                        agentContext: ctx,
+                        context
                     }
                 }
             )
         }
 
-        for (let i = 0; i < 3; i++) {
-            if (arg.signal?.aborted) {
-                throw (
-                    arg.signal.reason ??
-                    new ChatLunaError(ChatLunaErrorCode.ABORTED)
-                )
+        if (arg.signal?.aborted) {
+            throw (
+                arg.signal.reason ??
+                new ChatLunaError(ChatLunaErrorCode.ABORTED)
+            )
+        }
+        try {
+            response = await request()
+        } catch (e) {
+            if (
+                e instanceof ChatLunaError &&
+                e.errorCode === ChatLunaErrorCode.ABORTED
+            ) {
+                throw e
             }
-
-            try {
-                response = await request()
-                break
-            } catch (e) {
-                if (
-                    e instanceof ChatLunaError &&
-                    e.errorCode === ChatLunaErrorCode.ABORTED
-                ) {
-                    throw e
-                }
-
-                if ((e as Error)?.message?.includes('Aborted')) {
-                    throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
-                }
-
-                logger.error(e)
-                error = e
+            if ((e as Error)?.message?.includes('Aborted')) {
+                throw new ChatLunaError(ChatLunaErrorCode.ABORTED)
             }
+            logger.error(e)
+            error = e
         }
 
         await arg.events?.['llm-used-token-count']?.(usedToken)
