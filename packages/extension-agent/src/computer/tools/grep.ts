@@ -18,11 +18,11 @@ export class GrepTool extends ComputerToolBase {
         pattern: z
             .string()
             .describe('The regex pattern to search for in file contents.'),
-        path: z
+        filePath: z
             .string()
             .optional()
             .describe(
-                'The directory to search in. Defaults to the scope path.'
+                'The file or directory to search in. Defaults to the scope path.'
             ),
         include: z
             .string()
@@ -41,13 +41,13 @@ export class GrepTool extends ComputerToolBase {
 
         this.log(
             computer,
-            `搜索: ${input.pattern}${input.include ? ` (${input.include})` : ''}${input.path ? ` in ${input.path}` : ''}`
+            `搜索: ${input.pattern}${input.include ? ` (${input.include})` : ''}${input.filePath ? ` in ${input.filePath}` : ''}`
         )
 
         try {
             const results = await computer.grep(
                 input.pattern,
-                input.path,
+                input.filePath,
                 input.include
             )
             const count = Array.isArray(results)
