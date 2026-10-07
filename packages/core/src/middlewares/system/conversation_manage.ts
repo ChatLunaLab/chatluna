@@ -796,7 +796,8 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 await ctx.chatluna.conversationRuntime.compressConversation(
                     conversation,
                     context.options.force === true,
-                    context.options.conversation_compress?.instruction
+                    context.options.conversation_compress?.instruction,
+                    context.options.conversation_compress?.mode
                 )
 
             context.message = session.text(

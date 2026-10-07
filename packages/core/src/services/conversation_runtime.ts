@@ -23,6 +23,7 @@ import { ConversationRecord, Message } from '../types'
 import type { PostHandler } from '../utils/types'
 import { ActiveRequest, ChatEvents, RuntimeConversationEntry } from './types'
 import { type UsageMetadata } from '@langchain/core/messages'
+import type { CompactionMode } from '../llm-core/chat/compaction'
 
 export interface ChatOptions {
     event?: ChatEvents
@@ -470,11 +471,12 @@ export class ConversationRuntime {
     async compressConversation(
         conversation: ConversationRecord,
         force = false,
-        instruction?: string
+        instruction?: string,
+        mode?: CompactionMode
     ) {
         return this.withConversationAndPlatformLock(conversation, async () => {
             const chatInterface = await this.ensureChatInterface(conversation)
-            return await chatInterface.compressContext(force, instruction)
+            return await chatInterface.compressContext(force, instruction, mode)
         })
     }
 

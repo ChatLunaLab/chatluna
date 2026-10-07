@@ -72,11 +72,13 @@ commands:
                 preset: 预设分流。
                 archived: 包含已归档会话。
                 all: 包含已归档会话。
+                mode: 压缩模式（soft 或 snap）；省略时自动选择。
             messages:
                 success: '已压缩：{0} tokens -> {1} tokens，减少 {2} tokens（{3}%）'
                 skipped: '未执行压缩：{0} tokens -> {1} tokens，减少 {2} tokens（{3}%）'
                 no_conversation: '没有可压缩的会话。'
                 failed: '压缩会话 {0}（{1}）的聊天记录失败：{2}'
+                invalid_mode: '压缩模式无效，请使用 soft 或 snap。'
         delete:
             description: 删除当前会话或目标会话。
             arguments:
@@ -175,7 +177,7 @@ commands:
                     stop_failed: '停止对话失败。'
                     success: '已成功停止当前对话。'
             compress:
-                description: 手动压缩聊天记录（使用无限上下文）。
+                description: 手动压缩聊天记录。
                 options:
                     conversation: 指定目标会话，可使用序号、ID 或标题。
                 messages:
