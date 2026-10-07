@@ -1,8 +1,9 @@
-import { Context } from 'koishi'
-import { Config } from '../../config'
-import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import type { Context } from 'koishi'
+import type { Config } from '../../config'
+import { ChainMiddlewareRunStatus } from '../../chains/chain'
+import type { ChatChain } from '../../chains/chain'
 import type {} from '@koishijs/censor'
-import { isMessageContentText } from 'koishi-plugin-chatluna/utils/string'
+import { censorMessage } from '../../utils/message_content'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -13,29 +14,14 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
             }
 
-            const baseContent = message.content
-
-            if (typeof baseContent === 'string') {
-                message.content = await ctx.censor.transform(
-                    baseContent,
-                    session
+            message.content = (
+                await censorMessage(
+                    ctx,
+                    message,
+                    context.options.deliverySession ?? session
                 )
-
-                return ChainMiddlewareRunStatus.CONTINUE
-            }
-
-            message.content = await Promise.all(
-                baseContent.map((content) => {
-                    if (!isMessageContentText(content)) {
-                        return content
-                    }
-
-                    return {
-                        type: 'text',
-                        text: ctx.censor.transform(content.text, session)
-                    }
-                })
-            )
+            ).content
+            return ChainMiddlewareRunStatus.CONTINUE
         })
         .before('lifecycle-send')
         .after('lifecycle-request_conversation')

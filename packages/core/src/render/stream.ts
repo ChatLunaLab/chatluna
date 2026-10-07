@@ -1,14 +1,16 @@
-import { Context, Fragment, h, Logger, Session } from 'koishi'
-import { ChainMiddlewareContext } from '../chains/chain'
-import { Config } from '../config'
-import { Message, RenderMessage, RenderOptions } from '../types'
-import { Renderer } from './base'
-import { RenderStreamMode, RenderStreamSession, ReplyFrame } from './types'
+import type { Context, Fragment, h, Logger, Session } from 'koishi'
+import type { ChainMiddlewareContext } from '../chains/chain'
+import type { Config } from '../config'
+import type { Message, RenderMessage, RenderOptions } from '../types'
+import type { Renderer } from './base'
+import type { RenderStreamMode, RenderStreamSession, ReplyFrame } from './types'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
+import { censorMessage } from '../utils/message_content'
 
 export interface ReplyStreamOptions {
     enabled: boolean
     send?: boolean
+    censor?: boolean
     renderOptions?: RenderOptions
     renderMessage?: (message: Message) => Promise<RenderMessage[]>
     renderAdditional?: (message: Message) => Promise<h[][]>
@@ -25,17 +27,20 @@ export class ReplyStream {
     private send = true
     private sentAdditional = false
     private closed = false
+    private moderated: boolean
+    private pending: Message[] = []
     private renderMessage: (message: Message) => Promise<RenderMessage[]>
     private renderAdditional?: (message: Message) => Promise<h[][]>
 
     constructor(
         private readonly ctx: Context,
-        private readonly config: Config,
+        config: Config,
         private readonly context: ChainMiddlewareContext,
         private readonly renderer: Renderer,
         opts: ReplyStreamOptions
     ) {
         logger = createLogger(ctx)
+        this.moderated = config.censor || opts.censor === true
         const options = {
             ...opts.renderOptions,
             session:
@@ -43,9 +48,10 @@ export class ReplyStream {
                 opts.renderOptions?.session ??
                 context.session
         } as RenderOptions
-        const plan = opts.enabled
-            ? renderer.getStreamPlan(options)
-            : { mode: 'buffer' as const }
+        const plan =
+            opts.enabled && !this.moderated
+                ? renderer.getStreamPlan(options)
+                : { mode: 'buffer' as const }
 
         this.mode = plan.mode
         this.stream = renderer.createStreamSession(options, plan)
@@ -61,7 +67,7 @@ export class ReplyStream {
 
     async write(frame: ReplyFrame) {
         if (frame.type === 'content') {
-            if (this.closed) return
+            if (this.closed || this.mode === 'buffer') return
 
             if (this.firstChunk) {
                 this.firstChunk = false
@@ -76,6 +82,10 @@ export class ReplyStream {
         }
 
         if (frame.type === 'mark' && frame.instant) {
+            if (this.moderated) {
+                this.pending.push({ content: frame.content ?? frame.name })
+                return
+            }
             await this.sendMessage(
                 { content: frame.content ?? frame.name },
                 'split'
@@ -100,6 +110,9 @@ export class ReplyStream {
             await this.write(frame)
         }
 
+        // Chunk-end signals can arrive before the final post-processed reply.
+        if (this.moderated && this.finalMessage == null) return
+
         if (frame?.type === 'done' && this.mode === 'split' && !this.closed) {
             return
         }
@@ -118,6 +131,11 @@ export class ReplyStream {
         this.closed = true
 
         await this.context.recallThinkingMessage?.()
+
+        for (const message of this.pending) {
+            await this.sendMessage(message, 'split')
+        }
+        this.pending = []
 
         if (this.mode === 'buffer') {
             if (this.finalMessage != null) {
@@ -141,7 +159,7 @@ export class ReplyStream {
     }
 
     private async sendMessage(message: Message, mode: RenderStreamMode) {
-        const messages = await this.renderMessage(message)
+        const messages = await this.renderMessage(await this.censor(message))
         for (const msg of messages) {
             const elements = Array.isArray(msg.element)
                 ? msg.element
@@ -155,7 +173,18 @@ export class ReplyStream {
         if (this.finalMessage == null || this.renderAdditional == null) return
         this.sentAdditional = true
 
-        const messages = await this.renderAdditional(this.finalMessage)
+        let message = this.finalMessage
+        if (this.moderated && message.additionalReplyMessages != null) {
+            message = {
+                ...message,
+                additionalReplyMessages: await Promise.all(
+                    message.additionalReplyMessages.map((msg) =>
+                        this.censor(msg)
+                    )
+                )
+            }
+        }
+        const messages = await this.renderAdditional(message)
         for (const elements of messages) {
             await this.sendElements(elements, 'split')
         }
@@ -167,21 +196,22 @@ export class ReplyStream {
     ) {
         if (!this.send) return
 
-        const processed = await this.censor(elements)
-        if (processed.length < 1) return
+        if (elements.length < 1) return
 
         if (mode === 'edit') {
-            return await this.queue.edit(processed)
+            return await this.queue.edit(elements)
         }
 
-        await this.context.send([processed])
+        await this.context.send([elements])
     }
 
-    private async censor(elements: h[]) {
-        if (!this.config.censor) return elements
-        const session =
+    private async censor(message: Message) {
+        if (!this.moderated) return message
+        return await censorMessage(
+            this.ctx,
+            message,
             this.context.options.deliverySession ?? this.context.session
-        return await this.ctx.censor.transform(elements, session)
+        )
     }
 
     private async finish() {

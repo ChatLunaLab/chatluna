@@ -40,9 +40,9 @@ $inner:
               - 不切割
               - 按标点切割
               - 按段落切割
-      censor: 是否启用文本审核服务（需要安装 censor 服务）。
+      censor: 是否启用文本审核服务（需要安装 censor 服务）。启用后会等待完整回复生成并审核，再进行渲染、分段和发送。
       rawOnCensor: 是否在 Post Handler 被触发时，将原始消息发送给模型。
-      streamResponse: 是否启用流式响应。启用后，bot 会在生成回复的过程中就开始发送消息，而不是等待完全生成后发送。
+      streamResponse: 是否启用流式响应。启用后，bot 会在生成回复的过程中就开始发送消息；若启用了 censor 或预设中的 postHandler.censor，则等待完整回复审核后再发送。
     - $desc: 黑名单选项
       blackList:
           $desc: 设置黑名单列表。请谨慎使用，只对需要拉黑的用户或群启用。1 表示启用黑名单，0 表示不启用黑名单。默认值为 0。
