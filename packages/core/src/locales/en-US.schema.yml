@@ -40,9 +40,9 @@ $inner:
               - Do not split
               - Split by punctuation
               - Split by paragraph
-      censor: Enable text moderation (requires censor service).
+      censor: Enable text moderation (requires censor service). Waits for the complete reply and moderates it before rendering, splitting, and sending.
       rawOnCensor: Whether to send the raw message to the model when the Post Handler is triggered.
-      streamResponse: Enable streaming responses so the bot starts sending content while generating the reply instead of waiting for completion.
+      streamResponse: Enable sending content while generating the reply. If censor or the preset's postHandler.censor is enabled, waits for complete reply moderation before sending.
 
     - $desc: Blacklist Management
       blackList: Configure blacklist. Use cautiously to avoid unintended blocking. The number 1 indicates enabled blacklist. Set to zero value to unenable blacklist.

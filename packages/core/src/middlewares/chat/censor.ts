@@ -1,8 +1,11 @@
-import { Context } from 'koishi'
-import { Config } from '../../config'
-import { ChainMiddlewareRunStatus, ChatChain } from '../../chains/chain'
+import { h } from 'koishi'
+import type { Context, Session } from 'koishi'
+import type { Config } from '../../config'
+import { ChainMiddlewareRunStatus } from '../../chains/chain'
+import type { ChatChain } from '../../chains/chain'
 import type {} from '@koishijs/censor'
-import { isMessageContentText } from 'koishi-plugin-chatluna/utils/string'
+import type { Message } from '../../types'
+import { isMessageContentText } from '../../utils/langchain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
@@ -13,32 +16,48 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.SKIPPED
             }
 
-            const baseContent = message.content
-
-            if (typeof baseContent === 'string') {
-                message.content = await ctx.censor.transform(
-                    baseContent,
-                    session
+            message.content = (
+                await censorMessage(
+                    ctx,
+                    message,
+                    context.options.deliverySession ?? session
                 )
-
-                return ChainMiddlewareRunStatus.CONTINUE
-            }
-
-            message.content = await Promise.all(
-                baseContent.map((content) => {
-                    if (!isMessageContentText(content)) {
-                        return content
-                    }
-
-                    return {
-                        type: 'text',
-                        text: ctx.censor.transform(content.text, session)
-                    }
-                })
-            )
+            ).content
+            return ChainMiddlewareRunStatus.CONTINUE
         })
         .before('lifecycle-send')
         .after('lifecycle-request_conversation')
+}
+
+export async function censorMessage(
+    ctx: Context,
+    msg: Message,
+    session: Session
+): Promise<Message> {
+    if (typeof msg.content === 'string') {
+        const text = await ctx.censor.transform([h.text(msg.content)], session)
+        return { ...msg, content: h.unescape(text.join('')) }
+    }
+
+    const parts: Exclude<Message['content'], string> = []
+    for (const el of msg.content) {
+        const prev = parts[parts.length - 1]
+        if (prev && isMessageContentText(prev) && isMessageContentText(el)) {
+            prev.text += el.text
+            continue
+        }
+        parts.push(isMessageContentText(el) ? { ...el } : el)
+    }
+
+    const content = await Promise.all(
+        parts.map(async (el) => {
+            if (!isMessageContentText(el)) return el
+            const text = await ctx.censor.transform([h.text(el.text)], session)
+            el.text = h.unescape(text.join(''))
+            return el
+        })
+    )
+    return { ...msg, content }
 }
 
 declare module '../../chains/chain' {

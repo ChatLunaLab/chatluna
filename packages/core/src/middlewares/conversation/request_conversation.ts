@@ -1,17 +1,17 @@
-import { Context, Logger, Session } from 'koishi'
-import { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
+import type { Context, Logger, Session } from 'koishi'
+import type { PresetTemplate } from 'koishi-plugin-chatluna/llm-core/prompt'
 import {
     ChatLunaError,
     ChatLunaErrorCode
 } from 'koishi-plugin-chatluna/utils/error'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import {
+import { ChainMiddlewareRunStatus } from 'koishi-plugin-chatluna/chains'
+import type {
     ChainMiddlewareContext,
-    ChainMiddlewareRunStatus,
     ChatChain
 } from 'koishi-plugin-chatluna/chains'
-import { Config } from '../../config'
-import { Message } from '../../types'
+import type { Config } from '../../config'
+import type { ConversationRecord, Message } from '../../types'
 import {
     formatToolCall,
     formatUserPromptString,
@@ -19,14 +19,13 @@ import {
     getSystemPromptVariables,
     PresetPostHandler
 } from 'koishi-plugin-chatluna/utils/string'
-import type { ConversationRecord } from '../../types'
-import {
+import type {
     BaseMessageChunk,
     MessageContent,
     UsageMetadata
 } from '@langchain/core/messages'
-import { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
-import { ReplyStream } from '../../render/stream'
+import type { AgentAction } from 'koishi-plugin-chatluna/llm-core/agent'
+import type { ReplyStream } from '../../render/stream'
 
 let logger: Logger
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
@@ -93,6 +92,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                                     shouldSend &&
                                     context.options.deliverySession == null,
                                 send: shouldSend && !captureOnly,
+                                censor: postHandler?.censor,
                                 renderOptions: {
                                     ...context.options.renderOptions,
                                     session: deliverySession,
@@ -165,11 +165,13 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
 
                 return ChainMiddlewareRunStatus.CONTINUE
             } catch (e) {
-                const err = e?.message?.includes('output values have 1 keys')
-                    ? new ChatLunaError(
-                          ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
-                      )
-                    : e
+                const err =
+                    e instanceof Error &&
+                    e.message.includes('output values have 1 keys')
+                        ? new ChatLunaError(
+                              ChatLunaErrorCode.MODEL_RESPONSE_IS_EMPTY
+                          )
+                        : e
 
                 if (replyStream != null) {
                     await replyStream.end({ type: 'error', error: err })

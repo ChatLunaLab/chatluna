@@ -1,4 +1,4 @@
-import { type BaseMessage } from '@langchain/core/messages'
+import type { BaseMessage } from '@langchain/core/messages'
 
 export interface PresetLaneParseResult {
     preset?: string
