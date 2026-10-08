@@ -16,7 +16,7 @@ export class GlobTool extends ComputerToolBase {
         pattern: z
             .string()
             .describe('The glob pattern to match files against.'),
-        path: z
+        filePath: z
             .string()
             .optional()
             .describe('The directory to search in. Defaults to the scope path.')
@@ -31,11 +31,11 @@ export class GlobTool extends ComputerToolBase {
 
         this.log(
             computer,
-            `查找文件: ${input.pattern}${input.path ? ` in ${input.path}` : ''}`
+            `查找文件: ${input.pattern}${input.filePath ? ` in ${input.filePath}` : ''}`
         )
 
         try {
-            const results = await computer.glob(input.pattern, input.path)
+            const results = await computer.glob(input.pattern, input.filePath)
             const count = Array.isArray(results)
                 ? results.length
                 : results.count
