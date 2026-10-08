@@ -1,9 +1,4 @@
 import type { BaseMessage } from '@langchain/core/messages'
-import { h } from 'koishi'
-import type { Context, Session } from 'koishi'
-import type {} from '@koishijs/censor'
-import type { Message } from '../types'
-import { isMessageContentText } from './langchain'
 
 export interface PresetLaneParseResult {
     preset?: string
@@ -27,60 +22,6 @@ export function getMessageContent(message: BaseMessage['content']) {
         }
     }
     return buffer.join('')
-}
-
-export async function censorMessage(
-    ctx: Context,
-    message: Message,
-    session: Session
-): Promise<Message> {
-    if (typeof message.content === 'string') {
-        return {
-            ...message,
-            content: h.unescape(
-                (
-                    await ctx.censor.transform(
-                        [h.text(message.content)],
-                        session
-                    )
-                ).join('')
-            )
-        }
-    }
-
-    const parts: Exclude<Message['content'], string> = []
-    for (const part of message.content) {
-        const prev = parts[parts.length - 1]
-        if (
-            isMessageContentText(part) &&
-            prev != null &&
-            isMessageContentText(prev)
-        ) {
-            prev.text += part.text
-            continue
-        }
-        parts.push(isMessageContentText(part) ? { ...part } : part)
-    }
-
-    return {
-        ...message,
-        content: await Promise.all(
-            parts.map(async (part) => {
-                if (!isMessageContentText(part)) return part
-                return {
-                    ...part,
-                    text: h.unescape(
-                        (
-                            await ctx.censor.transform(
-                                [h.text(part.text)],
-                                session
-                            )
-                        ).join('')
-                    )
-                }
-            })
-        )
-    }
 }
 
 export function parsePresetLaneInput(

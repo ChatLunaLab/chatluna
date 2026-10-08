@@ -5,7 +5,7 @@ import type { Message, RenderMessage, RenderOptions } from '../types'
 import type { Renderer } from './base'
 import type { RenderStreamMode, RenderStreamSession, ReplyFrame } from './types'
 import { createLogger } from 'koishi-plugin-chatluna/utils/logger'
-import { censorMessage } from '../utils/message_content'
+import { censorMessage } from '../middlewares/chat/censor'
 
 export interface ReplyStreamOptions {
     enabled: boolean
