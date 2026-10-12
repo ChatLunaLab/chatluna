@@ -8,7 +8,6 @@ import {
     isMessageContentComplex,
     isMessageContentText
 } from 'koishi-plugin-chatluna/utils/langchain'
-import { z } from 'zod'
 import { AgentAction, AgentObservation } from './types'
 
 export interface AgentLoopState {
@@ -32,20 +31,15 @@ export function repairToolAction(
     tools: Record<string, StructuredTool>
 ): AgentAction {
     const tool = findTool(action.tool, tools)
-    if (!tool) return action
-
-    const input = repairToolInput(tool, action.toolInput)
-    if (tool.name === action.tool && input === action.toolInput) return action
+    if (!tool || tool.name === action.tool) return action
 
     logger.debug(
         `Repaired tool call '${action.tool}' -> '${tool.name}'`,
-        action.toolInput,
-        input
+        action.toolInput
     )
 
     return Object.assign({}, action, {
-        tool: tool.name,
-        toolInput: input
+        tool: tool.name
     })
 }
 
@@ -208,99 +202,6 @@ function findTool(
     })
 
     return found.length === 1 ? found[0] : undefined
-}
-
-function repairToolInput(
-    tool: StructuredTool,
-    input: AgentAction['toolInput']
-) {
-    const schema = tool.schema as z.ZodTypeAny | undefined
-    if (typeof schema?.safeParse !== 'function') return input
-
-    if (!schema.safeParse(input).success) {
-        const value = parseToolInput(input)
-        if (schema.safeParse(value).success) return value
-
-        const obj = getObjectSchema(schema)
-        if (!obj || typeof value !== 'object' || value == null) return input
-        if (Array.isArray(value)) return input
-
-        const fixed = Object.fromEntries(
-            Object.entries(value).map(([key, val]) => [
-                key,
-                repairValue(obj.shape[key], val)
-            ])
-        )
-
-        if (schema.safeParse(fixed).success) return fixed
-    }
-
-    return input
-}
-
-function parseToolInput(input: AgentAction['toolInput']) {
-    if (typeof input !== 'string') return input
-
-    const text = input.trim()
-    if (!text) return {}
-
-    try {
-        return JSON.parse(text)
-    } catch {
-        return input
-    }
-}
-
-function getObjectSchema(schema?: z.ZodTypeAny): z.AnyZodObject | undefined {
-    if (schema instanceof z.ZodObject) return schema
-    if (schema instanceof z.ZodEffects)
-        return getObjectSchema(schema.innerType())
-    return undefined
-}
-
-function repairValue(schema: z.ZodTypeAny | undefined, value: unknown) {
-    if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
-        return repairValue(schema.unwrap(), value)
-    }
-
-    if (schema instanceof z.ZodDefault) {
-        return repairValue(schema.removeDefault(), value)
-    }
-
-    if (schema instanceof z.ZodEffects) {
-        return repairValue(schema.innerType(), value)
-    }
-
-    if (schema instanceof z.ZodNumber && typeof value === 'string') {
-        const num = Number(value)
-        return Number.isNaN(num) ? value : num
-    }
-
-    if (schema instanceof z.ZodBoolean && typeof value === 'string') {
-        if (value.toLowerCase() === 'true') return true
-        if (value.toLowerCase() === 'false') return false
-    }
-
-    if (
-        schema instanceof z.ZodString &&
-        (typeof value === 'number' || typeof value === 'boolean')
-    ) {
-        return String(value)
-    }
-
-    if (schema instanceof z.ZodArray && !Array.isArray(value)) {
-        return schema.element.safeParse(value).success ? [value] : value
-    }
-
-    if (schema instanceof z.ZodObject && typeof value === 'string') {
-        try {
-            return JSON.parse(value)
-        } catch {
-            return value
-        }
-    }
-
-    return value
 }
 
 function appendObservation(observation: AgentObservation, text: string) {
