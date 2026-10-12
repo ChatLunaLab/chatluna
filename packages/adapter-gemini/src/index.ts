@@ -141,7 +141,7 @@ export const usage = `
 
 **如果你没有可用的 Gemini 格式 API，请前往以下地址注册：**
 
-[https://moyuu.cc/register?aff=vhqh](https://moyuu.cc/register?aff=vhqh)
+[https://moyuu.cc/sign-up?aff=chatluna](https://moyuu.cc/sign-up?aff=chatluna)
 
 完成后记得填写：
 - API Key：从注册的账号中复制
