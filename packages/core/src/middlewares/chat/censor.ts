@@ -5,7 +5,7 @@ import { ChainMiddlewareRunStatus } from '../../chains/chain'
 import type { ChatChain } from '../../chains/chain'
 import type {} from '@koishijs/censor'
 import type { Message } from '../../types'
-import { isMessageContentText } from '../../utils/langchain'
+import { isMessageContentText } from 'koishi-plugin-chatluna/utils/langchain'
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
     chain
