@@ -61,6 +61,7 @@ export async function langchainMessageToGeminiMessage(
                 }
 
                 const media = await readMedia(plugin, part)
+                if (media === 'expired') return { text: '[image expired]' }
                 if (media == null) return null
                 const mode =
                     agentic && !image && media.mimeType.startsWith('video/')
@@ -117,7 +118,9 @@ export async function langchainMessageToGeminiMessage(
                         parts.push(part)
                         continue
                     }
-                    if ('inlineData' in part) {
+                    if ('text' in part) {
+                        parts.push(part)
+                    } else if ('inlineData' in part) {
                         response.parts ??= []
                         response.parts.push({ inlineData: part.inlineData })
                     } else if ('inline_data' in part) {
@@ -184,6 +187,7 @@ async function readMedia(
     try {
         if (isMessageContentImageUrl(part)) {
             const url = await fetchImageUrl(plugin, part)
+            if (url == null) return 'expired'
             return {
                 data: url.replace(/^data:image\/\w+;base64,/, ''),
                 mimeType:

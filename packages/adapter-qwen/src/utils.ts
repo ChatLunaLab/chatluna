@@ -125,6 +125,12 @@ export async function langchainMessageToQWenMessage(
 
                     try {
                         const url = await fetchImageUrl(plugin, content)
+                        if (url == null) {
+                            return {
+                                type: 'text',
+                                text: '[image expired]'
+                            } as const
+                        }
                         return {
                             type: 'image_url',
                             image_url: {

@@ -199,9 +199,12 @@ async function processImageContent(
     plugin: ChatLunaPlugin,
     message: MessageContentImageUrl
 ) {
-    let url: string
+    let url: string | null
     try {
         url = await fetchImageUrl(plugin, message)
+        if (url == null) {
+            return { type: 'text', text: '[image expired]' } as const
+        }
     } catch (e) {
         const rawUrl =
             typeof message.image_url === 'string'

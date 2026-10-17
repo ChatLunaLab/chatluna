@@ -128,7 +128,7 @@ async function processOllamaImageContent(
     plugin: ChatLunaPlugin,
     part: MessageContentImageUrl
 ) {
-    let url: string
+    let url: string | null
     try {
         url = await fetchImageUrl(plugin, part)
     } catch (e) {
@@ -140,7 +140,7 @@ async function processOllamaImageContent(
         return null
     }
 
-    return url
+    return url ?? null
 }
 
 export function messageTypeToOllamaRole(type: MessageType): OllamaRole {
