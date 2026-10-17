@@ -460,6 +460,12 @@ export async function langchainMessageToOpenAIMessage(
                         }
                         try {
                             const url = await fetchImageUrl(plugin, content)
+                            if (url == null) {
+                                return {
+                                    type: 'text',
+                                    text: '[image expired]'
+                                }
+                            }
                             return {
                                 type: 'image_url',
                                 image_url: { url, detail: 'low' }
@@ -654,6 +660,8 @@ export function transformSystemMessages(
     return mappedMessage
 }
 
+const deadImageUrls = new Set<string>()
+
 export async function fetchImageUrl(
     plugin: ChatLunaPlugin,
     content: MessageContentImageUrl
@@ -666,6 +674,8 @@ export async function fetchImageUrl(
     if (url.includes('data:image') && url.includes('base64')) {
         return url
     }
+
+    if (deadImageUrls.has(url)) return null
 
     const ext = url.match(/\.([^.?#]+)(?:[?#]|$)/)?.[1]?.toLowerCase()
     const imageType = getImageMimeType(ext)
@@ -680,6 +690,13 @@ export async function fetchImageUrl(
         })
 
     if (!response.ok) {
+        if (response.status === 404) {
+            // Bound the cache; Set is insertion-ordered so evict the oldest.
+            if (deadImageUrls.size >= 10000) {
+                deadImageUrls.delete(deadImageUrls.values().next().value!)
+            }
+            deadImageUrls.add(url)
+        }
         throw new Error(`Failed to fetch image: ${response.status}`)
     }
 
