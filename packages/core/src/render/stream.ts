@@ -28,7 +28,6 @@ export class ReplyStream {
     private sentAdditional = false
     private closed = false
     private moderated: boolean
-    private pending: Message[] = []
     private renderMessage: (message: Message) => Promise<RenderMessage[]>
     private renderAdditional?: (message: Message) => Promise<h[][]>
 
@@ -82,10 +81,6 @@ export class ReplyStream {
         }
 
         if (frame.type === 'mark' && frame.instant) {
-            if (this.moderated) {
-                this.pending.push({ content: frame.content ?? frame.name })
-                return
-            }
             await this.sendMessage(
                 { content: frame.content ?? frame.name },
                 'split'
@@ -110,32 +105,15 @@ export class ReplyStream {
             await this.write(frame)
         }
 
-        // Chunk-end signals can arrive before the final post-processed reply.
-        if (this.moderated && this.finalMessage == null) return
+        // An end() without a `done` frame is an intermediate chunk-end
+        // signal (e.g. `llm-new-chunk` with no chunk between agent
+        // rounds). Only a `done` frame finalizes the reply.
+        if (frame?.type !== 'done' && frame?.type !== 'error') return
 
-        if (frame?.type === 'done' && this.mode === 'split' && !this.closed) {
-            return
-        }
-
-        if (this.closed) {
-            if (frame?.type === 'done') {
-                if (this.mode === 'edit') {
-                    await this.sendMessage(frame.message, 'edit')
-                } else if (this.mode === 'buffer' || this.firstChunk) {
-                    await this.sendMessage(frame.message, 'split')
-                }
-            }
-            return await this.finish()
-        }
-
+        if (this.closed) return
         this.closed = true
 
         await this.context.recallThinkingMessage?.()
-
-        for (const message of this.pending) {
-            await this.sendMessage(message, 'split')
-        }
-        this.pending = []
 
         if (this.mode === 'buffer') {
             if (this.finalMessage != null) {
@@ -206,7 +184,7 @@ export class ReplyStream {
     }
 
     private async censor(message: Message) {
-        if (!this.moderated) return message
+        if (!this.moderated || this.ctx.censor == null) return message
         return await censorMessage(
             this.ctx,
             message,
