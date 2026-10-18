@@ -20,7 +20,6 @@ interface MessageTurnStarter {
 }
 
 interface MessageTurn {
-    userName: string
     messages: QueuedMessage[]
     starter?: MessageTurnStarter
     timeout?: Disposable
@@ -85,11 +84,7 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
             const tailTurn = queue.turns[queue.turns.length - 1]
 
             let turn: MessageTurn
-            if (
-                tailTurn &&
-                tailTurn.state !== 'processing' &&
-                tailTurn.userName === userName
-            ) {
+            if (tailTurn && tailTurn.state !== 'processing') {
                 turn = tailTurn
                 logger.debug(
                     `Joining turn for ${conversationId}, messageId: ${messageId}, user: ${userName}, total: ${turn.messages.length + 1}`
@@ -101,7 +96,6 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                         : 'waiting'
                 turn = {
                     messages: [],
-                    userName,
                     state
                 }
                 queue.turns.push(turn)
@@ -315,12 +309,20 @@ function mergeMessages(messages: Message[]): Message {
 
     const base = messages[0]
     const mergedContent: MessageContentComplex[] = []
+    const multiUser = messages.some((msg) => msg.name !== base.name)
 
     for (const msg of messages) {
         const content = msg.content
 
         if (mergedContent.length > 0) {
             mergedContent.push({ type: 'text', text: '\n' })
+        }
+
+        if (multiUser) {
+            mergedContent.push({
+                type: 'text',
+                text: `${msg.name ?? 'unknown'}: `
+            })
         }
 
         if (typeof content === 'string') {
