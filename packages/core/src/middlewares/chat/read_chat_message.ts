@@ -192,35 +192,26 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    for (const type of ['forward', 'message']) {
-        ctx.chatluna.messageTransformer.intercept(
-            type,
-            async (session, el, msg) => {
-                if (
-                    type === 'message' &&
-                    !['true', '1'].includes(String(el.attrs.forward))
-                ) {
-                    return false
-                }
-                if (!config.attachForwardMsgIdToContext) {
-                    return type !== 'message'
-                }
-                const id = el.attrs.id?.toString()
-                if (id) {
-                    msg.additional_kwargs ??= {}
-                    const ids: string[] =
-                        (msg.additional_kwargs.forwardMessageIds ??= [])
-                    if (ids.includes(id)) return type !== 'message'
-                    ids.push(id)
-                }
-                addMessageContent(
-                    msg,
-                    h('forward', id ? { id } : {}).toString()
-                )
-                return type !== 'message'
+    ctx.chatluna.messageTransformer.intercept(
+        'forward',
+        async (session, el, msg) => {
+            if (config.attachForwardMsgIdToContext) addForward(msg, el)
+        }
+    )
+
+    // keep returning false so the forwarded children are still transformed
+    ctx.chatluna.messageTransformer.intercept(
+        'message',
+        async (session, el, msg) => {
+            if (
+                config.attachForwardMsgIdToContext &&
+                ['true', '1'].includes(String(el.attrs.forward))
+            ) {
+                addForward(msg, el)
             }
-        )
-    }
+            return false
+        }
+    )
 
     ctx.chatluna.messageTransformer.intercept(
         'face',
@@ -782,6 +773,21 @@ function modelSupportsElement(
         ctx.chatluna.platform.findModel(model).value,
         type
     )
+}
+
+function addForward(message: Message, element: h) {
+    const id = element.attrs.id?.toString()
+    if (!id) {
+        addMessageContent(message, '<forward/>')
+        return
+    }
+
+    message.additional_kwargs ??= {}
+    const ids: string[] = (message.additional_kwargs.forwardMessageIds ??= [])
+    if (ids.includes(id)) return
+
+    ids.push(id)
+    addMessageContent(message, h('forward', { id }).toString())
 }
 
 function setElementUrl(element: h, url: string) {

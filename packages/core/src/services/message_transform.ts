@@ -75,8 +75,8 @@ export class MessageTransformer {
                 }
             )
 
-            const ids: string[] = quote.additional_kwargs?.forwardMessageIds
-            if (ids?.length) {
+            const ids: string[] = quote.additional_kwargs.forwardMessageIds
+            if (ids) {
                 message.additional_kwargs ??= {}
                 message.additional_kwargs.forwardMessageIds = [
                     ...new Set([
@@ -254,8 +254,9 @@ export class MessageTransformer {
         model: string,
         options: MessageTransformOptions
     ) {
-        for (const { func } of this._transformFunctions.get(element.type) ??
-            []) {
+        const funcs = this._transformFunctions.get(element.type) ?? []
+
+        for (const { func } of funcs) {
             if ((await func(session, element, message, model)) !== false) return
             if (element.children.length) break
         }
