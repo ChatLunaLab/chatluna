@@ -309,7 +309,16 @@ export function transformMessageContentToElements(content: MessageContent) {
 export function pickForwardMessageId(element: h): string | null {
     const attrs = (element.attrs ?? {}) as Record<string, unknown>
 
-    for (const key of ['message_id', 'messageId']) {
+    // OneBot's merged-forward segment is `[CQ:forward,id=...]` and
+    // adapter-onebot copies the segment data onto the element attrs, so a
+    // `forward` element carries the forward record id as `id`.
+    // Plain message elements only expose the common message id fields.
+    const candidateKeys =
+        element.type === 'forward'
+            ? ['id', 'message_id', 'messageId']
+            : ['message_id', 'messageId']
+
+    for (const key of candidateKeys) {
         const normalizedId = normalizeForwardMessageId(attrs[key])
         if (normalizedId) return normalizedId
     }
