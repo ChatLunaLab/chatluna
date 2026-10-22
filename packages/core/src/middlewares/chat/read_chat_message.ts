@@ -15,10 +15,6 @@ import type { FileHandlingConfig } from 'koishi-plugin-chatluna/llm-core/platfor
 import type {} from 'koishi-plugin-chatluna-storage-service'
 import { Message } from 'koishi-plugin-chatluna'
 import { MessageContent, MessageContentComplex } from '@langchain/core/messages'
-import {
-    isForwardMessageElement,
-    pickForwardMessageId
-} from 'koishi-plugin-chatluna/utils/koishi'
 import { parseRawModelName } from 'koishi-plugin-chatluna/llm-core/utils/count_tokens'
 import { getBase64EncodedSize } from 'koishi-plugin-chatluna/utils/base64'
 import type { QQ } from '@koishijs/plugin-adapter-qq'
@@ -49,7 +45,6 @@ const SUPPORTED_AUDIO_MIME_TYPES = new Set([
 ])
 
 export function apply(ctx: Context, config: Config, chain: ChatChain) {
-    const forwardHistory = new WeakMap<Message, ForwardHistoryState>()
     const fileSizes = new WeakMap<Message, number>()
     const handledAudio = new WeakSet<h>()
 
@@ -138,54 +133,33 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
                 return ChainMiddlewareRunStatus.CONTINUE
             }
 
-            const transformedMessage =
-                await ctx.chatluna.messageTransformer.transform(
-                    session,
-                    message,
-                    ctx.chatluna.conversation.pickModel(
-                        resolved.constraint,
-                        resolved.conversation
-                    ) ?? '',
-                    {
-                        content: '',
-                        name: session.username,
-                        conversationId: resolved.conversation?.id,
-                        additional_kwargs: {}
-                    },
-                    {
-                        quote: false,
-                        includeQuoteReply: config.includeQuoteReply
-                    }
-                )
-
-            if (config.attachForwardMsgIdToContext) {
-                const state = forwardHistory.get(transformedMessage)
-
-                if (state?.hasForwardHistory) {
-                    if (state.ids.length > 0) {
-                        transformedMessage.additional_kwargs ??= {}
-                        transformedMessage.additional_kwargs.forwardMessageIds =
-                            state.ids
-                    }
-                    addMessageContent(
-                        transformedMessage,
-                        state.ids.length > 0
-                            ? state.ids
-                                  .map((id) => `<forward id="${id}"/>`)
-                                  .join('')
-                            : '<forward/>'
-                    )
+            const msg = await ctx.chatluna.messageTransformer.transform(
+                session,
+                message,
+                ctx.chatluna.conversation.pickModel(
+                    resolved.constraint,
+                    resolved.conversation
+                ) ?? '',
+                {
+                    content: '',
+                    name: session.username,
+                    conversationId: resolved.conversation?.id,
+                    additional_kwargs: {}
+                },
+                {
+                    quote: false,
+                    includeQuoteReply: config.includeQuoteReply
                 }
-            }
+            )
 
             if (
-                transformedMessage.content.length < 1 &&
-                getMessageContent(transformedMessage.content).trim().length < 1
+                msg.content.length < 1 &&
+                getMessageContent(msg.content).trim().length < 1
             ) {
                 return ChainMiddlewareRunStatus.STOP
             }
 
-            context.options.inputMessage = transformedMessage
+            context.options.inputMessage = msg
 
             return ChainMiddlewareRunStatus.CONTINUE
         })
@@ -218,22 +192,35 @@ export function apply(ctx: Context, config: Config, chain: ChatChain) {
         }
     )
 
-    ctx.chatluna.messageTransformer.intercept(
-        'forward',
-        async (session, element, message) => {
-            if (!config.attachForwardMsgIdToContext) return
-            trackForwardId(forwardHistory, element, message)
-        }
-    )
-
-    ctx.chatluna.messageTransformer.intercept(
-        'message',
-        async (session, element, message) => {
-            if (!config.attachForwardMsgIdToContext) return
-            if (!isForwardMessageElement(element)) return
-            trackForwardId(forwardHistory, element, message)
-        }
-    )
+    for (const type of ['forward', 'message']) {
+        ctx.chatluna.messageTransformer.intercept(
+            type,
+            async (session, el, msg) => {
+                if (
+                    type === 'message' &&
+                    !['true', '1'].includes(String(el.attrs.forward))
+                ) {
+                    return false
+                }
+                if (!config.attachForwardMsgIdToContext) {
+                    return type !== 'message'
+                }
+                const id = el.attrs.id?.toString()
+                if (id) {
+                    msg.additional_kwargs ??= {}
+                    const ids: string[] =
+                        (msg.additional_kwargs.forwardMessageIds ??= [])
+                    if (ids.includes(id)) return type !== 'message'
+                    ids.push(id)
+                }
+                addMessageContent(
+                    msg,
+                    h('forward', id ? { id } : {}).toString()
+                )
+                return type !== 'message'
+            }
+        )
+    }
 
     ctx.chatluna.messageTransformer.intercept(
         'face',
@@ -783,7 +770,7 @@ function addMessageContent(
 
 // #endregion
 
-// #region forward message tracking
+// #region message helpers
 
 function modelSupportsElement(
     ctx: Context,
@@ -801,31 +788,6 @@ function setElementUrl(element: h, url: string) {
     element.attrs['imageUrl'] = url
     element.attrs['src'] = url
     element.attrs['url'] = url
-}
-
-function trackForwardId(
-    history: WeakMap<Message, ForwardHistoryState>,
-    element: h,
-    message: Message
-) {
-    const state = history.get(message) ?? {
-        ids: [],
-        hasForwardHistory: false
-    }
-
-    history.set(message, state)
-
-    state.hasForwardHistory = true
-
-    const id = pickForwardMessageId(element)
-    if (id && !state.ids.includes(id)) {
-        state.ids.push(id)
-    }
-}
-
-interface ForwardHistoryState {
-    ids: string[]
-    hasForwardHistory: boolean
 }
 
 function appendQQAttachments(session: Session, elements: h[]) {

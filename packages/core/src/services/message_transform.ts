@@ -34,21 +34,11 @@ export class MessageTransformer {
             includeQuoteReply: true
         }
     ): Promise<Message> {
-        await this._runBeforeTransform(
-            session,
-            elements,
-            message,
-            model,
-            options
-        )
+        for (const { func } of this._beforeTransformFunctions) {
+            await func(session, elements, message, model, options)
+        }
 
-        const sourceElementString = elements.map((h) => h.toString(true)).join()
-        const quoteElementString = (
-            (session.quote && session.quote.elements) ??
-            []
-        )
-            .map((h) => h.toString(true))
-            .join()
+        const source = elements.map((el) => el.toString(true)).join()
 
         for (const element of elements) {
             await this._processElement(
@@ -64,9 +54,12 @@ export class MessageTransformer {
             session.quote &&
             !options.quote &&
             options.includeQuoteReply &&
-            sourceElementString !== quoteElementString
+            source !==
+                (session.quote.elements ?? [])
+                    .map((el) => el.toString(true))
+                    .join()
         ) {
-            const quoteMessage = await this.transform(
+            const quote = await this.transform(
                 session,
                 session.quote.elements ?? [],
                 model,
@@ -82,10 +75,20 @@ export class MessageTransformer {
                 }
             )
 
-            // 构建引用消息的完整格式：时间 + 发言人 + 内容
-            const quoteUsername =
+            const ids: string[] = quote.additional_kwargs?.forwardMessageIds
+            if (ids?.length) {
+                message.additional_kwargs ??= {}
+                message.additional_kwargs.forwardMessageIds = [
+                    ...new Set([
+                        ...ids,
+                        ...(message.additional_kwargs.forwardMessageIds ?? [])
+                    ])
+                ]
+            }
+
+            const name =
                 session.quote.user?.name || session.quote.user?.id || 'Unknown'
-            const quoteTimestamp = session.quote.timestamp
+            const time = session.quote.timestamp
                 ? new Date(session.quote.timestamp).toLocaleString('zh-CN', {
                       year: 'numeric',
                       month: '2-digit',
@@ -96,37 +99,23 @@ export class MessageTransformer {
                       hour12: false
                   })
                 : ''
-            const quoteSaid = session.text('chatluna.quote_said')
-            const quoteHeader = quoteTimestamp
-                ? `${quoteTimestamp} ${quoteUsername}`
-                : quoteUsername
+            const header = time ? `${time} ${name}` : name
+            const parts = [
+                `The Referenced message is ${header} ${session.text('chatluna.quote_said')} said\n`,
+                quote.content,
+                `\n\n User's current message\n`,
+                message.content
+            ].flat()
 
             if (
                 typeof message.content === 'string' &&
-                typeof quoteMessage.content === 'string'
+                typeof quote.content === 'string'
             ) {
-                message.content = [
-                    `The Referenced message is ${quoteHeader} ${quoteSaid} said\n`,
-                    quoteMessage.content,
-                    `\n\n User's current message\n`,
-                    message.content
-                ].join('')
-
+                message.content = parts.join('')
                 return message
             }
 
-            const messageContent = [
-                `The Referenced message is ${quoteHeader} ${quoteSaid} said`,
-                ...(Array.isArray(quoteMessage.content)
-                    ? quoteMessage.content
-                    : [quoteMessage.content]),
-                `\n\n User's current message`,
-                ...(Array.isArray(message.content)
-                    ? message.content
-                    : [message.content])
-            ]
-
-            message.content = messageContent
+            message.content = parts
                 .map((content) => {
                     if (isMessageContentComplex(content)) return content
                     return { type: 'text', text: content }
@@ -265,69 +254,17 @@ export class MessageTransformer {
         model: string,
         options: MessageTransformOptions
     ) {
-        const transformFunctions = this._transformFunctions.get(element.type)
-
-        if (!transformFunctions?.length) {
-            if (element.children?.length) {
-                await this.transform(
-                    session,
-                    element.children,
-                    model,
-                    message,
-                    {
-                        quote: options.quote,
-                        includeQuoteReply: false
-                    }
-                )
-            }
-            return
+        for (const { func } of this._transformFunctions.get(element.type) ??
+            []) {
+            if ((await func(session, element, message, model)) !== false) return
+            if (element.children.length) break
         }
 
-        const hasChildren = !!element.children?.length
-
-        for (const { func: transformFunction } of transformFunctions) {
-            const result = await transformFunction(
-                session,
-                element,
-                message,
-                model
-            )
-
-            if (result !== false) return
-
-            if (hasChildren) {
-                await this.transform(
-                    session,
-                    element.children,
-                    model,
-                    message,
-                    {
-                        quote: options.quote,
-                        includeQuoteReply: false
-                    }
-                )
-                return
-            }
-        }
-
-        if (hasChildren) {
+        if (element.children.length) {
             await this.transform(session, element.children, model, message, {
                 quote: options.quote,
                 includeQuoteReply: false
             })
-        }
-    }
-
-    private async _runBeforeTransform(
-        session: Session,
-        elements: h[],
-        message: Message,
-        model: string,
-        options: MessageTransformOptions
-    ) {
-        for (const { func: transformFunction } of this
-            ._beforeTransformFunctions) {
-            await transformFunction(session, elements, message, model, options)
         }
     }
 }

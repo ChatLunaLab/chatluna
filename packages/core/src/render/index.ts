@@ -50,35 +50,12 @@ export class DefaultRenderer {
         options: RenderOptions = this.defaultOptions
     ): Promise<RenderMessage[]> {
         try {
-            const result: RenderMessage[] = []
-
             options = Object.assign({}, this.defaultOptions, options)
-
-            const currentRenderer = this.getRenderer(options.type)
-            const rawRenderer =
-                options.type === 'raw'
-                    ? currentRenderer
-                    : this.getRenderer('raw')
-
-            if (message.additionalReplyMessages) {
-                for (const msg of message.additionalReplyMessages) {
-                    const elements = await rawRenderer
-                        .render(msg, options)
-                        .then((r) => r.element)
-
-                    result.push({
-                        element: h(
-                            'message',
-                            { forward: true },
-                            Array.isArray(elements) ? elements : [elements]
-                        )
-                    })
-                }
-            }
-
-            result.push(await currentRenderer.render(message, options))
-
-            return result
+            const result = await this.renderAdditionalMessages(message, options)
+            return [
+                ...result.map((element) => ({ element })),
+                await this.getRenderer(options.type).render(message, options)
+            ]
         } catch (e) {
             throw new ChatLunaError(ChatLunaErrorCode.RENDER_ERROR, e)
         }
@@ -120,15 +97,11 @@ export class DefaultRenderer {
         const result: h[][] = []
 
         for (const msg of message.additionalReplyMessages) {
-            const elements = await rawRenderer
-                .render(msg, options)
-                .then((r) => r.element)
-
             result.push([
                 h(
                     'message',
                     { forward: true },
-                    Array.isArray(elements) ? elements : [elements]
+                    (await rawRenderer.render(msg, options)).element
                 )
             ])
         }
