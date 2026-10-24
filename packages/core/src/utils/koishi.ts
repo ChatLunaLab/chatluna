@@ -306,38 +306,6 @@ export function transformMessageContentToElements(content: MessageContent) {
     })
 }
 
-export function pickForwardMessageId(element: h): string | null {
-    const attrs = (element.attrs ?? {}) as Record<string, unknown>
-
-    for (const key of ['message_id', 'messageId']) {
-        const normalizedId = normalizeForwardMessageId(attrs[key])
-        if (normalizedId) return normalizedId
-    }
-
-    return null
-}
-
-export function isForwardMessageElement(element: h): boolean {
-    if (!element) return false
-    if (element.type === 'forward') return true
-    if (element.type !== 'message') return false
-
-    return ['true', '1'].includes(String(element.attrs?.['forward']))
-}
-
-export function normalizeForwardMessageId(value: unknown): string | null {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-        return String(value)
-    }
-
-    if (typeof value !== 'string') {
-        return null
-    }
-
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : null
-}
-
 export function hideSlashGroups(root: Command): void {
     const toJSON = root.toJSON.bind(root)
     root.toJSON = () => {
