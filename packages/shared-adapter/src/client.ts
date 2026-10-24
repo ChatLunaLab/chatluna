@@ -185,12 +185,8 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'gpt-4o',
     'claude',
     'gemini',
-    'qwen-vl',
     'omni',
     'gemma',
-    'qwen*-omni',
-    'qwen-omni',
-    'qwen*-vl',
     'qwen-3.5',
     'qwen3.5',
     'qvq',
@@ -199,17 +195,17 @@ const imageModelMatchers: ((text: string) => boolean)[] = [
     'o4',
     'gpt-4.1',
     'gpt-5',
+    'gpt-6',
     'glm-*v',
     'kimi-k2.*',
+    'kimi-k3',
     'step3',
     'grok-4',
-    'grok-4.1',
-    'grok-4.5',
-    'grok-4.6',
     'agnes',
     'ocr',
-    // deepseek-flash and glm-5.3-flash support image input.
+    // DeepSeek Flash and glm-5.3-flash support image input.
     'deepseek-flash',
+    'deepseek-v4.1-flash',
     'glm-5.3-flash'
 ].map(createGlobMatcher)
 
@@ -231,6 +227,7 @@ const audioModelMatchers: ((text: string) => boolean)[] = [
     'gpt-4o-audio',
     'gpt-4o-mini-audio',
     'gpt-audio',
+    'qwen3.8-omni-flash',
     'mimo-v2-omni'
 ].map(createGlobMatcher)
 
