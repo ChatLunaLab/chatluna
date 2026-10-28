@@ -380,21 +380,22 @@ export async function callChatLunaChain(
     const manager =
         CallbackManager.configure(callbacks) ?? new CallbackManager()
 
-    manager.addHandler(
-        CallbackManager.fromHandlers({
-            async handleLLMNewToken(token: string) {
-                await events?.['llm-new-token']?.(token)
-            },
-            async handleLLMEnd(output) {
-                usedToken += output.llmOutput?.usage_metadata?.total_tokens ?? 0
-            },
-            async handleCustomEvent(eventName, data) {
-                if (eventName === 'LLMNewChunk') {
-                    await events?.['llm-new-chunk']?.(data)
-                }
+    const handler = CallbackManager.fromHandlers({
+        async handleLLMNewToken(token: string) {
+            await events?.['llm-new-token']?.(token)
+        },
+        async handleLLMEnd(output) {
+            usedToken += output.llmOutput?.usage_metadata?.total_tokens ?? 0
+        },
+        async handleCustomEvent(eventName, data) {
+            if (eventName === 'LLMNewChunk') {
+                await events?.['llm-new-chunk']?.(data)
             }
-        }).handlers[0]
-    )
+        }
+    }).handlers[0]
+    // Await each forwarded callback so the stream drains before the run ends.
+    handler.awaitHandlers = true
+    manager.addHandler(handler)
 
     const response = await chain.invoke(values, {
         callbacks: manager

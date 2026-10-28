@@ -268,7 +268,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                 stream = this._createStream(streamParams)
 
                 for await (const chunk of stream) {
-                    const hasTool = this._handleStreamChunk(
+                    const hasTool = await this._handleStreamChunk(
                         chunk,
                         runManager,
                         latestTokenUsage
@@ -301,7 +301,7 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
                     )
                 }
 
-                this._finalizeStream(
+                await this._finalizeStream(
                     hasToolCallChunk,
                     latestTokenUsage,
                     runManager
@@ -369,24 +369,22 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         }
     }
 
-    private _handleStreamChunk(
+    private async _handleStreamChunk(
         chunk: ChatGenerationChunk,
         runManager: CallbackManagerForLLMRun | undefined,
         latestTokenUsage: TokenUsageTracker
-    ): boolean {
+    ): Promise<boolean> {
         const chunkText = chunk.text ?? ''
 
         if (chunkText) {
-            // eslint-disable-next-line no-void
-            void runManager?.handleLLMNewToken(chunkText)
+            await runManager?.handleLLMNewToken(chunkText)
         }
 
         const message = chunk.message as AIMessageChunk | undefined
         const hasToolCallChunk = this._hasToolCallChunk(message)
 
         if (!hasToolCallChunk) {
-            // eslint-disable-next-line no-void
-            void runManager?.handleCustomEvent('LLMNewChunk', message)
+            await runManager?.handleCustomEvent('LLMNewChunk', message)
         }
 
         this._updateTokenUsageFromChunk(chunk, latestTokenUsage)
@@ -436,14 +434,13 @@ export class ChatLunaChatModel extends BaseChatModel<ChatLunaModelCallOptions> {
         latestTokenUsage.output_token_details = usage.output_token_details
     }
 
-    private _finalizeStream(
+    private async _finalizeStream(
         hasToolCallChunk: boolean,
         latestTokenUsage: TokenUsageTracker,
         runManager?: CallbackManagerForLLMRun
     ) {
         if (!hasToolCallChunk) {
-            // eslint-disable-next-line no-void
-            void runManager?.handleCustomEvent('LLMNewChunk', undefined)
+            await runManager?.handleCustomEvent('LLMNewChunk', undefined)
         }
 
         if (latestTokenUsage.total_tokens <= 0) {
