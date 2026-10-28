@@ -243,33 +243,33 @@ export class ChatLunaPluginChain
                 CallbackManager.configure(arg.callbacks) ??
                 new CallbackManager()
 
-            manager.addHandler(
-                CallbackManager.fromHandlers({
-                    async handleLLMEnd(out) {
-                        usedToken +=
-                            out.llmOutput?.usage_metadata?.total_tokens ?? 0
-                    },
-                    async handleAgentAction(action: AgentAction) {
-                        await arg.events?.['llm-call-tool']?.(
-                            action.tool,
-                            action.toolInput,
-                            action.content,
-                            action.log
-                        )
-                    },
-                    async handleToolEnd(out) {
-                        logger.debug('Tool end:', sanitizeToolLogValue(out))
-                    },
-                    async handleLLMNewToken(token) {
-                        await arg.events?.['llm-new-token']?.(token)
-                    },
-                    async handleCustomEvent(name, data) {
-                        if (name === 'LLMNewChunk') {
-                            await arg.events?.['llm-new-chunk']?.(data)
-                        }
+            const handler = CallbackManager.fromHandlers({
+                async handleLLMEnd(out) {
+                    usedToken +=
+                        out.llmOutput?.usage_metadata?.total_tokens ?? 0
+                },
+                async handleAgentAction(action: AgentAction) {
+                    await arg.events?.['llm-call-tool']?.(
+                        action.tool,
+                        action.toolInput,
+                        action.content,
+                        action.log
+                    )
+                },
+                async handleToolEnd(out) {
+                    logger.debug('Tool end:', sanitizeToolLogValue(out))
+                },
+                async handleLLMNewToken(token) {
+                    await arg.events?.['llm-new-token']?.(token)
+                },
+                async handleCustomEvent(name, data) {
+                    if (name === 'LLMNewChunk') {
+                        await arg.events?.['llm-new-chunk']?.(data)
                     }
-                }).handlers[0]
-            )
+                }
+            }).handlers[0]
+            handler.awaitHandlers = true
+            manager.addHandler(handler)
 
             return runner.invoke(
                 {

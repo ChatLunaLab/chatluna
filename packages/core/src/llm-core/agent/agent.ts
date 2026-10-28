@@ -170,6 +170,18 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                 }
             })
 
+            const streamCallbacks = CallbackManager.fromHandlers({
+                async handleLLMNewToken(token) {
+                    await input.onToken?.(token)
+                },
+                async handleCustomEvent(name, data) {
+                    if (name === 'LLMNewChunk') {
+                        await input.onChunk?.(data as BaseMessageChunk)
+                    }
+                }
+            })
+            streamCallbacks.handlers[0].awaitHandlers = true
+
             return await bound.invoke(
                 {
                     input: message,
@@ -187,18 +199,7 @@ export function createAgent(options: CreateAgentOptions): ChatLunaAgent {
                     signal: input.signal,
                     callbacks: CallbackManager.configure(
                         input.callbacks,
-                        CallbackManager.fromHandlers({
-                            async handleLLMNewToken(token) {
-                                await input.onToken?.(token)
-                            },
-                            async handleCustomEvent(name, data) {
-                                if (name === 'LLMNewChunk') {
-                                    await input.onChunk?.(
-                                        data as BaseMessageChunk
-                                    )
-                                }
-                            }
-                        })
+                        streamCallbacks
                     ),
                     metadata: { chatlunaAgent: ctx },
                     configurable: {
