@@ -11,10 +11,13 @@ import type { ChatLunaAgentService } from '../service'
 import type { SkillMode, TriggerActor } from '../types'
 import { AgentConsoleData, AgentStatus, McpServerConfig } from '../types'
 
+export const inject = ['console', 'auth']
+
 class ChatLunaAgentConsoleService extends DataService<AgentConsoleData> {
     constructor(ctx: Context) {
         super(ctx, 'chatluna_agent_webui', {
-            immediate: true
+            immediate: true,
+            authority: 3
         })
     }
 
@@ -132,94 +135,111 @@ function ok<T, A extends unknown[]>(fn: (...args: A) => Promise<T>) {
 function registerBaseListeners(ctx: Context, agent: AgentRef) {
     ctx.console.addListener(
         'chatluna-agent/getConfig',
-        async () => agent().getConsoleData().config
+        async () => agent().getConsoleData().config,
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/saveConfig',
-        ok((cfg) => agent().saveConfig(cfg))
+        ok((cfg) => agent().saveConfig(cfg)),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/getStatus', async () =>
-        agent().getStatus()
+    ctx.console.addListener(
+        'chatluna-agent/getStatus',
+        async () => agent().getStatus(),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/getModelNames',
-        async () => listModelNames(ctx.chatluna.platform).value
+        async () => listModelNames(ctx.chatluna.platform).value,
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/refreshConsoleData',
-        ok(() => agent().refreshConsoleData())
+        ok(() => agent().refreshConsoleData()),
+        { authority: 3 }
     )
 }
 
 function registerComputerListeners(ctx: Context, agent: AgentRef) {
-    ctx.console.addListener('chatluna-agent/getComputerStatus', async () =>
-        agent().computer.getStatus()
+    ctx.console.addListener(
+        'chatluna-agent/getComputerStatus',
+        async () => agent().computer.getStatus(),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/openComputerTerminal',
         async function (input) {
             return await agent().computer.createTerminal(this.id, input)
-        }
+        },
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/closeComputerTerminal',
         ok(async (sessionId, terminalId) => {
             await agent().computer.closeTerminal(sessionId, terminalId)
-        })
+        }),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/listComputerBackgroundJobs',
         async (input) =>
-            await agent().computer.listBackgroundJobs(input?.backend)
+            await agent().computer.listBackgroundJobs(input?.backend),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/killComputerBackgroundJob',
         ok(async (jobId) => {
             await agent().computer.killBackgroundJob(jobId)
-        })
+        }),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/removeComputerBackgroundJob',
         ok(async (jobId) => {
             await agent().computer.removeBackgroundJob(jobId)
-        })
+        }),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/readComputerFile',
         async function (input) {
             return await agent().computer.readFileForUi(this.id, input)
-        }
+        },
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/readComputerFileAsset',
         async function (input) {
             return await agent().computer.readFileAssetForUi(this.id, input)
-        }
+        },
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/globComputerFiles',
         async function (input) {
             return await agent().computer.globForUi(this.id, input)
-        }
+        },
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/getComputerHome',
         async function (input) {
             return await agent().computer.getHomeForUi(this.id, input?.backend)
-        }
+        },
+        { authority: 3 }
     )
 
     ctx.console.addListener(
@@ -229,23 +249,28 @@ function registerComputerListeners(ctx: Context, agent: AgentRef) {
                 this.id,
                 input?.backend
             )
-        }
+        },
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/sendComputerDesktopAction',
         ok(async (sessionId, action) => {
             await agent().computer.sendDesktopAction(sessionId, action)
-        })
+        }),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/testBackend', async (type) =>
-        agent().computer.testBackend(type)
+    ctx.console.addListener(
+        'chatluna-agent/testBackend',
+        async (type) => agent().computer.testBackend(type),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/saveComputer',
-        ok((cfg) => agent().saveComputerConfig(cfg))
+        ok((cfg) => agent().saveComputerConfig(cfg)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
@@ -254,17 +279,22 @@ function registerComputerListeners(ctx: Context, agent: AgentRef) {
             await agent().computer.reload()
             await agent().skills.reload()
             await agent().refreshConsoleData()
-        })
+        }),
+        { authority: 3 }
     )
 }
 
 function registerSkillsListeners(ctx: Context, agent: AgentRef) {
-    ctx.console.addListener('chatluna-agent/getSkills', async () =>
-        agent().skills.listSkills()
+    ctx.console.addListener(
+        'chatluna-agent/getSkills',
+        async () => agent().skills.listSkills(),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/getSkillContent', async (id) =>
-        agent().skills.getSkillContent(id)
+    ctx.console.addListener(
+        'chatluna-agent/getSkillContent',
+        async (id) => agent().skills.getSkillContent(id),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
@@ -272,25 +302,34 @@ function registerSkillsListeners(ctx: Context, agent: AgentRef) {
         async (id, content) => ({
             success:
                 (await agent().skills.saveSkillContent(id, content)) !== false
-        })
+        }),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/exportSkill', async (id) =>
-        agent().exportSkill(id)
+    ctx.console.addListener(
+        'chatluna-agent/exportSkill',
+        async (id) => agent().exportSkill(id),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/previewSkillImport',
-        async (input) => agent().previewSkillImport(input)
+        async (input) => agent().previewSkillImport(input),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/importSkills', async (input) => {
-        return await agent().importSkills(input)
-    })
+    ctx.console.addListener(
+        'chatluna-agent/importSkills',
+        async (input) => {
+            return await agent().importSkills(input)
+        },
+        { authority: 3 }
+    )
 
     ctx.console.addListener(
         'chatluna-agent/saveSkills',
-        ok((cfg) => agent().saveSkillsConfig(cfg))
+        ok((cfg) => agent().saveSkillsConfig(cfg)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
@@ -298,103 +337,128 @@ function registerSkillsListeners(ctx: Context, agent: AgentRef) {
         ok(async () => {
             await agent().skills.reload()
             await agent().refreshConsoleData()
-        })
+        }),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/removeSkill',
-        ok((id: string) => agent().removeSkill(id))
+        ok((id: string) => agent().removeSkill(id)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/setSkillEnabled',
         ok((id: string, enabled: boolean) =>
             agent().setSkillEnabled(id, enabled)
-        )
+        ),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/setSkillMode',
-        ok((id: string, mode: SkillMode) => agent().setSkillMode(id, mode))
+        ok((id: string, mode: SkillMode) => agent().setSkillMode(id, mode)),
+        { authority: 3 }
     )
 }
 
 function registerSubAgentListeners(ctx: Context, agent: AgentRef) {
-    ctx.console.addListener('chatluna-agent/getSubAgents', async () =>
-        agent().subAgent.getCatalogSync()
+    ctx.console.addListener(
+        'chatluna-agent/getSubAgents',
+        async () => agent().subAgent.getCatalogSync(),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/getSubAgentRuns', async () =>
-        agent().subAgent.getRuns()
+    ctx.console.addListener(
+        'chatluna-agent/getSubAgentRuns',
+        async () => agent().subAgent.getRuns(),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/stopSubAgentTask', async (id) =>
-        agent().stopSubAgentTask(id)
+    ctx.console.addListener(
+        'chatluna-agent/stopSubAgentTask',
+        async (id) => agent().stopSubAgentTask(id),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/saveSubAgentConfig',
-        ok((cfg) => agent().saveSubAgentConfig(cfg))
+        ok((cfg) => agent().saveSubAgentConfig(cfg)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/reloadSubAgents',
         ok(async () => {
             await agent().reloadSubAgents()
-        })
+        }),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/setSubAgentEnabled',
         ok((id: string, enabled: boolean) =>
             agent().setSubAgentEnabled(id, enabled)
-        )
+        ),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/addSubAgent',
-        async (input) => await agent().addSubAgent(input)
+        async (input) => await agent().addSubAgent(input),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/saveSubAgentContent',
-        async (id, input) => await agent().saveSubAgentContent(id, input)
+        async (id, input) => await agent().saveSubAgentContent(id, input),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/exportSubAgent', async (id) =>
-        agent().exportSubAgent(id)
+    ctx.console.addListener(
+        'chatluna-agent/exportSubAgent',
+        async (id) => agent().exportSubAgent(id),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/uploadSubAgent',
-        ok((input) => agent().uploadSubAgent(input))
+        ok((input) => agent().uploadSubAgent(input)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/previewSubAgentImport',
-        async (data) => agent().previewSubAgentImport(data)
+        async (data) => agent().previewSubAgentImport(data),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/createPresetAgent',
         ok((name: string, preset: string, config) =>
             agent().createPresetAgent(name, preset, config)
-        )
+        ),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/removeSubAgent',
-        ok((id: string) => agent().removeSubAgent(id))
+        ok((id: string) => agent().removeSubAgent(id)),
+        { authority: 3 }
     )
 
-    ctx.console.addListener('chatluna-agent/getPresetNames', async () =>
-        agent().getPresetNames()
+    ctx.console.addListener(
+        'chatluna-agent/getPresetNames',
+        async () => agent().getPresetNames(),
+        { authority: 3 }
     )
 }
 
 function registerToolListeners(ctx: Context, agent: AgentRef) {
-    ctx.console.addListener('chatluna-agent/getToolAvailability', async () =>
-        agent().getToolAvailability()
+    ctx.console.addListener(
+        'chatluna-agent/getToolAvailability',
+        async () => agent().getToolAvailability(),
+        { authority: 3 }
     )
 }
 
@@ -591,30 +655,36 @@ function consoleActor(id: string): TriggerActor {
 }
 
 function registerMcpListeners(ctx: Context, agent: AgentRef) {
-    ctx.console.addListener('chatluna-agent/getMcpStatus', async () =>
-        agent().mcp.getStatus()
+    ctx.console.addListener(
+        'chatluna-agent/getMcpStatus',
+        async () => agent().mcp.getStatus(),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/saveMcp',
-        ok((cfg) => agent().saveMcpConfig(cfg))
+        ok((cfg) => agent().saveMcpConfig(cfg)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/upsertMcpServer',
         ok((name: string, cfg: McpServerConfig) =>
             agent().saveMcpServer({ name, config: cfg })
-        )
+        ),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/saveMcpServer',
-        ok((input) => agent().saveMcpServer(input))
+        ok((input) => agent().saveMcpServer(input)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/removeMcpServer',
-        ok((name) => agent().removeMcpServer(name))
+        ok((name) => agent().removeMcpServer(name)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
@@ -627,22 +697,26 @@ function registerMcpListeners(ctx: Context, agent: AgentRef) {
                 timeout: tool?.timeout,
                 selector: tool?.selector ?? []
             })
-        })
+        }),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/saveMcpTool',
-        ok((tool) => agent().saveMcpTool(tool))
+        ok((tool) => agent().saveMcpTool(tool)),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/reloadMcp',
-        ok(() => agent().reloadMcp())
+        ok(() => agent().reloadMcp()),
+        { authority: 3 }
     )
 
     ctx.console.addListener(
         'chatluna-agent/reconnectMcpServer',
-        ok((name) => agent().mcp.reconnect(name))
+        ok((name) => agent().mcp.reconnect(name)),
+        { authority: 3 }
     )
 }
 
@@ -663,4 +737,17 @@ export function apply(ctx: Context) {
     registerSubAgentListeners(ctx, agent)
     registerToolListeners(ctx, agent)
     registerTriggerListeners(ctx, agent)
+
+    const console = ctx.console
+    const listeners = Object.entries(console.listeners).filter(([name]) =>
+        name.startsWith('chatluna-agent/')
+    )
+    // 鉴权服务停用时清理接口，避免遗留监听器绕过权限检查。
+    ctx.on('dispose', () => {
+        for (const [name, listener] of listeners) {
+            if (console.listeners[name] === listener) {
+                delete console.listeners[name]
+            }
+        }
+    })
 }
