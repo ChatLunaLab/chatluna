@@ -24,6 +24,7 @@ export interface Config extends ChatLunaPlugin.Config {
     bingSearchApiKey: string
     bingSearchLocation: string
     azureLocation: string
+    bingSearchBaseURL: string
 
     wikipediaBaseURL: string[]
     maxWikipediaDocContentLength: number
@@ -99,7 +100,10 @@ export const Config: Schema<Config> = Schema.intersect([
     Schema.object({
         bingSearchApiKey: Schema.string().role('secret'),
         bingSearchLocation: Schema.string().default('zh-CN'),
-        azureLocation: Schema.string().default('global')
+        azureLocation: Schema.string().default('global'),
+        bingSearchBaseURL: Schema.string().default(
+            'https://api.bing.microsoft.com/v7.0/search'
+        )
     }),
 
     Schema.object({

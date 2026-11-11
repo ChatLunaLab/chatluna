@@ -6,7 +6,7 @@ import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 
 class BingAPISearchProvider extends SearchProvider {
     async search(query: string, limit = this.config.topK) {
-        const searchUrl = new URL('https://api.bing.microsoft.com/v7.0/search')
+        const searchUrl = new URL(this.config.bingSearchBaseURL)
 
         searchUrl.searchParams.set('q', query)
         searchUrl.searchParams.set('responseFilter', 'Webpages')
