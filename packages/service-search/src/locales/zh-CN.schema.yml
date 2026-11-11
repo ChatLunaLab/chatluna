@@ -40,7 +40,7 @@ $inner:
       bingSearchApiKey: Bing API 密钥。
       bingSearchLocation: Bing API 搜索地区。
       azureLocation: Azure API 搜索地区。
-      bingSearchBaseURL: Bing API 地址。可改为兼容 Bing Web Search v7 API 的服务地址。
+      bingSearchBaseURL: Bing API 地址。可改为兼容 Bing Web Search v7 API 的服务地址。使用远程 HTTP 地址且未配置代理时，API 密钥会以明文发送，建议使用 HTTPS。
 
     - $desc: Tavily 设置
       tavilyApiKey: Tavily API 密钥。

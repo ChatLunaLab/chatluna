@@ -38,7 +38,7 @@ $inner:
       bingSearchApiKey: 'Bing API key'
       bingSearchLocation: 'Bing API search location'
       azureLocation: 'Azure API search location'
-      bingSearchBaseURL: 'Bing API URL. Change it to use a service compatible with the Bing Web Search v7 API'
+      bingSearchBaseURL: 'Bing API URL. Change it to use a service compatible with the Bing Web Search v7 API. A remote HTTP address sends the API key in plain text when no proxy is set, so use HTTPS for a remote service'
 
     - $desc: 'Tavily Settings'
       tavilyApiKey: 'Tavily API key'
