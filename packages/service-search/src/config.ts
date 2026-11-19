@@ -59,6 +59,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 ),
                 Schema.const('serper').description('Serper (Google)'),
                 Schema.const('tavily').description('Tavily (API)'),
+                Schema.const('parallel').description('Parallel (MCP)'),
                 Schema.const('google-web').description('Google (Web)'),
                 Schema.const('wikipedia').description('Wikipedia'),
                 Schema.const('searxng').description('SearxNG')
