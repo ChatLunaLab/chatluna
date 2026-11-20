@@ -75,6 +75,7 @@ Install the plugin directly in Koishi without editing any configuration files. F
 - Bing (API & Web)
 - DuckDuckGO (Lite)
 - Tavily (API)
+- Keenable (API)
 
 ## 🎭 Presets
 

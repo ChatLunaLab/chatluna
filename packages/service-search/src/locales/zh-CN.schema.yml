@@ -45,6 +45,9 @@ $inner:
     - $desc: Tavily 设置
       tavilyApiKey: Tavily API 密钥。
 
+    - $desc: Keenable 设置
+      keenableApiKey: Keenable API 密钥。可选：留空则使用免费的免密钥额度（按 IP 限流）。
+
     - $desc: Wikipedia 设置
       wikipediaBaseURL: Wikipedia API 基础 URL。
       maxWikipediaDocContentLength: Wikipedia 文档内容最大长度。

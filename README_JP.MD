@@ -75,6 +75,7 @@ Koishi にプラグインを直接インストールでき、設定ファイル�
 - Bing (API & Web)
 - DuckDuckGO (Lite)
 - Tavily (API)
+- Keenable (API)
 
 ## 🎭 プリセット
 

@@ -31,6 +31,8 @@ export interface Config extends ChatLunaPlugin.Config {
 
     tavilyApiKey: string
 
+    keenableApiKey: string
+
     searxngBaseURL: string
 
     enableBrowser: boolean
@@ -59,6 +61,7 @@ export const Config: Schema<Config> = Schema.intersect([
                 ),
                 Schema.const('serper').description('Serper (Google)'),
                 Schema.const('tavily').description('Tavily (API)'),
+                Schema.const('keenable').description('Keenable (API)'),
                 Schema.const('google-web').description('Google (Web)'),
                 Schema.const('wikipedia').description('Wikipedia'),
                 Schema.const('searxng').description('SearxNG')
@@ -108,6 +111,10 @@ export const Config: Schema<Config> = Schema.intersect([
 
     Schema.object({
         tavilyApiKey: Schema.string().role('secret')
+    }),
+
+    Schema.object({
+        keenableApiKey: Schema.string().role('secret')
     }),
 
     Schema.object({

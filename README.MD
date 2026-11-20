@@ -82,6 +82,7 @@ _多平台模型接入，可扩展，多种输出格式，提供大语言模型�
 * Bing (API / Web)
 * DuckDuckGO (Lite)
 * Tavily (API)
+* Keenable (API)
 
 ## 🎭 预设
 
